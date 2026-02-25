@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         ЕТИС Reborn
+// @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Глобальный редизайн ЕТИСа
@@ -517,10 +517,33 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
     padding: 0 !important; 
     margin-bottom: 2rem !important; 
 }
-.day h3 { 
-    padding: 1.6rem 1.6rem 1.4rem !important;
+.span9 .day h3 { 
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    
+    padding: 1.6rem 2rem !important; 
+    background: var(--color-table-header) !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    
     margin: 0 !important; 
-    font-size: 14px !important; 
+    font-size: 1.6rem !important; 
+}
+
+.span9 .day h3 .day-name {
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    text-transform: capitalize !important;
+    letter-spacing: 0.3px !important;
+}
+
+.span9 .day h3 .day-date {
+    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    color: var(--color-accent) !important;
+    background: var(--color-accent-active) !important;
+    padding: 0.5rem 1.4rem !important;
+    border-radius: 50px !important;
 }
 .no_pairs { padding: 1.2rem 1.6rem 2rem !important; }
 .timetable { display: flex !important; flex-direction: column !important; width: 100% !important; }
@@ -537,9 +560,9 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
 
 /* --- TEACHERS REBORN (ПРЕПОДАВАТЕЛИ) --- */
 
-/* Новая карточка преподавателя */
+/* карточка преподавателя */
 .teacher-card {
-    display: flex !important;
+    display: flex;
     background: var(--color-card) !important;
     border-radius: var(--radius-large) !important;
     box-shadow: var(--shadow-main) !important;
@@ -3708,63 +3731,79 @@ form.que_form select {
         color: var(--color-text-primary) !important;
     }
 
-    /* === УМНЫЕ КОЛОНКИ === */
+    /* === УМНЫЕ КОЛОНКИ (V7 - ISOLATED) === */
     
-    .span9 table.common {
-        table-layout: auto !important;
-        border-collapse: separate !important;
-        width: 100% !important;
-    }
-
+    /* Общие отступы для всех таблиц .common */
     .span9 table.common td, 
     .span9 table.common th {
-        padding: 1.2rem 1.4rem !important;
+        padding: 1.2rem 1.6rem !important;
         line-height: 1.4 !important;
-        white-space: normal !important; /* РАЗРЕШАЕМ ПЕРЕНОС ПО УМОЛЧАНИЮ */
-        word-wrap: break-word !important;
         vertical-align: middle !important;
     }
 
-    /* ФИКС ДЛЯ "ОЦЕНКИ ЗА СЕССИИ" (4 колонки) */
-    .session-table-v6 td:nth-child(1) { width: auto !important; font-weight: 600; text-align: left; }
-    .session-table-v6 td:nth-child(2),
-    .session-table-v6 td:nth-child(3) { 
-        width: 90px !important; 
-        min-width: 90px !important; 
-        white-space: nowrap !important; /* Оценка и дата не переносятся */
-        text-align: center; 
+    /* ПРАВИЛА ТОЛЬКО ДЛЯ ТАБЛИЦ ОЦЕНОК (Session & Term) */
+    .session-table-v6, .term-table-v6 {
+        table-layout: auto !important;
     }
-    .session-table-v6 td:nth-child(4) { width: 180px !important; color: var(--color-text-secondary); text-align: left; }
 
-    /* ФИКС ДЛЯ "ОЦЕНКИ В ТРИМЕСТРЕ" (9 колонок) */
-    .term-table-v6 { min-width: 1000px !important; } /* Даем таблице простор для скролла */
-    
-    .term-table-v6 td:nth-child(1) { min-width: 250px !important; text-align: left; font-weight: 600; color: var(--color-accent); }
-    .term-table-v6 td:nth-child(2) { width: 80px !important; text-align: center; } /* Вид работы */
-    .term-table-v6 td:nth-child(3) { min-width: 150px !important; text-align: left; font-size: 1.2rem; } /* Вид контроля (длинный текст) */
-    
-    /* Колонки с баллами (с 4 по 8) - компактно */
-    .term-table-v6 td:nth-child(4),
-    .term-table-v6 td:nth-child(5),
-    .term-table-v6 td:nth-child(6),
-    .term-table-v6 td:nth-child(7),
-    .term-table-v6 td:nth-child(8) {
-        width: 60px !important;
-        min-width: 60px !important;
+    /* Эти правила теперь НЕ трогают расписание */
+    .session-table-v6 td:not(:first-child):not(:last-child),
+    .term-table-v6 td:not(:first-child):not(:last-child) {
+        width: 1% !important;
         white-space: nowrap !important;
-        text-align: center;
+        min-width: 90px !important;
+        text-align: center !important;
     }
-    
-    .term-table-v6 td:nth-child(9) { width: 150px !important; text-align: left; font-size: 1.1rem; color: var(--color-text-secondary); }
 
-    /* Заголовки триместров */
-    h3.term-title {
-        margin: 4rem 0 1.5rem 0 !important;
-        font-size: 1.3rem !important;
+    /* Первая колонка в оценках (Предмет/Тема) */
+    .session-table-v6 td:first-child, 
+    .term-table-v6 td:first-child {
+        width: auto !important;
+        white-space: normal !important;
+        font-weight: 600 !important;
+    }
+
+    /* СПЕЦИАЛЬНЫЙ ФИКС ДЛЯ РАСПИСАНИЯ (Timetable Grid) */
+    .timetable-grid {
+        table-layout: fixed !important; /* Жёсткая сетка для расписания */
+        width: 100% !important;
+    }
+
+    .timetable-grid td {
+        white-space: normal !important; /* ВСЕГДА разрешаем перенос текста */
+        word-wrap: break-word !important;
+    }
+
+    /* Левая колонка (Время пары) */
+    .timetable-grid td.pair_num {
+        width: 95px !important;
+        min-width: 95px !important;
+        text-align: center !important;
+    }
+
+    /* Средняя колонка (Предмет) */
+    .timetable-grid td.pair_info {
+        width: auto !important;
+        text-align: left !important;
+        padding-left: 1rem !important;
+    }
+
+    /* Правая колонка (Преподаватель) */
+    .timetable-grid td.pair_teacher {
+        width: 160px !important;
+        min-width: 140px !important;
+        text-align: right !important;
         color: var(--color-text-secondary) !important;
-        text-transform: uppercase !important;
-        letter-spacing: 1px !important;
-        font-weight: 800 !important;
+    }
+
+    /* Фикс линий расписания под новые ширины */
+    .timetable-grid tr:not(:last-child) {
+        background-image: linear-gradient(to right, 
+            transparent 95px, 
+            var(--color-table-border) 95px, 
+            var(--color-table-border) calc(100% - 1.6rem), 
+            transparent calc(100% - 1.6rem)
+        ) !important;
     }
 }
 
@@ -3877,6 +3916,365 @@ form.que_form select {
     margin-right: 10px !important;
 }
 
+/* --- ТАБЛИЦА РАСПИСАНИЯ --- */
+
+/* Сброс универсальных правил .common для расписания */
+.span9 table.common.timetable-grid {
+    table-layout: fixed !important; /* Фиксируем сетку, чтобы колонки не прыгали */
+    width: 100% !important;
+    border-spacing: 0 !important;
+    border-collapse: collapse !important;
+}
+
+/* Настройка колонок расписания */
+.timetable-grid td {
+    padding: 1.2rem 0 !important; /* Увеличиваем вертикальный отступ для воздуха */
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+
+/* 1. Колонка с временем (Левая) */
+.timetable-grid td.pair_num {
+    width: 90px !important;
+    min-width: 90px !important;
+    text-align: center !important;
+    font-weight: 500 !important;
+}
+
+/* 2. Колонка с предметом (Центральная) - забирает всё место */
+.timetable-grid td.pair_info {
+    width: auto !important;
+    padding-left: 1.6rem !important;
+    padding-right: 1.6rem !important;
+    text-align: left !important;
+}
+
+/* 3. Колонка с преподавателем (Правая) */
+.timetable-grid td.pair_teacher {
+    width: 160px !important;
+    min-width: 150px !important;
+    text-align: right !important;
+    padding-right: 1.6rem !important;
+    color: var(--color-text-secondary) !important;
+}
+
+/* Фикс разделительных линий (Apple Style) под новые ширины */
+.timetable-grid tr:not(:last-child) {
+    background-image: linear-gradient(to right, 
+        transparent 90px, 
+        var(--color-table-border) 90px, 
+        var(--color-table-border) calc(100% - 1.6rem), 
+        transparent calc(100% - 1.6rem)
+    ) !important;
+    background-position: bottom !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 1px !important;
+}
+
+/* Убираем ховер-эффект, который мешает в расписании */
+.timetable-grid tr:hover td {
+    background: transparent !important;
+}
+
+/* Фикс для строк с "Окнами" */
+.timetable-grid tr.timetable-gap-row td {
+    padding: 1rem 0 !important;
+}
+.timetable-grid tr.timetable-gap-row .timetable-gap-capsule {
+    margin-left: 1.6rem !important;
+}
+
+/* --- ИСПРАВЛЕНИЕ РАСПИСАНИЯ ДЛЯ МОБИЛЬНЫХ --- */
+@media (max-width: 960px) {
+    
+    /* 1. Спасаем шапку с датой от обрезания (она больше не уедет за край) */
+    .span9 .day h3 {
+        padding: 1.2rem 1.4rem !important;
+        font-size: 1.4rem !important;
+        flex-wrap: nowrap !important;
+    }
+    .span9 .day h3 .day-name {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important; /* Обрежет день точками, если экран совсем узкий */
+    }
+    .span9 .day h3 .day-date {
+        padding: 0.4rem 1rem !important;
+        font-size: 1.15rem !important;
+        flex-shrink: 0 !important; /* Категорически запрещаем капсуле сжиматься */
+        margin-left: 0.8rem !important;
+    }
+
+    /* 2. Жёсткая сетка для таблицы: сохраняем 3 колонки, но оптимизируем ширину */
+    .timetable-grid {
+        table-layout: fixed !important; /* Заставляем браузер строго соблюдать наши ширины */
+        width: 100% !important;
+    }
+
+    /* Левая колонка (Время) - делаем компактной */
+    .timetable-grid td.pair_num {
+        width: 75px !important;
+        min-width: 75px !important;
+        padding-left: 1rem !important;
+        padding-right: 0.5rem !important;
+        font-size: 1.1rem !important;
+    }
+
+    /* Центральная колонка (Предмет) - отдаем ей максимум места */
+    .timetable-grid td.pair_info {
+        width: auto !important; 
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+
+    /* Правая колонка (Преподаватель) - узкая, прижата вправо */
+    .timetable-grid td.pair_teacher {
+        width: 95px !important;
+        min-width: 95px !important;
+        padding-right: 1rem !important;
+        padding-left: 0.5rem !important;
+        font-size: 1.1rem !important;
+        text-align: right !important;
+        word-wrap: break-word !important; /* Разрешаем перенос длинных фамилий */
+    }
+
+    /* На телефоне всегда показываем кнопку "оценить", так как нет мышки */
+    .timetable-grid td.pair_teacher .eval {
+        display: inline-block !important;
+        margin-top: 4px !important;
+        font-size: 1rem !important;
+        line-height: 1.2 !important;
+    }
+
+    /* Адаптируем разделительную линию под новую ширину 75px */
+    .timetable-grid tr:not(:last-child) {
+        background-image: linear-gradient(to right, 
+            transparent 75px, 
+            var(--color-table-border) 75px, 
+            var(--color-table-border) calc(100% - 1rem), 
+            transparent calc(100% - 1rem)
+        ) !important;
+    }
+}
+
+/* ========================================================= */
+/* --- УЧЕБНО-МЕТОДИЧЕСКИЙ КОМПЛЕКС (stu.tpr) --- */
+/* ========================================================= */
+
+/* Список тем */
+.themes {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1rem !important;
+    margin-bottom: 3rem !important;
+}
+
+.theme {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 0.8rem !important;
+    line-height: 1.5 !important;
+}
+
+/* Заголовок семестра (верхний уровень) */
+.theme[style*="padding-left: 0px"] {
+    margin-top: 1rem !important;
+    margin-bottom: 0.5rem !important;
+}
+.theme[style*="padding-left: 0px"] a {
+    font-size: 1.5rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+}
+
+/* Обычные темы (с отступом) */
+.theme[style*="padding-left: 25px"] {
+    padding-left: 2rem !important;
+}
+
+.theme a {
+    font-size: 1.4rem !important;
+    color: var(--color-accent) !important;
+    text-decoration: none !important;
+    transition: opacity 0.2s !important;
+}
+.theme a:hover {
+    opacity: 0.8 !important;
+}
+
+/* Часы */
+.theme .hour {
+    font-size: 1.2rem !important;
+    color: var(--color-text-secondary) !important;
+}
+
+/* --- АКЦЕНТНЫЙ (СИНИЙ) БЕЙДЖ --- */
+.badge.ctl {
+    background: var(--color-accent-active) !important; 
+    color: var(--color-accent) !important;            
+    border: 1px solid var(--color-accent) !important; 
+    padding: 0.2rem 0.8rem !important;
+    border-radius: 50px !important;
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    opacity: 0.9 !important;
+}
+
+/* Ссылки на вопросы */
+.tpr_part > a {
+    display: inline-flex !important;
+    font-size: 1.4rem !important;
+    color: var(--color-accent) !important;
+    margin-bottom: 2rem !important;
+    text-decoration: none !important;
+}
+.tpr_part > a:hover { text-decoration: underline !important; }
+
+/* Текстовые блоки показателей оценивания */
+.tpr_part > div:not([style]) {
+    font-size: 1.3rem !important;
+    line-height: 1.6 !important;
+    color: var(--color-text-primary) !important;
+    margin-bottom: 0.6rem !important;
+}
+
+/* --- ОБЕРТКА ТАБЛИЦЫ (СКРОЛЛ И ОТСТУПЫ) --- */
+.wide-table-wrapper {
+    width: 100% !important;
+    overflow-x: auto !important; /* Включаем горизонтальный скролл */
+    -webkit-overflow-scrolling: touch !important;
+    margin-bottom: 3rem !important; /* Отступ переносим сюда */
+    border-radius: var(--radius-large) !important;
+    box-shadow: var(--shadow-main) !important;
+    background: var(--color-card) !important;
+}
+
+/* Сама таблица */
+.tpr_part table {
+    width: 100% !important;
+    min-width: 600px !important; /* МИНИМАЛЬНАЯ ШИРИНА: если экран меньше, появится скролл */
+    background: transparent !important;
+    border-collapse: collapse !important;
+    margin: 0 !important; /* Убираем "подбородок" у самой таблицы */
+    box-shadow: none !important; /* Тень теперь у wrapper'а */
+}
+
+.tpr_part table td {
+    padding: 1.6rem 2rem !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    font-size: 1.3rem !important;
+    line-height: 1.5 !important;
+    vertical-align: middle !important;
+    color: var(--color-text-primary) !important;
+    
+    white-space: normal !important; 
+    word-wrap: break-word !important; 
+}
+
+/* Убираем линию у последней строки */
+.tpr_part table tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Первая колонка таблицы (Оценка) */
+.tpr_part table td:first-child {
+    width: 25% !important;
+    min-width: 140px !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    border-right: 1px solid var(--color-table-border) !important;
+    background: var(--color-highlight) !important; /* Чуть выделяем колонку заголовков */
+}
+
+.tpr_part table td:last-child {
+    color: var(--color-text-secondary) !important;
+}
+
+/* --- ПОИСК ПРЕПОДАВАТЕЛЕЙ --- */
+/* Контейнер поиска */
+.teacher-search-wrapper {
+    margin: 1rem 0 3rem 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+}
+
+/* Капсула (теперь видимая всегда) */
+.search-capsule {
+    position: relative !important;
+    width: 100% !important;
+    max-width: 400px !important;
+    display: flex !important;
+    align-items: center !important;
+    background: var(--color-card) !important; /* Белый фон */
+    border: 1px solid var(--color-table-border) !important;
+    border-radius: 22px !important;
+    padding: 0 16px !important;
+    height: 44px !important;
+    box-shadow: var(--shadow-main) !important;
+}
+
+/* Поле ввода внутри капсулы */
+.search-capsule .search-input {
+    width: 100% !important;
+    background: transparent !important; /* Убираем фон самого инпута */
+    border: none !important;
+    box-shadow: none !important; /* Убираем синюю тень из глобальных стилей */
+    padding: 0 0 0 32px !important; /* Отступ только слева для лупы */
+    margin: 0 !important;
+    height: 100% !important;
+    font-size: 1.6rem !important;
+    color: var(--color-text-primary) !important;
+}
+
+/* Сдвигаем лупу чуть левее */
+.search-capsule .search-icon {
+    position: absolute !important;
+    left: 12px !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 20px !important;
+}
+
+/* Ссылка статистики внизу */
+.stats-link-bottom {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    margin: 4rem auto 2rem !important;
+    padding: 1.2rem 2rem !important;
+    background: var(--color-highlight) !important;
+    border-radius: 12px !important;
+    color: var(--color-text-secondary) !important;
+    text-decoration: none !important;
+    font-size: 1.3rem !important;
+    width: fit-content !important;
+    transition: all 0.2s ease !important;
+}
+
+.stats-link-bottom:hover {
+    color: var(--color-accent) !important;
+    background: var(--color-accent-active) !important;
+}
+
+/* Список учителей */
+.teachers-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.6rem !important;
+}
+
+.no-results-msg {
+    text-align: center !important;
+    padding: 3rem !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 1.5rem !important;
+}
     `;
 
     // Внедряем стили
@@ -4520,75 +4918,147 @@ injectStyles(styles);
                     break;
                 }
 
-                case 'stu.tpr':
-                    el = span9.querySelector('a');
-                    el.className = 'icon-button icon-feedback';
-                    el.text = 'Оставить отзыв';
-
-                    break;
-
-                case 'stu.teachers': {
-                    // Убираем лишние br в начале страницы
+                case 'stu.tpr': {
+                    // 1. Очищаем мусорные теги <br>, чтобы не ломали отступы
                     span9.querySelectorAll('br').forEach(br => br.remove());
 
-                    // Находим все таблицы преподавателей
-                    const tables = span9.querySelectorAll('table.teacher_info');
-                    
+                    // 2. Красиво оформляем главный заголовок
+                    const h2 = span9.querySelector('h2');
+                    if (h2) {
+                        // Разделяем техническую надпись и название предмета
+                        const parts = h2.innerHTML.split(/<br\s*\/?>/i);
+                        if (parts.length > 1) {
+                            h2.innerHTML = `
+                                <span style="font-size: 1.2rem; color: var(--color-text-secondary); display: block; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.8rem;">
+                                    ${parts[0]}
+                                </span>
+                                <span style="font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--color-text-primary);">
+                                    ${parts[1].replace(/«/g, '').replace(/»/g, '')}
+                                </span>
+                            `;
+                        }
+                        h2.style.marginBottom = '2.4rem';
+                    }
+
+                    // 3. Стилизуем кнопку "Оценить" (если она есть)
+                    const estimateLink = span9.querySelector('a[href*="cust.estimate_tpr_form"]');
+                    if (estimateLink) {
+                        estimateLink.className = 'icon-button icon-feedback';
+                        estimateLink.style.display = 'inline-flex';
+                        estimateLink.style.marginBottom = '3rem';
+                        estimateLink.innerHTML = 'Оставить отзыв'; 
+                    }
+
+                    // 4. Оборачиваем таблицы в контейнер для скролла на мобильных
+                    const tables = span9.querySelectorAll('.tpr_part table');
                     tables.forEach(table => {
-                        // 1. Извлекаем данные
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'wide-table-wrapper';
+                        wrapper.style.boxShadow = 'none'; // Тень мы уже задали самой таблице в CSS
+                        table.parentNode.insertBefore(wrapper, table);
+                        wrapper.appendChild(table);
+                        
+                        // Чистим старые инлайновые стили ячеек
+                        table.querySelectorAll('td').forEach(td => td.removeAttribute('style'));
+                    });
+
+                    break;
+                }
+
+                case 'stu.teachers': {
+                    // 1. Сохраняем ссылку на статистику и чистим span9
+                    const statsLink = span9.querySelector('a[href="stu.dis_stat"]');
+                    // Удаляем всё старое (br, скрипты, пустые тексты)
+                    span9.querySelectorAll('br, script, style').forEach(el => el.remove());
+
+                    // 2. Создаем капсулу поиска
+                    const searchWrapper = document.createElement('div');
+                    searchWrapper.className = 'teacher-search-wrapper';
+                    searchWrapper.innerHTML = `
+                        <div class="search-capsule">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" class="search-input" placeholder="Поиск">
+                        </div>
+                    `;
+                    span9.prepend(searchWrapper);
+
+                    // 3. Создаем контейнер для списка
+                    const listContainer = document.createElement('div');
+                    listContainer.className = 'teachers-list';
+                    span9.appendChild(listContainer);
+
+                    // 4. Переносим таблицы в карточки внутри списка
+                    const tables = span9.querySelectorAll('table.teacher_info');
+                    tables.forEach(table => {
                         const img = table.querySelector('.teacher_photo img');
                         const nameDiv = table.querySelector('.teacher_name');
                         const chairDiv = table.querySelector('.chair');
                         const disDiv = table.querySelector('.dis');
 
-                        // Данные преподавателя
-                        const imgSrc = img ? img.src : '';
-                        
-                        // Имя и клик по расписанию
-                        let nameText = nameDiv ? nameDiv.textContent.trim() : '';
-                        let nameClick = '';
-                        if (nameDiv) {
-                            const icon = nameDiv.querySelector('img'); // иконка календаря
-                            if (icon) nameClick = icon.getAttribute('onclick');
-                        }
+                        // Извлекаем чистый текст для отображения
+                        const nameText = nameDiv ? nameDiv.textContent.trim() : '';
+                        const chairText = chairDiv ? chairDiv.textContent.trim() : '';
+                        const subjectsText = disDiv ? disDiv.textContent.trim() : '';
 
-                        // Кафедра и клик
-                        let chairText = chairDiv ? chairDiv.textContent.trim() : '';
-                        let chairClick = '';
-                        if (chairDiv) {
-                            const icon = chairDiv.querySelector('img');
-                            if (icon) chairClick = icon.getAttribute('onclick');
-                        }
+                        // Сохраняем onClick события для картинок (расписания)
+                        let nameClick = '', chairClick = '';
+                        if (nameDiv && nameDiv.querySelector('img')) nameClick = nameDiv.querySelector('img').getAttribute('onclick');
+                        if (chairDiv && chairDiv.querySelector('img')) chairClick = chairDiv.querySelector('img').getAttribute('onclick');
 
-                        // Предметы (чистим от лишних переносов)
-                        let subjectsHtml = '';
-                        if (disDiv) {
-                            subjectsHtml = disDiv.innerHTML.replace(/^(<br\s*\/?>|\s)+/, '').replace(/(<br\s*\/?>|\s)+$/, '');
-                        }
-
-                        // 2. Создаем новую чистую структуру (div вместо table)
                         const card = document.createElement('div');
                         card.className = 'teacher-card';
+                        
+                        // Формируем строку поиска: все в нижний регистр, убираем лишние пробелы
+                        const searchString = `${nameText} ${chairText} ${subjectsText}`.toLowerCase().replace(/\s+/g, ' ');
+                        card.setAttribute('data-search', searchString);
 
                         card.innerHTML = `
                             <div class="teacher-avatar-box">
-                                <img src="${imgSrc}" alt="${nameText}">
+                                <img src="${img ? img.src : ''}" loading="lazy">
                             </div>
                             <div class="teacher-details">
-                                <div class="teacher-name-link" onclick="${nameClick}" title="Расписание преподавателя">
-                                    ${nameText}
-                                </div>
-                                <div class="teacher-dept-link" onclick="${chairClick}" title="Расписание кафедры">
-                                    ${chairText}
-                                </div>
-                                <div class="teacher-subjects">
-                                    ${subjectsHtml}
-                                </div>
+                                <div class="teacher-name-link" onclick="${nameClick}">${nameText.replace('Расписание преподавателя', '')}</div>
+                                <div class="teacher-dept-link" onclick="${chairClick}">${chairText.replace('Расписание кафедры', '')}</div>
+                                <div class="teacher-subjects">${disDiv ? disDiv.innerHTML : ''}</div>
                             </div>
                         `;
+                        listContainer.appendChild(card);
+                        table.remove();
+                    });
 
-                        // 3. Заменяем старую таблицу на новую карточку
-                        table.parentNode.replaceChild(card, table);
+                    // 5. Перемещаем ссылку статистики ВНИЗ после списка
+                    if (statsLink) {
+                        statsLink.className = 'stats-link-bottom';
+                        span9.appendChild(statsLink);
+                    }
+
+                    // 6. Сообщение "не найдено"
+                    const noResults = document.createElement('div');
+                    noResults.className = 'no-results-msg';
+                    noResults.textContent = 'Преподаватель не найден';
+                    noResults.style.display = 'none';
+                    listContainer.after(noResults);
+
+                    // 7. ЛОГИКА ФИЛЬТРАЦИИ
+                    const input = searchWrapper.querySelector('.search-input');
+                    input.addEventListener('input', (e) => {
+                        const term = e.target.value.toLowerCase().trim();
+                        let foundCount = 0;
+                        
+                        const allCards = listContainer.querySelectorAll('.teacher-card');
+                        allCards.forEach(card => {
+                            const content = card.getAttribute('data-search');
+                            // Если строка поиска пустая или найдено совпадение
+                            if (term === '' || content.includes(term)) {
+                                card.style.display = 'flex'; // Показываем (flex, так как убрали !important в CSS)
+                                foundCount++;
+                            } else {
+                                card.style.display = 'none'; // Скрываем
+                            }
+                        });
+
+                        // Показываем сообщение "ничего не найдено", только если искали и ничего нет
+                        noResults.style.display = (foundCount === 0 && term !== '') ? 'block' : 'none';
                     });
 
                     break;
@@ -4692,7 +5162,30 @@ injectStyles(styles);
                     break;
 
                 case 'stu.timetable':
-                span9.querySelectorAll('.no_pairs').forEach(el => el.textContent = 'Выходной');
+                // --- ОФОРМЛЕНИЕ ВЫХОДНЫХ ДНЕЙ (0 ПАР) ---
+                span9.querySelectorAll('.no_pairs').forEach(el => {
+                    const table = document.createElement('table');
+                    table.className = 'timetable-grid'; // Применяем сетку расписания
+                    
+                    table.innerHTML = `
+                        <tbody>
+                            <tr>
+                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
+                                <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
+                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; margin-top: 0.4rem;">
+                                        <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
+                                        Выходной
+                                    </div>
+                                </td>
+                                <td class="pair_teacher" style="border-bottom: none !important;"></td>
+                            </tr>
+                        </tbody>
+                    `;
+                    
+                    // Заменяем скучный текст на полноценную таблицу
+                    el.parentNode.replaceChild(table, el);
+                });
+                span9.querySelectorAll('.day table').forEach(t => t.classList.add('timetable-grid'));
                 // 1. Создаем контейнер для кнопок (Тулбар)
                 const toolbar = document.createElement('div');
                 toolbar.className = 'timetable-toolbar';
@@ -4841,6 +5334,27 @@ injectStyles(styles);
                         }, 300);
                     }
                 }
+
+                // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ) ---
+                const dayHeaders = span9.querySelectorAll('.day h3');
+                dayHeaders.forEach(header => {
+                    const text = header.textContent.trim();
+                    const parts = text.split(',');
+                    
+                    if (parts.length >= 2) {
+                        const dayOfWeek = parts[0].trim();
+                        const datePart = parts.slice(1).join(',').trim();
+                        
+                        header.innerHTML = `
+                            <span class="day-name">${dayOfWeek}</span>
+                            <span class="day-date">${datePart}</span>
+                        `;
+                    } else {
+                        // Резервный вариант, если запятой нет
+                        header.innerHTML = `<span class="day-name">${text}</span>`;
+                    }
+                });
+
                 // --- ЛОГИКА СКРЫТИЯ ПУСТЫХ ПАР И ОБРАБОТКИ ОКОН ---
                 const days = span9.querySelectorAll("div.day");
                 days.forEach(day => {
@@ -5777,7 +6291,7 @@ injectStyles(styles);
                     const surveyBlocks = span9.querySelectorAll('.nav.answ, .nav.msg');
                     
                     surveyBlocks.forEach(survey => {
-                        // ФИКС: Убиваем старые классы ЕТИСа, из-за которых скрывались пройденные опросы
+                        // Убиваем старые классы ЕТИСа, из-за которых скрывались пройденные опросы
                         survey.className = 'survey-card'; 
                         
                         const headerLi = survey.querySelector('li:first-child');
