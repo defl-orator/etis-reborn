@@ -408,11 +408,30 @@
         <div class="modal-window">
             <button class="modal-close" onclick="closeModal()">×</button>
             <h3 class="modal-title">Установка</h3>
+            
             <div class="os-switcher">
-                <button class="os-btn active" onclick="switchTab('macos')">iOS / macOS</button>
-                <button class="os-btn" onclick="switchTab('other')">Windows / Android</button>
+                <button class="os-btn active" onclick="switchTab('other')">Chrome, Firefox, Яндекс</button>
+                <button class="os-btn" onclick="switchTab('macos')">Safari</button>
             </div>
-            <div id="tab-macos" class="instruction-content active">
+
+            <!-- Контент для Chrome (активен по умолчанию, кнопка видео удалена) -->
+            <div id="tab-other" class="instruction-content active">
+                <div class="text-view" id="text-other">
+                    <p style="margin-bottom: 15px;">Рекомендуется использовать расширение <a href="https://violentmonkey.github.io" target="_blank" class="text-link">Violentmonkey</a>:</p>
+                    <ol class="step-list">
+                        <li>Установите Violentmonkey для вашего браузера.</li>
+                        <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
+                        <li>Нажмите "Подтвердить установку".</li>
+                    </ol>
+                    <div class="action-buttons">
+                        <a href="etis.user.js" class="download-btn">Установить</a>
+                        <!-- Кнопка видео удалена -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Контент для Safari (кнопка видео оставлена) -->
+            <div id="tab-macos" class="instruction-content">
                 <div class="text-view" id="text-macos">
                     <p style="margin-bottom: 15px;">Для Safari используйте приложение <a href="https://apps.apple.com/kz/app/userscripts/id1463298887" target="_blank" class="text-link">Userscripts</a>:</p>
                     <ol class="step-list">
@@ -421,21 +440,17 @@
                         <li>Настройте папку для скриптов в приложении.</li>
                         <li>Скачайте файл ниже и сохраните его в эту папку.</li>
                     </ol>
-                    <div class="action-buttons"><a href="etis.user.js" download class="download-btn">Скачать</a><button class="video-btn" onclick="showVideo('macos')">Видео</button></div>
+                    <div class="action-buttons">
+                        <a href="etis.user.js" download class="download-btn">Скачать</a>
+                        <button class="video-btn" onclick="showVideo('macos')">Видео</button>
+                    </div>
                 </div>
-                <div class="video-view" id="video-macos"><button class="back-btn" onclick="hideVideo('macos')">Назад к инструкции</button><video class="tutorial-video" controls playsinline><source src="img/install.mp4" type="video/mp4"></video></div>
-            </div>
-            <div id="tab-other" class="instruction-content">
-                <div class="text-view" id="text-other">
-                    <p style="margin-bottom: 15px;">Рекомендуется использовать расширение <a href="https://violentmonkey.github.io" target="_blank" class="text-link">Violentmonkey</a>:</p>
-                    <ol class="step-list">
-                        <li>Установите Violentmonkey для вашего браузера.</li>
-                        <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
-                        <li>Нажмите "Подтвердить установку".</li>
-                    </ol>
-                    <div class="action-buttons"><a href="etis.user.js" class="download-btn">Установить</a><button class="video-btn" onclick="showVideo('other')">Видео</button></div>
+                <div class="video-view" id="video-macos">
+                    <button class="back-btn" onclick="hideVideo('macos')">Назад к инструкции</button>
+                    <video class="tutorial-video" controls playsinline>
+                        <source src="img/install.mp4" type="video/mp4">
+                    </video>
                 </div>
-                <div class="video-view" id="video-other"><button class="back-btn" onclick="hideVideo('other')">Назад к инструкции</button><video class="tutorial-video" controls playsinline><source src="img/install.mp4" type="video/mp4"></video></div>
             </div>
         </div>
     </div>
@@ -628,8 +643,15 @@
         function switchTab(os) {
             document.querySelectorAll('.os-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.instruction-content').forEach(c => c.classList.remove('active'));
-            if (os === 'macos') { document.querySelector('.os-btn:nth-child(1)').classList.add('active'); document.getElementById('tab-macos').classList.add('active'); hideVideo('other'); }
-            else { document.querySelector('.os-btn:nth-child(2)').classList.add('active'); document.getElementById('tab-other').classList.add('active'); hideVideo('macos'); }
+            
+            if (os === 'macos') {
+                document.querySelector('.os-btn:nth-child(2)').classList.add('active');
+                document.getElementById('tab-macos').classList.add('active');
+            } else {
+                document.querySelector('.os-btn:nth-child(1)').classList.add('active');
+                document.getElementById('tab-other').classList.add('active');
+                hideVideo('macos');
+            }
         }
     </script>
 </body>
