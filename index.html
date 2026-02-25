@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- SEO -->
+    <title>ЕТИС Reborn — Современный интерфейс для ПГНИУ</title>
+    <meta name="description" content="Расширение для браузера, которое полностью обновляет ЕТИС ПГНИУ. Тёмная тема, мобильная версия, удобное расписание и современные оценки.">
+    <meta name="keywords" content="ЕТИС, ПГНИУ, расширение, дизайн, темная тема, расписание, оценки, etis reborn">
+    <link rel="canonical" href="https://etisreborn.ru">
+    <link rel="icon" href="img/logo.png" type="image/png">
+
+    <!-- Open Graph / Facebook / VK -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://etisreborn.ru/">
+    <meta property="og:title" content="ЕТИС Reborn — Сделай ЕТИС великим снова">
+    <meta property="og:description" content="Преврати свой кабинет в современный сайт с мобильной адаптацией и тёмной темой.">
+    <meta property="og:image" content="https://etisreborn.ru/img/og-image.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://etisreborn.ru/">
+    <meta property="twitter:title" content="ЕТИС Reborn — Сделай ЕТИС великим снова">
+    <meta property="twitter:description" content="Преврати свой кабинет в современный сайт с мобильной адаптацией и тёмной темой.">
+    <meta property="twitter:image" content="https://etisreborn.ru/img/og-image.png">
+
+    <style>
+        /* --- ЦВЕТОВЫЕ ПЕРЕМЕННЫЕ --- */
+        :root {
+            --primary: #2979ff; 
+            --primary-hover: #2264d1;
+            
+            --bg-rgb: 255, 255, 255; 
+            --bg-color: #ffffff;
+            
+            --text-color: #111111;
+            --text-secondary: #666666;
+            --card-bg: #f5f5f7;
+            --slider-line: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --modal-bg: rgba(255, 255, 255, 0.95);
+        }
+
+        /* --- ТЁМНАЯ ТЕМА --- */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-rgb: 0, 0, 0;
+                --bg-color: #000000;
+                
+                --text-color: #f5f5f7;
+                --text-secondary: #a0a0a0;
+                --card-bg: #1c1c1e;
+                --slider-line: #ffffff;
+                --shadow: rgba(0, 0, 0, 0.5);
+                --modal-bg: #1c1c1e;
+            }
+        }
+
+        /* --- БАЗА --- */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            overflow-x: hidden;
+            padding-top: 100px; 
+            transition: background 0.3s, color 0.3s;
+        }
+
+        a { text-decoration: none; color: inherit; }
+        
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* --- КНОПКИ --- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--primary);
+            color: #fff !important;
+            padding: 14px 40px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: all 0.2s ease;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(41, 121, 255, 0.3);
+        }
+
+        .btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        /* --- ШАПКА --- */
+        header {
+            position: fixed;
+            top: 0; left: 0; width: 100%;
+            z-index: 1000;
+            padding: 20px 0 40px 0;
+            background: linear-gradient(180deg, 
+                rgba(var(--bg-rgb), 1) 0%, 
+                rgba(var(--bg-rgb), 1) 40%, 
+                rgba(var(--bg-rgb), 0) 100%
+            );
+            backdrop-filter: none;
+            border: none;
+            box-shadow: none;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+        
+        .logo img {
+            height: 36px;
+            width: auto;
+            display: block;
+        }
+        
+        .logo span {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--text-color);
+        }
+
+        /* --- HERO --- */
+        .hero { text-align: center; padding: 40px 0 60px; }
+        .hero h1 { font-size: 3.5rem; margin-bottom: 20px; line-height: 1.1; letter-spacing: -1px; font-weight: 800; }
+        
+        .hero h1 span {
+             background: linear-gradient(135deg, var(--primary) 0%, #60a5fa 100%);
+             -webkit-background-clip: text;
+             -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p { font-size: 1.3rem; color: var(--text-secondary); margin-bottom: 40px; max-width: 650px; margin-inline: auto; }
+
+        /* --- СЛАЙДЕРЫ --- */
+        .features { padding: 20px 0 60px; }
+        .comparison-block { margin-bottom: 120px; }
+        .block-title { text-align: center; margin-bottom: 30px; font-size: 2rem; font-weight: 700; }
+
+        .img-comp-container {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px var(--shadow);
+            border: 1px solid rgba(128,128,128, 0.1);
+            background: var(--card-bg);
+            user-select: none; 
+            -webkit-user-select: none;
+        }
+
+        .mobile-limit { max-width: 400px; margin: 0 auto; }
+
+        .img-comp-img { width: 100%; display: block; line-height: 0; }
+        .img-comp-img img { display: block; width: 100%; height: auto; }
+
+        .img-source { position: relative; width: 100%; }
+
+        .img-result {
+            position: absolute;
+            top: 0; left: 0;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+            border-right: 2px solid var(--slider-line);
+            z-index: 2;
+        }
+
+        .img-result img {
+            width: 100vw; 
+            max-width: none !important;
+            height: 100%;
+            object-fit: cover;
+            object-position: left top;
+        }
+
+        /* Ползунок */
+        .img-comp-slider {
+            position: absolute;
+            z-index: 9;
+            cursor: ew-resize;
+            width: 48px;
+            height: 48px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%); 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            border: 3px solid #fff;
+        }
+
+        .img-comp-slider::before {
+            content: "↔";
+            color: white;
+            font-size: 24px;
+            line-height: 1;
+            font-weight: bold;
+            padding-bottom: 0;
+            padding-top: 0;
+        }
+
+        /* Метки */
+        .label {
+            position: absolute;
+            top: 15px;
+            padding: 8px 18px; 
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            pointer-events: none;
+            backdrop-filter: blur(10px);
+            z-index: 5;
+            transition: opacity 0.2s ease;
+            line-height: 1;
+        }
+        .label-new { left: 15px; background: var(--primary); color: white; }
+        .label-old { right: 15px; background: rgba(0, 0, 0, 0.7); color: #fff; }
+
+        /* --- ФУТЕР --- */
+        footer {
+            padding: 40px 0;
+            text-align: center;
+            border: none;
+            background: transparent;
+        }
+        .credits { margin-top: 20px; color: var(--text-secondary); font-size: 0.9rem; }
+        .credits a { color: var(--primary); border-bottom: 1px dashed var(--primary); }
+
+        /* --- МОДАЛЬНОЕ ОКНО --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+
+        .modal-window {
+            background: var(--modal-bg);
+            width: 90%;
+            max-width: 600px;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+            color: var(--text-color);
+            border: 1px solid rgba(128,128,128, 0.1);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px; right: 20px;
+            background: none; border: none;
+            font-size: 24px; cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        .modal-title { font-size: 1.8rem; margin-bottom: 20px; text-align: center; }
+        
+        .os-switcher {
+            display: flex;
+            background: rgba(128,128,128,0.1);
+            padding: 4px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+        .os-btn {
+            flex: 1;
+            border: none; background: none;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: 0.2s;
+        }
+        .os-btn.active {
+            background: var(--bg-color);
+            color: var(--text-color);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .instruction-content { display: none; }
+        .instruction-content.active { display: block; }
+        
+        .step-list { margin-bottom: 25px; padding-left: 20px; }
+        .step-list li { margin-bottom: 10px; }
+        
+        .download-btn {
+            display: block; width: 100%; text-align: center;
+            background: var(--primary);
+            color: white; padding: 15px;
+            border-radius: 10px; font-weight: bold;
+            font-size: 1.1rem; margin-top: 20px;
+        }
+        .download-btn:hover { background: var(--primary-hover); }
+
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.2rem; }
+            .img-comp-slider { width: 40px; height: 40px; }
+            .mobile-limit { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container logo">
+            <img src="img/logo.png" alt="ETIS Reborn Logo">
+            <span>ЕТИС Reborn</span>
+        </div>
+    </header>
+
+    <div class="container">
+        <section class="hero">
+            <h1><span>Сделай ЕТИС великим снова</span></h1>
+            <p>Преврати свой кабинет в современный сайт с мобильной адаптацией и тёмной темой</p>
+            <button class="btn" onclick="openModal()">Установить расширение</button>
+        </section>
+
+        <section class="features">
+
+            <!-- 1. МОБИЛЬНАЯ ВЕРСИЯ -->
+            <div class="comparison-block">
+                <h2 class="block-title">Мобильная версия</h2>
+                <div class="img-comp-container mobile-limit">
+                    <div class="img-comp-img img-result">
+                        <span class="label label-new">Reborn</span>
+                        <img src="img/mobile-new.png" alt="New Mobile" onerror="this.src='https://via.placeholder.com/400x800/1e1e1e/ffffff?text=Mobile+New'">
+                    </div>
+                    <div class="img-comp-img img-source">
+                        <span class="label label-old">Original</span>
+                        <img src="img/mobile-old.png" alt="Old Mobile" onerror="this.src='https://via.placeholder.com/400x800/eeeeee/333333?text=Mobile+Old'">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. РАСПИСАНИЕ -->
+            <div class="comparison-block">
+                <h2 class="block-title">Наглядное расписание</h2>
+                <div class="img-comp-container">
+                    <div class="img-comp-img img-result">
+                        <span class="label label-new">Reborn</span>
+                        <img src="img/schedule-new.png" alt="New Schedule" onerror="this.src='https://via.placeholder.com/1000x600/1e1e1e/ffffff?text=Schedule+New'">
+                    </div>
+                    <div class="img-comp-img img-source">
+                        <span class="label label-old">Original</span>
+                        <img src="img/schedule-old.png" alt="Old Schedule" onerror="this.src='https://via.placeholder.com/1000x600/eeeeee/333333?text=Schedule+Old'">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. ТЁМНАЯ ТЕМА -->
+            <div class="comparison-block">
+                <h2 class="block-title">Тёмная тема</h2>
+                <div class="img-comp-container">
+                    <div class="img-comp-img img-result">
+                        <span class="label label-new">Reborn</span>
+                        <img src="img/dark-new.png" alt="New Dark" onerror="this.src='https://via.placeholder.com/1000x600/121212/ffffff?text=Dark+New'">
+                    </div>
+                    <div class="img-comp-img img-source">
+                        <span class="label label-old">Original</span>
+                        <img src="img/dark-old.png" alt="Old Light" onerror="this.src='https://via.placeholder.com/1000x600/ffffff/000000?text=Light+Old'">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. ОЦЕНКИ (НОВЫЙ БЛОК) -->
+            <div class="comparison-block">
+                <h2 class="block-title">Все оценки под рукой</h2>
+                <div class="img-comp-container">
+                    <div class="img-comp-img img-result">
+                        <span class="label label-new">Reborn</span>
+                        <img src="img/grades-new.png" alt="New Grades" onerror="this.src='https://via.placeholder.com/1000x600/1e1e1e/ffffff?text=Grades+New'">
+                    </div>
+                    <div class="img-comp-img img-source">
+                        <span class="label label-old">Original</span>
+                        <img src="img/grades-old.png" alt="Old Grades" onerror="this.src='https://via.placeholder.com/1000x600/eeeeee/333333?text=Grades+Old'">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. ЗАКАЗ СПРАВОК -->
+            <div class="comparison-block">
+                <h2 class="block-title">Заказ справок</h2>
+                <div class="img-comp-container">
+                    <div class="img-comp-img img-result">
+                        <span class="label label-new">Reborn</span>
+                        <img src="img/spravka-new.png" alt="New Spravka" onerror="this.src='https://via.placeholder.com/1000x600/1e1e1e/ffffff?text=Spravka+New'">
+                    </div>
+                    <div class="img-comp-img img-source">
+                        <span class="label label-old">Original</span>
+                        <img src="img/spravka-old.png" alt="Old Spravka" onerror="this.src='https://via.placeholder.com/1000x600/eeeeee/333333?text=Spravka+Old'">
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </div>
+
+    <footer>
+        <div class="container">
+            <button class="btn" onclick="openModal()">Установить расширение</button>
+            <div id="footer-credits" class="credits"></div>
+        </div>
+    </footer>
+
+    <!-- МОДАЛЬНОЕ ОКНО -->
+    <div class="modal-overlay" id="installModal">
+        <div class="modal-window">
+            <button class="modal-close" onclick="closeModal()">×</button>
+            <h3 class="modal-title">Установка</h3>
+            
+            <div class="os-switcher">
+                <button class="os-btn active" onclick="switchTab('macos')">iOS / macOS</button>
+                <button class="os-btn" onclick="switchTab('other')">Windows / Android</button>
+            </div>
+
+            <div id="tab-macos" class="instruction-content active">
+                <p style="margin-bottom: 15px;">Для Safari используйте приложение <b>Userscripts</b>:</p>
+                <ol class="step-list">
+                    <li>Установите расширение <b>Userscripts</b> из App Store.</li>
+                    <li>Включите его в настройках Safari.</li>
+                    <li>Настройте папку для скриптов в приложении.</li>
+                    <li>Скачайте файл ниже и сохраните его в эту папку.</li>
+                </ol>
+                <a href="etis.user.js" download class="download-btn">Скачать</a>
+            </div>
+
+            <div id="tab-other" class="instruction-content">
+                <p style="margin-bottom: 15px;">Рекомендуется использовать расширение <b>Violentmonkey</b>:</p>
+                <ol class="step-list">
+                    <li>Установите Violentmonkey для вашего браузера (Chrome, Edge, Firefox).</li>
+                    <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
+                    <li>Нажмите "Подтвердить установку".</li>
+                </ol>
+                <a href="etis.user.js" class="download-btn">Скачать</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- ФУТЕР ---
+        const footerDiv = document.getElementById('footer-credits');
+        if (footerDiv) {
+            footerDiv.innerHTML = 'Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
+        }
+
+        // --- ЛОГИКА СЛАЙДЕРОВ ---
+        function initComparisons() {
+            const containers = document.querySelectorAll(".img-comp-container");
+            containers.forEach(setupSlider);
+        }
+
+        function setupSlider(container) {
+            let slider, clicked = 0, w, h;
+            
+            const imgWrapper = container.querySelector('.img-result');
+            const imgInside = imgWrapper.querySelector('img');
+            const labelNew = container.querySelector('.label-new');
+            const labelOld = container.querySelector('.label-old');
+
+            slider = document.createElement("DIV");
+            slider.className = "img-comp-slider";
+            container.appendChild(slider);
+
+            function updateDimensions() {
+                w = container.offsetWidth;
+                h = container.offsetHeight;
+                
+                imgWrapper.style.width = (w / 2) + "px";
+                imgInside.style.width = w + "px"; 
+                
+                slider.style.top = (h / 2) + "px";
+                slider.style.left = (w / 2) + "px";
+            }
+
+            setTimeout(updateDimensions, 50);
+            window.addEventListener('resize', updateDimensions);
+            imgInside.addEventListener('load', updateDimensions);
+
+            slider.addEventListener("mousedown", slideReady);
+            window.addEventListener("mouseup", slideFinish);
+            slider.addEventListener("touchstart", slideReady);
+            window.addEventListener("touchend", slideFinish);
+
+            function slideReady(e) {
+                e.preventDefault();
+                clicked = 1;
+                window.addEventListener("mousemove", slideMove);
+                window.addEventListener("touchmove", slideMove);
+            }
+
+            function slideFinish() {
+                clicked = 0;
+            }
+
+            function slideMove(e) {
+                if (clicked == 0) return false;
+                let pos = getCursorPos(e);
+                if (pos < 0) pos = 0;
+                if (pos > w) pos = w;
+                slide(pos);
+            }
+
+            function getCursorPos(e) {
+                let a, x = 0;
+                e = (e.changedTouches) ? e.changedTouches[0] : e;
+                a = container.getBoundingClientRect();
+                x = e.pageX - a.left;
+                x = x - window.pageXOffset;
+                return x;
+            }
+
+            function slide(x) {
+                imgWrapper.style.width = x + "px";
+                slider.style.left = x + "px";
+
+                if (x < 60) labelNew.style.opacity = '0';
+                else labelNew.style.opacity = '1';
+
+                if (x > w - 60) labelOld.style.opacity = '0';
+                else labelOld.style.opacity = '1';
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", initComparisons);
+        window.addEventListener("load", () => {
+             window.dispatchEvent(new Event('resize'));
+        });
+
+        // --- МОДАЛЬНОЕ ОКНО ---
+        const modal = document.getElementById('installModal');
+        
+        function openModal() {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('active'), 10);
+        }
+
+        function closeModal() {
+            modal.classList.remove('active');
+            setTimeout(() => modal.style.display = 'none', 300);
+        }
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeModal();
+        });
+
+        function switchTab(os) {
+            document.querySelectorAll('.os-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.instruction-content').forEach(content => content.classList.remove('active'));
+
+            if (os === 'macos') {
+                document.querySelector('.os-btn:nth-child(1)').classList.add('active');
+                document.getElementById('tab-macos').classList.add('active');
+            } else {
+                document.querySelector('.os-btn:nth-child(2)').classList.add('active');
+                document.getElementById('tab-other').classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
