@@ -318,6 +318,115 @@
         }
         .download-btn:hover { background: var(--primary-hover); }
 
+        /* --- СТИЛИ ДЛЯ ССЫЛОК И ГИФКИ --- */
+        .text-link {
+            color: var(--primary);
+            text-decoration: underline;
+            font-weight: 700;
+        }
+        .text-link:hover {
+            text-decoration: none;
+            opacity: 0.8;
+        }
+
+        .install-gif {
+            display: block;
+            width: 220px; 
+            height: auto;
+            margin: 20px auto 0; 
+            border-radius: 12px;
+            border: 1px solid rgba(128,128,128, 0.2);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        /* --- ГРУППА КНОПОК И ВИДЕО --- */
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+            margin-top: 25px;
+            align-items: center; 
+        }
+
+        /* Общие стили */
+        .download-btn, .video-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 52px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+            text-decoration: none;
+            font-family: inherit;
+            margin: 0; 
+            line-height: 1; 
+        }
+
+        /* Кнопка СКАЧАТЬ */
+        .download-btn {
+            flex: 2;
+            background-color: var(--primary);
+            color: white !important;
+            border: 2px solid transparent; 
+        }
+        .download-btn:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(41, 121, 255, 0.3);
+        }
+
+        /* Кнопка ВИДЕО */
+        .video-btn {
+            flex: 1;
+            background-color: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        .video-btn:hover {
+            background-color: rgba(41, 121, 255, 0.08);
+            transform: translateY(-2px);
+        }
+
+        /* Остальные стили видео  */
+        .video-view {
+            display: none;
+            text-align: center;
+        }
+
+        .tutorial-video {
+            width: 100%;
+            max-height: 400px;
+            border-radius: 12px;
+            margin-top: 15px;
+            border: 1px solid rgba(128,128,128, 0.2);
+            background: #000;
+        }
+
+        .back-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 5px 0;
+        }
+        .back-btn::before {
+            content: "←";
+            margin-right: 8px;
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+        }
+        .back-btn:hover { color: var(--primary); }
+        .back-btn:hover::before { transform: translateX(-3px); }
+
+        .text-view { display: block; }
+
         @media (max-width: 768px) {
             .hero h1 { font-size: 2.2rem; }
             .img-comp-slider { width: 40px; height: 40px; }
@@ -439,25 +548,59 @@
                 <button class="os-btn" onclick="switchTab('other')">Windows / Android</button>
             </div>
 
+            <!-- === ВКЛАДКА iOS / macOS === -->
             <div id="tab-macos" class="instruction-content active">
-                <p style="margin-bottom: 15px;">Для Safari используйте приложение <b>Userscripts</b>:</p>
-                <ol class="step-list">
-                    <li>Установите расширение <b>Userscripts</b> из App Store.</li>
-                    <li>Включите его в настройках Safari.</li>
-                    <li>Настройте папку для скриптов в приложении.</li>
-                    <li>Скачайте файл ниже и сохраните его в эту папку.</li>
-                </ol>
-                <a href="etis.user.js" download class="download-btn">Скачать</a>
+                <!-- БЛОК С ТЕКСТОМ И КНОПКАМИ -->
+                <div class="text-view" id="text-macos">
+                    <p style="margin-bottom: 15px;">Для Safari используйте приложение <a href="https://apps.apple.com/kz/app/userscripts/id1463298887" target="_blank" class="text-link">Userscripts</a>:</p>
+                    <ol class="step-list">
+                        <li>Установите расширение <b>Userscripts</b> из App Store.</li>
+                        <li>Включите его в настройках Safari.</li>
+                        <li>Настройте папку для скриптов в приложении.</li>
+                        <li>Скачайте файл ниже и сохраните его в эту папку.</li>
+                    </ol>
+                    
+                    <div class="action-buttons">
+                        <a href="etis.user.js" download class="download-btn">Скачать</a>
+                        <button class="video-btn" onclick="showVideo('macos')">Видео</button>
+                    </div>
+                </div>
+
+                <!-- БЛОК С ВИДЕО (СКРЫТ) -->
+                <div class="video-view" id="video-macos">
+                    <button class="back-btn" onclick="hideVideo('macos')">Назад к инструкции</button>
+                    <video class="tutorial-video" controls playsinline>
+                        <source src="img/install.mp4" type="video/mp4">
+                        Ваш браузер не поддерживает видео.
+                    </video>
+                </div>
             </div>
 
+            <!-- === ВКЛАДКА Windows / Android === -->
             <div id="tab-other" class="instruction-content">
-                <p style="margin-bottom: 15px;">Рекомендуется использовать расширение <b>Violentmonkey</b>:</p>
-                <ol class="step-list">
-                    <li>Установите Violentmonkey для вашего браузера (Chrome, Edge, Firefox).</li>
-                    <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
-                    <li>Нажмите "Подтвердить установку".</li>
-                </ol>
-                <a href="etis.user.js" class="download-btn">Скачать</a>
+                <!-- БЛОК С ТЕКСТОМ И КНОПКАМИ -->
+                <div class="text-view" id="text-other">
+                    <p style="margin-bottom: 15px;">Рекомендуется использовать расширение <a href="https://violentmonkey.github.io" target="_blank" class="text-link">Violentmonkey</a>:</p>
+                    <ol class="step-list">
+                        <li>Установите Violentmonkey для вашего браузера.</li>
+                        <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
+                        <li>Нажмите "Подтвердить установку".</li>
+                    </ol>
+                    
+                    <div class="action-buttons">
+                        <a href="etis.user.js" class="download-btn">Скачать</a>
+                        <button class="video-btn" onclick="showVideo('other')">Видео</button>
+                    </div>
+                </div>
+
+                <!-- БЛОК С ВИДЕО (СКРЫТ) -->
+                <div class="video-view" id="video-other">
+                    <button class="back-btn" onclick="hideVideo('other')">Назад к инструкции</button>
+                    <video class="tutorial-video" controls playsinline>
+                        <source src="img/install.mp4" type="video/mp4">
+                        Ваш браузер не поддерживает видео.
+                    </video>
+                </div>
             </div>
         </div>
     </div>
@@ -569,16 +712,53 @@
             if (e.target === modal) closeModal();
         });
 
+        // Показать видео для конкретной ОС
+        function showVideo(os) {
+            // Скрываем текст
+            document.getElementById('text-' + os).style.display = 'none';
+            // Показываем видео блок
+            const videoBlock = document.getElementById('video-' + os);
+            videoBlock.style.display = 'block';
+            
+            // Автозапуск видео (опционально)
+            const video = videoBlock.querySelector('video');
+            if(video) video.play();
+        }
+
+        // Скрыть видео и вернуть текст
+        function hideVideo(os) {
+            // Показываем текст
+            document.getElementById('text-' + os).style.display = 'block';
+            // Скрываем видео блок
+            const videoBlock = document.getElementById('video-' + os);
+            videoBlock.style.display = 'none';
+            
+            // Ставим видео на паузу
+            const video = videoBlock.querySelector('video');
+            if(video) {
+                video.pause();
+                video.currentTime = 0; // Сброс на начало
+            }
+        }
+
+        // ФУНКЦИЯ ПЕРЕКЛЮЧЕНИЯ ВКЛАДОК
         function switchTab(os) {
+            // 1. Сбрасываем активные кнопки табов
             document.querySelectorAll('.os-btn').forEach(btn => btn.classList.remove('active'));
+            // 2. Скрываем содержимое всех табов
             document.querySelectorAll('.instruction-content').forEach(content => content.classList.remove('active'));
 
+            // 3. Активируем нужный таб
             if (os === 'macos') {
                 document.querySelector('.os-btn:nth-child(1)').classList.add('active');
                 document.getElementById('tab-macos').classList.add('active');
+                // Сброс видео при переключении (если было открыто)
+                hideVideo('other'); 
             } else {
                 document.querySelector('.os-btn:nth-child(2)').classList.add('active');
                 document.getElementById('tab-other').classList.add('active');
+                // Сброс видео при переключении
+                hideVideo('macos');
             }
         }
     </script>
