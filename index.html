@@ -45,15 +45,19 @@
         /* --- ТЁМНАЯ ТЕМА --- */
         @media (prefers-color-scheme: dark) {
             :root {
-                --bg-rgb: 0, 0, 0;
-                --bg-color: #000000;
+                --bg-rgb: 22, 24, 26; 
+                
+                /* Основной фон */
+                --bg-color: #16181A;
                 
                 --text-color: #f5f5f7;
                 --text-secondary: #a0a0a0;
-                --card-bg: #1c1c1e;
+                
+                --card-bg: #1f2124; 
+                --modal-bg: #1f2124;
+                
                 --slider-line: #ffffff;
                 --shadow: rgba(0, 0, 0, 0.5);
-                --modal-bg: #1c1c1e;
             }
         }
 
@@ -104,18 +108,27 @@
             position: fixed;
             top: 0; left: 0; width: 100%;
             z-index: 1000;
-            padding: 20px 0 40px 0;
+            
+            /* Увеличиваем отступ снизу (padding-bottom), чтобы градиент был длиннее и мягче */
+            padding: 15px 0 100px 0; 
+            
             background: linear-gradient(180deg, 
                 rgba(var(--bg-rgb), 1) 0%, 
-                rgba(var(--bg-rgb), 1) 40%, 
+                rgba(var(--bg-rgb), 0.85) 30%, 
                 rgba(var(--bg-rgb), 0) 100%
             );
+            
             backdrop-filter: none;
             border: none;
             box-shadow: none;
+            
+            /* Чтобы сквозь нижнюю прозрачную часть шапки можно было кликать на контент под ней */
+            pointer-events: none; 
         }
+
         
         .logo {
+            pointer-events: auto;
             display: flex;
             align-items: center;
             justify-content: center;
