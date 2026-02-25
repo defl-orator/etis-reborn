@@ -3,14 +3,54 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Базовое SEO -->
     <title>ЕТИС REBORN — Современный интерфейс для ПГНИУ</title>
-    <meta name="description" content="Расширение для браузера, которое полностью обновляет ЕТИС ПГНИУ.">
+    <meta name="description" content="ЕТИС REBORN — бесплатное расширение для браузера, которое полностью обновляет личный кабинет ЕТИС ПГНИУ. Добавляет мобильную версию, тёмную тему, удобное расписание и оценки.">
+    <meta name="keywords" content="ЕТИС, ПГНИУ, Пермский университет, расписание ПГНИУ, расширение ЕТИС, ЕТИС REBORN, темная тема ЕТИС, оценки ПГНИУ">
+    <meta name="robots" content="index, follow">
+    <meta name="author" content="Masalkin Nikolai">
+    
+    <!-- Каноничная ссылка -->
+    <link rel="canonical" href="https://etisreborn.ru/">
     <link rel="icon" href="img/logo.png" type="image/png">
 
-    <!-- Open Graph -->
+    <!-- Open Graph (VK, Telegram, WhatsApp) -->
     <meta property="og:type" content="website">
-    <meta property="og:title" content="ЕТИС REBORN">
+    <meta property="og:site_name" content="ЕТИС REBORN">
+    <meta property="og:title" content="ЕТИС REBORN — Современный интерфейс для ПГНИУ">
+    <meta property="og:description" content="Полностью обновленный личный кабинет ЕТИС ПГНИУ: современный дизайн, тёмная тема, адаптация для смартфонов.">
+    <meta property="og:url" content="https://etisreborn.ru/">
     <meta property="og:image" content="https://etisreborn.ru/img/og-image.png">
+
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ЕТИС REBORN — Современный интерфейс для ПГНИУ">
+    <meta name="twitter:description" content="Полностью обновленный личный кабинет ЕТИС ПГНИУ: современный дизайн, тёмная тема, адаптация для смартфонов.">
+    <meta name="twitter:image" content="https://etisreborn.ru/img/og-image.png">
+
+    <!-- Микроразметка Schema.org (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "ЕТИС REBORN",
+      "operatingSystem": "Windows, macOS, Android, iOS",
+      "applicationCategory": "BrowserApplication",
+      "description": "Бесплатное расширение для браузера, которое обновляет личный кабинет ЕТИС ПГНИУ. Современный дизайн, тёмная тема, удобное расписание.",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "RUB"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "Masalkin Nikolai"
+      },
+      "image": "https://etisreborn.ru/img/og-image.png",
+      "url": "https://etisreborn.ru/"
+    }
+    </script>
 
     <style>
         /* --- ЦВЕТА (СВЕТЛАЯ ТЕМА) --- */
@@ -393,7 +433,7 @@
                         <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
                         <li>Нажмите "Подтвердить установку".</li>
                     </ol>
-                    <div class="action-buttons"><a href="etis.user.js" class="download-btn">Скачать</a><button class="video-btn" onclick="showVideo('other')">Видео</button></div>
+                    <div class="action-buttons"><a href="etis.user.js" class="download-btn">Установить</a><button class="video-btn" onclick="showVideo('other')">Видео</button></div>
                 </div>
                 <div class="video-view" id="video-other"><button class="back-btn" onclick="hideVideo('other')">Назад к инструкции</button><video class="tutorial-video" controls playsinline><source src="img/install.mp4" type="video/mp4"></video></div>
             </div>
