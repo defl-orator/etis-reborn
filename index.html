@@ -3,55 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- SEO -->
     <title>ЕТИС REBORN — Современный интерфейс для ПГНИУ</title>
-    <meta name="description" content="Расширение для браузера, которое полностью обновляет ЕТИС ПГНИУ. Тёмная тема, мобильная версия, удобное расписание и современные оценки.">
-    <meta name="keywords" content="ЕТИС, ПГНИУ, расширение, дизайн, темная тема, расписание, оценки, etis reborn">
-    <link rel="canonical" href="https://etisreborn.ru">
+    <meta name="description" content="Расширение для браузера, которое полностью обновляет ЕТИС ПГНИУ.">
     <link rel="icon" href="img/logo.png" type="image/png">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://etisreborn.ru/">
-    <meta property="og:title" content="ЕТИС REBORN — Сделай ЕТИС великим снова">
-    <meta property="og:description" content="Преврати свой кабинет в современный сайт с мобильной адаптацией и тёмной темой.">
+    <meta property="og:title" content="ЕТИС REBORN">
     <meta property="og:image" content="https://etisreborn.ru/img/og-image.png">
 
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:title" content="ЕТИС REBORN — Сделай ЕТИС великим снова">
-    <meta property="twitter:image" content="https://etisreborn.ru/img/og-image.png">
-
     <style>
-        /* --- ЦВЕТОВЫЕ ПЕРЕМЕННЫЕ --- */
+        /* --- ЦВЕТА (СВЕТЛАЯ ТЕМА) --- */
         :root {
             --primary: #2979ff; 
             --primary-hover: #2264d1;
-            
-            --bg-rgb: 255, 255, 255; 
             --bg-color: #ffffff;
-            
             --text-color: #111111;
             --text-secondary: #666666;
             --card-bg: #f5f5f7;
             --slider-line: #ffffff;
             --shadow: rgba(0, 0, 0, 0.1);
             --modal-bg: rgba(255, 255, 255, 0.95);
+            --border-color: rgba(128,128,128, 0.1);
+            --bg-gradient-start: rgba(255, 255, 255, 1);
+            --bg-gradient-mid: rgba(255, 255, 255, 0.85);
+            --bg-gradient-end: rgba(255, 255, 255, 0);
         }
 
         /* --- ТЁМНАЯ ТЕМА --- */
-        @media (prefers-color-scheme: dark) {
-            :root {
-                --bg-rgb: 22, 24, 26; 
-                --bg-color: #16181A;
-                --text-color: #f5f5f7;
-                --text-secondary: #a0a0a0;
-                --card-bg: #1f2124; 
-                --modal-bg: #1f2124;
-                --slider-line: #ffffff;
-                --shadow: rgba(0, 0, 0, 0.5);
-            }
+        body.dark-mode {
+            --bg-color: #16181A;
+            --text-color: #f5f5f7;
+            --text-secondary: #a0a0a0;
+            --card-bg: #1f2124; 
+            --modal-bg: #1f2124;
+            --slider-line: #ffffff;
+            --shadow: rgba(0, 0, 0, 0.5);
+            --border-color: rgba(255,255,255, 0.1);
+            --bg-gradient-start: rgba(22, 24, 26, 1);
+            --bg-gradient-mid: rgba(22, 24, 26, 0.85);
+            --bg-gradient-end: rgba(22, 24, 26, 0);
+        }
+
+        /* Делаем иконку белой в тёмной теме */
+        body.dark-mode .theme-toggle img {
+            filter: invert(1);
         }
 
         /* --- БАЗА --- */
@@ -66,413 +62,173 @@
             transition: background 0.3s, color 0.3s;
         }
 
+        .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
         a { text-decoration: none; color: inherit; }
-        
-        .container {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
 
         /* --- КНОПКИ --- */
         .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            background-color: var(--primary);
-            color: #fff !important;
-            padding: 14px 40px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1.1rem;
-            transition: all 0.2s ease;
-            border: none;
-            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            background-color: var(--primary); color: #fff !important;
+            padding: 14px 40px; border-radius: 12px; font-weight: 600; font-size: 1.1rem;
+            transition: all 0.2s ease; border: none; cursor: pointer;
             box-shadow: 0 4px 15px rgba(41, 121, 255, 0.3);
         }
-
-        .btn:hover {
-            background-color: var(--primary-hover);
-            transform: translateY(-2px);
-        }
+        .btn:hover { background-color: var(--primary-hover); transform: translateY(-2px); }
 
         /* --- ШАПКА --- */
         header {
-            position: fixed;
-            top: 0; left: 0; width: 100%;
-            z-index: 1000;
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;
             padding: 15px 0 100px 0; 
-            background: linear-gradient(180deg, 
-                rgba(var(--bg-rgb), 1) 0%, 
-                rgba(var(--bg-rgb), 0.85) 30%, 
-                rgba(var(--bg-rgb), 0) 100%
-            );
+            background: linear-gradient(180deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 30%, var(--bg-gradient-end) 100%);
             pointer-events: none; 
         }
 
-        .logo {
-            pointer-events: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
+        .header-content {
+            display: flex; align-items: center; justify-content: center;
+            gap: 20px; pointer-events: auto;
         }
-        
-        .logo img {
-            height: 36px;
-            width: auto;
-            display: block;
+
+        .logo { display: flex; align-items: center; gap: 12px; }
+        .logo img { height: 36px; width: auto; display: block; }
+        .logo span { font-size: 1.5rem; font-weight: 800; color: var(--text-color); }
+
+        .theme-toggle {
+            background: none; border: none; cursor: pointer;
+            padding: 0; display: flex; align-items: center; justify-content: center;
+            transition: transform 0.2s;
         }
-        
-        .logo span {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: var(--text-color);
-        }
+        .theme-toggle:hover { transform: scale(1.1); }
+        .theme-toggle img { width: 32px; height: 32px; display: block; }
 
         /* --- HERO --- */
         .hero { text-align: center; padding: 40px 0 60px; }
         .hero h1 { font-size: 3.5rem; margin-bottom: 20px; line-height: 1.1; letter-spacing: -1px; font-weight: 800; }
-        
         .hero h1 span {
              background: linear-gradient(135deg, var(--primary) 0%, #60a5fa 100%);
-             -webkit-background-clip: text;
-             -webkit-text-fill-color: transparent;
+             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        
         .hero p { font-size: 1.3rem; color: var(--text-secondary); margin-bottom: 40px; max-width: 650px; margin-inline: auto; }
 
-        /* --- СЛАЙДЕРЫ И БЛОКИ --- */
-        .features { padding: 20px 0 60px; }
+        /* --- СЛАЙДЕРЫ --- */
         .comparison-block { margin-bottom: 120px; }
         .block-title { text-align: center; margin-bottom: 30px; font-size: 2rem; font-weight: 700; }
-
-        .more-features {
-            text-align: center;
-            font-size: 1.8rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            margin-top: -20px;
-            margin-bottom: 40px;
-            opacity: 0.8;
-        }
+        .more-features { text-align: center; font-size: 1.8rem; font-weight: 700; color: var(--text-secondary); margin-top: -20px; margin-bottom: 40px; opacity: 0.8; }
 
         .img-comp-container {
-            position: relative;
-            width: 100%;
-            overflow: hidden;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px var(--shadow);
-            border: 1px solid rgba(128,128,128, 0.1);
-            background: var(--card-bg);
-            user-select: none; 
-            -webkit-user-select: none;
-            min-height: 200px; 
+            position: relative; width: 100%; overflow: hidden;
+            border-radius: 20px; box-shadow: 0 20px 60px var(--shadow);
+            border: 1px solid var(--border-color); background: var(--card-bg);
+            user-select: none; min-height: 200px; 
+            /* Важно: предотвращает выделение при перетаскивании */
+            -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
         }
 
         .img-comp-img { width: 100%; display: block; line-height: 0; }
-        .img-comp-img img { display: block; width: 100%; height: auto; }
-        .img-source { position: relative; width: 100%; }
-
+        /* pointer-events: none ВАЖНО для отсутствия багов при драге */
+        .img-comp-img img { display: block; width: 100%; height: auto; pointer-events: none; }
+        
         .img-result {
-            position: absolute;
-            top: 0; left: 0;
-            width: 50%;
-            height: 100%;
-            overflow: hidden;
-            border-right: 2px solid var(--slider-line);
-            z-index: 2;
+            position: absolute; top: 0; left: 0; width: 50%; height: 100%;
+            overflow: hidden; border-right: 2px solid var(--slider-line); z-index: 2;
         }
+        .img-result img { width: 100vw; max-width: none !important; height: 100%; object-fit: cover; object-position: left top; }
 
-        .img-result img {
-            width: 100vw; 
-            max-width: none !important;
-            height: 100%;
-            object-fit: cover;
-            object-position: left top;
-        }
-
-        /* Ползунок */
         .img-comp-slider {
-            position: absolute;
-            z-index: 9;
-            cursor: ew-resize;
-            width: 48px;
-            height: 48px;
-            background-color: var(--primary);
-            border-radius: 50%;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%); 
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            border: 3px solid #fff;
+            position: absolute; z-index: 9; cursor: ew-resize;
+            width: 48px; height: 48px; background-color: var(--primary);
+            border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); border: 3px solid #fff;
         }
+        .img-comp-slider::before { content: "↔"; color: white; font-size: 24px; line-height: 1; font-weight: bold; }
 
-        .img-comp-slider::before {
-            content: "↔";
-            color: white;
-            font-size: 24px;
-            line-height: 1;
-            font-weight: bold;
-        }
-
-        /* Метки */
         .label {
-            position: absolute;
-            top: 15px;
-            padding: 8px 18px; 
-            border-radius: 30px;
-            font-size: 0.9rem;
-            font-weight: 700;
-            pointer-events: none;
-            backdrop-filter: blur(10px);
-            z-index: 5;
-            transition: opacity 0.2s ease;
-            line-height: 1;
+            position: absolute; top: 15px; padding: 8px 18px; border-radius: 30px;
+            font-size: 0.9rem; font-weight: 700; pointer-events: none;
+            backdrop-filter: blur(10px); z-index: 5; transition: opacity 0.2s ease; line-height: 1;
         }
         .label-new { left: 15px; background: var(--primary); color: white; }
         .label-old { right: 15px; background: rgba(0, 0, 0, 0.7); color: #fff; }
 
-        /* --- Side-by-Side для ПК --- */
-        .mobile-side-by-side {
-            display: flex;
-            justify-content: center;
-            gap: 60px;
-            align-items: flex-start;
-        }
-
-        .phone-card {
-            width: 300px; /* Фиксированная ширина телефонов на ПК (делает их меньше) */
-            text-align: center;
-        }
-
+        /* --- БЛОК CROSS-PLATFORM (Стили для "Телефоны рядом") --- */
+        .mobile-side-by-side { display: flex; justify-content: center; gap: 60px; align-items: flex-start; }
+        .phone-card { width: 300px; text-align: center; }
         .phone-frame {
-            border-radius: 40px;
-            overflow: hidden;
-            box-shadow: 0 20px 50px var(--shadow);
-            border: 1px solid rgba(128,128,128, 0.2);
-            line-height: 0;
-            background: var(--card-bg);
-            transition: transform 0.3s ease;
+            border-radius: 40px; overflow: hidden;
+            box-shadow: 0 20px 50px var(--shadow); border: 1px solid var(--border-color);
+            line-height: 0; background: var(--card-bg); transition: transform 0.3s ease;
         }
-        
-        .phone-frame:hover {
-            transform: translateY(-10px);
-        }
-
-        .phone-frame img {
-            width: 100%;
-            height: auto;
-            display: block;
-        }
-
-        .phone-label {
-            margin-bottom: 20px;
-            font-size: 1.2rem;
-            font-weight: 800;
-            letter-spacing: 0.5px;
-        }
-        
+        .phone-frame:hover { transform: translateY(-10px); }
+        .phone-frame img { width: 100%; height: auto; display: block; }
+        .phone-label { margin-bottom: 20px; font-size: 1.2rem; font-weight: 800; letter-spacing: 0.5px; }
         .label-text-new { color: var(--primary); }
         .label-text-old { color: var(--text-secondary); }
 
-        /* Скрытие слайдера на ПК по умолчанию */
-        .mobile-slider-view { display: none; }
+        .view-side-by-side { display: flex; }
+        .view-slider { display: block; }
+        
+        .mobile-limit { max-width: 400px; margin: 0 auto; }
 
-        /* --- МЕДИА ЗАПРОСЫ --- */
         @media (max-width: 768px) {
             .hero h1 { font-size: 2.2rem; }
             .img-comp-slider { width: 40px; height: 40px; }
             
-            /* На мобильных: СКРЫВАЕМ side-by-side, ПОКАЗЫВАЕМ слайдер */
-            .mobile-side-by-side { display: none; }
-            .mobile-slider-view { display: block; }
-            
-            /* Ограничиваем ширину слайдера на телефоне */
-            .mobile-limit { max-width: 280px; margin: 0 auto; }
+            .view-side-by-side { display: none !important; }
+            .view-slider { display: block !important; }
+            .mobile-limit { max-width: 100%; } 
         }
 
-        /* --- ФУТЕР --- */
-        footer {
-            padding: 40px 0;
-            text-align: center;
-            border: none;
-            background: transparent;
-        }
+        /* --- FOOTER & MODAL --- */
+        footer { padding: 40px 0; text-align: center; }
         .credits { margin-top: 20px; color: var(--text-secondary); font-size: 0.9rem; }
         .credits a { color: var(--primary); border-bottom: 1px dashed var(--primary); }
 
-        /* --- МОДАЛЬНОЕ ОКНО --- */
         .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            backdrop-filter: blur(5px);
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-            opacity: 0;
-            transition: opacity 0.3s;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 2000;
+            display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s;
         }
         .modal-overlay.active { display: flex; opacity: 1; }
-
         .modal-window {
-            background: var(--modal-bg);
-            width: 90%;
-            max-width: 600px;
-            padding: 40px;
-            border-radius: 24px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            position: relative;
-            color: var(--text-color);
-            border: 1px solid rgba(128,128,128, 0.1);
+            background: var(--modal-bg); width: 90%; max-width: 600px; padding: 40px;
+            border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative; color: var(--text-color); border: 1px solid var(--border-color);
         }
-
-        .modal-close {
-            position: absolute;
-            top: 20px; right: 20px;
-            background: none; border: none;
-            font-size: 24px; cursor: pointer;
-            color: var(--text-secondary);
-        }
-
+        .modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); }
         .modal-title { font-size: 1.8rem; margin-bottom: 20px; text-align: center; }
-        
-        .os-switcher {
-            display: flex;
-            background: rgba(128,128,128,0.1);
-            padding: 4px;
-            border-radius: 12px;
-            margin-bottom: 25px;
-        }
-        .os-btn {
-            flex: 1;
-            border: none; background: none;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            color: var(--text-secondary);
-            transition: 0.2s;
-        }
-        .os-btn.active {
-            background: var(--bg-color);
-            color: var(--text-color);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
+        .os-switcher { display: flex; background: rgba(128,128,128,0.1); padding: 4px; border-radius: 12px; margin-bottom: 25px; }
+        .os-btn { flex: 1; border: none; background: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text-secondary); transition: 0.2s; }
+        .os-btn.active { background: var(--bg-color); color: var(--text-color); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .instruction-content { display: none; }
         .instruction-content.active { display: block; }
-        
         .step-list { margin-bottom: 25px; padding-left: 20px; }
         .step-list li { margin-bottom: 10px; }
+        .text-link { color: var(--primary); text-decoration: underline; font-weight: 700; }
         
-        .download-btn {
-            display: block; width: 100%; text-align: center;
-            background: var(--primary);
-            color: white; padding: 15px;
-            border-radius: 10px; font-weight: bold;
-            font-size: 1.1rem; margin-top: 20px;
-        }
-        .download-btn:hover { background: var(--primary-hover); }
-
-        .text-link {
-            color: var(--primary);
-            text-decoration: underline;
-            font-weight: 700;
-        }
-        .text-link:hover { text-decoration: none; opacity: 0.8; }
-
-        .action-buttons {
-            display: flex;
-            gap: 12px;
-            margin-top: 25px;
-            align-items: center; 
-        }
-
-        .download-btn, .video-btn {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 52px;
-            border-radius: 12px;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            box-sizing: border-box;
-            text-decoration: none;
-            font-family: inherit;
-            margin: 0; 
-            line-height: 1; 
-        }
-
-        .download-btn {
-            flex: 2;
-            background-color: var(--primary);
-            color: white !important;
-            border: 2px solid transparent; 
-        }
-        .download-btn:hover {
-            background-color: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(41, 121, 255, 0.3);
-        }
-
-        .video-btn {
-            flex: 1;
-            background-color: transparent;
-            color: var(--primary);
-            border: 2px solid var(--primary);
-        }
-        .video-btn:hover {
-            background-color: rgba(41, 121, 255, 0.08);
-            transform: translateY(-2px);
-        }
-
+        .action-buttons { display: flex; gap: 12px; margin-top: 25px; align-items: center; }
+        .download-btn, .video-btn { display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 12px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s ease; text-decoration: none; border: 2px solid transparent; }
+        .download-btn { flex: 2; background-color: var(--primary); color: white !important; }
+        .download-btn:hover { background-color: var(--primary-hover); transform: translateY(-2px); }
+        .video-btn { flex: 1; background: transparent; color: var(--primary); border-color: var(--primary); }
+        .video-btn:hover { background-color: rgba(41, 121, 255, 0.08); transform: translateY(-2px); }
+        
         .video-view { display: none; text-align: center; }
-        .tutorial-video {
-            width: 100%;
-            max-height: 400px;
-            border-radius: 12px;
-            margin-top: 15px;
-            border: 1px solid rgba(128,128,128, 0.2);
-            background: #000;
-        }
-
-        .back-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-            padding: 5px 0;
-        }
-        .back-btn::before {
-            content: "←";
-            margin-right: 8px;
-            font-size: 1.2rem;
-            transition: transform 0.2s;
-        }
+        .tutorial-video { width: 100%; max-height: 400px; border-radius: 12px; margin-top: 15px; background: #000; }
+        .back-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; margin-bottom: 15px; padding: 5px 0; }
         .back-btn:hover { color: var(--primary); }
-        .back-btn:hover::before { transform: translateX(-3px); }
-
-        .text-view { display: block; }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="container logo">
-            <img src="img/logo.png" alt="ETIS Reborn Logo">
-            <span>ЕТИС REBORN</span>
+        <div class="container header-content">
+            <div class="logo">
+                <img src="img/logo.png" alt="ETIS Reborn Logo">
+                <span>ЕТИС REBORN</span>
+            </div>
+            <button class="theme-toggle" id="themeBtn" aria-label="Переключить тему">
+                <img id="theme-icon" src="img/dark_theme.png" alt="Theme Toggle">
+            </button>
         </div>
     </header>
 
@@ -485,36 +241,36 @@
 
         <section class="features">
 
-            <!-- 1. МОБИЛЬНАЯ ВЕРСИЯ -->
-            <div class="comparison-block">
-                <h2 class="block-title">Мобильная версия</h2>
+            <!-- 1. CROSS PLATFORM -->
+            <div class="comparison-block" id="block-crossplatform">
+                <h2 class="block-title" id="title-crossplatform">Мобильная версия</h2>
                 
-                <!-- ВАРИАНТ ДЛЯ ПК: ДВЕ КАРТИНКИ РЯДОМ -->
-                <div class="mobile-side-by-side">
+                <!-- ПК ВИД: Телефоны -->
+                <div class="mobile-side-by-side view-side-by-side">
                     <div class="phone-card">
                         <div class="phone-label label-text-new">REBORN</div>
                         <div class="phone-frame">
-                            <img src="img/mobile-new.png" alt="New Mobile Interface">
+                            <img id="cross-side-new" src="" alt="Mobile Interface">
                         </div>
                     </div>
                     <div class="phone-card">
                         <div class="phone-label label-text-old">Original</div>
                         <div class="phone-frame">
-                            <img src="img/mobile-old.png" alt="Old Mobile Interface">
+                            <img id="cross-side-old" src="" alt="Mobile Interface">
                         </div>
                     </div>
                 </div>
 
-                <!-- ВАРИАНТ ДЛЯ МОБИЛЬНЫХ: СЛАЙДЕР -->
-                <div class="mobile-slider-view">
-                    <div class="img-comp-container mobile-limit">
+                <!-- МОБИЛЬНЫЙ ВИД: Слайдер -->
+                <div class="view-slider" style="display: none;">
+                    <div class="img-comp-container mobile-limit" id="cross-slider-container">
                         <div class="img-comp-img img-result">
                             <span class="label label-new">REBORN</span>
-                            <img src="img/mobile-new.png" alt="New Mobile">
+                            <img id="cross-slider-new" src="" alt="PC Interface">
                         </div>
                         <div class="img-comp-img img-source">
                             <span class="label label-old">Original</span>
-                            <img src="img/mobile-old.png" alt="Old Mobile">
+                            <img id="cross-slider-old" src="" alt="PC Interface">
                         </div>
                     </div>
                 </div>
@@ -523,29 +279,29 @@
             <!-- 2. РАСПИСАНИЕ -->
             <div class="comparison-block">
                 <h2 class="block-title">Наглядное расписание</h2>
-                <div class="img-comp-container">
+                <div class="img-comp-container" data-type="schedule">
                     <div class="img-comp-img img-result">
                         <span class="label label-new">REBORN</span>
-                        <img src="img/schedule-new.png" alt="New Schedule">
+                        <img class="dynamic-img" data-ver="new" src="" alt="New Schedule">
                     </div>
                     <div class="img-comp-img img-source">
                         <span class="label label-old">Original</span>
-                        <img src="img/schedule-old.png" alt="Old Schedule">
+                        <img class="dynamic-img" data-ver="old" src="" alt="Old Schedule">
                     </div>
                 </div>
             </div>
 
             <!-- 3. ТЁМНАЯ ТЕМА -->
             <div class="comparison-block">
-                <h2 class="block-title">Тёмная тема</h2>
-                <div class="img-comp-container">
+                <h2 class="block-title" id="title-theme">Тёмная тема</h2>
+                <div class="img-comp-container" data-type="theme-feature">
                     <div class="img-comp-img img-result">
                         <span class="label label-new">REBORN</span>
-                        <img src="img/dark-new.png" alt="New Dark">
+                        <img class="dynamic-img" data-ver="new" src="" alt="New Theme">
                     </div>
                     <div class="img-comp-img img-source">
                         <span class="label label-old">Original</span>
-                        <img src="img/dark-old.png" alt="Old Light">
+                        <img class="dynamic-img" data-ver="old" src="" alt="Old Theme">
                     </div>
                 </div>
             </div>
@@ -553,14 +309,14 @@
             <!-- 4. ОЦЕНКИ -->
             <div class="comparison-block">
                 <h2 class="block-title">Все оценки под рукой</h2>
-                <div class="img-comp-container">
+                <div class="img-comp-container" data-type="grades">
                     <div class="img-comp-img img-result">
                         <span class="label label-new">REBORN</span>
-                        <img src="img/grades-new.png" alt="New Grades">
+                        <img class="dynamic-img" data-ver="new" src="" alt="New Grades">
                     </div>
                     <div class="img-comp-img img-source">
                         <span class="label label-old">Original</span>
-                        <img src="img/grades-old.png" alt="Old Grades">
+                        <img class="dynamic-img" data-ver="old" src="" alt="Old Grades">
                     </div>
                 </div>
             </div>
@@ -568,14 +324,14 @@
             <!-- 5. ПРЕПОДАВАТЕЛИ -->
             <div class="comparison-block">
                 <h2 class="block-title">Преподаватели</h2>
-                <div class="img-comp-container">
+                <div class="img-comp-container" data-type="teachers">
                     <div class="img-comp-img img-result">
                         <span class="label label-new">REBORN</span>
-                        <img src="img/teachers-new.png" alt="New Teachers">
+                        <img class="dynamic-img" data-ver="new" src="" alt="New Teachers">
                     </div>
                     <div class="img-comp-img img-source">
                         <span class="label label-old">Original</span>
-                        <img src="img/teachers-old.png" alt="Old Teachers">
+                        <img class="dynamic-img" data-ver="old" src="" alt="Old Teachers">
                     </div>
                 </div>
             </div>
@@ -583,14 +339,14 @@
             <!-- 6. ЗАКАЗ СПРАВОК -->
             <div class="comparison-block">
                 <h2 class="block-title">Заказ справок</h2>
-                <div class="img-comp-container">
+                <div class="img-comp-container" data-type="spravka">
                     <div class="img-comp-img img-result">
                         <span class="label label-new">REBORN</span>
-                        <img src="img/spravka-new.png" alt="New Spravka">
+                        <img class="dynamic-img" data-ver="new" src="" alt="New Spravka">
                     </div>
                     <div class="img-comp-img img-source">
                         <span class="label label-old">Original</span>
-                        <img src="img/spravka-old.png" alt="Old Spravka">
+                        <img class="dynamic-img" data-ver="old" src="" alt="Old Spravka">
                     </div>
                 </div>
             </div>
@@ -612,13 +368,10 @@
         <div class="modal-window">
             <button class="modal-close" onclick="closeModal()">×</button>
             <h3 class="modal-title">Установка</h3>
-            
             <div class="os-switcher">
                 <button class="os-btn active" onclick="switchTab('macos')">iOS / macOS</button>
                 <button class="os-btn" onclick="switchTab('other')">Windows / Android</button>
             </div>
-
-            <!-- === ВКЛАДКА iOS / macOS === -->
             <div id="tab-macos" class="instruction-content active">
                 <div class="text-view" id="text-macos">
                     <p style="margin-bottom: 15px;">Для Safari используйте приложение <a href="https://apps.apple.com/kz/app/userscripts/id1463298887" target="_blank" class="text-link">Userscripts</a>:</p>
@@ -628,21 +381,10 @@
                         <li>Настройте папку для скриптов в приложении.</li>
                         <li>Скачайте файл ниже и сохраните его в эту папку.</li>
                     </ol>
-                    <div class="action-buttons">
-                        <a href="etis.user.js" download class="download-btn">Скачать</a>
-                        <button class="video-btn" onclick="showVideo('macos')">Видео</button>
-                    </div>
+                    <div class="action-buttons"><a href="etis.user.js" download class="download-btn">Скачать</a><button class="video-btn" onclick="showVideo('macos')">Видео</button></div>
                 </div>
-                <div class="video-view" id="video-macos">
-                    <button class="back-btn" onclick="hideVideo('macos')">Назад к инструкции</button>
-                    <video class="tutorial-video" controls playsinline>
-                        <source src="img/install.mp4" type="video/mp4">
-                        Ваш браузер не поддерживает видео.
-                    </video>
-                </div>
+                <div class="video-view" id="video-macos"><button class="back-btn" onclick="hideVideo('macos')">Назад к инструкции</button><video class="tutorial-video" controls playsinline><source src="img/install.mp4" type="video/mp4"></video></div>
             </div>
-
-            <!-- === ВКЛАДКА Windows / Android === -->
             <div id="tab-other" class="instruction-content">
                 <div class="text-view" id="text-other">
                     <p style="margin-bottom: 15px;">Рекомендуется использовать расширение <a href="https://violentmonkey.github.io" target="_blank" class="text-link">Violentmonkey</a>:</p>
@@ -651,166 +393,203 @@
                         <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
                         <li>Нажмите "Подтвердить установку".</li>
                     </ol>
-                    <div class="action-buttons">
-                        <a href="etis.user.js" class="download-btn">Скачать</a>
-                        <button class="video-btn" onclick="showVideo('other')">Видео</button>
-                    </div>
+                    <div class="action-buttons"><a href="etis.user.js" class="download-btn">Скачать</a><button class="video-btn" onclick="showVideo('other')">Видео</button></div>
                 </div>
-                <div class="video-view" id="video-other">
-                    <button class="back-btn" onclick="hideVideo('other')">Назад к инструкции</button>
-                    <video class="tutorial-video" controls playsinline>
-                        <source src="img/install.mp4" type="video/mp4">
-                        Ваш браузер не поддерживает видео.
-                    </video>
-                </div>
+                <div class="video-view" id="video-other"><button class="back-btn" onclick="hideVideo('other')">Назад к инструкции</button><video class="tutorial-video" controls playsinline><source src="img/install.mp4" type="video/mp4"></video></div>
             </div>
         </div>
     </div>
 
     <script>
-        // --- ФУТЕР ---
-        const footerDiv = document.getElementById('footer-credits');
-        if (footerDiv) {
-            footerDiv.innerHTML = 'Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
+        document.getElementById('footer-credits').innerHTML = 'Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
+
+        // --- УПРАВЛЕНИЕ ТЕМОЙ ---
+        const themeBtn = document.getElementById('themeBtn');
+        const themeIcon = document.getElementById('theme-icon');
+        
+        let isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (localStorage.getItem('theme') === 'dark') isDark = true;
+        if (localStorage.getItem('theme') === 'light') isDark = false;
+
+        function applyTheme() {
+            if (isDark) {
+                document.body.classList.add('dark-mode');
+                // Если сейчас тёмная тема, показываем кнопку "Включить светлую"
+                themeIcon.src = 'img/light_theme.png';
+            } else {
+                document.body.classList.remove('dark-mode');
+                // Если сейчас светлая тема, показываем кнопку "Включить тёмную"
+                themeIcon.src = 'img/dark_theme.png';
+            }
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            updateAllScreenshots();
         }
 
-        // --- ЛОГИКА СЛАЙДЕРОВ ---
+        themeBtn.addEventListener('click', () => { isDark = !isDark; applyTheme(); });
+
+        // --- ГЛАВНАЯ ЛОГИКА ---
+        function updateAllScreenshots() {
+            const isMobile = window.innerWidth <= 768;
+            const currentTheme = isDark ? 'dark' : 'light';
+            const inverseTheme = isDark ? 'light' : 'dark';
+            const deviceType = isMobile ? 'mobile' : 'pc';
+
+            // 1. БЛОК CROSS PLATFORM
+            const crossTitle = document.getElementById('title-crossplatform');
+            const sideNew = document.getElementById('cross-side-new');
+            const sideOld = document.getElementById('cross-side-old');
+            const sliderNew = document.getElementById('cross-slider-new');
+            const sliderOld = document.getElementById('cross-slider-old');
+            const crossSideView = document.querySelector('.view-side-by-side');
+            const crossSliderView = document.querySelector('.view-slider');
+            const crossSliderContainer = document.getElementById('cross-slider-container');
+
+            if (isMobile) {
+                // Мобила -> показываем ПК
+                crossTitle.textContent = "Версия для ПК";
+                crossSideView.style.display = 'none';
+                crossSliderView.style.display = 'block';
+                crossSliderContainer.classList.remove('mobile-limit');
+
+                sliderNew.src = `img/schedule-pc-${currentTheme}-new.png`;
+                sliderOld.src = `img/schedule-pc-${currentTheme}-old.png`;
+            } else {
+                // ПК -> показываем Мобилу
+                crossTitle.textContent = "Мобильная версия";
+                crossSideView.style.display = 'flex';
+                crossSliderView.style.display = 'none';
+
+                sideNew.src = `img/schedule-mobile-${currentTheme}-new.png`;
+                sideOld.src = `img/schedule-mobile-${currentTheme}-old.png`;
+            }
+
+            // 2. ОСТАЛЬНЫЕ БЛОКИ
+            document.querySelectorAll('.img-comp-container[data-type]').forEach(container => {
+                const type = container.dataset.type;
+                const imgs = container.querySelectorAll('.dynamic-img');
+                
+                let themeForBlock = currentTheme;
+                let filePrefix = type;
+
+                if (type === 'theme-feature') {
+                    themeForBlock = inverseTheme;
+                    filePrefix = 'schedule';
+                    document.getElementById('title-theme').textContent = isDark ? 'Светлая тема' : 'Тёмная тема';
+                }
+
+                imgs.forEach(img => {
+                    const ver = img.dataset.ver;
+                    img.src = `img/${filePrefix}-${deviceType}-${themeForBlock}-${ver}.png`;
+                    img.onerror = function() {
+                         this.src = `https://via.placeholder.com/800x500/ccc/333?text=${filePrefix}+${deviceType}+${themeForBlock}`;
+                    };
+                });
+            });
+            
+        }
+
+        applyTheme(); 
+        window.addEventListener('resize', updateAllScreenshots);
+
+        // --- СЛАЙДЕРЫ (ПОЛНОСТЬЮ ОБНОВЛЕНО) ---
         function initComparisons() {
-            // Находим только видимые контейнеры для слайдеров
-            const containers = document.querySelectorAll(".img-comp-container");
-            containers.forEach(setupSlider);
+            document.querySelectorAll(".img-comp-container").forEach(setupSlider);
         }
 
         function setupSlider(container) {
-            let slider, clicked = 0, w, h;
+            if(container.querySelector('.img-comp-slider')) return; 
+
+            let slider, w, h;
+            let clicked = false;
+            let currentPercent = 0.5; // Запоминаем позицию в процентах (по умолчанию 50%)
             
             const imgWrapper = container.querySelector('.img-result');
             const imgInside = imgWrapper.querySelector('img');
             const labelNew = container.querySelector('.label-new');
             const labelOld = container.querySelector('.label-old');
 
+            // Создаем ползунок
             slider = document.createElement("DIV");
             slider.className = "img-comp-slider";
             container.appendChild(slider);
 
+            // Функция обновления размеров
             function updateDimensions() {
                 w = container.offsetWidth;
                 h = container.offsetHeight;
                 
                 if (h === 0 && imgInside.naturalHeight > 0) h = imgInside.naturalHeight;
-
-                imgWrapper.style.width = (w / 2) + "px";
+                
                 imgInside.style.width = w + "px"; 
                 slider.style.top = (h / 2) + "px";
-                slider.style.left = (w / 2) + "px";
+                
+                // Применяем сохраненный процент, чтобы ползунок оставался там, где его оставили
+                slide(w * currentPercent);
             }
+            
+            new ResizeObserver(updateDimensions).observe(container);
+            imgInside.addEventListener('load', updateDimensions);
 
-            updateDimensions();
-            if (imgInside.complete) updateDimensions();
-            else imgInside.addEventListener('load', updateDimensions);
-
-            if (window.ResizeObserver) {
-                const resizeObserver = new ResizeObserver(() => updateDimensions());
-                resizeObserver.observe(container);
-            } else {
-                window.addEventListener('resize', updateDimensions);
-            }
-
-            slider.addEventListener("mousedown", slideReady);
-            window.addEventListener("mouseup", slideFinish);
-            slider.addEventListener("touchstart", slideReady);
-            window.addEventListener("touchend", slideFinish);
-
-            function slideReady(e) {
+            function slideStart(e) {
                 e.preventDefault();
-                clicked = 1;
-                window.addEventListener("mousemove", slideMove);
-                window.addEventListener("touchmove", slideMove);
+                clicked = true;
             }
 
-            function slideFinish() {
-                clicked = 0;
+            function slideEnd() {
+                clicked = false;
             }
 
             function slideMove(e) {
-                if (clicked == 0) return false;
-                let pos = getCursorPos(e);
-                if (pos < 0) pos = 0;
-                if (pos > w) pos = w;
-                slide(pos);
-            }
-
-            function getCursorPos(e) {
-                let a, x = 0;
-                e = (e.changedTouches) ? e.changedTouches[0] : e;
-                a = container.getBoundingClientRect();
-                x = e.pageX - a.left;
-                x = x - window.pageXOffset;
-                return x;
+                if (!clicked) return;
+                
+                let clientX = (e.changedTouches) ? e.changedTouches[0].clientX : e.clientX;
+                let rect = container.getBoundingClientRect();
+                let x = clientX - rect.left;
+                
+                if (x < 0) x = 0;
+                if (x > w) x = w;
+                
+                slide(x);
             }
 
             function slide(x) {
+                if (w > 0) currentPercent = x / w; // Обновляем процент сдвига
                 imgWrapper.style.width = x + "px";
                 slider.style.left = x + "px";
-                if (x < 60) labelNew.style.opacity = '0'; else labelNew.style.opacity = '1';
-                if (x > w - 60) labelOld.style.opacity = '0'; else labelOld.style.opacity = '1';
+                
+                // Прозрачность меток
+                labelNew.style.opacity = x < 60 ? '0' : '1';
+                labelOld.style.opacity = x > w - 60 ? '0' : '1';
             }
+
+            // Обработчики (passive: false нужно для телефонов, чтобы preventDefault сработал)
+            slider.addEventListener("mousedown", slideStart);
+            slider.addEventListener("touchstart", slideStart, {passive: false});
+
+            window.addEventListener("mouseup", slideEnd);
+            window.addEventListener("touchend", slideEnd);
+            window.addEventListener("mousemove", slideMove);
+            window.addEventListener("touchmove", slideMove, {passive: false});
+            
+            // Первичная инициализация
+            updateDimensions();
         }
 
         document.addEventListener("DOMContentLoaded", initComparisons);
-        window.addEventListener("load", () => window.dispatchEvent(new Event('resize')));
 
-        // --- МОДАЛЬНОЕ ОКНО ---
+        // --- МОДАЛКА И ВИДЕО ---
         const modal = document.getElementById('installModal');
-        
-        function openModal() {
-            modal.style.display = 'flex';
-            setTimeout(() => modal.classList.add('active'), 10);
-        }
+        function openModal() { modal.style.display = 'flex'; setTimeout(() => modal.classList.add('active'), 10); }
+        function closeModal() { modal.classList.remove('active'); setTimeout(() => modal.style.display = 'none', 300); }
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-        function closeModal() {
-            modal.classList.remove('active');
-            setTimeout(() => modal.style.display = 'none', 300);
-        }
-
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) closeModal();
-        });
-
-        // --- ВИДЕО ---
-        function showVideo(os) {
-            document.getElementById('text-' + os).style.display = 'none';
-            const videoBlock = document.getElementById('video-' + os);
-            videoBlock.style.display = 'block';
-            const video = videoBlock.querySelector('video');
-            if(video) video.play();
-        }
-
-        function hideVideo(os) {
-            document.getElementById('text-' + os).style.display = 'block';
-            const videoBlock = document.getElementById('video-' + os);
-            videoBlock.style.display = 'none';
-            const video = videoBlock.querySelector('video');
-            if(video) {
-                video.pause();
-                video.currentTime = 0; 
-            }
-        }
-
-        // --- ВКЛАДКИ ---
+        function showVideo(os) { document.getElementById('text-' + os).style.display = 'none'; const v = document.getElementById('video-' + os); v.style.display = 'block'; v.querySelector('video')?.play(); }
+        function hideVideo(os) { document.getElementById('text-' + os).style.display = 'block'; const v = document.getElementById('video-' + os); v.style.display = 'none'; const vid = v.querySelector('video'); if(vid){ vid.pause(); vid.currentTime = 0; } }
         function switchTab(os) {
             document.querySelectorAll('.os-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.instruction-content').forEach(content => content.classList.remove('active'));
-
-            if (os === 'macos') {
-                document.querySelector('.os-btn:nth-child(1)').classList.add('active');
-                document.getElementById('tab-macos').classList.add('active');
-                hideVideo('other'); 
-            } else {
-                document.querySelector('.os-btn:nth-child(2)').classList.add('active');
-                document.getElementById('tab-other').classList.add('active');
-                hideVideo('macos');
-            }
+            document.querySelectorAll('.instruction-content').forEach(c => c.classList.remove('active'));
+            if (os === 'macos') { document.querySelector('.os-btn:nth-child(1)').classList.add('active'); document.getElementById('tab-macos').classList.add('active'); hideVideo('other'); }
+            else { document.querySelector('.os-btn:nth-child(2)').classList.add('active'); document.getElementById('tab-other').classList.add('active'); hideVideo('macos'); }
         }
     </script>
 </body>
