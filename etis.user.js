@@ -166,7 +166,7 @@ body {
 
 .span9 > h3 { margin-bottom: 1.4rem !important; }
 .submenu { font-size: 1.2rem !important; margin-bottom: 2.4rem !important; }
-.submenu + .submenu { margin-top: -1.2rem !important; }
+.submenu + .submenu { margin-top: -0.8rem !important; }
 
 .warning {
 	margin: 0 !important;
@@ -3541,6 +3541,64 @@ form.que_form select {
     transform: scale(0.5) !important;
 }
 
+/* --- ПРОПУЩЕННЫЕ ЗАНЯТИЯ (ABSENCE) --- */
+.absence-capsule {
+    display: inline-block !important;
+    padding: 0.4rem 1rem !important;
+    border-radius: 50px !important;
+    font-weight: 700 !important;
+    font-size: 1.2rem !important;
+    white-space: nowrap !important;
+    cursor: help !important; /* Указатель для тултипа "командировка" */
+}
+.absence-capsule.valid {
+    background: rgba(52, 199, 89, 0.15) !important;
+    color: var(--color-green) !important;
+}
+.absence-capsule.invalid {
+    background: rgba(255, 59, 48, 0.15) !important;
+    color: var(--color-red) !important;
+}
+
+.absence-summary {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    gap: 1.6rem !important;
+    margin-top: 3rem !important;
+    margin-bottom: 2rem !important;
+}
+.absence-stat {
+    background: var(--color-card) !important;
+    border-radius: var(--radius-large) !important;
+    padding: 2.4rem !important;
+    box-shadow: var(--shadow-main) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    border: 1px solid var(--color-table-border) !important;
+}
+.absence-stat-val {
+    font-size: 3.6rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    margin-bottom: 0.8rem !important;
+    color: var(--color-text-primary) !important;
+}
+.absence-stat-label {
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    color: var(--color-text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+.absence-stat.valid { border-color: rgba(52, 199, 89, 0.3) !important; }
+.absence-stat.valid .absence-stat-val { color: var(--color-green) !important; }
+
+.absence-stat.invalid { border-color: rgba(255, 59, 48, 0.3) !important; }
+.absence-stat.invalid .absence-stat-val { color: var(--color-red) !important; }
+
 /* --- STU.SIGNS (МОИ ОЦЕНКИ) --- */
 
 .gpa-container {
@@ -3605,6 +3663,13 @@ form.que_form select {
 
 /* --- СТИЛИ ДЛЯ ПК --- */
 @media (min-width: 961px) {
+    /* Глобальный фикс древних оберток ЕТИСа */
+    .span9 div[style*="inline-block"] {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+
     .wide-table-wrapper {
         overflow-x: auto !important; 
         border-radius: var(--radius-medium);
@@ -3645,31 +3710,171 @@ form.que_form select {
 
     /* === УМНЫЕ КОЛОНКИ === */
     
-    /* 1. Название предмета (Первая колонка) */
-    .span9 table.common tr > td:first-child,
-    .span9 table.common tr > th:first-child {
-        text-align: left !important;
-        width: auto !important; 
-        min-width: 200px !important; 
-        font-weight: 600 !important;
+    .span9 table.common {
+        table-layout: auto !important;
+        border-collapse: separate !important;
+        width: 100% !important;
     }
 
-    /* 2. Все остальные колонки (Цифры, Даты) */
-    .span9 table.common tr > td:not(:first-child),
-    .span9 table.common tr > th:not(:first-child) {
-        white-space: nowrap !important; 
-        width: 1% !important; 
-        text-align: center !important;
+    .span9 table.common td, 
+    .span9 table.common th {
+        padding: 1.2rem 1.4rem !important;
+        line-height: 1.4 !important;
+        white-space: normal !important; /* РАЗРЕШАЕМ ПЕРЕНОС ПО УМОЛЧАНИЮ */
+        word-wrap: break-word !important;
+        vertical-align: middle !important;
     }
 
-    /* 3. Колонка с именем преподавателя (Последняя) */
-    .span9 table.common tr > td:last-child,
-    .span9 table.common tr > th:last-child {
-        white-space: normal !important; 
-        min-width: 120px !important;
-        text-align: left !important;
-        font-size: 1.2rem !important;
+    /* ФИКС ДЛЯ "ОЦЕНКИ ЗА СЕССИИ" (4 колонки) */
+    .session-table-v6 td:nth-child(1) { width: auto !important; font-weight: 600; text-align: left; }
+    .session-table-v6 td:nth-child(2),
+    .session-table-v6 td:nth-child(3) { 
+        width: 90px !important; 
+        min-width: 90px !important; 
+        white-space: nowrap !important; /* Оценка и дата не переносятся */
+        text-align: center; 
     }
+    .session-table-v6 td:nth-child(4) { width: 180px !important; color: var(--color-text-secondary); text-align: left; }
+
+    /* ФИКС ДЛЯ "ОЦЕНКИ В ТРИМЕСТРЕ" (9 колонок) */
+    .term-table-v6 { min-width: 1000px !important; } /* Даем таблице простор для скролла */
+    
+    .term-table-v6 td:nth-child(1) { min-width: 250px !important; text-align: left; font-weight: 600; color: var(--color-accent); }
+    .term-table-v6 td:nth-child(2) { width: 80px !important; text-align: center; } /* Вид работы */
+    .term-table-v6 td:nth-child(3) { min-width: 150px !important; text-align: left; font-size: 1.2rem; } /* Вид контроля (длинный текст) */
+    
+    /* Колонки с баллами (с 4 по 8) - компактно */
+    .term-table-v6 td:nth-child(4),
+    .term-table-v6 td:nth-child(5),
+    .term-table-v6 td:nth-child(6),
+    .term-table-v6 td:nth-child(7),
+    .term-table-v6 td:nth-child(8) {
+        width: 60px !important;
+        min-width: 60px !important;
+        white-space: nowrap !important;
+        text-align: center;
+    }
+    
+    .term-table-v6 td:nth-child(9) { width: 150px !important; text-align: left; font-size: 1.1rem; color: var(--color-text-secondary); }
+
+    /* Заголовки триместров */
+    h3.term-title {
+        margin: 4rem 0 1.5rem 0 !important;
+        font-size: 1.3rem !important;
+        color: var(--color-text-secondary) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 1px !important;
+        font-weight: 800 !important;
+    }
+}
+
+/* Специальные стили для таблицы пропусков */
+.span9 table.common.absence-table {
+    table-layout: fixed !important; /* Строго фиксируем сетку */
+    width: 100% !important;
+    min-width: 800px !important; /* Не даем слишком сильно сжаться на мобильных */
+}
+
+/* Перебиваем глобальные настройки умных колонок */
+.span9 table.common.absence-table tr > th,
+.span9 table.common.absence-table tr > td {
+    white-space: normal !important; 
+    word-wrap: break-word !important; 
+    vertical-align: middle !important;
+}
+
+/* Развешиваем ширину колонок в процентах (в сумме 100%) */
+.span9 table.common.absence-table tr > th:nth-child(1),
+.span9 table.common.absence-table tr > td:nth-child(1) { 
+    width: 5% !important; 
+    text-align: center !important; 
+}
+
+.span9 table.common.absence-table tr > th:nth-child(2),
+.span9 table.common.absence-table tr > td:nth-child(2) { 
+    width: 15% !important; 
+    text-align: center !important; 
+}
+
+.span9 table.common.absence-table tr > th:nth-child(3),
+.span9 table.common.absence-table tr > td:nth-child(3) { 
+    width: 35% !important; 
+    text-align: left !important; 
+}
+
+.span9 table.common.absence-table tr > th:nth-child(4),
+.span9 table.common.absence-table tr > td:nth-child(4) { 
+    width: 25% !important; 
+    text-align: left !important; 
+}
+
+.span9 table.common.absence-table tr > th:nth-child(5),
+.span9 table.common.absence-table tr > td:nth-child(5) { 
+    width: 20% !important; 
+    text-align: left !important; 
+}
+
+/* Фикс для заголовков в Библиотеке */
+.span9 h3 {
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* Стилизация подзаголовков внутри таблицы (Обязательная / Дополнительная) */
+.resource-table .subheader {
+    background: var(--color-table-header) !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 1.1rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-weight: 700 !important;
+    padding: 1rem !important;
+}
+
+/* --- LIBRARY CATALOG SEARCH --- */
+.search-flex-container {
+    display: flex !important;
+    gap: 1.2rem !important;
+    align-items: stretch !important;
+    width: 100% !important;
+}
+
+/* Сброс кривых стилей ЕТИСа */
+.width_setter { 
+    position: static !important; 
+    margin: 0 !important; 
+    flex: 1 !important; 
+}
+
+.search-flex-container input[type="text"] {
+    position: static !important; /* Убиваем absolute */
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 1.2rem 1.6rem !important;
+    border-radius: var(--radius-small) !important;
+    background: var(--color-input) !important;
+    border: 1px solid var(--color-table-border) !important;
+    box-shadow: none !important;
+    font-size: 1.4rem !important;
+}
+
+.search-flex-container .answer-btn-custom {
+    padding: 0 2.4rem !important;
+    height: auto !important;
+    flex-shrink: 0 !important;
+}
+
+/* Результаты поиска */
+#record_list {
+    margin-top: 2.4rem !important;
+}
+
+/* Фикс для индикатора загрузки */
+#record_list img {
+    vertical-align: middle !important;
+    margin-right: 10px !important;
 }
 
     `;
@@ -5112,130 +5317,76 @@ injectStyles(styles);
                 break;
 
                 case 'stu.signs': {
-                    // 1. ФИКС ПОДМЕНЮ (Оформляем ссылки как кнопки)
+                    // 1. УНИФИКАЦИЯ ПОДМЕНЮ (Кнопки)
                     span9.querySelectorAll('.submenu .submenu-item').forEach(span => {
                         const link = span.querySelector('a');
-                        if (link) {
-                            span.replaceWith(link);
-                        } else {
+                        if (link) span.replaceWith(link);
+                        else {
                             const b = document.createElement('b');
                             b.textContent = span.textContent.trim();
                             span.replaceWith(b);
                         }
                     });
 
-                    // 2. ОЧИСТКА ВСЕХ ТАБЛИЦ (Убиваем старые атрибуты ЕТИС)
+                    // 2. ГЛОБАЛЬНАЯ ОЧИСТКА
                     span9.querySelectorAll('table.common').forEach(table => {
-                        table.querySelectorAll('tr').forEach(tr => {
-                            tr.removeAttribute('onmouseover');
-                            tr.removeAttribute('onmouseout');
-                            tr.removeAttribute('bgcolor');
-                        });
-                        table.querySelectorAll('th, td, col').forEach(cell => {
-                            cell.removeAttribute('align');
-                            cell.removeAttribute('valign');
-                            cell.removeAttribute('width'); 
-                            cell.removeAttribute('style'); 
-                            cell.classList.remove('subheader'); 
+                        table.removeAttribute('width');
+                        table.style.width = "100%";
+                        table.querySelectorAll('tr, td, th').forEach(el => {
+                            el.removeAttribute('width');
+                            el.removeAttribute('style');
+                            el.removeAttribute('bgcolor');
+                            el.removeAttribute('align');
+                            el.removeAttribute('valign');
                         });
                     });
 
-                    // 3. ОФОРМЛЕНИЕ СРЕДНЕГО БАЛЛА
-                    const gpaDiv = Array.from(span9.querySelectorAll('div')).find(div => div.textContent.includes('Средний балл:'));
-                    if (gpaDiv) {
-                        const bTag = gpaDiv.querySelector('b');
-                        if (bTag) {
-                            gpaDiv.className = 'gpa-container';
-                            gpaDiv.innerHTML = `Средний балл: <span class="gpa-capsule">${bTag.textContent.trim()}</span>`;
-                            gpaDiv.removeAttribute('style');
-                        }
+                    // 3. ОБРАБОТКА "ОЦЕНКИ ЗА СЕССИИ"
+                    if (pageMode === 'session' || !pageMode) {
+                        const signsTables = span9.querySelectorAll('table.common');
+                        signsTables.forEach(table => {
+                            const rows = Array.from(table.querySelectorAll('tr'));
+                            // Находим эталонный текст шапки
+                            const isHeader = (r) => r.textContent.toLowerCase().includes('дисциплина') && r.textContent.toLowerCase().includes('оценка');
+                            const headerRow = rows.find(isHeader);
+                            
+                            let currentTbody = null;
+                            let validSplit = false;
+
+                            rows.forEach(row => {
+                                const cells = row.children;
+                                // А) Это заголовок триместра (одна жирная ячейка)
+                                if (cells.length === 1 && (cells[0].tagName === 'TH' || cells[0].classList.contains('subheader'))) {
+                                    validSplit = true;
+                                    const title = document.createElement('h3');
+                                    title.className = 'term-title';
+                                    title.textContent = cells[0].textContent.trim();
+                                    table.parentNode.insertBefore(title, table);
+
+                                    const newTable = document.createElement('table');
+                                    newTable.className = 'common session-table-v6';
+                                    if (headerRow) {
+                                        const thead = document.createElement('thead');
+                                        thead.appendChild(headerRow.cloneNode(true));
+                                        newTable.appendChild(thead);
+                                    }
+                                    currentTbody = document.createElement('tbody');
+                                    newTable.appendChild(currentTbody);
+                                    table.parentNode.insertBefore(newTable, table);
+                                } 
+                                // Б) Это строка с данными (НЕ шапка и НЕ заголовок триместра)
+                                else if (currentTbody && !isHeader(row) && cells.length > 1) {
+                                    currentTbody.appendChild(row);
+                                }
+                            });
+                            if (validSplit) table.remove();
+                        });
                     }
 
-                    // 4. ОФОРМЛЕНИЕ ПРАВИЛ ВНИЗУ
-                    span9.querySelectorAll('p').forEach(p => {
-                        const text = p.textContent.trim();
-                        if (text.length > 30 && (text.includes('Показанные здесь оценки') || text.includes('Итоговая оценка по дисциплине'))) {
-                            p.className = 'electr-description';
-                            p.style.textAlign = 'left';
-                            p.style.marginTop = '2.4rem';
-                            p.innerHTML = p.innerHTML.replace(/&nbsp;/g, ' '); 
-                        }
-                    });
-
-                    // 5. СПЛИТТЕР ТАБЛИЦ (Разделяем слитные таблицы сессий)
-                    const signsTables = span9.querySelectorAll('table.common');
-                    signsTables.forEach(table => {
-                        const rows = Array.from(table.querySelectorAll('tr'));
-                        
-                        const headerRow = rows.find(r => {
-                            const text = r.textContent.toLowerCase();
-                            return text.includes('дисциплина') && (text.includes('оценка') || text.includes('баллы'));
-                        });
-
-                        let currentTable = null;
-                        let currentTbody = null;
-                        let validSplit = false;
-                        
-                        rows.forEach(row => {
-                            const cells = row.children;
-                            
-                            // Если строка содержит только 1 ячейку -> это заголовок новой секции (например "Экзамены")
-                            if (cells.length === 1) {
-                                validSplit = true;
-                                
-                                const title = document.createElement('h3');
-                                title.textContent = cells[0].textContent.trim();
-                                title.style.marginTop = '3.2rem';
-                                title.style.marginBottom = '1.2rem';
-                                title.style.fontSize = '1.2rem';
-                                title.style.color = 'var(--color-text-secondary)';
-                                title.style.textTransform = 'uppercase';
-                                title.style.letterSpacing = '0.5px';
-                                title.style.fontWeight = '600';
-                                
-                                table.parentNode.insertBefore(title, table);
-
-                                currentTable = document.createElement('table');
-                                currentTable.className = 'common';
-                                
-                                if (headerRow) {
-                                    const thead = document.createElement('thead');
-                                    const clonedHeader = headerRow.cloneNode(true);
-                                    Array.from(clonedHeader.children).forEach(cell => {
-                                        if (cell.tagName !== 'TH') {
-                                            const th = document.createElement('th');
-                                            th.innerHTML = cell.innerHTML;
-                                            cell.parentNode.replaceChild(th, cell);
-                                        }
-                                    });
-                                    thead.appendChild(clonedHeader);
-                                    currentTable.appendChild(currentTbody = document.createElement('tbody'));
-                                    table.parentNode.insertBefore(currentTable, table);
-                                } else {
-                                    currentTable.appendChild(currentTbody = document.createElement('tbody'));
-                                    table.parentNode.insertBefore(currentTable, table);
-                                }
-                            } 
-                            // Пропускаем оригинальную шапку
-                            else if (row === headerRow) {
-                                // skip
-                            } 
-                            else if (currentTbody) {
-                                currentTbody.appendChild(row);
-                            }
-                        });
-                        
-                        if (validSplit) {
-                            table.remove();
-                        }
-                    });
-
-                    // 6. ОФОРМЛЕНИЕ ВКЛАДКИ "ОЦЕНКИ В ТРИМЕСТРЕ" И КАПСУЛЫ БАЛЛОВ
-                    if (pageMode === 'current' || !pageMode) {
-                        const termTables = span9.querySelectorAll('table.common');
-                        
-                        termTables.forEach(table => {
-                            // Оборачиваем таблицу
+                    // 4. ОБРАБОТКА "ОЦЕНКИ В ТРИМЕСТРЕ"
+                    if (pageMode === 'current' || (!pageMode && !span9.querySelector('.session-table-v6'))) {
+                        span9.querySelectorAll('table.common').forEach(table => {
+                            table.classList.add('term-table-v6');
                             if (!table.parentNode.classList.contains('wide-table-wrapper')) {
                                 const wrapper = document.createElement('div');
                                 wrapper.className = 'wide-table-wrapper';
@@ -5243,7 +5394,7 @@ injectStyles(styles);
                                 wrapper.appendChild(table);
                             }
 
-                            const wrapper = table.closest('.wide-table-wrapper') || table;
+                            const wrapper = table.closest('.wide-table-wrapper');
                             const h3 = wrapper.previousElementSibling;
                             if (!h3 || h3.tagName !== 'H3') return;
 
@@ -5251,22 +5402,20 @@ injectStyles(styles);
                             const totalRow = rows.find(r => r.textContent.toLowerCase().includes('всего:'));
 
                             if (totalRow) {
-                                const cells = Array.from(totalRow.cells);
-                                let currentScore = 0; 
-                                let maxScore = 100;
-                                
-                                const totalCellIndex = cells.findIndex(c => c.textContent.toLowerCase().includes('всего'));
-
-                                if (totalCellIndex !== -1) {
-                                    if (cells[totalCellIndex + 1]) {
-                                        const curTxt = cells[totalCellIndex + 1].textContent.trim();
-                                        currentScore = curTxt ? (parseInt(curTxt, 10) || 0) : 0;
+                                let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
+                                rows.forEach(r => {
+                                    if(r.querySelector('th') || r === totalRow) return;
+                                    const cells = r.querySelectorAll('td');
+                                    if(cells.length >= 7) {
+                                        const curStr = cells[5].textContent.trim();
+                                        const maxStr = cells[6].textContent.trim();
+                                        if(curStr !== '' && curStr !== 'н') {
+                                            hasAnyGrades = true;
+                                            calculatedCurrent += parseInt(curStr, 10) || 0;
+                                            calculatedMax += parseInt(maxStr, 10) || 0;
+                                        }
                                     }
-                                    if (cells[totalCellIndex + 2]) {
-                                        const maxTxt = cells[totalCellIndex + 2].textContent.trim();
-                                        maxScore = maxTxt ? (parseInt(maxTxt, 10) || 100) : 100;
-                                    }
-                                }
+                                });
 
                                 const headerContainer = document.createElement('div');
                                 headerContainer.className = 'subject-header-flex';
@@ -5275,88 +5424,22 @@ injectStyles(styles);
 
                                 const capsule = document.createElement('div');
                                 capsule.className = 'subject-score-capsule';
-                                capsule.textContent = `${currentScore} / ${maxScore}`;
+                                capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? calculatedMax : 0}`;
 
-                                if (currentScore < 41) {
-                                    capsule.style.background = 'var(--color-red)';
-                                    capsule.style.color = '#fff';
-                                } else if (currentScore >= 41 && currentScore < 61) {
-                                    capsule.style.background = 'var(--color-yellow)';
-                                    capsule.style.color = '#000';
-                                } else if (currentScore >= 61 && currentScore < 81) {
-                                    capsule.style.background = '#8BC34A'; 
-                                    capsule.style.color = '#fff';
+                                if (!hasAnyGrades || calculatedMax === 0) {
+                                    capsule.style.background = 'var(--color-highlight)';
+                                    capsule.style.color = 'var(--color-text-secondary)';
                                 } else {
-                                    capsule.style.background = 'var(--color-green)';
-                                    capsule.style.color = '#fff';
+                                    const p = (calculatedCurrent / calculatedMax) * 100;
+                                    if (p < 41) capsule.style.background = 'var(--color-red)';
+                                    else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
+                                    else if (p < 81) capsule.style.background = '#8BC34A';
+                                    else capsule.style.background = 'var(--color-green)';
+                                    if (p < 41 || p >= 61) capsule.style.color = '#fff';
                                 }
-
                                 headerContainer.appendChild(capsule);
                                 totalRow.remove();
                             }
-                        });
-
-                        // ТУЛТИПЫ
-                        let tooltipWrapper;
-                        const tooltipElem = document.createElement('div');
-                        tooltipElem.className = 'sign-tooltip';
-                        const tooltipTriangle = createTooltipTriangle();
-
-                        const renderTooltip = (e) => {
-                            let target = e.target;
-                            if (target.nodeName !== "TD") target = target.parentNode;
-
-                            const tooltipText = target.querySelector('a').dataset.tooltip;
-                            if (!tooltipText || tooltipWrapper) return;
-
-                            tooltipWrapper = document.createElement('div');
-                            tooltipWrapper.className = 'sign-tooltip-wrapper';
-                            tooltipElem.innerText = tooltipText;
-                            if (document.documentElement.getAttribute('theme') === 'dark')
-                                tooltipTriangle.firstChild.setAttributeNS(null, 'fill', '#2A2C2F');
-                            else
-                                tooltipTriangle.firstChild.setAttributeNS(null, 'fill', '#F2F2F7');
-                            tooltipWrapper.append(tooltipElem, tooltipTriangle);
-                            document.body.appendChild(tooltipWrapper);
-
-                            const coords = target.getBoundingClientRect();
-                            let left = (coords.left + coords.width / 2) - (tooltipWrapper.offsetWidth / 2);
-                            let top = coords.top - tooltipWrapper.offsetHeight;
-
-                            if (top < 0) {
-                                top = coords.top + target.offsetHeight;
-                                tooltipTriangle.style.bottom = '-2px';
-                                tooltipTriangle.style.transform = 'scale(1, -1)';
-                                tooltipWrapper.style.flexDirection = 'column-reverse';
-                            } else {
-                                tooltipTriangle.style.bottom = '2px';
-                                tooltipTriangle.style.transform = 'scale(1, 1)';
-                            }
-
-                            tooltipWrapper.style.left = left + 'px';
-                            tooltipWrapper.style.top = top + 'px';
-                        }
-
-                        const removeTooltip = () => {
-                            if (tooltipWrapper) {
-                                tooltipWrapper.remove();
-                                tooltipWrapper = null;
-                            }
-                        }
-
-                        document.addEventListener('wheel', removeTooltip);
-
-                        const signTables = document.querySelectorAll('table.common');
-                        signTables.forEach(table => {
-                            const themes = table.querySelectorAll('a');
-                            themes.forEach((theme, index) => {
-                                if (theme.getAttribute('href').split('?')[0] !== 'stu.theme') return;
-                                theme.setAttribute('data-tooltip', theme.innerText);
-                                theme.innerHTML = 'КТ ' + (index + 1);
-                                theme.addEventListener('mouseover', renderTooltip);
-                                theme.parentNode.addEventListener('mouseover', renderTooltip);
-                                theme.parentNode.addEventListener('mouseout', removeTooltip);
-                            });
                         });
                     }
                     break;
@@ -5576,123 +5659,230 @@ injectStyles(styles);
                     }
                     break;
 
-                case 'stu.library':
-                    // 1. Перенос ознакомительного текста вниз
+                case 'stu.library': {
+                    const pageMode = new URLSearchParams(window.location.search).get('p_mode');
+
+                    // 1. Общее для всех вкладок: Инфо-текст вниз
                     const libIntro = Array.from(span9.querySelectorAll('p')).find(p => p.textContent.includes('Для чтения полных текстов'));
                     if (libIntro) {
                         libIntro.className = 'electr-description';
-                        // Убираем лишние отступы внутри текста
                         libIntro.innerHTML = libIntro.innerHTML.replace(/<br\s*\/?>/gi, ' ');
                         span9.appendChild(libIntro);
                     }
 
-                    // 2. Стилизация блоков литературы (h3 + table)
-                    const libHeaders = Array.from(span9.querySelectorAll('h3'));
-                    libHeaders.forEach(h3 => {
-                        const block = document.createElement('div');
-                        block.className = 'day resource-block';
+                    // 2. РЕЖИМ КАТАЛОГА (ПОИСК)
+                    if (pageMode === 'catalog') {
+                        const searchWrap = span9.querySelector('.wrap');
+                        const searchInput = span9.querySelector('#filter');
+                        const searchBtn = span9.querySelector('#search_btn');
 
-                        // Находим таблицу, которая идет сразу после заголовка
-                        const table = h3.nextElementSibling;
-                        
-                        // Вставляем блок в дерево и перемещаем в него заголовок и таблицу
-                        h3.parentNode.insertBefore(block, h3);
-                        block.appendChild(h3);
-                        
-                        if (table && table.tagName === 'TABLE') {
-                            table.className = 'common resource-table'; // Применяем стили таблиц
-                            block.appendChild(table);
+                        if (searchWrap && searchInput && searchBtn) {
+                            // Создаем красивую карточку для поиска
+                            const searchCard = document.createElement('div');
+                            searchCard.className = 'day resource-block search-panel-card';
+                            searchCard.style.padding = '2.4rem';
+                            
+                            // Собираем элементы в новый контейнер (Flexbox)
+                            const flexContainer = document.createElement('div');
+                            flexContainer.className = 'search-flex-container';
 
-                            // 3. Логика удаления "ОБЯЗАТЕЛЬНАЯ" и "ДОПОЛНИТЕЛЬНАЯ"
-                            const rows = Array.from(table.querySelectorAll('tr'));
-                            const compHeaderRow = rows.find(r => r.textContent.includes('Обязательная'));
-                            const addHeaderRow = rows.find(r => r.textContent.includes('Дополнительная'));
+                            searchInput.placeholder = "Введите название книги, автора или ключевое слово...";
+                            searchBtn.className = 'answer-btn-custom';
+                            searchBtn.innerHTML = '<span class="material-icons" style="font-size:18px; margin-right:6px">search</span> Найти';
 
-                            // Проверяем, есть ли данные после "Дополнительной"
-                            let hasAdditionalData = false;
-                            if (addHeaderRow) {
-                                let next = addHeaderRow.nextElementSibling;
-                                // Если после заголовка "Дополнительная" есть строка с <td> — значит данные есть
-                                if (next && next.tagName === 'TR' && next.querySelector('td')) {
-                                    hasAdditionalData = true;
-                                }
-                            }
+                            flexContainer.appendChild(searchInput);
+                            flexContainer.appendChild(searchBtn);
+                            searchCard.appendChild(flexContainer);
 
-                            // Если дополнительных книг нет:
-                            if (!hasAdditionalData) {
-                                if (addHeaderRow) addHeaderRow.remove();   // Удаляем пустой заголовок "Дополнительная"
-                                if (compHeaderRow) compHeaderRow.remove(); // Удаляем ставший ненужным заголовок "Обязательная"
+                            // Вставляем карточку перед списком результатов
+                            const recordList = document.getElementById('record_list');
+                            searchWrap.replaceWith(searchCard);
+                            
+                            if (recordList) {
+                                searchCard.after(recordList);
                             }
                         }
-                    });
-                    break;
+                    } 
+                    // 3. РЕЖИМ РЕКОМЕНДАЦИЙ (СПИСКИ)
+                    else {
+                        const libHeaders = Array.from(span9.querySelectorAll('h3'));
+                        libHeaders.forEach(h3 => {
+                            const table = h3.nextElementSibling;
+                            if (table && table.tagName === 'TABLE') {
+                                const card = document.createElement('div');
+                                card.className = 'day resource-block';
+                                card.style.padding = '0';
+                                card.style.overflow = 'hidden';
 
-                case 'stu.special_est_list':
+                                h3.style.margin = '4rem 0 1.5rem 0.5rem';
+                                h3.style.fontSize = '1.4rem';
+                                h3.style.color = 'var(--color-text-secondary)';
+                                h3.style.textTransform = 'uppercase';
+                                h3.style.letterSpacing = '1px';
+                                h3.style.fontWeight = '800';
+
+                                h3.parentNode.insertBefore(card, table);
+                                card.appendChild(table);
+                                table.className = 'common resource-table';
+
+                                const rows = Array.from(table.querySelectorAll('tr'));
+                                const addHeaderRow = rows.find(r => r.textContent.includes('Дополнительная'));
+                                const compHeaderRow = rows.find(r => r.textContent.includes('Обязательная'));
+
+                                if (addHeaderRow) {
+                                    let next = addHeaderRow.nextElementSibling;
+                                    let hasAdditionalData = (next && next.tagName === 'TR' && next.querySelector('td') && !next.textContent.includes('Обязательная'));
+                                    if (!hasAdditionalData) {
+                                        addHeaderRow.remove();
+                                        if (compHeaderRow) compHeaderRow.remove();
+                                    }
+                                }
+                            }
+                        });
+                    }
+
+                    span9.querySelectorAll('p:empty, br').forEach(el => el.remove());
+                    break;
+                }
+
+                case 'stu.special_est_list': {
                     // 1. Очистка мусора
                     span9.querySelectorAll('script, style').forEach(el => el.remove());
 
+                    // Добавляем заголовок страницы
+                    if (!span9.querySelector('h2')) {
+                        const pageTitle = document.createElement('h2');
+                        pageTitle.textContent = 'Опросы и анкетирование';
+                        pageTitle.style.marginBottom = '2.4rem';
+                        span9.prepend(pageTitle);
+                    }
+
+                    // 2. Обработка всех "голых" текстовых узлов (типа текста про вакцинацию)
+                    let currentNode = span9.firstChild;
+                    while (currentNode) {
+                        if (currentNode.nodeType === Node.TEXT_NODE) {
+                            let text = currentNode.textContent.trim();
+                            if (text.length > 25 && !text.includes('FUNCTION')) {
+                                const title = document.createElement('div');
+                                title.className = 'survey-intro-text';
+                                title.innerHTML = text.replace(/\n/g, '<br>');
+                                span9.insertBefore(title, currentNode);
+                                currentNode.textContent = ''; // Очищаем оригинальный текст
+                            }
+                        }
+                        currentNode = currentNode.nextSibling;
+                    }
+
+                    // 3. Обработка самих опросов
                     const surveyBlocks = span9.querySelectorAll('.nav.answ, .nav.msg');
                     
                     surveyBlocks.forEach(survey => {
-                        survey.classList.add('survey-card'); 
+                        // ФИКС: Убиваем старые классы ЕТИСа, из-за которых скрывались пройденные опросы
+                        survey.className = 'survey-card'; 
+                        
                         const headerLi = survey.querySelector('li:first-child');
                         const contentLi = survey.querySelector('li:nth-child(2)');
 
-                        // 2. Синхронизация стрелки и сворачивания
+                        // Синхронизация стрелки и сворачивания
                         if (headerLi && contentLi) {
-                            // Функция обновления иконки
                             const updateArrow = () => {
-                                // Если contentLi НЕ содержит hide_elem, значит он виден
                                 headerLi.classList.toggle('is-open', !contentLi.classList.contains('hide_elem'));
                             };
 
-                            // Проверка при загрузке
                             updateArrow();
-
-                            // Следим за кликом (ЕТИС использует jQuery toggleClass, он срабатывает быстро)
                             headerLi.addEventListener('click', () => {
-                                // Ждем 50мс, пока отработает родной скрипт ЕТИСа, и обновляем стрелку
                                 setTimeout(updateArrow, 50);
                             });
+
+                            // Очищаем шапку от ссылок и шрифтов ЕТИСа
+                            const headerLink = headerLi.querySelector('a');
+                            if (headerLink) headerLi.innerHTML = headerLink.innerHTML;
+                            
+                            const headerFont = headerLi.querySelector('font');
+                            if (headerFont) headerLi.innerHTML = headerFont.innerHTML;
+                            
+                            headerLi.style.fontSize = '1.4rem';
+                            headerLi.style.lineHeight = '1.5';
+                            headerLi.style.fontWeight = '600';
+                            headerLi.style.color = 'var(--color-text-primary)';
                         }
 
-                        // 3. Обработка вступительного текста
-                        let prev = survey.previousSibling;
-                        while (prev) {
-                            if (prev.nodeType === Node.TEXT_NODE) {
-                                let text = prev.textContent.trim();
-                                if (text.length > 25 && !text.includes('FUNCTION')) {
-                                    const title = document.createElement('div');
-                                    title.className = 'survey-intro-text';
-                                    title.textContent = text;
-                                    survey.parentNode.insertBefore(title, survey);
-                                    prev.textContent = '';
-                                }
-                            }
-                            if (prev.nodeName === 'UL') break;
-                            prev = prev.previousSibling;
-                        }
-
-                        // 4. Переверстка содержимого (результатов)
+                        // Переверстка содержимого (результатов/форм)
                         if (contentLi) {
-                            const rawHTML = contentLi.innerHTML;
-                            if (rawHTML.includes('<form') || rawHTML.includes('<textarea')) {
-                                const addBtn = contentLi.querySelector('div[id$="_short"]');
-                                if (addBtn) addBtn.className = 'answer-btn-custom';
-                                return;
+                            // Очищаем контент от тега <a>, которым ЕТИС зачем-то оборачивает всё
+                            const contentLink = contentLi.querySelector('a');
+                            if (contentLink) {
+                                contentLi.innerHTML = contentLink.innerHTML;
                             }
 
+                            const rawHTML = contentLi.innerHTML;
+                            
+                            // А) Если внутри есть форма (текст-бокс для ввода ответа)
+                            if (rawHTML.includes('<form') || rawHTML.includes('<textarea')) {
+                                const shortBtn = contentLi.querySelector('div[id$="_short"]');
+                                if (shortBtn) {
+                                    shortBtn.className = 'answer-btn-custom';
+                                    shortBtn.style.width = 'fit-content';
+                                    shortBtn.innerHTML = '<span class="material-icons" style="font-size:18px; margin-right:6px">edit</span>' + shortBtn.innerHTML;
+                                }
+
+                                const form = contentLi.querySelector('form');
+                                if (form) {
+                                    const formContainer = document.createElement('div');
+                                    formContainer.className = 'form';
+                                    formContainer.style.marginTop = '1.6rem';
+                                    formContainer.style.padding = '2rem';
+                                    formContainer.style.boxShadow = 'none';
+                                    formContainer.style.border = '1px solid var(--color-table-border)';
+                                    
+                                    form.parentNode.insertBefore(formContainer, form);
+                                    formContainer.appendChild(form);
+
+                                    const textarea = form.querySelector('textarea');
+                                    if (textarea) {
+                                        textarea.style.width = '100%';
+                                        textarea.style.minHeight = '150px';
+                                        textarea.style.padding = '1.2rem';
+                                        textarea.style.borderRadius = 'var(--radius-small)';
+                                        textarea.style.border = '1px solid var(--color-table-border)';
+                                        textarea.style.background = 'var(--color-input)';
+                                        textarea.style.color = 'var(--color-text-primary)';
+                                        textarea.style.fontSize = '1.4rem';
+                                        textarea.style.resize = 'vertical';
+                                    }
+
+                                    const sendBtn = form.querySelector('button');
+                                    if (sendBtn) {
+                                        sendBtn.className = 'answer-btn-custom';
+                                        sendBtn.innerHTML = '<span class="material-icons" style="font-size:18px; margin-right:6px">send</span>Отправить';
+                                    }
+                                }
+                                return; // Выходим из цикла, так как это не результаты, а форма
+                            }
+
+                            // Б) Если это РЕЗУЛЬТАТЫ уже пройденного опроса
                             const cleanContent = document.createElement('div');
+                            
+                            // Ищем дату
                             const dateMatch = rawHTML.match(/\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}:\d{2}/);
                             if (dateMatch) {
                                 const d = document.createElement('div');
-                                d.className = 'survey-date';
-                                d.textContent = dateMatch[0];
+                                d.className = 'msg-date';
+                                d.style.marginBottom = '2rem';
+                                d.style.paddingBottom = '1rem';
+                                d.style.borderBottom = '1px solid var(--color-table-border)';
+                                d.textContent = 'Пройдено: ' + dateMatch[0];
                                 cleanContent.appendChild(d);
                             }
 
+                            // Разбираем вопросы и ответы
                             const temp = document.createElement('div');
                             temp.innerHTML = rawHTML;
+                            
+                            // Убираем спан с датой из парсинга
+                            const dateSpan = temp.querySelector('span[style*="color:#808080"]');
+                            if (dateSpan) dateSpan.remove();
+
                             const boldQuestions = temp.querySelectorAll('b');
                             let items = [];
                             
@@ -5701,26 +5891,19 @@ injectStyles(styles);
                                     let q = b.textContent.replace(':', '').trim();
                                     let a = "";
                                     let next = b.nextSibling;
+                                    
+                                    // Идем по соседним узлам, пока не встретим следующий вопрос <b>
                                     while(next && next.nodeName !== 'B') {
                                         if (next.nodeName === 'SPAN' || next.nodeName === 'I' || (next.nodeType === Node.TEXT_NODE && next.textContent.trim().length > 2)) {
-                                            a = next.textContent.trim();
+                                            a += next.textContent.trim() + " ";
                                         }
                                         next = next.nextSibling;
                                     }
-                                    if (q) items.push({q, a});
+                                    if (q) items.push({q, a: a.trim()});
                                 });
-                            } else {
-                                const lines = temp.innerText.split('\n').filter(l => l.trim().length > 5);
-                                const startIdx = dateMatch ? 1 : 0;
-                                for (let i = startIdx; i < lines.length; i++) {
-                                    let line = lines[i].trim();
-                                    if (line.includes(':')) {
-                                        let parts = line.split(':');
-                                        items.push({ q: parts[0].trim(), a: parts[1] ? parts[1].trim() : "..." });
-                                    }
-                                }
                             }
 
+                            // Отрисовываем вопросы и ответы
                             items.forEach(item => {
                                 const div = document.createElement('div');
                                 div.className = 'survey-result-item';
@@ -5740,6 +5923,7 @@ injectStyles(styles);
                     
                     span9.querySelectorAll('br').forEach(br => br.remove());
                     break;
+                }
 
                 case 'stu.term_test':
                     const reviewContainer = span9.querySelector('.review');
@@ -6310,6 +6494,106 @@ injectStyles(styles);
                         });
                     }
 
+                    break;
+                }
+
+                case 'stu.absence': {
+                    const table = span9.querySelector('table.slimtab_nice');
+                    if (table) {
+                        // 1. Возвращаем красивый дизайн (common) и добавляем наш класс-исключение (absence-table)
+                        table.className = 'common absence-table'; 
+                        
+                        const wrapper = document.createElement('div');
+                        wrapper.className = 'wide-table-wrapper';
+                        table.parentNode.insertBefore(wrapper, table);
+                        wrapper.appendChild(table);
+
+                        // 2. Фиксим пустой заголовок первой колонки (номер по порядку)
+                        const firstTh = table.querySelector('th');
+                        if (firstTh && firstTh.textContent.trim() === '') {
+                            firstTh.textContent = '№';
+                        }
+
+                        // 3. Оформляем ячейки с датами (вторая колонка)
+                        table.querySelectorAll('tr').forEach(tr => {
+                            const td = tr.querySelectorAll('td')[1]; // Вторая колонка
+                            if (td) {
+                                const fonts = td.querySelectorAll('font');
+                                if (fonts.length > 0) {
+                                    // Создаем внутренний div-контейнер для капсул
+                                    const dateContainer = document.createElement('div');
+                                    dateContainer.style.display = 'flex';
+                                    dateContainer.style.flexWrap = 'wrap';
+                                    dateContainer.style.gap = '6px';
+                                    dateContainer.style.justifyContent = 'center';
+
+                                    fonts.forEach(font => {
+                                        const color = font.getAttribute('color');
+                                        const title = font.getAttribute('title');
+                                        const text = font.textContent.trim();
+
+                                        const capsule = document.createElement('span');
+                                        capsule.className = 'absence-capsule ' + (color === 'green' ? 'valid' : 'invalid');
+                                        capsule.textContent = text;
+                                        if (title) capsule.title = title; 
+
+                                        dateContainer.appendChild(capsule);
+                                    });
+                                    
+                                    // Очищаем ячейку от старого мусора (<br>, шрифты) и вставляем наш контейнер
+                                    td.innerHTML = '';
+                                    td.appendChild(dateContainer);
+                                }
+                            }
+                        });
+                    }
+
+                    // 4. Парсим текстовую статистику внизу и превращаем в карточки
+                    let total = '0', valid = '0', invalid = '0';
+                    let foundStats = false;
+
+                    // Перебираем ноды, ищем нужный текст
+                    Array.from(span9.childNodes).forEach(node => {
+                        if (node.nodeType === Node.TEXT_NODE) {
+                            const text = node.textContent;
+                            if (text.includes('Всего пропущено занятий:')) { 
+                                total = text.replace(/\D/g, ''); 
+                                foundStats = true; 
+                                node.textContent = ''; // Скрываем оригинальный текст
+                            }
+                            if (text.includes('Из них по уважительной причине:')) { 
+                                valid = text.replace(/\D/g, ''); 
+                                node.textContent = ''; 
+                            }
+                        } else if (node.tagName === 'B' && node.textContent.includes('По неуважительной причине:')) {
+                            invalid = node.textContent.replace(/\D/g, '');
+                            node.remove(); // Удаляем тег <b>
+                        }
+                    });
+
+                    // 5. Отрисовываем сетку статистики
+                    if (foundStats) {
+                        const summaryDiv = document.createElement('div');
+                        summaryDiv.className = 'absence-summary';
+                        summaryDiv.innerHTML = `
+                            <div class="absence-stat">
+                                <span class="absence-stat-val">${total}</span>
+                                <span class="absence-stat-label">Всего пропущено</span>
+                            </div>
+                            <div class="absence-stat valid">
+                                <span class="absence-stat-val">${valid}</span>
+                                <span class="absence-stat-label">Уважительные</span>
+                            </div>
+                            <div class="absence-stat invalid">
+                                <span class="absence-stat-val">${invalid}</span>
+                                <span class="absence-stat-label">Неуважительные</span>
+                            </div>
+                        `;
+                        span9.appendChild(summaryDiv);
+                    }
+
+                    // Убираем лишние <br> в конце страницы
+                    span9.querySelectorAll('br').forEach(br => br.remove());
                     break;
                 }
 
