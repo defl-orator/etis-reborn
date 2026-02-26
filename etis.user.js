@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.31
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -98,7 +98,7 @@
 	--color-scrollbar-thumb: #4A4D51;
 	--color-scrollbar-thumb-highlight: #606468;
 	--color-table-border: rgba(255, 255, 255, 0.08);
-	--color-table-header: #212325;
+    --color-table-header: #1A1C1E;
 	--color-table-highlight: #2A2C2F;
 	
     /* Статусы */
@@ -422,7 +422,7 @@ form.que_form { margin-top: 1rem !important; }
 
 .span3 > .nav.nav-tabs.nav-stacked > li > a:hover {
     background: var(--color-highlight) !important;
-    margin: 0 12px !important;
+    margin: 0 12px 4px 12px !important;
     border-radius: var(--radius-small) !important;
     width: auto !important;
 }
@@ -939,7 +939,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         height: 100vh !important; 
         margin: 0 !important;
         padding-top: 60px !important; 
-        padding-bottom: env(safe-area-inset-bottom, 40px) !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 40px) + 100px) !important;
         background: var(--color-card) !important;
         z-index: 1000000 !important; 
         transform: translateX(-105%) !important;
@@ -1202,7 +1202,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         width: var(--width-aside) !important;
         margin: 0 !important;
         padding-top: 2rem !important;
-        padding-bottom: 2rem !important;
+        padding-bottom: 0.5rem !important;
         overflow-x: hidden !important;
         overflow-y: auto !important;
         float: none !important;
@@ -1221,20 +1221,20 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 }
 
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a {
-    background-color: var(--color-accent) !important; /* Теперь берет цвет из темы (Синий или Желтый) */
-    color: var(--color-text-primary-invert) !important; /* Текст будет черный на желтом и белый на синем */
+    background-color: var(--color-accent) !important; 
+    color: var(--color-text-primary-invert) !important; 
     font-weight: 600 !important;
-    margin: 0 12px !important;
+    margin: 0 12px 4px 12px !important;
     border-radius: var(--radius-small) !important;
     width: auto !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; /* Небольшая тень для объема */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; 
 }
 
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover {
     background-color: var(--color-accent) !important;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-    margin: 0 12px !important;
+    margin: 0 12px 4px 12px !important;
     border-radius: var(--radius-small) !important;
     width: auto !important;
 }
@@ -1259,7 +1259,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 
 .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
     background: var(--color-highlight) !important;
-    margin: 0 12px !important;
+    margin: 0 12px 4px 12px !important;
     border-radius: var(--radius-small) !important;
     width: auto !important;
 }
@@ -1298,47 +1298,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     position: relative !important;
 }
 
-.timetable tr:not(:last-child) {
-    background-image: linear-gradient(to right, 
-        transparent 8.5rem, 
-        rgba(0, 0, 0, 0.08) 8.5rem, 
-        rgba(0, 0, 0, 0.08) calc(100% - 1.6rem), 
-        transparent calc(100% - 1.6rem)
-    ) !important;
-    background-position: bottom !important;
-    background-repeat: no-repeat !important;
-    background-size: 100% 1px !important;
-}
-
-[theme="dark"] .timetable tr:not(:last-child) {
-    background-image: linear-gradient(to right, 
-        transparent 8.1rem, 
-        rgba(255, 255, 255, 0.1) 8.1rem, 
-        rgba(255, 255, 255, 0.1) calc(100% - 1.6rem), 
-        transparent calc(100% - 1.6rem)
-    ) !important;
-}
-
-/* Мобильная версия отступов линии */
-@media (max-width: 960px) {
-    .timetable tr:not(:last-child) {
-        background-image: linear-gradient(to right, 
-            transparent 8.1rem, 
-            rgba(0, 0, 0, 0.08) 8.1rem, 
-            rgba(0, 0, 0, 0.08) calc(100% - 1.6rem), 
-            transparent calc(100% - 1.6rem)
-        ) !important;
-    }
-    [theme="dark"] .timetable tr:not(:last-child) {
-        background-image: linear-gradient(to right, 
-            transparent 8.1rem, 
-            rgba(255, 255, 255, 0.1) 8.1rem, 
-            rgba(255, 255, 255, 0.1) calc(100% - 1.6rem), 
-            transparent calc(100% - 1.6rem)
-        ) !important;
-    }
-}
-
 .timetable .pair_num {
     border-bottom: none !important;
 }
@@ -1366,7 +1325,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     opacity: 0;
     visibility: hidden;
     transition: opacity var(--transition), visibility var(--transition);
-    display: block; /* Чтобы ссылка была на новой строке под именем */
+    display: block;
     font-size: 1.1rem !important;
 }
 
@@ -1380,7 +1339,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     padding-left: 1rem !important;
     padding-right: 1rem !important;
 }
-
 
 /* --- ZOOM STYLING --- */
 
@@ -1508,7 +1466,7 @@ input::placeholder {
     font-size: 3.2rem !important;
     font-weight: 800 !important;
     color: var(--color-text-primary) !important;
-    padding: 0 1.6rem !important;
+    padding: 0 2.6rem !important; 
     margin-bottom: 2.4rem !important;
     letter-spacing: 0.5px !important;
     line-height: 1 !important;
@@ -1726,12 +1684,24 @@ div[id^="frm_"] textarea:focus {
 }
 /* --- SIDEBAR FOOTER --- */
 .sidebar-footer {
-    padding: 2.4rem 1.6rem !important;
+    position: relative !important;
+    padding: 1.6rem 2.6rem !important;
     font-size: 1.1rem !important;
     color: var(--color-text-secondary) !important;
     line-height: 1.5 !important;
-    border-top: 1px solid var(--color-table-border) !important;
-    margin-top: 1rem !important;
+    border-top: none !important;
+    margin-top: 0 !important;
+}
+
+/* Рисуем новый аккуратный разделитель с отступами */
+.sidebar-footer::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 1.6rem !important;
+    right: 1.6rem !important;
+    height: 1px !important;
+    background: var(--color-table-border) !important;
 }
 
 .sidebar-footer a {
@@ -1744,29 +1714,9 @@ div[id^="frm_"] textarea:focus {
     color: var(--color-accent) !important;
 }
 /* --- TIMETABLE WINDOWS --- */
-.timetable tr.timetable-gap-row {
-    background-image: linear-gradient(to right, 
-        transparent 8.5rem, 
-        rgba(0, 0, 0, 0.08) 8.5rem, 
-        rgba(0, 0, 0, 0.08) calc(100% - 1.6rem), 
-        transparent calc(100% - 1.6rem)
-    ) !important;
-    background-position: bottom !important;
-    background-repeat: no-repeat !important;
-    background-size: 100% 1px !important;
-}
-
-[theme="dark"] .timetable tr.timetable-gap-row {
-    background-image: linear-gradient(to right, 
-        transparent 8.1rem, 
-        rgba(255, 255, 255, 0.1) 8.1rem, 
-        rgba(255, 255, 255, 0.1) calc(100% - 1.6rem), 
-        transparent calc(100% - 1.6rem)
-    ) !important;
-}
-
 .timetable-gap-row td {
-    padding: 1rem 0 !important; 
+    padding-top: 1rem !important; 
+    padding-bottom: 1rem !important; 
     border: none !important;
     vertical-align: middle !important;
 }
@@ -1785,18 +1735,26 @@ div[id^="frm_"] textarea:focus {
     border: 1px solid rgba(45, 140, 255, 0.15) !important;
 }
 
-.timetable tr.tr-before-gap {
-    background-image: linear-gradient(to right, transparent 8.5rem, rgba(0, 0, 0, 0.08) 8.5rem, rgba(0, 0, 0, 0.08) calc(100% - 1.6rem), transparent calc(100% - 1.6rem)) !important;
-}
-
 /* Блок с информацией о пользователе в сайдбаре */
 .sidebar-user-info {
-    padding: 1.6rem !important;
+    position: relative !important;
+    padding: 1.6rem 2.6rem !important;
     font-size: 1.1rem !important;
     color: var(--color-text-secondary) !important;
     line-height: 1.5 !important;
-    border-top: 1px solid var(--color-table-border) !important;
+    border-top: none !important; 
     margin-top: auto !important;
+}
+
+/* Рисуем новый аккуратный разделитель с отступами */
+.sidebar-user-info::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 1.6rem !important;
+    right: 1.6rem !important;
+    height: 1px !important;
+    background: var(--color-table-border) !important;
 }
 
 .sidebar-user-info b {
@@ -3835,16 +3793,6 @@ form.que_form select {
         text-align: right !important;
         color: var(--color-text-secondary) !important;
     }
-
-    /* Фикс линий расписания под новые ширины */
-    .timetable-grid tr:not(:last-child) {
-        background-image: linear-gradient(to right, 
-            transparent 95px, 
-            var(--color-table-border) 95px, 
-            var(--color-table-border) calc(100% - 1.6rem), 
-            transparent calc(100% - 1.6rem)
-        ) !important;
-    }
 }
 
 /* Специальные стили для таблицы пропусков */
@@ -3958,8 +3906,9 @@ form.que_form select {
 
 /* --- ТАБЛИЦА РАСПИСАНИЯ --- */
 
-/* Сброс универсальных правил .common для расписания */
-.span9 table.common.timetable-grid {
+/* Усиливаем приоритет через html[theme], чтобы 100% перебить глобальные правила старой темы */
+html[theme] table.timetable-grid,
+html[theme] .span9 table.common.timetable-grid {
     table-layout: fixed !important;
     width: 100% !important;
     border-spacing: 0 !important;
@@ -3967,39 +3916,81 @@ form.que_form select {
 }
 
 /* Настройка колонок расписания */
-.timetable-grid td {
-    padding: 1.2rem 0 !important; /* Увеличиваем вертикальный отступ для воздуха */
+html[theme] .timetable-grid td {
+    padding: 1.2rem 0 !important; 
     white-space: normal !important;
     word-wrap: break-word !important;
 }
 
 /* 1. Колонка с временем (Левая) */
-.timetable-grid td.pair_num {
+html[theme] .timetable-grid td.pair_num {
     width: 90px !important;
     min-width: 90px !important;
-    text-align: center !important;
+    text-align: center !important; /* Убиваем принудительное выравнивание по левому краю (которое создавало пустоту) */
     font-weight: 500 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
 }
 
 /* 2. Колонка с предметом (Центральная) - забирает всё место */
-.timetable-grid td.pair_info {
+html[theme] .timetable-grid td.pair_info {
     width: auto !important;
-    padding-left: 1.6rem !important;
+    padding-left: 0 !important; /* УБИРАЕМ ОТСТУП, прижимаем текст и капсулы к краю */
     padding-right: 1.6rem !important;
     text-align: left !important;
 }
 
 /* 3. Колонка с преподавателем (Правая) */
-.timetable-grid td.pair_teacher {
+html[theme] .timetable-grid td.pair_teacher {
     width: 160px !important;
     min-width: 150px !important;
     text-align: right !important;
-    padding-right: 1.6rem !important;
+    padding-right: 2rem !important;
     color: var(--color-text-secondary) !important;
+    position: relative !important;
+    vertical-align: middle !important;
 }
 
-/* Фикс разделительных линий (Apple Style) под новые ширины */
-.timetable-grid tr:not(:last-child) {
+/* Убиваем скрытый перенос строки, который ломал центрирование */
+html[theme] .timetable-grid td.pair_teacher br {
+    display: none !important;
+}
+
+/* Имя преподавателя: центрируется таблицей, при наведении плавно уезжает вверх */
+html[theme] .timetable-grid td.pair_teacher a:not(.eval) {
+    display: inline-block !important;
+    transition: transform 0.2s ease !important;
+    position: relative !important;
+    z-index: 2 !important;
+}
+
+html[theme] .timetable-grid tr:hover td.pair_teacher:has(.eval) a:not(.eval) {
+    transform: translateY(-8px) !important;
+}
+
+/* Кнопка "Оценить занятие": висит невидимо в центре ячейки */
+html[theme] .timetable-grid td.pair_teacher .eval {
+    position: absolute !important;
+    right: 2rem !important; /* Выравниваем по правому краю */
+    top: 50% !important; /* Центрируем по вертикали */
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: translateY(0) !important; 
+    transition: all 0.2s ease !important;
+    font-size: 1.1rem !important;
+    display: block !important;
+    z-index: 1 !important;
+}
+
+/* При наведении кнопка появляется и отъезжает вниз, занимая место */
+html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(6px) !important; 
+}
+
+/* Фикс разделительных линий (линия стартует ровно от текста предмета, без отступа) */
+html[theme] .timetable-grid tr:not(:last-child) {
     background-image: linear-gradient(to right, 
         transparent 90px, 
         var(--color-table-border) 90px, 
@@ -4012,22 +4003,37 @@ form.que_form select {
 }
 
 /* Убираем ховер-эффект, который мешает в расписании */
-.timetable-grid tr:hover td {
+html[theme] .timetable-grid tr:hover td {
     background: transparent !important;
 }
 
 /* Фикс для строк с "Окнами" */
-.timetable-grid tr.timetable-gap-row td {
-    padding: 1rem 0 !important;
+html[theme] .timetable-grid tr.timetable-gap-row td {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
 }
-.timetable-grid tr.timetable-gap-row .timetable-gap-capsule {
-    margin-left: 1.6rem !important;
+
+/* Метки типа пары (ЛЕК, ПРАКТ, ЛАБ) */
+.pair-type-badge {
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    margin-bottom: 0.6rem !important;
+    line-height: 1 !important;
+    display: block !important;
 }
+
+/* Цвета для разных типов занятий */
+.type-badge-lek { color: var(--color-blue) !important; }
+.type-badge-pract { color: var(--color-green) !important; }
+.type-badge-lab { color: var(--color-warning) !important; }
+.type-badge-exam { color: var(--color-red) !important; } /* На случай зачетов/экзаменов */
 
 /* --- РАСПИСАНИЕ ДЛЯ МОБИЛЬНЫХ --- */
 @media (max-width: 960px) {
     
-    /* 1. Спасаем шапку с датой от обрезания (она больше не уедет за край) */
+    /* 1. Спасаем шапку с датой от обрезания */
     .span9 .day h3 {
         padding: 1.2rem 1.4rem !important;
         font-size: 1.4rem !important;
@@ -4036,23 +4042,23 @@ form.que_form select {
     .span9 .day h3 .day-name {
         white-space: nowrap !important;
         overflow: hidden !important;
-        text-overflow: ellipsis !important; /* Обрежет день точками, если экран совсем узкий */
+        text-overflow: ellipsis !important;
     }
     .span9 .day h3 .day-date {
         padding: 0.4rem 1rem !important;
         font-size: 1.15rem !important;
-        flex-shrink: 0 !important; /* Категорически запрещаем капсуле сжиматься */
+        flex-shrink: 0 !important; 
         margin-left: 0.8rem !important;
     }
 
-    /* 2. Жёсткая сетка для таблицы: сохраняем 3 колонки, но оптимизируем ширину */
-    .timetable-grid {
-        table-layout: fixed !important; /* Заставляем браузер строго соблюдать ширину */
+    /* 2. Жёсткая сетка для таблицы */
+    html[theme] .timetable-grid {
+        table-layout: fixed !important; 
         width: 100% !important;
     }
 
     /* Левая колонка (Время) - делаем компактной */
-    .timetable-grid td.pair_num {
+    html[theme] .timetable-grid td.pair_num {
         width: 75px !important;
         min-width: 75px !important;
         padding-left: 1rem !important;
@@ -4060,37 +4066,34 @@ form.que_form select {
         font-size: 1.1rem !important;
     }
 
-    /* Центральная колонка (Предмет) - отдаем ей максимум места */
-    .timetable-grid td.pair_info {
+    /* Центральная колонка (Предмет) - сохраняем удачный мобильный вид */
+    html[theme] .timetable-grid td.pair_info {
         width: auto !important; 
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
     }
 
-    /* Правая колонка (Преподаватель) - узкая, прижата вправо */
-    .timetable-grid td.pair_teacher {
+    /* Правая колонка (Преподаватель) */
+    html[theme] .timetable-grid td.pair_teacher {
         width: 95px !important;
         min-width: 95px !important;
-        padding-right: 1rem !important;
+        padding-right: 1.4rem !important;
         padding-left: 0.5rem !important;
         font-size: 1.1rem !important;
         text-align: right !important;
-        word-wrap: break-word !important; /* Разрешаем перенос длинных фамилий */
+        word-wrap: break-word !important; 
     }
 
-    /* На телефоне всегда показываем кнопку "оценить", так как нет мышки */
-    .timetable-grid td.pair_teacher .eval {
-        display: inline-block !important;
-        margin-top: 4px !important;
-        font-size: 1rem !important;
-        line-height: 1.2 !important;
+    /* Выравниваем выезжающую по тапу кнопку под мобильный отступ */
+    html[theme] .timetable-grid td.pair_teacher .eval {
+        right: 1.4rem !important;
     }
 
-    /* Адаптируем разделительную линию под новую ширину 75px */
-    .timetable-grid tr:not(:last-child) {
+    /* Адаптируем разделительную линию под мобильную ширину 75px */
+    html[theme] .timetable-grid tr:not(:last-child) {
         background-image: linear-gradient(to right, 
-            transparent 75px, 
-            var(--color-table-border) 75px, 
+            transparent calc(75px + 0.5rem), 
+            var(--color-table-border) calc(75px + 0.5rem), 
             var(--color-table-border) calc(100% - 1rem), 
             transparent calc(100% - 1rem)
         ) !important;
@@ -5075,7 +5078,7 @@ injectStyles(styles);
                 if (!sidebar.querySelector('.sidebar-footer')) {
                     const footer = document.createElement('div');
                     footer.className = 'sidebar-footer';
-                    footer.innerHTML = 'Designed <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
+                    footer.innerHTML = 'Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
                     sidebar.appendChild(footer);
                 }
             }
@@ -5446,7 +5449,7 @@ injectStyles(styles);
                             <tr>
                                 <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
-                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; margin-top: 0.4rem;">
+                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
                                         <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
                                         Выходной
                                     </div>
@@ -5638,6 +5641,74 @@ injectStyles(styles);
                     } else {
                         // Резервный вариант, если запятой нет
                         header.innerHTML = `<span class="day-name">${text}</span>`;
+                    }
+                });
+
+                // --- ПАРСИНГ И ИКОНКИ ДЛЯ АУДИТОРИЙ ---
+                span9.querySelectorAll('.pair_info .aud').forEach(aud => {
+                    let text = aud.innerHTML;
+                    
+                    // Ищем паттерн: ауд. 329/12 (12 корпус, 3 этаж)
+                    // Иногда бывает без дроби, поэтому [^\s(<]+ берет все до пробела
+                    const match = text.match(/ауд\.\s*([^\s(<]+)\s*\((.*?)\s*корпус,\s*(.*?)\s*этаж\)/i);
+                    
+                    if (match) {
+                        let roomNumber = match[1];
+                        // Отрезаем дублирующий номер корпуса после слэша, если он есть (329/12 -> 329)
+                        if (roomNumber.includes('/')) {
+                            roomNumber = roomNumber.split('/')[0]; 
+                        }
+                        const building = match[2];
+                        const floor = match[3];
+                        
+                        // Собираем новую красивую строку с иконкой "place"
+                        const newFormat = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>ауд. ${roomNumber}, к. ${building}, э. ${floor}</div>`;
+                        
+                        // Заменяем оригинальный кусок текста на наш HTML, не трогая ссылки (на Zoom и тд)
+                        aud.innerHTML = text.replace(match[0], newFormat);
+                    }
+                    
+                    // Выстраиваем аудиторию и Zoom-кнопку (если она есть) аккуратно друг под другом
+                    aud.style.display = 'flex';
+                    aud.style.flexDirection = 'column';
+                    aud.style.alignItems = 'flex-start';
+                    aud.style.gap = '0.6rem';
+                    aud.style.marginTop = '0.6rem';
+                });
+
+                // --- ПАРСИНГ ТИПА ПАРЫ (ЛЕК, ПРАКТ, ЛАБ) ---
+                span9.querySelectorAll('.timetable-grid tr').forEach(row => {
+                    const disContainer = row.querySelector('.pair_info .dis');
+                    const numTd = row.querySelector('.pair_num');
+                    
+                    if (disContainer && numTd) {
+                        // Тип пары обычно приписан в конце ссылки или прямо в span
+                        const targetEl = disContainer.querySelector('a') || disContainer;
+                        const text = targetEl.textContent;
+                        
+                        // Ищем (лек), (практ), (лаб), (зач), (экз) в самом конце строки
+                        const match = text.match(/\s*\((лек|практ|лаб|зач|экз)\)\s*$/i);
+                        
+                        if (match) {
+                            const type = match[1].toLowerCase();
+                            
+                            // Удаляем тип из оригинального названия предмета
+                            targetEl.textContent = text.replace(match[0], '');
+                            
+                            // Выбираем цвет в зависимости от типа
+                            let typeClass = 'type-badge-lek';
+                            if (type === 'лек') typeClass = 'type-badge-lek';
+                            else if (type === 'практ') typeClass = 'type-badge-pract';
+                            else if (type === 'лаб') typeClass = 'type-badge-lab';
+                            else if (type === 'зач' || type === 'экз') typeClass = 'type-badge-exam';
+                            
+                            // Создаем метку и вставляем её в колонку со временем (перед "1 пара")
+                            const badge = document.createElement('span');
+                            badge.className = `pair-type-badge ${typeClass}`;
+                            badge.textContent = type;
+                            
+                            numTd.prepend(badge);
+                        }
                     }
                 });
 
