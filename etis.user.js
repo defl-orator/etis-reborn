@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -1013,7 +1013,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     }
     .mobile-overlay.active { opacity: 1; pointer-events: auto; }
 
-    /* 4. Исправление горизонтального скролла */
+    /* 4. Горизонтальный скролл */
     .common, .teach_plan, .slimtab_nice {
         display: block !important;
         width: 100% !important;
@@ -1248,7 +1248,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     text-shadow: none !important;
 }
 
-/* Фикс для иконок в активной вкладке */
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a .material-icons {
     color: var(--color-text-primary-invert) !important;
     opacity: 1 !important;
@@ -1850,7 +1849,6 @@ div[id^="frm_"] textarea:focus {
 #resources td:first-child a {
     font-weight: 600 !important;
 }
-/* Специальный фикс для таблиц внутри раздельных блоков ресурсов */
 .day .common {
     box-shadow: none !important; /* Убираем тень, так как она уже есть у .day */
     margin-bottom: 0 !important;
@@ -1893,7 +1891,7 @@ div[id^="frm_"] textarea:focus {
     margin: 0 !important;
 }
 .resource-table {
-    table-layout: fixed !important; /* Важно: фиксирует сетку */
+    table-layout: fixed !important;
     width: 100% !important;
 }
 
@@ -2675,7 +2673,6 @@ span[id$="_cnt"] {
     background: var(--color-highlight) !important;
 }
 
-/* Фикс для заголовка, чтобы он не слипался с карточками */
 .span9 > h2 {
     margin-bottom: 1rem !important;
 }
@@ -2975,7 +2972,6 @@ span[id$="_cnt"] {
     min-width: 800px !important; /* Чтобы таблица не сжималась в кашу */
 }
 
-/* Фикс для ячеек со сложной структурой */
 .teach_plan td font[color="red"] {
     font-weight: 800 !important;
 }
@@ -2985,7 +2981,7 @@ span[id$="_cnt"] {
     font-weight: 700 !important;
 }
 
-/* --- TEACHER STATS FIX --- */
+/* --- TEACHER STATS --- */
 
 /* Убиваем тег nobr, который мешает таблице сжиматься */
 nobr {
@@ -3002,7 +2998,6 @@ nobr {
     border: 1px solid var(--color-table-border) !important;
 }
 
-/* Фикс для пустых ячеек (ETIS ставит им класс empty) */
 td.empty {
     background: var(--color-body) !important;
     opacity: 0.3;
@@ -3092,7 +3087,7 @@ td.empty {
     .jour-badge { display: none !important; } /* Скрываем бейдж на мобилках, если не влазит */
 }
 
-/* --- LOGIN MOBILE FIX (ИСПРАВЛЕНИЕ ВХОДА НА ТЕЛЕФОНЕ) --- */
+/* --- LOGIN MOBILE --- */
 @media (max-width: 600px) {
     .login {
         width: 100% !important;
@@ -3294,7 +3289,6 @@ td.empty {
     flex-grow: 1 !important;
 }
 
-/* Фикс для сообщений, чтобы они не ломали сетку */
 .nav.msg.message-card, .nav.msg.msg-card {
     margin-bottom: 2rem !important;
 }
@@ -3309,7 +3303,7 @@ td.empty {
 }
 .message-pages li:first-child { display: none !important; } /* Скрываем слово "Страницы" */
 
-/* --- АНТИ-МОРГАНИЕ (FOUC FIX) --- */
+/* --- АНТИ-МОРГАНИЕ --- */
 .span9 > ul.nav.msg {
     display: none !important;
 }
@@ -3585,7 +3579,7 @@ form.que_form select {
     font-weight: 600 !important;
 }
 
-/* --- MOBILE LOADING STATE (ФИКС КНОПКИ ПРИ ПЕРЕХОДЕ) --- */
+/* --- MOBILE LOADING STATE --- */
 .mobile-menu-btn.is-loading {
     width: 48px !important; /* Размер кружка */
     height: 48px !important;
@@ -3855,7 +3849,7 @@ form.que_form select {
 
 /* Специальные стили для таблицы пропусков */
 .span9 table.common.absence-table {
-    table-layout: fixed !important; /* Строго фиксируем сетку */
+    table-layout: fixed !important;
     width: 100% !important;
     min-width: 800px !important; /* Не даем слишком сильно сжаться на мобильных */
 }
@@ -3966,7 +3960,7 @@ form.que_form select {
 
 /* Сброс универсальных правил .common для расписания */
 .span9 table.common.timetable-grid {
-    table-layout: fixed !important; /* Фиксируем сетку, чтобы колонки не прыгали */
+    table-layout: fixed !important;
     width: 100% !important;
     border-spacing: 0 !important;
     border-collapse: collapse !important;
@@ -4030,7 +4024,7 @@ form.que_form select {
     margin-left: 1.6rem !important;
 }
 
-/* --- ИСПРАВЛЕНИЕ РАСПИСАНИЯ ДЛЯ МОБИЛЬНЫХ --- */
+/* --- РАСПИСАНИЕ ДЛЯ МОБИЛЬНЫХ --- */
 @media (max-width: 960px) {
     
     /* 1. Спасаем шапку с датой от обрезания (она больше не уедет за край) */
@@ -4053,7 +4047,7 @@ form.que_form select {
 
     /* 2. Жёсткая сетка для таблицы: сохраняем 3 колонки, но оптимизируем ширину */
     .timetable-grid {
-        table-layout: fixed !important; /* Заставляем браузер строго соблюдать наши ширины */
+        table-layout: fixed !important; /* Заставляем браузер строго соблюдать ширину */
         width: 100% !important;
     }
 
@@ -4396,7 +4390,7 @@ form.que_form select {
 .library-subject-block table td:nth-child(2) { width: 10% !important; text-align: center !important; }
 .library-subject-block table td:nth-child(3) { width: 20% !important; text-align: left !important; }
 
-/* Колонки: КАТАЛОГ (уже работал, закрепляем) */
+/* Колонки: КАТАЛОГ */
 #record_list table td:nth-child(1) { width: 65% !important; text-align: left !important; }
 #record_list table td:nth-child(2) { width: 10% !important; text-align: center !important; }
 #record_list table td:nth-child(3) { width: 25% !important; text-align: left !important; }
@@ -4797,6 +4791,36 @@ injectStyles(styles);
             // Style Sidebar
             const sidebar = document.querySelector("div.span3");
             if (sidebar) {
+                // 1. ФИКС ХОВЕРА (ЖЕСТКАЯ ФИКСАЦИЯ)
+                const sidebarStyles = document.createElement('style');
+                sidebarStyles.innerHTML = `
+                    /* Единый стиль для всех состояний */
+                    .span3 > .nav.nav-tabs.nav-stacked > li > a {
+                        margin: 0 12px 4px 12px !important;
+                        padding: 10px 14px !important;
+                        border-radius: var(--radius-small) !important;
+                        width: auto !important;
+                        border: 1px solid transparent !important;
+                        transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
+                        transform: translateZ(0); /* Аппаратное ускорение */
+                    }
+                    /* Ховер - меняем только фон */
+                    .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
+                        background: var(--color-highlight) !important;
+                        margin: 0 12px 4px 12px !important; /* Удерживаем отступ */
+                    }
+                    /* Активный элемент */
+                    .span3 > .nav.nav-tabs.nav-stacked > li.active > a {
+                        margin: 0 12px 4px 12px !important;
+                    }
+                    /* Скрываем лишние списки, так как мы всё перенесем в первый */
+                    .span3 > ul.nav.nav-tabs.nav-stacked:not(:first-of-type) {
+                        display: none !important;
+                    }
+                `;
+                document.head.appendChild(sidebarStyles);
+
+                // 2. Логотип
                 if (!sidebar.querySelector('.sidebar-logo')) {
                     const logo = document.createElement('div');
                     logo.className = 'sidebar-logo';
@@ -4804,108 +4828,231 @@ injectStyles(styles);
                     sidebar.prepend(logo);
                 }
 
-                // Находим оригинальный блок с инфой (он сейчас скрыт в .navbar-static-top)
+                // 3. Инфо о студенте
                 const originalInfo = document.querySelector('.navbar-static-top .span12 > span');
-
                 if (originalInfo && !sidebar.querySelector('.sidebar-user-info')) {
                     const userInfoDiv = document.createElement('div');
                     userInfoDiv.className = 'sidebar-user-info';
-
-                    // Получаем имя (оно идет первым текстовым узлом) и остальные данные
                     const nameText = originalInfo.childNodes[0].textContent.trim();
                     const subInfo = Array.from(originalInfo.querySelectorAll('span')).map(s => s.textContent.trim());
-
-                    // Формируем красивую структуру
                     userInfoDiv.innerHTML = `
                         <b>${nameText}</b>
                         ${subInfo.map(info => `<span>${info}</span>`).join('')}
                     `;
-
                     const sidebarFooter = sidebar.querySelector('.sidebar-footer');
-                    if (sidebarFooter) {
-                        sidebar.insertBefore(userInfoDiv, sidebarFooter);
-                    } else {
-                        sidebar.appendChild(userInfoDiv);
-                    }
+                    if (sidebarFooter) sidebar.insertBefore(userInfoDiv, sidebarFooter);
+                    else sidebar.appendChild(userInfoDiv);
                 }
 
-                const allowedHrefs = ['stu_ann.announces', 'stu.teacher_notes'];
+                // 4. ПОДГОТОВКА ВСЕХ ЭЛЕМЕНТОВ
+                // Собираем ВСЕ li со всех списков в один массив
+                const allNavs = sidebar.querySelectorAll('ul.nav.nav-tabs.nav-stacked');
+                const mainNav = allNavs[0]; // Сюда будем всё складывать
+                let allListItems = [];
 
-                sidebar.querySelectorAll('li > a').forEach(a => {
+                allNavs.forEach(nav => {
+                    nav.querySelectorAll('li').forEach(li => {
+                        // Удаляем Дисциплины по выбору и Факультативы сразу
+                        const href = li.querySelector('a')?.getAttribute('href') || '';
+                        if (!href.includes('choose_dis') && !href.includes('fcl_choice')) {
+                            allListItems.push(li);
+                        }
+                    });
+                });
+
+                // Создаем пункт "Тема" вручную, чтобы добавить его в сортировку
+                const themeLi = document.createElement("li");
+                themeLi.className = 'theme-switcher-item';
+                const themeLink = document.createElement("a");
+                themeLink.style.cursor = 'pointer';
+                themeLink.href = "#theme-switch"; // Фейковая ссылка для идентификации
+                themeLink.appendChild(document.createTextNode('Тема: ' + ((theme == 'auto') ? 'Системная' : ((theme == 'dark') ? 'Темная' : 'Светлая'))));
+                themeLink.addEventListener('click', switchTheme, false);
+                themeLi.appendChild(themeLink);
+                allListItems.push(themeLi);
+
+                // Функция иконок
+                const getIconForHref = (href) => {
+                    if (href === '#theme-switch') return 'brightness_6';
+                    if (href.includes('teach_plan')) return 'school';
+                    if (href.includes('ebl_choice')) return 'check_circle_outline';
+                    if (href.includes('timetable')) return 'calendar_today'; 
+                    if (href.includes('signs')) return 'assignment_turned_in';
+                    if (href.includes('absence')) return 'event_busy';
+                    if (href.includes('orders')) return 'assignment';
+                    if (href.includes('library')) return 'local_library';
+                    if (href.includes('teachers')) return 'people';
+                    if (href.includes('est_pkg.show_list')) return 'forum';
+                    if (href.includes('group_tt')) return 'playlist_add_check'; 
+                    if (href.includes('announces')) return 'announcement';
+                    if (href.includes('teacher_notes')) return 'mail';
+                    if (href.includes('ses')) return 'account_balance';
+                    if (href.includes('advice')) return 'lightbulb';
+                    if (href.includes('electr')) return 'public';
+                    if (href.includes('cert_pkg')) return 'description'; 
+                    if (href.includes('contract_list')) return 'receipt';
+                    if (href.includes('blank_forms')) return 'insert_drive_file';
+                    if (href.includes('portfolio')) return 'folder_shared';
+                    if (href.includes('about')) return 'info';
+                    if (href.includes('term_test')) return 'rate_review';
+                    if (href.includes('special_est_list')) return 'poll';
+                    if (href.includes('change_pass')) return 'vpn_key';
+                    if (href.includes('change_email')) return 'alternate_email';
+                    if (href.includes('change_pr_page')) return 'account_box';
+                    if (href.includes('logout')) return 'exit_to_app';
+                    return 'chevron_right'; 
+                };
+
+                const allowedDotHrefs = ['stu_ann.announces', 'stu.teacher_notes'];
+
+                // Обрабатываем каждый элемент (добавляем иконки, чистим текст)
+                allListItems.forEach(li => {
+                    const a = li.querySelector('a');
+                    if (!a) return;
                     const href = a.getAttribute('href') || '';
                     let hasNotifications = false;
 
-                    // 1. Проверяем наличие цифр в скобках (например, "Сообщения (2)")
+                    // Чистка текста от счетчиков
                     Array.from(a.childNodes).forEach(node => {
                         if (node.nodeType === Node.TEXT_NODE) {
                             const match = node.textContent.match(/\s*\(([^)]+)\)\s*$/);
                             if (match) {
                                 const counterStr = match[1];
-                                if (counterStr !== '0' && counterStr !== '0/0') {
-                                    hasNotifications = true;
-                                }
+                                if (counterStr !== '0' && counterStr !== '0/0') hasNotifications = true;
                                 node.textContent = node.textContent.replace(/\s*\([^)]+\)\s*$/, '');
                             }
                         }
                     });
 
-                    // 2. Проверяем наличие стандартного бейджа ЕТИС (например, в Объявлениях)
                     const etisBadge = a.querySelector('.badge');
                     if (etisBadge) {
                         const count = etisBadge.textContent.trim();
-                        if (count !== '0' && count !== '') {
-                            hasNotifications = true;
-                        }
-                        etisBadge.remove(); // Удаляем старый синий/оранжевый квадрат
+                        if (count !== '0' && count !== '') hasNotifications = true;
+                        etisBadge.remove(); 
                     }
 
-                    // 3. Ставим красную точку только если есть уведомления и это нужный раздел
-                    if (hasNotifications && allowedHrefs.some(target => href.includes(target))) {
+                    if (hasNotifications && allowedDotHrefs.some(target => href.includes(target))) {
                         const dot = document.createElement('span');
                         dot.className = 'badge-point';
                         a.appendChild(dot);
                     }
 
-                    // Очистка стилей шрифтов внутри ссылок
-                    const fonts = a.querySelectorAll('font');
-                    fonts.forEach(font => {
-                        font.removeAttribute('color');
-                        font.style.color = "inherit";
-                        font.style.fontWeight = "normal";
-                    });
+                    if (!a.querySelector('.material-icons')) {
+                        const icon = document.createElement('span');
+                        icon.className = 'material-icons';
+                        icon.textContent = getIconForHref(href);
+                        icon.style.flexShrink = '0';
+                        icon.style.marginRight = '8px';
+                        a.prepend(icon);
+                    }
 
-                    const bTags = a.querySelectorAll('b');
-                    bTags.forEach(b => {
-                        const span = document.createElement('span');
-                        span.innerHTML = b.innerHTML;
-                        b.parentNode.replaceChild(span, b);
+                    // Чистка шрифтов
+                    a.querySelectorAll('font').forEach(f => {
+                        f.removeAttribute('color');
+                        f.style.color = "inherit";
+                        f.style.fontWeight = "normal";
+                    });
+                    
+                    // Броня для текста
+                    Array.from(a.childNodes).forEach(node => {
+                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
+                            const span = document.createElement('span');
+                            span.textContent = node.textContent;
+                            span.style.flex = '1';
+                            span.style.whiteSpace = 'normal';
+                            span.style.wordBreak = 'break-word';
+                            span.style.lineHeight = '1.3';
+                            a.replaceChild(span, node);
+                        }
                     });
                 });
-                requestAnimationFrame(() => {
-                    // Save scroll position for Sidebar on page reload
-                    const top = sessionStorage.getItem("sidebar-scroll");
-                    if (top) {
-                        sidebar.scrollTop = parseInt(top, 10);
+
+                // 5. ГРУППИРОВКА И СОРТИРОВКА
+                // Очищаем главный список
+                mainNav.innerHTML = '';
+
+                // Карта порядка групп (как вы просили)
+                const groupsOrder = [
+                    // 1. Учеба
+                    ['teach_plan', 'ebl_choice'], 
+                    // 2. Успеваемость (без журнала)
+                    ['timetable', 'signs', 'absence'], 
+                    // 3. Коммуникация
+                    ['announces', 'teacher_notes', 'teachers', 'est_pkg.show_list'], 
+                    // 4. Бюрократия + Журнал
+                    ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'group_tt'], 
+                    // 5. Ресурсы
+                    ['library', 'electr', 'advice', 'ses', 'about'],
+                    // 6. Опросы
+                    ['term_test', 'special_est_list', 'оцените дистанционное'], 
+                    // 7. Настройки (Тема, Пароль, Email, Профиль, Выход)
+                    ['#theme-switch', 'change_pass', 'change_email', 'change_pr_page', 'logout']
+                ];
+
+                const usedItems = new Set();
+
+                groupsOrder.forEach((groupPatterns, index) => {
+                    let itemsAddedInThisGroup = 0;
+
+                    groupPatterns.forEach(pattern => {
+                        // Ищем элемент, соответствующий паттерну
+                        const li = allListItems.find(item => {
+                            if (usedItems.has(item)) return false;
+                            const h = item.querySelector('a')?.getAttribute('href') || '';
+                            const t = item.textContent.toLowerCase();
+                            
+                            // Спец. проверка для опросов по тексту, т.к. ссылки могут быть одинаковыми
+                            if (pattern === 'оцените дистанционное') return t.includes('дистанционн');
+                            
+                            return h.includes(pattern);
+                        });
+
+                        if (li) {
+                            mainNav.appendChild(li);
+                            usedItems.add(li);
+                            itemsAddedInThisGroup++;
+                        }
+                    });
+
+                    // Добавляем разделитель ПОСЛЕ группы, если это не последняя группа
+                    if (index < groupsOrder.length - 1) {
+                        const separator = document.createElement('div');
+                        separator.style.height = '1px';
+                        separator.style.background = 'var(--color-table-border)';
+                        separator.style.margin = '1rem 1.6rem 1.4rem 1.6rem';
+                        mainNav.appendChild(separator);
                     }
+                });
+
+                // Если остались какие-то пункты, которые не попали в группы (новые фичи ЕТИСа)
+                const remaining = allListItems.filter(li => !usedItems.has(li));
+                if (remaining.length > 0) {
+                     const separator = document.createElement('div');
+                     separator.style.height = '1px';
+                     separator.style.background = 'var(--color-table-border)';
+                     separator.style.margin = '1rem 1.6rem 1.4rem 1.6rem';
+                     mainNav.appendChild(separator);
+                     
+                     remaining.forEach(li => mainNav.appendChild(li));
+                }
+
+                // 6. Восстановление скролла и активного класса
+                requestAnimationFrame(() => {
+                    const top = sessionStorage.getItem("sidebar-scroll");
+                    if (top) sidebar.scrollTop = parseInt(top, 10);
                     window.addEventListener("beforeunload", () => {
                         sessionStorage.setItem("sidebar-scroll", Math.round(sidebar.scrollTop));
                     });
-                })
+                });
 
-                // Add 'active' class to all active elements in Sidebar
-                const asideElements = sidebar.querySelectorAll('.nav.nav-tabs.nav-stacked > li');
                 const currentFullUrl = window.location.pathname.split('/').pop() + window.location.search;
-
                 let bestMatch = null;
                 let maxMatchLength = -1;
 
-                asideElements.forEach(li => {
-                    li.classList.remove('active'); // Сбрасываем старые классы
-                    const a = li.querySelector('a');
-                    if (!a) return;
-                    
-                    const href = a.getAttribute('href');
-                    if (!href) return;
+                mainNav.querySelectorAll('li').forEach(li => {
+                    li.classList.remove('active');
+                    const href = li.querySelector('a')?.getAttribute('href');
+                    if (!href || href.startsWith('#')) return;
 
                     if (currentFullUrl.startsWith(href)) {
                         if (href.length > maxMatchLength) {
@@ -4915,64 +5062,20 @@ injectStyles(styles);
                     }
                 });
 
-                // Если нашли совпадение по префиксу — подсвечиваем
-                if (bestMatch) {
-                    bestMatch.classList.add('active');
-                } else {
-                    // Резервный поиск по базовому имени (если URL совсем изменился, например на пакетный)
-                    // Извлекаем "signs" из "stu.signs"
+                if (bestMatch) bestMatch.classList.add('active');
+                else {
                     const currentBase = currentFullUrl.split('?')[0].split('.').pop();
-                    asideElements.forEach(li => {
+                    mainNav.querySelectorAll('li').forEach(li => {
                         const href = li.querySelector('a')?.getAttribute('href') || '';
-                        if (currentBase.length > 3 && href.includes(currentBase)) {
-                            li.classList.add('active');
-                        }
+                        if (currentBase.length > 3 && href.includes(currentBase)) li.classList.add('active');
                     });
                 }
 
-                // Style last nav of Sidebar
-                const navs = sidebar.querySelectorAll('ul.nav');
-            const nav = navs[navs.length - 1]; 
-
-            if (nav) {
-                // Проверяем, не добавлена ли уже кнопка
-                if (!nav.querySelector('.theme-switcher-item')) {
-                    let el = document.createElement("li");
-                    el.className = 'theme-switcher-item';
-                    const themeSwitcher = document.createElement("a");
-                    themeSwitcher.style.cursor = 'pointer';
-                    themeSwitcher.appendChild(document.createTextNode('Тема: ' + ((theme == 'auto') ? 'Системная' : ((theme == 'dark') ? 'Темная' : 'Светлая'))));
-                    themeSwitcher.addEventListener('click', switchTheme, false);
-                    el.appendChild(themeSwitcher);
-                    nav.prepend(el);
-
-                    // Добавляем иконку для кнопки темы
-                    let navIcon = document.createElement('span');
-                    navIcon.className = 'material-icons';
-                    navIcon.innerHTML = 'brightness_6';
-                    themeSwitcher.prepend(navIcon);
-                }
-
-                // Иконки для остальных пунктов (смена пароля, выход и т.д.)
-                nav.querySelectorAll('li > a').forEach(a => {
-                    if (a.querySelector('.material-icons')) return; // чтобы не дублировать
-                    
-                    let navIcon = document.createElement('span');
-                    navIcon.className = 'material-icons';
-                    
-                    const href = a.getAttribute('href');
-                    if (href === 'stu.change_pass_form') navIcon.innerHTML = 'vpn_key';
-                    else if (href === 'stu_email_pkg.change_email') navIcon.innerHTML = 'alternate_email';
-                    else if (href === 'stu.change_pr_page') navIcon.innerHTML = 'account_box';
-                    else if (href === 'stu.logout') navIcon.innerHTML = 'exit_to_app';
-                    
-                    if (navIcon.innerHTML) a.prepend(navIcon);
-                });
-            }
+                // Подвал
                 if (!sidebar.querySelector('.sidebar-footer')) {
                     const footer = document.createElement('div');
                     footer.className = 'sidebar-footer';
-                    footer.innerHTML = 'Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
+                    footer.innerHTML = 'Designed <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
                     sidebar.appendChild(footer);
                 }
             }
@@ -5272,7 +5375,7 @@ injectStyles(styles);
                         h3.remove();
                     });
 
-                    // --- ФИКС СКРОЛЛА ТАБЛИЦ ---
+                    // --- СКРОЛЛ ТАБЛИЦ ---
                     // Находим все блоки контента (публикации, проекты и т.д.)
                     const contentDivs = span9.querySelectorAll('div[id="pub"], div[id="pis"], div[id="agr"], div[id="ooo"], div[id="saw"], div[id="vkr"]');
                     
@@ -5913,105 +6016,280 @@ injectStyles(styles);
                     break;
                 }
 
-                case 'cert_pkg.stu_certif':
-                const allHeaders = Array.from(span9.querySelectorAll('h3'));
-                const allLists = Array.from(span9.querySelectorAll('ul.orders'));
-                const greenSpan = span9.querySelector('span[style*="00b050"]');
-                
-                // Чистим span9 перед перестройкой
-                span9.innerHTML = '';
+                case 'cert_pkg.stu_certif': {
+                    const action = urlParams.get('p_action');
 
-                // 1. Заголовок и Новые справки
-                const headNew = allHeaders.find(h => h.textContent.includes('Заказать'));
-                if (headNew && allLists[0]) {
-                    const h = document.createElement('h2');
-                    h.textContent = headNew.textContent;
-                    span9.appendChild(h);
+                    // --- Ищем зеленый текст с правилом (он есть на главной, но может не быть внутри) ---
+                    let greenText = "Справки выдаются лично заявителю, либо доверенному лицу, если его ФИО будет написано в «Примечаниях» при заказе справки.";
+                    const greenSpan = span9.querySelector('span[style*="00b050"]');
+                    if (greenSpan && greenSpan.textContent.trim()) {
+                        greenText = greenSpan.textContent.trim();
+                    }
 
-                    const container = document.createElement('div');
-                    container.className = 'advice-container';
-                    allLists[0].querySelectorAll('a').forEach(link => {
-                        const card = document.createElement('a');
-                        card.className = 'advice-card';
-                        card.href = link.href;
-                        card.innerHTML = `<span class="material-icons">add_circle_outline</span><span class="advice-label">${link.textContent.trim()}</span>`;
-                        container.appendChild(card);
-                    });
-                    span9.appendChild(container);
+                    // --- Единая функция для генерации красивого подвала ---
+                    const appendCertFooter = (container) => {
+                        const footerContainer = document.createElement('div');
+                        footerContainer.style.marginTop = '4rem';
+
+                        // 1. Сетка с карточками
+                        const footerGrid = document.createElement('div');
+                        footerGrid.className = 'cert-footer-grid';
+                        footerGrid.style.marginTop = '0'; 
+
+                        const infoCard = document.createElement('div');
+                        infoCard.className = 'cert-footer-card';
+                        infoCard.innerHTML = `
+                            <span class="material-icons">timer</span>
+                            <div class="cert-footer-card-content">
+                                Справки готовятся в течение <b>3 рабочих дней</b>.<br>
+                                Готовые документы выдаются в отделе кадров обучающихся (ОКО).
+                                <small>Важно: не путайте с отделом кадров сотрудников.</small>
+                            </div>
+                        `;
+                        
+                        const contactCard = document.createElement('div');
+                        contactCard.className = 'cert-footer-card';
+                        contactCard.innerHTML = `
+                            <span class="material-icons">place</span>
+                            <div class="cert-footer-card-content">
+                                Корпус №8 ПГНИУ, <b>каб. 214</b><br>
+                                Пн – Чт: 8:30 – 17:30 (Пт до 16:30)<br>
+                                Тел: (342) 2-396-135
+                                <small>Суббота и воскресенье — выходные дни.</small>
+                            </div>
+                        `;
+
+                        footerGrid.appendChild(infoCard);
+                        footerGrid.appendChild(contactCard);
+                        footerContainer.appendChild(footerGrid);
+
+                        // 2. Объединенный зеленый блок правил и отслеживания
+                        const alert = document.createElement('div');
+                        alert.className = 'cert-alert-box';
+                        alert.style.margin = '2rem 0 0 0';
+                        
+                        const mainText = document.createElement('div');
+                        mainText.style.display = 'flex';
+                        mainText.style.alignItems = 'center';
+                        mainText.style.gap = '1.2rem';
+                        mainText.innerHTML = `<span class="material-icons" style="font-size: 2.6rem; color: var(--color-green);">info</span>` + 
+                                             `<div>${greenText}</div>`;
+                        alert.appendChild(mainText);
+
+                        const finalNote = document.createElement('div');
+                        finalNote.style.cssText = 'margin-top: 1.6rem; padding-top: 1.6rem; border-top: 1px solid rgba(52, 199, 89, 0.2); font-weight: 600; font-size: 1.3rem; display: flex; align-items: center; gap: 1.2rem; color: var(--color-green);';
+                        finalNote.innerHTML = '<span class="material-icons" style="font-size: 2.6rem;">track_changes</span><div>Просим отслеживать статус заявки в личном кабинете</div>';
+                        alert.appendChild(finalNote);
+
+                        footerContainer.appendChild(alert);
+                        container.appendChild(footerContainer);
+                    };
+
+                    if (action === 'NEW' || action === 'VIEW') {
+                        // --- СТРАНИЦА ЗАКАЗА ИЛИ ПРОСМОТРА КОНКРЕТНОЙ СПРАВКИ ---
+                        
+                        // 1. Стилизация заголовка
+                        const h3 = span9.querySelector('h3');
+                        if (h3) {
+                            h3.style.fontSize = '2.2rem';
+                            h3.style.fontWeight = '800';
+                            h3.style.marginBottom = '2.4rem';
+                        }
+
+                        // 2. Стилизация "листа бумаги" (превью справки)
+                        const paper = span9.querySelector('.bgprj');
+                        if (paper) {
+                            paper.style.background = 'var(--color-card)';
+                            paper.style.border = '1px solid var(--color-table-border)';
+                            paper.style.borderRadius = 'var(--radius-medium)';
+                            paper.style.boxShadow = 'var(--shadow-main)';
+                            paper.style.color = 'var(--color-text-primary)';
+                            paper.style.width = '100%';
+                            paper.style.boxSizing = 'border-box';
+                            paper.style.padding = '2.4rem';
+                            // Фикс для жестких черных шрифтов ЕТИСа
+                            paper.querySelectorAll('font').forEach(f => {
+                                if (f.style.color === 'black' || !f.style.color) f.style.color = 'inherit';
+                            });
+                        }
+
+                        // 3. Стилизация блока с формой
+                        const questionBlock = span9.querySelector('.question');
+                        if (questionBlock) {
+                            questionBlock.style.background = 'var(--color-card)';
+                            questionBlock.style.padding = '2.4rem';
+                            questionBlock.style.borderRadius = 'var(--radius-medium)';
+                            questionBlock.style.boxShadow = 'var(--shadow-main)';
+                            questionBlock.style.marginTop = '2.4rem';
+                            questionBlock.style.border = 'none'; 
+
+                            questionBlock.querySelectorAll('textarea').forEach(ta => {
+                                ta.style.width = '100%';
+                                ta.style.boxSizing = 'border-box';
+                                ta.style.padding = '1.2rem';
+                                ta.style.borderRadius = 'var(--radius-small)';
+                                ta.style.border = '1px solid var(--color-table-border)';
+                                ta.style.background = 'var(--color-input)';
+                                ta.style.color = 'var(--color-text-primary)';
+                                ta.style.fontSize = '1.3rem';
+                                ta.style.fontFamily = 'inherit';
+                                ta.style.marginTop = '0.8rem';
+                                ta.style.resize = 'vertical';
+                            });
+                        }
+
+                        // 4. Стилизация таблицы статуса (при просмотре)
+                        const tables = Array.from(span9.querySelectorAll('table')).filter(t => !paper?.contains(t) && !questionBlock?.contains(t));
+                        tables.forEach(table => {
+                            table.style.background = 'var(--color-card)';
+                            table.style.padding = '2rem';
+                            table.style.borderRadius = 'var(--radius-medium)';
+                            table.style.boxShadow = 'var(--shadow-main)';
+                            table.style.marginTop = '2.4rem';
+                            table.style.width = '100%';
+                            table.style.borderCollapse = 'collapse';
+                            
+                            table.querySelectorAll('td').forEach(td => {
+                                td.style.padding = '1rem 1.6rem';
+                                td.style.fontSize = '1.3rem';
+                                td.style.borderBottom = '1px solid var(--color-table-border)';
+                            });
+                            
+                            const lastRowTds = table.querySelectorAll('tr:last-child td');
+                            lastRowTds.forEach(td => td.style.borderBottom = 'none');
+                        });
+
+                        // 5. Кнопка "Создать запрос"
+                        const btnWrap = span9.querySelector('.button_gray');
+                        if (btnWrap) {
+                            btnWrap.style.marginTop = '2.4rem';
+                            btnWrap.style.width = '100%';
+                            btnWrap.style.textAlign = 'left';
+                            const btn = btnWrap.querySelector('button');
+                            if (btn) {
+                                btn.className = 'answer-btn-custom';
+                                btn.innerHTML = '<span class="material-icons" style="font-size:2rem; margin-right:8px">send</span>' + btn.innerHTML;
+                                btn.style.padding = '1.2rem 2.4rem';
+                                btn.style.fontSize = '1.4rem';
+                            }
+                        }
+
+                        // 6. Заменяем старый серый текст на наши красивые карточки
+                        const grayText = span9.querySelector('font[color="#808080"]');
+                        if (grayText) grayText.remove();
+
+                        span9.querySelectorAll('br').forEach(br => {
+                            if (!paper?.contains(br) && !questionBlock?.contains(br)) br.remove();
+                        });
+
+                        // Вставляем красивый подвал
+                        appendCertFooter(span9);
+
+                    } else {
+                        // --- ГЛАВНАЯ СТРАНИЦА "ЗАКАЗ СПРАВОК" ---
+                        
+                        const allHeaders = Array.from(span9.querySelectorAll('h3'));
+                        const allLists = Array.from(span9.querySelectorAll('ul.orders'));
+                        
+                        // Чистим span9 перед перестройкой
+                        span9.innerHTML = '';
+
+                        // 1. Заголовок и Новые справки
+                        const headNew = allHeaders.find(h => h.textContent.includes('Заказать'));
+                        if (headNew && allLists[0]) {
+                            const h = document.createElement('h2');
+                            h.textContent = headNew.textContent;
+                            span9.appendChild(h);
+
+                            const container = document.createElement('div');
+                            container.className = 'advice-container';
+                            allLists[0].querySelectorAll('a').forEach(link => {
+                                const card = document.createElement('a');
+                                card.className = 'advice-card';
+                                card.href = link.href;
+                                card.innerHTML = `<span class="material-icons">add_circle_outline</span><span class="advice-label">${link.textContent.trim()}</span>`;
+                                container.appendChild(card);
+                            });
+                            span9.appendChild(container);
+                        }
+
+                        // 2. Мои справки (УМНЫЕ КАРТОЧКИ)
+                        const headHistory = allHeaders.find(h => h.textContent.includes('Мои справки'));
+                        const historyList = allLists.length > 1 ? allLists[1] : (allLists[0] && !headNew ? allLists[0] : null);
+                        
+                        if (headHistory && historyList) {
+                            const h = document.createElement('h2');
+                            h.textContent = headHistory.textContent;
+                            h.style.marginTop = '4rem';
+                            span9.appendChild(h);
+
+                            const container = document.createElement('div');
+                            container.style.display = 'flex';
+                            container.style.flexDirection = 'column';
+                            container.style.gap = '1.4rem';
+                            container.style.marginTop = '1.5rem';
+
+                            historyList.querySelectorAll('a').forEach(link => {
+                                const fullText = link.textContent.trim();
+                                
+                                const match = fullText.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.*?)\s+\(код запроса:\s*(.*?),\s*статус:\s*(.*?)\)$/i);
+
+                                const card = document.createElement('a');
+                                card.href = link.href;
+                                card.className = 'order-card';
+
+                                if (match) {
+                                    const date = match[1];
+                                    const title = match[2];
+                                    const code = match[3];
+                                    const status = match[4].toLowerCase();
+
+                                    let statusBg = 'var(--color-highlight)';
+                                    let statusColor = 'var(--color-text-secondary)';
+
+                                    if (status.includes('готов')) {
+                                        statusBg = 'rgba(52, 199, 89, 0.15)';
+                                        statusColor = 'var(--color-green)';
+                                    } else if (status.includes('заявка') || status.includes('обработк')) {
+                                        statusBg = 'rgba(255, 149, 0, 0.15)';
+                                        statusColor = 'var(--color-warning)';
+                                    } else if (status.includes('отказ') || status.includes('отклон')) {
+                                        statusBg = 'rgba(255, 59, 48, 0.15)';
+                                        statusColor = 'var(--color-red)';
+                                    }
+
+                                    card.innerHTML = `
+                                        <div class="order-icon-box">
+                                            <span class="material-icons">history_edu</span>
+                                        </div>
+                                        <div class="order-info">
+                                            <div class="order-meta">${date} • Запрос ${code}</div>
+                                            <div class="order-title">${title}</div>
+                                        </div>
+                                        <div style="font-size: 1.1rem; font-weight: 800; text-transform: uppercase; padding: 0.5rem 1.2rem; border-radius: 50px; letter-spacing: 0.5px; white-space: nowrap; background: ${statusBg}; color: ${statusColor}; margin-left: auto;">
+                                            ${status}
+                                        </div>
+                                    `;
+                                } else {
+                                    card.innerHTML = `
+                                        <div class="order-icon-box">
+                                            <span class="material-icons">history_edu</span>
+                                        </div>
+                                        <div class="order-info">
+                                            <div class="order-title">${fullText}</div>
+                                        </div>
+                                    `;
+                                }
+                                container.appendChild(card);
+                            });
+                            span9.appendChild(container);
+                        }
+
+                        // 3. Вставляем красивый подвал
+                        appendCertFooter(span9);
+                    }
+                    break;
                 }
-
-                // 2. Правила выдачи (зеленая плашка)
-                if (greenSpan) {
-                    const alert = document.createElement('div');
-                    alert.className = 'cert-alert-box';
-                    alert.style.margin = '2.5rem 0';
-                    alert.textContent = greenSpan.textContent.trim();
-                    span9.appendChild(alert);
-                }
-
-                // 3. Мои справки
-                const headHistory = allHeaders.find(h => h.textContent.includes('Мои справки'));
-                const historyList = allLists.length > 1 ? allLists[1] : (allLists[0] && !headNew ? allLists[0] : null);
-                
-                if (headHistory && historyList) {
-                    const h = document.createElement('h2');
-                    h.textContent = headHistory.textContent;
-                    h.style.marginTop = '4rem';
-                    span9.appendChild(h);
-
-                    const container = document.createElement('div');
-                    container.className = 'advice-container';
-                    historyList.querySelectorAll('a').forEach(link => {
-                        const card = document.createElement('a');
-                        card.className = 'advice-card';
-                        card.href = link.href;
-                        // Здесь ставим другую иконку для истории
-                        card.innerHTML = `<span class="material-icons" style="color:var(--color-text-secondary)">history_edu</span><span class="advice-label">${link.textContent.trim()}</span>`;
-                        container.appendChild(card);
-                    });
-                    span9.appendChild(container);
-                }
-
-                // 4. Оформление подвала в блоки
-                const footerGrid = document.createElement('div');
-                footerGrid.className = 'cert-footer-grid';
-
-                // Карточка 1: Информация о готовности
-                const infoCard = document.createElement('div');
-                infoCard.className = 'cert-footer-card';
-                infoCard.innerHTML = `
-                    <span class="material-icons">timer</span>
-                    <div class="cert-footer-card-content">
-                        Справки готовятся в течение <b>3 рабочих дней</b>.<br>
-                        Готовые документы выдаются в отделе кадров обучающихся (ОКО).
-                        <small>Важно: не путайте с отделом кадров сотрудников.</small>
-                    </div>
-                `;
-                
-                // Карточка 2: Контакты и адрес
-                const contactCard = document.createElement('div');
-                contactCard.className = 'cert-footer-card';
-                contactCard.innerHTML = `
-                    <span class="material-icons">place</span>
-                    <div class="cert-footer-card-content">
-                        Корпус №8 ПГНИУ, <b>каб. 214</b><br>
-                        Пн – Чт: 8:30 – 17:30 (Пт до 16:30)<br>
-                        Тел: (342) 2-396-135
-                        <small>Суббота и воскресенье — выходные дни.</small>
-                    </div>
-                `;
-
-                footerGrid.appendChild(infoCard);
-                footerGrid.appendChild(contactCard);
-                span9.appendChild(footerGrid);
-
-                // Подпись в самом низу
-                const finalNote = document.createElement('p');
-                finalNote.style.cssText = 'text-align:center; color:var(--color-text-secondary); margin-top:3rem; font-size:1.2rem;';
-                finalNote.textContent = 'Просим отслеживать статус заявки в личном кабинете';
-                span9.appendChild(finalNote);
-
-                break;
 
                 case 'stu.signs': {
                     // 1. УНИФИКАЦИЯ ПОДМЕНЮ (Кнопки)
@@ -6410,7 +6688,7 @@ injectStyles(styles);
                         localSearch.style.maxWidth = "500px";
                         localSearch.innerHTML = `
                             <span class="material-icons search-icon">filter_list</span>
-                            <input type="text" class="lib-local-input" placeholder="Фильтр">
+                            <input type="text" class="lib-local-input" placeholder="Поиск">
                         `;
                         if (submenu) submenu.after(localSearch);
 
@@ -6744,7 +7022,7 @@ injectStyles(styles);
                 case 'stu.about':
                     const aboutContainer = span9.querySelector('.text');
                     if (aboutContainer) {
-                        // Превращаем стандартный блок в нашу карточку-статью
+                        // Превращаем стандартный блок в карточку-статью
                         aboutContainer.className = 'about-card';
                         
                         // Удаляем все инлайновые стили (font-size, margin и т.д.), которые мог вставить ЕТИС
@@ -6868,7 +7146,6 @@ injectStyles(styles);
 
                         const fullText = link.textContent.trim();
                         
-                        // ИСПРАВЛЕННОЕ РЕГУЛЯРНОЕ ВЫРАЖЕНИЕ
                         // Ищет: №... от ДД.ММ.ГГГГ
                         // (?:[\.\s]*) - игнорирует точку и пробелы после даты перед описанием
                         const match = fullText.match(/(№.*?от\s+\d{2}\.\d{2}\.\d{4})(?:[\.\s]*)(.*)/);
@@ -6999,7 +7276,7 @@ injectStyles(styles);
                 case 'stu.teacher_stats': {
                     const table = span9.querySelector('table.common');
                     if (table) {
-                        // Оборачиваем в наш универсальный контейнер со скроллом
+                        // Оборачиваем в универсальный контейнер со скроллом
                         const wrapper = document.createElement('div');
                         wrapper.className = 'wide-table-wrapper';
                         table.parentNode.insertBefore(wrapper, table);
@@ -7147,7 +7424,7 @@ injectStyles(styles);
                         table.parentNode.insertBefore(wrapper, table);
                         wrapper.appendChild(table);
                         
-                        // Удаляем старые инлайновые стили дат и ширин, чтобы работал наш CSS
+                        // Удаляем старые инлайновые стили дат и ширин, чтобы работал CSS
                         table.removeAttribute('style');
                         table.querySelectorAll('th, td').forEach(cell => {
                             cell.removeAttribute('style');
@@ -7230,7 +7507,7 @@ injectStyles(styles);
                         else span9.appendChild(container);
                     }
 
-                    // 2. ОБРАБОТКА ТАБЛИЦЫ РЕЙТИНГА (FIX)
+                    // 2. ОБРАБОТКА ТАБЛИЦЫ РЕЙТИНГА
                     // Ищем именно таблицу с ID rating, так как в HTML она именно такая
                     const ratingTable = document.getElementById('rating');
                     
@@ -7248,7 +7525,7 @@ injectStyles(styles);
                         // Чистим таблицу от мусора
                         ratingTable.removeAttribute('width');
                         
-                        // Добавляем наши классы для красоты
+                        // Добавляем классы для красоты
                         ratingTable.classList.add('common'); // Чтобы подхватились общие стили
                         
                         // Убираем инлайновые цвета фона строк, чтобы работал CSS
@@ -7263,7 +7540,7 @@ injectStyles(styles);
                 case 'stu.absence': {
                     const table = span9.querySelector('table.slimtab_nice');
                     if (table) {
-                        // 1. Возвращаем красивый дизайн (common) и добавляем наш класс-исключение (absence-table)
+                        // 1. красивый дизайн (common) и добавляем класс-исключение (absence-table)
                         table.className = 'common absence-table'; 
                         
                         const wrapper = document.createElement('div');
@@ -7303,7 +7580,7 @@ injectStyles(styles);
                                         dateContainer.appendChild(capsule);
                                     });
                                     
-                                    // Очищаем ячейку от старого мусора (<br>, шрифты) и вставляем наш контейнер
+                                    // Очищаем ячейку от старого мусора (<br>, шрифты) и вставляем контейнер
                                     td.innerHTML = '';
                                     td.appendChild(dateContainer);
                                 }
