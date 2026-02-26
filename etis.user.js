@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.2
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -914,9 +914,10 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         margin-top: 2rem !important; 
         padding: 0 1rem 15rem !important;
         width: 100% !important;
-        float: none !important;
         max-width: 100vw !important;
-        overflow-x: visible !important;
+        overflow-x: hidden !important; 
+        float: none !important;
+        box-sizing: border-box !important;
     }
 
     .span9 > div[style*="float: right"] {
@@ -1145,6 +1146,51 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         display: block !important;
         width: 100% !important;
         max-width: 100% !important;
+    }
+    /* Горизонтальный скролл для подменю (вкладки триместров, сессий и т.д.) */
+    .submenu {
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+        justify-content: flex-start !important;
+        padding: 4px 0 8px 0 !important; /* Отступы для тени при клике */
+        
+        /* Вытягиваем за края экрана, чтобы скролл выглядел нативно */
+        margin-left: -1rem !important; 
+        margin-right: -1rem !important;
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+    }
+    .submenu::-webkit-scrollbar { 
+        display: none !important; 
+    }
+    .submenu a, .submenu b {
+        flex: 0 0 auto !important; /* Запрещаем сжиматься */
+        white-space: nowrap !important; /* Запрещаем перенос текста внутри кнопок */
+    }
+    .wide-table-wrapper {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important; /* Плавный скролл на iOS */
+        margin-bottom: 2rem !important;
+        /* Гарантируем, что обертка не шире экрана */
+        max-width: calc(100vw - 2rem) !important; 
+        display: block !important;
+    }
+
+    /* Особенности для таблиц в триместре (оценки) */
+    .term-table-v6, .session-table-v6 {
+        display: table !important; /* Оценки лучше оставить таблицей для скролла */
+        width: auto !important;
+        min-width: 650px !important; /* Минимальная ширина, при которой появится скролл */
+        margin-bottom: 0 !important;
+    }
+
+    /* Убираем лишние отступы, которые могут "раздувать" ширину */
+    .container, .container .row {
+        overflow-x: hidden !important;
     }
 }
 
@@ -4275,6 +4321,111 @@ form.que_form select {
     color: var(--color-text-secondary) !important;
     font-size: 1.5rem !important;
 }
+
+/* Фикс для таблиц библиотеки (чтобы текст не наезжал) */
+.resource-table td, .common td {
+    white-space: normal !important; /* Разрешаем перенос текста */
+    word-wrap: break-word !important;
+}
+
+/* Поиск в библиотеке (фикс прозрачности и отступов) */
+.library-search-wrap {
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    border-radius: 50px !important;
+    padding: 6px 6px 6px 20px !important;
+    display: flex !important;
+    align-items: center !important;
+    margin-bottom: 30px !important;
+    box-shadow: var(--shadow-main) !important;
+}
+
+.library-search-wrap input {
+    flex: 1 !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 8px 0 !important;
+    margin: 0 !important;
+    font-size: 1.4rem !important;
+    color: var(--color-text-primary) !important;
+}
+
+.library-search-wrap .search-icon {
+    margin-right: 10px !important;
+    color: var(--color-text-secondary) !important;
+}
+
+/* Фикс наслоения текста в библиотеке */
+.library-subject-block table, 
+#record_list table {
+    table-layout: auto !important; /* Разрешаем колонкам адаптироваться */
+    width: 100% !important;
+}
+
+.library-subject-block td, 
+#record_list td {
+    white-space: normal !important; /* Принудительный перенос строк */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.4 !important;
+    vertical-align: top !important;
+}
+
+/* Принудительный сброс для всех таблиц в библиотеке */
+.span9 .wide-table-wrapper table,
+.span9 table.resource-table,
+.span9 table.common {
+    table-layout: auto !important; 
+    width: 100% !important;
+    border-collapse: collapse !important;
+}
+
+.span9 .wide-table-wrapper td,
+.span9 .wide-table-wrapper th {
+    white-space: normal !important; /* РАЗРЕШАЕМ ПЕРЕНОС */
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    line-height: 1.5 !important;
+    vertical-align: top !important;
+    padding: 12px 10px !important;
+}
+
+/* Колонки: РЕКОМЕНДУЕМАЯ ЛИТЕРАТУРА */
+.library-subject-block table td:nth-child(1) { width: 70% !important; text-align: left !important; }
+.library-subject-block table td:nth-child(2) { width: 10% !important; text-align: center !important; }
+.library-subject-block table td:nth-child(3) { width: 20% !important; text-align: left !important; }
+
+/* Колонки: КАТАЛОГ (уже работал, закрепляем) */
+#record_list table td:nth-child(1) { width: 65% !important; text-align: left !important; }
+#record_list table td:nth-child(2) { width: 10% !important; text-align: center !important; }
+#record_list table td:nth-child(3) { width: 25% !important; text-align: left !important; }
+
+/* Сбрасываем фиксированную сетку */
+.span9 .wide-table-wrapper table.library-history-table,
+.span9 .wide-table-wrapper table.resource-table {
+    table-layout: auto !important;
+    width: 100% !important;
+}
+
+/* Принудительный перенос текста для первой колонки (Название книги) */
+.span9 .wide-table-wrapper table.library-history-table td:first-child,
+.span9 .wide-table-wrapper table.resource-table td:first-child,
+.span9 .wide-table-wrapper table.common td:first-child {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    text-align: left !important;
+    line-height: 1.5 !important;
+    min-width: 250px !important; /* Чтобы колонка не схлопывалась */
+}
+
+/* Колонки с датами (Выданные книги)*/
+.span9 table.library-history-table td:not(:first-child) {
+    white-space: nowrap !important;
+    text-align: center !important;
+    width: 120px !important;
+}
     `;
 
     // Внедряем стили
@@ -4623,6 +4774,26 @@ injectStyles(styles);
                     }
                 });
             });
+            // Центрирование активного элемента подменю (вкладки) на мобильных устройствах
+            if (window.innerWidth <= 960) {
+                submenus.forEach(menu => {
+                    const activeItem = menu.querySelector('b'); // Активный триместр обернут в <b>
+                    if (activeItem) {
+                        setTimeout(() => {
+                            const containerWidth = menu.offsetWidth;
+                            const itemWidth = activeItem.offsetWidth;
+                            const itemLeft = activeItem.offsetLeft;
+                            
+                            const scrollTarget = itemLeft - (containerWidth / 2) + (itemWidth / 2);
+                            
+                            menu.scrollTo({
+                                left: scrollTarget,
+                                behavior: 'smooth'
+                            });
+                        }, 300);
+                    }
+                });
+            }
             // Style Sidebar
             const sidebar = document.querySelector("div.span3");
             if (sidebar) {
@@ -5318,20 +5489,32 @@ injectStyles(styles);
                 if (window.innerWidth <= 960) {
                     const weeksContainer = span9.querySelector('.weeks');
                     const activeWeek = span9.querySelector('.week.current');
-                    
+
                     if (activeWeek && weeksContainer) {
-                        setTimeout(() => {
+                        const performScroll = (behavior = 'smooth') => {
                             const containerWidth = weeksContainer.offsetWidth;
                             const weekWidth = activeWeek.offsetWidth;
                             const weekLeft = activeWeek.offsetLeft;
-                            
+
+                            // Если ширина всё еще 0, значит DOM не готов, пропускаем
+                            if (containerWidth === 0) return;
+
                             const scrollTarget = weekLeft - (containerWidth / 2) + (weekWidth / 2);
                             
                             weeksContainer.scrollTo({
                                 left: scrollTarget,
-                                behavior: 'smooth'
+                                behavior: behavior
                             });
-                        }, 300);
+                        };
+
+                        // 1. Пытаемся проскроллить мгновенно, как только скрипт дошел до этой точки
+                        requestAnimationFrame(() => performScroll('auto'));
+
+                        // 2. Пытаемся еще раз через 100мс (когда применятся CSS-трансформации)
+                        setTimeout(() => performScroll('smooth'), 100);
+
+                        // 3. Финальная попытка через 500мс (на случай долгой подгрузки шрифтов)
+                        setTimeout(() => performScroll('smooth'), 500);
                     }
                 }
 
@@ -6176,86 +6359,151 @@ injectStyles(styles);
                 case 'stu.library': {
                     const pageMode = new URLSearchParams(window.location.search).get('p_mode');
 
-                    // 1. Общее для всех вкладок: Инфо-текст вниз
+                    // 1. Инфо-текст в плашку вниз
                     const libIntro = Array.from(span9.querySelectorAll('p')).find(p => p.textContent.includes('Для чтения полных текстов'));
                     if (libIntro) {
                         libIntro.className = 'electr-description';
-                        libIntro.innerHTML = libIntro.innerHTML.replace(/<br\s*\/?>/gi, ' ');
+                        libIntro.style.marginTop = '30px';
                         span9.appendChild(libIntro);
                     }
 
-                    // 2. РЕЖИМ КАТАЛОГА (ПОИСК)
+                    // 2. РЕЖИМ КАТАЛОГА (Поиск по всей базе)
                     if (pageMode === 'catalog') {
                         const searchWrap = span9.querySelector('.wrap');
-                        const searchInput = span9.querySelector('#filter');
-                        const searchBtn = span9.querySelector('#search_btn');
+                        if (searchWrap) {
+                            const newSearch = document.createElement('div');
+                            newSearch.className = 'library-search-wrap';
+                            newSearch.innerHTML = `
+                                <span class="material-icons search-icon">search</span>
+                                <input type="text" id="filter" placeholder="Поиск">
+                                <button id="search_btn" class="answer-btn-custom" style="margin-left:10px">Найти</button>
+                            `;
+                            searchWrap.replaceWith(newSearch);
 
-                        if (searchWrap && searchInput && searchBtn) {
-                            // Создаем красивую карточку для поиска
-                            const searchCard = document.createElement('div');
-                            searchCard.className = 'day resource-block search-panel-card';
-                            searchCard.style.padding = '2.4rem';
-                            
-                            // Собираем элементы в новый контейнер (Flexbox)
-                            const flexContainer = document.createElement('div');
-                            flexContainer.className = 'search-flex-container';
-
-                            searchInput.placeholder = "Введите название книги, автора или ключевое слово...";
-                            searchBtn.className = 'answer-btn-custom';
-                            searchBtn.innerHTML = '<span class="material-icons" style="font-size:18px; margin-right:6px">search</span> Найти';
-
-                            flexContainer.appendChild(searchInput);
-                            flexContainer.appendChild(searchBtn);
-                            searchCard.appendChild(flexContainer);
-
-                            // Вставляем карточку перед списком результатов
+                            const btn = document.getElementById('search_btn');
+                            const input = document.getElementById('filter');
                             const recordList = document.getElementById('record_list');
-                            searchWrap.replaceWith(searchCard);
-                            
-                            if (recordList) {
-                                searchCard.after(recordList);
-                            }
+
+                            btn.onclick = function() {
+                                const filter = encodeURIComponent(input.value);
+                                $(recordList).html('<div style="padding:20px; text-align:center;">Загрузка...</div>');
+                                
+                                $(recordList).load("lib_search.get_books?p_filter=" + filter, function() {
+                                    const table = recordList.querySelector('table');
+                                    if (table) {
+                                        const wrapper = document.createElement('div');
+                                        wrapper.className = 'wide-table-wrapper';
+                                        table.parentNode.insertBefore(wrapper, table);
+                                        wrapper.appendChild(table);
+                                        table.style.minWidth = "850px";
+                                    }
+                                });
+                            };
+                            input.onkeypress = (e) => { if (e.which == 13) btn.click(); };
                         }
                     } 
-                    // 3. РЕЖИМ РЕКОМЕНДАЦИЙ (СПИСКИ)
-                    else {
-                        const libHeaders = Array.from(span9.querySelectorAll('h3'));
-                        libHeaders.forEach(h3 => {
+                    // 3. РЕЖИМ РЕКОМЕНДАЦИЙ (Списки по предметам)
+                    else if (pageMode === 'recommend' || (!pageMode && span9.querySelector('h3'))) {
+                        const submenu = span9.querySelector('.submenu');
+                        const localSearch = document.createElement('div');
+                        localSearch.className = 'library-search-wrap';
+                        localSearch.style.maxWidth = "500px";
+                        localSearch.innerHTML = `
+                            <span class="material-icons search-icon">filter_list</span>
+                            <input type="text" class="lib-local-input" placeholder="Фильтр">
+                        `;
+                        if (submenu) submenu.after(localSearch);
+
+                        const headers = Array.from(span9.querySelectorAll('h3'));
+                        headers.forEach(h3 => {
                             const table = h3.nextElementSibling;
                             if (table && table.tagName === 'TABLE') {
-                                const card = document.createElement('div');
-                                card.className = 'day resource-block';
-                                card.style.padding = '0';
-                                card.style.overflow = 'hidden';
-
-                                h3.style.margin = '4rem 0 1.5rem 0.5rem';
-                                h3.style.fontSize = '1.4rem';
-                                h3.style.color = 'var(--color-text-secondary)';
-                                h3.style.textTransform = 'uppercase';
-                                h3.style.letterSpacing = '1px';
-                                h3.style.fontWeight = '800';
-
-                                h3.parentNode.insertBefore(card, table);
-                                card.appendChild(table);
-                                table.className = 'common resource-table';
-
-                                const rows = Array.from(table.querySelectorAll('tr'));
-                                const addHeaderRow = rows.find(r => r.textContent.includes('Дополнительная'));
-                                const compHeaderRow = rows.find(r => r.textContent.includes('Обязательная'));
-
-                                if (addHeaderRow) {
-                                    let next = addHeaderRow.nextElementSibling;
-                                    let hasAdditionalData = (next && next.tagName === 'TR' && next.querySelector('td') && !next.textContent.includes('Обязательная'));
-                                    if (!hasAdditionalData) {
-                                        addHeaderRow.remove();
-                                        if (compHeaderRow) compHeaderRow.remove();
-                                    }
-                                }
+                                const block = document.createElement('div');
+                                block.className = 'library-subject-block';
+                                h3.parentNode.insertBefore(block, h3);
+                                
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'wide-table-wrapper';
+                                block.appendChild(h3);
+                                block.appendChild(wrapper);
+                                wrapper.appendChild(table);
+                                table.classList.add('resource-table'); 
+                                table.style.minWidth = "800px";
+                                h3.style.margin = "30px 0 15px 10px";
+                                h3.style.fontSize = "1.5rem";
                             }
                         });
+
+                        // ГЛУБОКАЯ ЛОГИКА ФИЛЬТРАЦИИ
+                        const filterInput = localSearch.querySelector('.lib-local-input');
+                        filterInput.addEventListener('input', (e) => {
+                            const val = e.target.value.toLowerCase().trim();
+                            const blocks = document.querySelectorAll('.library-subject-block');
+
+                            blocks.forEach(block => {
+                                const h3 = block.querySelector('h3');
+                                const h3Text = h3.textContent.toLowerCase();
+                                const rows = Array.from(block.querySelectorAll('tr'));
+                                let blockHasVisibleRows = false;
+
+                                // Сначала фильтруем обычные строки с книгами
+                                rows.forEach(row => {
+                                    if (row.querySelector('th')) return; // Пропускаем заголовки (Обязательная/Дополнительная)
+                                    
+                                    const rowText = row.textContent.toLowerCase();
+                                    // Показываем строку, если совпало название предмета ИЛИ текст строки (автор/название книги)
+                                    if (val === "" || rowText.includes(val) || h3Text.includes(val)) {
+                                        row.style.display = "";
+                                        blockHasVisibleRows = true;
+                                    } else {
+                                        row.style.display = "none";
+                                    }
+                                });
+
+                                // Теперь управляем заголовками секций (th)
+                                // Секция должна быть видна, только если под ней есть хотя бы одна видимая книга
+                                let currentHeader = null;
+                                let sectionVisible = false;
+
+                                rows.forEach(row => {
+                                    if (row.querySelector('th')) {
+                                        // Если встретили новый заголовок, сохраняем состояние предыдущего
+                                        if (currentHeader) {
+                                            currentHeader.style.display = sectionVisible ? "" : "none";
+                                        }
+                                        currentHeader = row;
+                                        sectionVisible = false;
+                                    } else {
+                                        if (row.style.display !== "none") {
+                                            sectionVisible = true;
+                                        }
+                                    }
+                                });
+                                // Для последней секции в таблице
+                                if (currentHeader) {
+                                    currentHeader.style.display = sectionVisible ? "" : "none";
+                                }
+
+                                // Показываем или скрываем весь блок дисциплины
+                                block.style.display = (blockHasVisibleRows || val === "") ? "block" : "none";
+                            });
+                        });
+                    }
+                    
+                    // 4. РЕЖИМ ВЫДАННЫХ КНИГ (HISTORY)
+                    if (pageMode === 'history' || (!pageMode && span9.querySelector('th')?.textContent.includes('Книга'))) {
+                        const historyTable = span9.querySelector('table.common');
+                        if (historyTable) {
+                            historyTable.classList.add('library-history-table');
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'wide-table-wrapper';
+                            historyTable.parentNode.insertBefore(wrapper, historyTable);
+                            wrapper.appendChild(historyTable);
+                            historyTable.style.minWidth = "900px";
+                        }
                     }
 
-                    span9.querySelectorAll('p:empty, br').forEach(el => el.remove());
+                    span9.querySelectorAll('br, p:empty').forEach(el => el.remove());
                     break;
                 }
 
@@ -6620,18 +6868,19 @@ injectStyles(styles);
 
                         const fullText = link.textContent.trim();
                         
-                        // Регулярное выражение для разделения: 
-                        // Группа 1: №... от ... (включая точку)
-                        // Группа 2: Всё остальное (суть приказа)
-                        const match = fullText.match(/(№.*?от.*?\.)\s*(.*)/);
+                        // ИСПРАВЛЕННОЕ РЕГУЛЯРНОЕ ВЫРАЖЕНИЕ
+                        // Ищет: №... от ДД.ММ.ГГГГ
+                        // (?:[\.\s]*) - игнорирует точку и пробелы после даты перед описанием
+                        const match = fullText.match(/(№.*?от\s+\d{2}\.\d{2}\.\d{4})(?:[\.\s]*)(.*)/);
                         
+                        // Если совпадение найдено, берем части, иначе выводим весь текст как заголовок
                         const meta = match ? match[1] : '';
                         const title = match ? match[2] : fullText;
 
                         // Логика выбора иконки
                         let icon = 'assignment';
                         let type = 'default';
-                        const lowerTitle = title.toLowerCase();
+                        const lowerTitle = fullText.toLowerCase(); // Проверяем по полному тексту для надежности
 
                         if (lowerTitle.includes('благодарность')) { icon = 'military_tech'; type = 'благодарность'; }
                         else if (lowerTitle.includes('зачислить')) { icon = 'school'; }
