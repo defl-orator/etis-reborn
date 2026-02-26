@@ -220,8 +220,21 @@
 
         /* --- FOOTER & MODAL --- */
         footer { padding: 40px 0; text-align: center; }
-        .credits { margin-top: 20px; color: var(--text-secondary); font-size: 0.9rem; }
-        .credits a { color: var(--primary); border-bottom: 1px dashed var(--primary); }
+        .credits { 
+            margin-top: 60px;
+            color: var(--text-secondary); 
+            font-size: 0.9rem; 
+        }
+
+        .credits a { 
+            color: inherit; 
+            border-bottom: 1px dashed var(--text-secondary); 
+            transition: opacity 0.2s ease;
+        }
+
+        .credits a:hover {
+            opacity: 0.7;
+        }
 
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -264,14 +277,22 @@
 
         /* Предупреждение в модальном окне */
         .mobile-warning {
-            color: #ff3b30;
+            color: var(--text-secondary);
             font-size: 0.85rem;
             margin-top: 15px;
-            font-weight: 600;
-            background: rgba(255, 59, 48, 0.1);
-            padding: 10px;
-            border-radius: 8px;
+            padding: 8px;
             text-align: center;
+            border-top: 1px solid var(--border-color);
+            opacity: 0.8;
+        }
+
+        /* Стиль для версии внизу модального окна */
+        .modal-version {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 20px;
+            opacity: 0.6;
         }
     </style>
 </head>
@@ -476,6 +497,7 @@
                     </video>
                 </div>
             </div>
+            <div class="modal-version">Версия от 27.02</div>
         </div>
     </div>
 
