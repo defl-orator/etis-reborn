@@ -6107,7 +6107,6 @@ injectStyles(styles);
                             paper.style.width = '100%';
                             paper.style.boxSizing = 'border-box';
                             paper.style.padding = '2.4rem';
-                            // Фикс для жестких черных шрифтов ЕТИСа
                             paper.querySelectorAll('font').forEach(f => {
                                 if (f.style.color === 'black' || !f.style.color) f.style.color = 'inherit';
                             });
@@ -6174,7 +6173,7 @@ injectStyles(styles);
                             }
                         }
 
-                        // 6. Заменяем старый серый текст на наши красивые карточки
+                        // 6. Чистка
                         const grayText = span9.querySelector('font[color="#808080"]');
                         if (grayText) grayText.remove();
 
@@ -6242,18 +6241,20 @@ injectStyles(styles);
                                     const date = match[1];
                                     const title = match[2];
                                     const code = match[3];
-                                    const status = match[4].toLowerCase();
+                                    const rawStatus = match[4].toLowerCase();
 
                                     let statusBg = 'var(--color-highlight)';
                                     let statusColor = 'var(--color-text-secondary)';
+                                    let displayStatus = rawStatus; // Текст, который покажем в капсуле
 
-                                    if (status.includes('готов')) {
+                                    if (rawStatus.includes('готов')) {
                                         statusBg = 'rgba(52, 199, 89, 0.15)';
                                         statusColor = 'var(--color-green)';
-                                    } else if (status.includes('заявка') || status.includes('обработк')) {
+                                        displayStatus = 'ГОТОВО'; // <-- ЗАМЕНА ТЕКСТА
+                                    } else if (rawStatus.includes('заявка') || rawStatus.includes('обработк')) {
                                         statusBg = 'rgba(255, 149, 0, 0.15)';
                                         statusColor = 'var(--color-warning)';
-                                    } else if (status.includes('отказ') || status.includes('отклон')) {
+                                    } else if (rawStatus.includes('отказ') || rawStatus.includes('отклон')) {
                                         statusBg = 'rgba(255, 59, 48, 0.15)';
                                         statusColor = 'var(--color-red)';
                                     }
@@ -6262,12 +6263,12 @@ injectStyles(styles);
                                         <div class="order-icon-box">
                                             <span class="material-icons">history_edu</span>
                                         </div>
-                                        <div class="order-info">
+                                        <div class="order-info" style="min-width: 0;"> <!-- min-width: 0 позволяет тексту сжиматься -->
                                             <div class="order-meta">${date} • Запрос ${code}</div>
-                                            <div class="order-title">${title}</div>
+                                            <div class="order-title" style="white-space: normal;">${title}</div>
                                         </div>
-                                        <div style="font-size: 1.1rem; font-weight: 800; text-transform: uppercase; padding: 0.5rem 1.2rem; border-radius: 50px; letter-spacing: 0.5px; white-space: nowrap; background: ${statusBg}; color: ${statusColor}; margin-left: auto;">
-                                            ${status}
+                                        <div style="font-size: 1.1rem; font-weight: 800; text-transform: uppercase; padding: 0.5rem 1.2rem; border-radius: 50px; letter-spacing: 0.5px; white-space: nowrap; background: ${statusBg}; color: ${statusColor}; margin-left: auto; flex-shrink: 0;">
+                                            ${displayStatus}
                                         </div>
                                     `;
                                 } else {

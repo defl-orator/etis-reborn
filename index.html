@@ -256,6 +256,23 @@
         .tutorial-video { width: 100%; max-height: 400px; border-radius: 12px; margin-top: 15px; background: #000; }
         .back-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; margin-bottom: 15px; padding: 5px 0; }
         .back-btn:hover { color: var(--primary); }
+        /* Закругление для мобильных скриншотов */
+        .mobile-rounded {
+            border-radius: 40px !important;
+            -webkit-mask-image: -webkit-radial-gradient(white, black); 
+        }
+
+        /* Предупреждение в модальном окне */
+        .mobile-warning {
+            color: #ff3b30;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            font-weight: 600;
+            background: rgba(255, 59, 48, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -428,6 +445,9 @@
                         <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
                         <li>Нажмите "Подтвердить установку" (или "Install").</li>
                     </ol>
+                    
+                    <p class="mobile-warning">⚠ Мобильная версия Chrome не поддерживает расширения</p>
+
                     <div class="action-buttons">
                         <a href="etis.user.js" class="download-btn">Установить</a>
                     </div>
@@ -504,16 +524,19 @@
             const crossSliderContainer = document.getElementById('cross-slider-container');
 
             if (isMobile) {
-                // Мобила -> показываем ПК
+                // Мобила -> показываем ПК в слайдере (НЕ ЗАКРУГЛЯЕМ)
                 crossTitle.textContent = "Версия для ПК";
                 crossSideView.style.display = 'none';
                 crossSliderView.style.display = 'block';
                 crossSliderContainer.classList.remove('mobile-limit');
+                
+                // Убираем закругление, так как тут скриншоты ПК
+                crossSliderContainer.classList.remove('mobile-rounded');
 
                 sliderNew.src = `img/schedule-pc-${currentTheme}-new.png`;
                 sliderOld.src = `img/schedule-pc-${currentTheme}-old.png`;
             } else {
-                // ПК -> показываем Мобилу
+                // ПК -> показываем Мобилу рядом (телефоны уже имеют свои стили рамок)
                 crossTitle.textContent = "Мобильная версия";
                 crossSideView.style.display = 'flex';
                 crossSliderView.style.display = 'none';
@@ -522,10 +545,17 @@
                 sideOld.src = `img/schedule-mobile-${currentTheme}-old.png`;
             }
 
-            // 2. ОСТАЛЬНЫЕ БЛОКИ
+            // 2. ОСТАЛЬНЫЕ БЛОКИ (Расписание, Оценки и т.д.)
             document.querySelectorAll('.img-comp-container[data-type]').forEach(container => {
                 const type = container.dataset.type;
                 const imgs = container.querySelectorAll('.dynamic-img');
+                
+                // !!! НОВОЕ: Если мы на мобильном, добавляем класс закругления 40px !!!
+                if (isMobile) {
+                    container.classList.add('mobile-rounded');
+                } else {
+                    container.classList.remove('mobile-rounded');
+                }
                 
                 let themeForBlock = currentTheme;
                 let filePrefix = type;
@@ -540,12 +570,43 @@
                     const ver = img.dataset.ver;
                     img.src = `img/${filePrefix}-${deviceType}-${themeForBlock}-${ver}.png`;
                     img.onerror = function() {
-                         this.src = `https://via.placeholder.com/800x500/ccc/333?text=${filePrefix}+${deviceType}+${themeForBlock}`;
+                         // Заглушка, если картинки нет
+                         this.src = `https://via.placeholder.com/800x500/ccc/333?text=${filePrefix}`;
                     };
                 });
             });
-            
         }
+
+        function preloadImages() {
+            // Список всех возможных вариаций
+            const prefixes = ['schedule', 'grades', 'teachers', 'spravka'];
+            const devices = ['pc', 'mobile'];
+            const themes = ['light', 'dark'];
+            const versions = ['new', 'old'];
+            
+            // Создаем скрытый div, чтобы не мусорить в DOM, или просто создаем объекты Image в памяти
+            const imageUrls = [];
+
+            prefixes.forEach(prefix => {
+                devices.forEach(device => {
+                    themes.forEach(theme => {
+                        versions.forEach(ver => {
+                            imageUrls.push(`img/${prefix}-${device}-${theme}-${ver}.png`);
+                        });
+                    });
+                });
+            });
+
+            // Начинаем загрузку
+            imageUrls.forEach(url => {
+                const img = new Image();
+                img.src = url;
+            });
+            console.log(`Запущена предзагрузка ${imageUrls.length} изображений.`);
+        }
+
+        // Запускаем предзагрузку сразу после загрузки страницы
+        window.addEventListener('load', preloadImages);
 
         applyTheme(); 
         window.addEventListener('resize', updateAllScreenshots);
