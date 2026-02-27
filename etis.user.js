@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.31
+// @version      1.32
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -6300,49 +6300,55 @@ injectStyles(styles);
                             container.style.marginTop = '1.5rem';
 
                             historyList.querySelectorAll('a').forEach(link => {
-                                const fullText = link.textContent.trim();
-                                
-                                const match = fullText.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.*?)\s+\(код запроса:\s*(.*?),\s*статус:\s*(.*?)\)$/i);
+                            const fullText = link.textContent.trim();
+                            
+                            const match = fullText.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.*?)\s+\(код запроса:\s*(.*?),\s*статус:\s*(.*?)\)$/i);
 
-                                const card = document.createElement('a');
-                                card.href = link.href;
-                                card.className = 'order-card';
+                            const card = document.createElement('a');
+                            card.href = link.href;
+                            card.className = 'order-card';
 
-                                if (match) {
-                                    const date = match[1];
-                                    const title = match[2];
-                                    const code = match[3];
-                                    const rawStatus = match[4].toLowerCase();
+                            if (match) {
+                                const date = match[1];
+                                const title = match[2];
+                                const code = match[3];
+                                const rawStatus = match[4].toLowerCase();
 
-                                    let statusBg = 'var(--color-highlight)';
-                                    let statusColor = 'var(--color-text-secondary)';
-                                    let displayStatus = rawStatus; // Текст, который покажем в капсуле
+                                let statusBg = 'var(--color-highlight)';
+                                let statusColor = 'var(--color-text-secondary)';
+                                let displayStatus = rawStatus; 
 
-                                    if (rawStatus.includes('готов')) {
-                                        statusBg = 'rgba(52, 199, 89, 0.15)';
-                                        statusColor = 'var(--color-green)';
-                                        displayStatus = 'ГОТОВО'; // <-- ЗАМЕНА ТЕКСТА
-                                    } else if (rawStatus.includes('заявка') || rawStatus.includes('обработк')) {
-                                        statusBg = 'rgba(255, 149, 0, 0.15)';
-                                        statusColor = 'var(--color-warning)';
-                                    } else if (rawStatus.includes('отказ') || rawStatus.includes('отклон')) {
-                                        statusBg = 'rgba(255, 59, 48, 0.15)';
-                                        statusColor = 'var(--color-red)';
-                                    }
+                                // Логика замены текста и цветов
+                                if (rawStatus.includes('готов')) {
+                                    statusBg = 'rgba(52, 199, 89, 0.15)';
+                                    statusColor = 'var(--color-green)';
+                                    displayStatus = 'ГОТОВО'; 
+                                } 
+                                // Добавляем условие для "в обработке"
+                                else if (rawStatus.includes('обработк') || rawStatus.includes('заявка')) {
+                                    statusBg = 'rgba(255, 149, 0, 0.15)';
+                                    statusColor = 'var(--color-warning)';
+                                    displayStatus = 'ОБРАБОТКА'; // <--- ЗАМЕНЯЕМ ТЕКСТ ЗДЕСЬ
+                                } 
+                                else if (rawStatus.includes('отказ') || rawStatus.includes('отклон')) {
+                                    statusBg = 'rgba(255, 59, 48, 0.15)';
+                                    statusColor = 'var(--color-red)';
+                                    displayStatus = 'ОТКАЗ';
+                                }
 
-                                    card.innerHTML = `
-                                        <div class="order-icon-box">
-                                            <span class="material-icons">history_edu</span>
-                                        </div>
-                                        <div class="order-info" style="min-width: 0;"> <!-- min-width: 0 позволяет тексту сжиматься -->
-                                            <div class="order-meta">${date} • Запрос ${code}</div>
-                                            <div class="order-title" style="white-space: normal;">${title}</div>
-                                        </div>
-                                        <div style="font-size: 1.1rem; font-weight: 800; text-transform: uppercase; padding: 0.5rem 1.2rem; border-radius: 50px; letter-spacing: 0.5px; white-space: nowrap; background: ${statusBg}; color: ${statusColor}; margin-left: auto; flex-shrink: 0;">
-                                            ${displayStatus}
-                                        </div>
-                                    `;
-                                } else {
+                                card.innerHTML = `
+                                    <div class="order-icon-box">
+                                        <span class="material-icons">history_edu</span>
+                                    </div>
+                                    <div class="order-info" style="min-width: 0; flex: 1;"> 
+                                        <div class="order-meta">${date} • Запрос ${code}</div>
+                                        <div class="order-title" style="white-space: normal; overflow: hidden; text-overflow: ellipsis;">${title}</div>
+                                    </div>
+                                    <div style="font-size: 1.05rem; font-weight: 800; text-transform: uppercase; padding: 0.5rem 1rem; border-radius: 50px; letter-spacing: 0.5px; white-space: nowrap; background: ${statusBg}; color: ${statusColor}; margin-left: 10px; flex-shrink: 0; align-self: center;">
+                                        ${displayStatus}
+                                    </div>
+                                `;
+                            } else {
                                     card.innerHTML = `
                                         <div class="order-icon-box">
                                             <span class="material-icons">history_edu</span>
@@ -6393,7 +6399,6 @@ injectStyles(styles);
                         const signsTables = span9.querySelectorAll('table.common');
                         signsTables.forEach(table => {
                             const rows = Array.from(table.querySelectorAll('tr'));
-                            // Находим эталонный текст шапки
                             const isHeader = (r) => r.textContent.toLowerCase().includes('дисциплина') && r.textContent.toLowerCase().includes('оценка');
                             const headerRow = rows.find(isHeader);
                             
@@ -6402,26 +6407,37 @@ injectStyles(styles);
 
                             rows.forEach(row => {
                                 const cells = row.children;
-                                // А) Это заголовок триместра (одна жирная ячейка)
+                                // Если это заголовок триместра
                                 if (cells.length === 1 && (cells[0].tagName === 'TH' || cells[0].classList.contains('subheader'))) {
                                     validSplit = true;
+                                    
+                                    // Создаем заголовок
                                     const title = document.createElement('h3');
                                     title.className = 'term-title';
+                                    title.style.marginTop = '2rem';
                                     title.textContent = cells[0].textContent.trim();
                                     table.parentNode.insertBefore(title, table);
 
+                                    // СОЗДАЕМ ОБЕРТКУ ДЛЯ СКРОЛЛА И СКРУГЛЕНИЙ
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'wide-table-wrapper';
+                                    
                                     const newTable = document.createElement('table');
                                     newTable.className = 'common session-table-v6';
+                                    
                                     if (headerRow) {
                                         const thead = document.createElement('thead');
                                         thead.appendChild(headerRow.cloneNode(true));
                                         newTable.appendChild(thead);
                                     }
+                                    
                                     currentTbody = document.createElement('tbody');
                                     newTable.appendChild(currentTbody);
-                                    table.parentNode.insertBefore(newTable, table);
+                                    
+                                    wrapper.appendChild(newTable); // Кладем таблицу в обертку
+                                    table.parentNode.insertBefore(wrapper, table); // Вставляем обертку в DOM
                                 } 
-                                // Б) Это строка с данными (НЕ шапка и НЕ заголовок триместра)
+                                // Добавляем строки в текущую созданную таблицу
                                 else if (currentTbody && !isHeader(row) && cells.length > 1) {
                                     currentTbody.appendChild(row);
                                 }
