@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.34
+// @version      1.35
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -430,7 +430,6 @@ form.que_form { margin-top: 1rem !important; }
 .span3 > .nav.nav-tabs.nav-stacked > li > a > .badge { background-color: var(--color-accent) !important; padding: 0.2rem 0 !important; color: var(--color-text-primary-invert) !important; border-radius: var(--radius-small) !important; margin: -1.2rem 0 !important; width: 2.4rem !important; font-weight: normal !important; }
 .material-icons { font-family: 'Material Icons Outlined' !important; font-size: 20px !important; font-weight: normal !important; }
 .span3 > .nav.nav-tabs.nav-stacked > li > a > .material-icons { margin-right: 10px !important; }
-.badge-point { min-width: 0.8rem !important; background-color: var(--color-warning); width: 0.8rem !important; height: 0.8rem; padding: 0.2rem 0px !important; margin: -1.2rem 0.8rem !important; border-radius: 10rem; }
 
 .material-icons.icon-load-doc-new {
     pointer-events: auto !important;
@@ -1288,24 +1287,13 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     letter-spacing: 0.5px !important;
 }
 
-.badge-point, 
+/* Скрываем старые овальные бейджи ЕТИСа */
 .span3 > .nav.nav-tabs.nav-stacked > li > a > .badge {
     display: none !important;
 }
 
 /* Скрываем только родные бейджи ЕТИС, но оставляем кружки */
 .span3 > .nav.nav-tabs.nav-stacked > li > a > .badge { display: none !important; }
-
-/* Стили красного кружка */
-.badge-point { 
-    display: inline-block !important;
-    width: 0.8rem !important; 
-    height: 0.8rem !important; 
-    background-color: var(--color-red) !important;
-    border-radius: 50% !important; 
-    margin-left: auto !important;
-    flex-shrink: 0 !important;
-}
 
 .span3 li.warn_menu, .span3 li.warn_menu a {
     background: transparent !important;
@@ -4447,6 +4435,77 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
     text-align: center !important;
     width: 120px !important;
 }
+
+/* --- ТОТАЛЬНЫЙ ФИКС ТОЧЕК УВЕДОМЛЕНИЙ --- */
+
+/* 1. Точка в сайдбаре (ПК и Мобайл меню) */
+.span3 > .nav.nav-tabs.nav-stacked > li > a .badge-point {
+    display: block !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    min-height: 8px !important;
+    background-color: #FF3B30 !important; /* Насыщенный красный */
+    border-radius: 50% !important;
+    margin-left: auto !important; /* Прижимает к правому краю ссылки */
+    margin-right: 4px !important;
+    flex-shrink: 0 !important;
+    align-self: center !important;
+    border: none !important;
+    box-shadow: 0 0 4px rgba(255, 59, 48, 0.4) !important;
+}
+
+/* Фикс: чтобы во флекс-контейнере текст не выталкивал точку */
+.span3 > .nav.nav-tabs.nav-stacked > li > a {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    overflow: visible !important;
+}
+
+.sidebar-link-text {
+    flex: 1 1 auto !important;
+    min-width: 0 !important; /* Позволяет тексту сжиматься, не выдавливая точку */
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* 2. Точка на мобильной кнопке (Капсула) */
+.mobile-notify-dot {
+    position: absolute !important;
+    /* Центрируем идеально */
+    top: 50% !important;
+    left: 42px !important; /* Чуть правее иконки бутерброда */
+    transform: translateY(-160%) scale(0) !important; /* Смещаем чуть выше центра иконки */
+    
+    width: 10px !important;
+    height: 10px !important;
+    background-color: #FF3B30 !important;
+    border-radius: 50% !important;
+    border: 2px solid #007AFF !important; /* Цвет капсулы, чтобы точка выглядела "впаянной" */
+    z-index: 100 !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+/* Цвет рамки точки в темной теме */
+[theme="dark"] .mobile-notify-dot {
+    border-color: #4B89DC !important;
+}
+
+/* Показ точки при наличии обновлений */
+.mobile-menu-btn.has-updates .mobile-notify-dot {
+    opacity: 1 !important;
+    transform: translateY(-160%) scale(1) !important;
+}
+
+/* Скрываем точку, когда меню открыто */
+.mobile-menu-btn.open .mobile-notify-dot {
+    display: none !important;
+}
     `;
 
     // Внедряем стили
@@ -4593,6 +4652,7 @@ injectStyles(styles);
         menuBtn.innerHTML = `
             <div class="menu-btn-content menu-closed">
                 <span class="material-icons">menu</span>
+                <span class="mobile-notify-dot"></span> 
                 <span>Меню</span>
             </div>
             <div class="menu-btn-content menu-open">
@@ -4876,12 +4936,14 @@ injectStyles(styles);
                 // 4. ПОДГОТОВКА ВСЕХ ЭЛЕМЕНТОВ
                 // Собираем ВСЕ li со всех списков в один массив
                 const allNavs = sidebar.querySelectorAll('ul.nav.nav-tabs.nav-stacked');
-                const mainNav = allNavs[0]; // Сюда будем всё складывать
+                const mainNav = allNavs[0]; 
                 let allListItems = [];
+                
+                // Флаг глобальных уведомлений для мобильной кнопки
+                let globalHasNotifications = false;
 
                 allNavs.forEach(nav => {
                     nav.querySelectorAll('li').forEach(li => {
-                        // Удаляем Дисциплины по выбору и Факультативы сразу
                         const href = li.querySelector('a')?.getAttribute('href') || '';
                         if (!href.includes('choose_dis') && !href.includes('fcl_choice')) {
                             allListItems.push(li);
@@ -4889,12 +4951,12 @@ injectStyles(styles);
                     });
                 });
 
-                // Создаем пункт "Тема" вручную, чтобы добавить его в сортировку
+                // Создаем пункт "Тема"
                 const themeLi = document.createElement("li");
                 themeLi.className = 'theme-switcher-item';
                 const themeLink = document.createElement("a");
                 themeLink.style.cursor = 'pointer';
-                themeLink.href = "#theme-switch"; // Фейковая ссылка для идентификации
+                themeLink.href = "#theme-switch"; 
                 themeLink.appendChild(document.createTextNode('Тема: ' + ((theme == 'auto') ? 'Системная' : ((theme == 'dark') ? 'Темная' : 'Светлая'))));
                 themeLink.addEventListener('click', switchTheme, false);
                 themeLi.appendChild(themeLink);
@@ -4932,69 +4994,76 @@ injectStyles(styles);
                     return 'chevron_right'; 
                 };
 
-                const allowedDotHrefs = ['stu_ann.announces', 'stu.teacher_notes'];
+                const allowedDotHrefs = ['stu_ann.announces', 'stu.teacher_notes', 'est_pkg.show_list'];
 
-                // Обрабатываем каждый элемент (добавляем иконки, чистим текст)
+                // Обрабатываем каждый элемент
                 allListItems.forEach(li => {
                     const a = li.querySelector('a');
                     if (!a) return;
                     const href = a.getAttribute('href') || '';
-                    let hasNotifications = false;
+                    let itemHasNotification = false;
 
-                    // Чистка текста от счетчиков
+                    // 1. ПРОВЕРКА УВЕДОМЛЕНИЙ (Парсинг текста)
                     Array.from(a.childNodes).forEach(node => {
                         if (node.nodeType === Node.TEXT_NODE) {
                             const match = node.textContent.match(/\s*\(([^)]+)\)\s*$/);
                             if (match) {
                                 const counterStr = match[1];
-                                if (counterStr !== '0' && counterStr !== '0/0') hasNotifications = true;
+                                const counts = counterStr.split('/');
+                                const lastCount = counts[counts.length - 1].trim();
+
+                                if (lastCount !== '0') {
+                                    itemHasNotification = true;
+                                }
                                 node.textContent = node.textContent.replace(/\s*\([^)]+\)\s*$/, '');
                             }
                         }
                     });
 
+                    // Проверка родного бейджа ЕТИСа
                     const etisBadge = a.querySelector('.badge');
                     if (etisBadge) {
-                        const count = etisBadge.textContent.trim();
-                        if (count !== '0' && count !== '') hasNotifications = true;
+                        if (etisBadge.textContent.trim() !== '0') {
+                            itemHasNotification = true;
+                        }
                         etisBadge.remove(); 
                     }
 
-                    if (hasNotifications && allowedDotHrefs.some(target => href.includes(target))) {
+                    // 2. ПЕРЕСБОРКА СТРУКТУРЫ ССЫЛКИ
+                    const iconName = getIconForHref(href);
+                    const pureText = a.textContent.trim();
+                    a.innerHTML = ''; 
+
+                    const iconSpan = document.createElement('span');
+                    iconSpan.className = 'material-icons';
+                    iconSpan.textContent = iconName;
+                    iconSpan.style.marginRight = '12px';
+                    iconSpan.style.flexShrink = '0';
+                    a.appendChild(iconSpan);
+
+                    const textSpan = document.createElement('span');
+                    textSpan.className = 'sidebar-link-text';
+                    textSpan.textContent = pureText;
+                    a.appendChild(textSpan);
+
+                    // 3. ДОБАВЛЕНИЕ ТОЧКИ И ГЛОБАЛЬНОГО ФЛАГА
+                    const isAllowed = allowedDotHrefs.some(target => href.includes(target)) || href.includes('term_test');
+
+                    if (itemHasNotification && isAllowed) {
+                        globalHasNotifications = true;
                         const dot = document.createElement('span');
                         dot.className = 'badge-point';
                         a.appendChild(dot);
                     }
-
-                    if (!a.querySelector('.material-icons')) {
-                        const icon = document.createElement('span');
-                        icon.className = 'material-icons';
-                        icon.textContent = getIconForHref(href);
-                        icon.style.flexShrink = '0';
-                        icon.style.marginRight = '8px';
-                        a.prepend(icon);
-                    }
-
-                    // Чистка шрифтов
-                    a.querySelectorAll('font').forEach(f => {
-                        f.removeAttribute('color');
-                        f.style.color = "inherit";
-                        f.style.fontWeight = "normal";
-                    });
-                    
-                    // Броня для текста
-                    Array.from(a.childNodes).forEach(node => {
-                        if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '') {
-                            const span = document.createElement('span');
-                            span.textContent = node.textContent;
-                            span.style.flex = '1';
-                            span.style.whiteSpace = 'normal';
-                            span.style.wordBreak = 'break-word';
-                            span.style.lineHeight = '1.3';
-                            a.replaceChild(span, node);
-                        }
-                    });
                 });
+                // ВКЛЮЧАЕМ КРАСНУЮ ТОЧКУ НА МОБИЛЬНОЙ КНОПКЕ
+                if (globalHasNotifications) {
+                    console.log('Включаем точку на мобильной кнопке');
+                    const mobileBtn = document.querySelector('.mobile-menu-btn');
+                    if (mobileBtn) {
+                        mobileBtn.classList.add('has-updates');
+                    }
+                }
 
                 // 5. ГРУППИРОВКА И СОРТИРОВКА
                 // Очищаем главный список
