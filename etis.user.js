@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.32
+// @version      1.33
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
-// @match        https://student.psu.ru/*
+// @match        https://student.psu.ru/*   
 // @run-at       document-start
 // @grant        none
 // ==/UserScript==
@@ -498,6 +498,12 @@ form.que_form { margin-top: 1rem !important; }
 .weeks .week.current > a { 
     color: var(--color-text-primary-invert) !important; 
     font-weight: bold !important;
+}
+
+/* Выделение актуальной недели */
+.weeks .week.actual-week a {
+    color: var(--color-accent) !important;
+    font-weight: 800 !important;
 }
 
 @media (min-width: 961px) {
@@ -5468,30 +5474,211 @@ injectStyles(styles);
                 toolbar.className = 'timetable-toolbar';
                 span9.prepend(toolbar);
 
-                // 2. Кнопка "Синхронизация"
+                // --- 1. КНОПКА "ПОДЕЛИТЬСЯ" ---
+                const shareBtn = document.createElement('div');
+                shareBtn.className = 'toolbar-item';
+                shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">ios_share</span> Поделиться';
+                toolbar.appendChild(shareBtn);
+
+                shareBtn.addEventListener('click', () => {
+                    const originalText = shareBtn.innerHTML;
+                    shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">hourglass_empty</span> Загрузка...';
+
+                    const renderTimetable = () => {
+                        const isMobile = window.innerWidth <= 960;
+                        const renderWidth = isMobile ? 540 : 1000;
+                        
+                        const exportContainer = document.createElement('div');
+                        // Скрываем контейнер внизу экрана
+                        exportContainer.style.position = 'fixed';
+                        exportContainer.style.top = '100vh';
+                        exportContainer.style.left = '0';
+                        exportContainer.style.width = renderWidth + 'px'; 
+                        exportContainer.style.padding = isMobile ? '24px' : '40px';
+                        exportContainer.style.boxSizing = 'border-box';
+                        exportContainer.style.background = getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6';
+                        exportContainer.style.fontFamily = getComputedStyle(document.body).fontFamily;
+                        exportContainer.style.zIndex = '-9999';
+                        
+                        // Если мобилка, форсируем минимальную высоту для соотношения 9:16 (как сторис)
+                        if (isMobile) {
+                            exportContainer.style.minHeight = (renderWidth * 16 / 9) + 'px';
+                        }
+                        
+                        let fileName = 'Расписание.png';
+
+                        // Формируем заголовок и название файла
+                        const dateStyled = document.querySelector('.week-date-styled');
+                        if (dateStyled) {
+                            const dateText = dateStyled.textContent.trim();
+                            const cleanDates = dateText.replace(/^С\s+/i, '').replace(/\s*по\s*/i, '-');
+                            if (cleanDates) fileName = `Расписание ${cleanDates}.png`;
+
+                            const title = document.createElement('h2');
+                            title.textContent = 'Расписание: ' + dateText;
+                            title.style.textAlign = 'center';
+                            title.style.marginBottom = isMobile ? '20px' : '30px';
+                            title.style.fontSize = isMobile ? '1.8rem' : '2.2rem';
+                            title.style.fontWeight = '800';
+                            title.style.color = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
+                            exportContainer.appendChild(title);
+                        }
+
+                        // Оборачиваем клон в .span9 для сохранения стилей
+                        const span9Wrapper = document.createElement('div');
+                        span9Wrapper.className = 'span9';
+                        span9Wrapper.style.setProperty('margin', '0', 'important');
+                        span9Wrapper.style.setProperty('padding', '0', 'important');
+                        span9Wrapper.style.setProperty('width', '100%', 'important');
+
+                        // Клонируем всю таблицу расписания
+                        const timetableClone = document.querySelector('.timetable').cloneNode(true);
+                        
+                        // Удаляем кнопки "оценить занятие" и скрытые пары
+                        timetableClone.querySelectorAll('.pair_teacher .eval').forEach(el => el.remove());
+                        timetableClone.querySelectorAll('.hidden-by-filter').forEach(el => el.remove());
+                        
+                        // Снимаем синие подчеркивания у ссылок
+                        timetableClone.querySelectorAll('a').forEach(a => {
+                            a.style.textDecoration = 'none';
+                            a.style.color = getComputedStyle(a).color;
+                        });
+
+                        timetableClone.querySelectorAll('*').forEach(el => {
+                            el.style.boxSizing = 'border-box';
+                        });
+
+                        span9Wrapper.appendChild(timetableClone);
+                        exportContainer.appendChild(span9Wrapper);
+                        document.body.appendChild(exportContainer);
+
+                        // Рендерим канвас
+                        window.html2canvas(exportContainer, { 
+                            scale: 2, 
+                            useCORS: true,
+                            windowWidth: isMobile ? renderWidth : 1200, // Включает мобильные стили CSS при рендере
+                            backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'
+                        }).then(canvas => {
+                            // Превращаем канвас в файл для нативного окна "Поделиться"
+                            canvas.toBlob(blob => {
+                                if (!blob) throw new Error('Blob creation failed');
+                                
+                                const file = new File([blob], fileName, { type: 'image/png' });
+
+                                // Если мы с телефона и браузер поддерживает окно "Share"
+                                if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                    navigator.share({
+                                        files: [file],
+                                        title: 'Расписание',
+                                    }).then(() => {
+                                        exportContainer.remove();
+                                        shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">check</span> Готово!';
+                                        setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
+                                    }).catch(err => {
+                                        console.log('Пользователь отменил шаринг', err);
+                                        exportContainer.remove();
+                                        shareBtn.innerHTML = originalText;
+                                    });
+                                } else {
+                                    // Фолбэк для ПК (просто скачивание)
+                                    const link = document.createElement('a');
+                                    link.download = fileName;
+                                    link.href = URL.createObjectURL(blob);
+                                    link.click();
+                                    URL.revokeObjectURL(link.href);
+
+                                    exportContainer.remove();
+                                    shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">check</span> Сохранено!';
+                                    setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
+                                }
+                            }, 'image/png');
+                        }).catch(err => {
+                            console.error('Ошибка при создании картинки:', err);
+                            exportContainer.remove();
+                            shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">error</span> Ошибка';
+                            setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
+                        });
+                    };
+
+                    // Подгружаем библиотеку
+                    if (typeof window.html2canvas === 'undefined') {
+                        const script = document.createElement('script');
+                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                        script.onload = renderTimetable;
+                        document.head.appendChild(script);
+                    } else {
+                        renderTimetable();
+                    }
+                });
+
+                // --- 2. ТУМБЛЕР "КОНСУЛЬТАЦИИ" (Локальная фильтрация с памятью) ---
+                const consultDiv = Array.from(span9.querySelectorAll('div')).find(div =>
+                    div.querySelector('input[type="checkbox"]') && div.textContent.includes('Консультации')
+                );
+
+                // Заранее помечаем строки с консультациями
+                span9.querySelectorAll('.timetable-grid tr').forEach(row => {
+                    const dis = row.querySelector('.dis');
+                    if (dis && dis.textContent.toLowerCase().includes('консультация')) {
+                        row.classList.add('consultation-row');
+                    }
+                });
+
+                if (consultDiv) {
+                    const wrapper = document.createElement('label');
+                    wrapper.className = 'toolbar-item';
+                    
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'tumbler-checkbox'; 
+                    
+                    // Читаем из памяти
+                    const savedState = localStorage.getItem('etis_show_consultations');
+                    checkbox.checked = savedState !== 'false';
+                    
+                    wrapper.appendChild(checkbox);
+                    wrapper.appendChild(document.createTextNode('Консультации'));
+                    toolbar.appendChild(wrapper);
+                    consultDiv.remove();
+
+                    // Логика фильтрации
+                    checkbox.addEventListener('change', () => {
+                        const show = checkbox.checked;
+                        localStorage.setItem('etis_show_consultations', show);
+                        span9.querySelectorAll('.consultation-row').forEach(row => {
+                            if (show) row.classList.remove('hidden-by-filter');
+                            else row.classList.add('hidden-by-filter');
+                        });
+                        if (typeof recalculateTimetable === 'function') recalculateTimetable();
+                    });
+
+                    // Применяем фильтр при загрузке
+                    if (!checkbox.checked) {
+                        span9.querySelectorAll('.consultation-row').forEach(row => row.classList.add('hidden-by-filter'));
+                    }
+                }
+
+                // --- 3. КНОПКА "СИНХРОНИЗАЦИЯ" ---
                 const syncHeader = Array.from(document.querySelectorAll('h2')).find(h2 => h2.querySelector('#tb_show') || h2.textContent.includes('Синхронизация'));
                 if (syncHeader) {
                     const resourcesDiv = document.getElementById('resources');
                     if (resourcesDiv) {
-                        resourcesDiv.className = 'sync-card'; // Вешаем стили карточки
+                        resourcesDiv.className = 'sync-card'; 
                     }
 
                     const newBtn = document.createElement('div');
                     newBtn.className = 'toolbar-item';
                     newBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">sync</span> Синхронизация';
                     
-                    // собственная независимая логика скрытия/показа
                     newBtn.addEventListener('click', () => {
                         if (resourcesDiv) {
                             if (resourcesDiv.hasAttribute('hidden') || resourcesDiv.style.display === 'none') {
                                 resourcesDiv.removeAttribute('hidden');
                                 resourcesDiv.style.display = 'block';
-                                // Делаем кнопку активной
                                 newBtn.style.background = 'var(--color-accent)';
                                 newBtn.style.color = 'var(--color-text-primary-invert)';
                             } else {
                                 resourcesDiv.style.display = 'none';
-                                // Возвращаем обычный цвет кнопки
                                 newBtn.style.background = 'var(--color-highlight)';
                                 newBtn.style.color = 'var(--color-text-primary)';
                             }
@@ -5499,32 +5686,10 @@ injectStyles(styles);
                     });
 
                     toolbar.appendChild(newBtn);
-                    syncHeader.remove(); // Удаляем старый заголовок с кривой кнопкой
+                    syncHeader.remove(); 
                 }
 
-                // 3. Тумблер "Консультации"
-                const consultDiv = Array.from(span9.querySelectorAll('div')).find(div =>
-                    div.querySelector('input[type="checkbox"]') && div.textContent.includes('Консультации')
-                );
-                if (consultDiv) {
-                    const wrapper = document.createElement('label');
-                    wrapper.className = 'toolbar-item';
-
-                    const checkbox = consultDiv.querySelector('input');
-                    checkbox.className = 'tumbler-checkbox'; 
-                    
-                    wrapper.appendChild(checkbox);
-                    wrapper.appendChild(document.createTextNode('Консультации'));
-
-                    if (consultDiv.onclick) {
-                        wrapper.onclick = consultDiv.onclick;
-                    }
-
-                    toolbar.appendChild(wrapper);
-                    consultDiv.remove();
-                }
-
-                // 4. Ссылка "Подробное расписание"
+                // --- 4. ПОДРОБНОЕ РАСПИСАНИЕ ---
                 const detailLink = Array.from(span9.querySelectorAll('a')).find(a => a.textContent.includes('Подробное расписание'));
                 if (detailLink) {
                     detailLink.className = 'toolbar-item';
@@ -5532,7 +5697,7 @@ injectStyles(styles);
                     toolbar.appendChild(detailLink);
                 }
 
-                // 5. Кнопка "Оставить отзыв"
+                // --- 5. КНОПКА ОТЗЫВА ---
                 const feedbackLink = Array.from(span9.querySelectorAll('a')).find(a => a.textContent.includes('Напишите, что вы думаете о расписании'));
                 if (feedbackLink) {
                     let oldParent = feedbackLink.parentElement;
@@ -5624,6 +5789,28 @@ injectStyles(styles);
                     }
                 }
 
+                // --- ПОДСВЕТКА АКТУАЛЬНОЙ НЕДЕЛИ ---
+                const urlParamsTT = new URLSearchParams(window.location.search);
+                const weeksList = span9.querySelectorAll('.weeks .week');
+
+                // Если в ссылке нет параметра p_week, значит мы на настоящей (текущей) неделе
+                if (!urlParamsTT.has('p_week')) {
+                    const currentWeekEl = span9.querySelector('.week.current');
+                    if (currentWeekEl) {
+                        localStorage.setItem('etis_actual_week', currentWeekEl.textContent.trim());
+                    }
+                }
+
+                const actualWeekNum = localStorage.getItem('etis_actual_week');
+                if (actualWeekNum) {
+                    weeksList.forEach(w => {
+                        // Красим текст, если это актуальная неделя, но мы сейчас НЕ на ней (нет класса current)
+                        if (w.textContent.trim() === actualWeekNum && !w.classList.contains('current')) {
+                            w.classList.add('actual-week');
+                        }
+                    });
+                }
+
                 // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ) ---
                 const dayHeaders = span9.querySelectorAll('.day h3');
                 dayHeaders.forEach(header => {
@@ -5712,67 +5899,115 @@ injectStyles(styles);
                     }
                 });
 
-                // --- ЛОГИКА СКРЫТИЯ ПУСТЫХ ПАР И ОБРАБОТКИ ОКОН ---
-                const days = span9.querySelectorAll("div.day");
-                days.forEach(day => {
-                    const table = day.querySelector('table');
-                    if (!table) return;
+                // --- ЛОГИКА СКРЫТИЯ ПУСТЫХ ПАР И ОБРАБОТКИ ОКОН (УМНАЯ) ---
+                function recalculateTimetable() {
+                    const days = span9.querySelectorAll("div.day");
+                    days.forEach(day => {
+                        const table = day.querySelector('table');
+                        if (!table) return;
 
-                    const rows = Array.from(table.querySelectorAll('tr'));
-                    const pairData = rows.map(row => {
-                        const info = row.querySelector('.pair_info');
-                        const isReal = info && info.textContent.replace(/\u00a0/g, ' ').trim().length > 0;
-                        return { row, isReal };
-                    });
+                        // Удаляем старые отрисованные окна и плашки "Выходной"
+                        table.querySelectorAll('.timetable-gap-row, .custom-no-pairs').forEach(r => r.remove());
 
-                    const firstRealIndex = pairData.findIndex(p => p.isReal);
-                    const lastRealIndex = pairData.map(p => p.isReal).lastIndexOf(true);
+                        const rows = Array.from(table.querySelectorAll('tr')).filter(r => !r.classList.contains('timetable-gap-row') && !r.classList.contains('custom-no-pairs'));
+                        
+                        // Если это уже оригинальный пустой день - не трогаем
+                        if (rows.length === 1 && rows[0].textContent.includes('0 пар')) return;
 
-                    if (firstRealIndex === -1) return;
+                        // Ищем реальные пары (есть текст И не скрыты тумблером консультаций)
+                        const pairData = rows.map(row => {
+                            const info = row.querySelector('.pair_info');
+                            const isOccupied = info && 
+                                               info.textContent.replace(/\u00a0/g, ' ').trim().length > 0 && 
+                                               !row.classList.contains('hidden-by-filter');
+                            return { row, isOccupied };
+                        });
 
-                    let i = 0;
-                    while (i < rows.length) {
-                        if (i < firstRealIndex || i > lastRealIndex) {
-                            rows[i].style.display = 'none';
-                            i++;
-                        } 
-                        else if (!pairData[i].isReal) {
-                            let gapCount = 0;
-                            let gapStart = i;
+                        const firstRealIndex = pairData.findIndex(p => p.isOccupied);
+                        const lastRealIndex = pairData.map(p => p.isOccupied).lastIndexOf(true);
 
-                            while (i <= lastRealIndex && !pairData[i].isReal) {
+                        // Если пар нет вообще (всё пусто или мы скрыли все консультации тумблером)
+                        if (firstRealIndex === -1) {
+                            rows.forEach(r => r.style.display = 'none'); 
+                            
+                            const tbody = table.querySelector('tbody') || table;
+                            const tr = document.createElement('tr');
+                            tr.className = 'custom-no-pairs';
+                            tr.innerHTML = `
+                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
+                                <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
+                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
+                                        <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
+                                        Выходной
+                                    </div>
+                                </td>
+                                <td class="pair_teacher" style="border-bottom: none !important;"></td>
+                            `;
+                            tbody.appendChild(tr);
+                            return;
+                        }
+
+                        // Обработка окон (перерывов)
+                        let i = 0;
+                        while (i < rows.length) {
+                            if (i < firstRealIndex || i > lastRealIndex) {
                                 rows[i].style.display = 'none';
-                                gapCount++;
+                                i++;
+                            } 
+                            else if (!pairData[i].isOccupied) {
+                                let gapCount = 0;
+                                let gapStart = i;
+
+                                while (i <= lastRealIndex && !pairData[i].isOccupied) {
+                                    rows[i].style.display = 'none';
+                                    gapCount++;
+                                    i++;
+                                }
+
+                                if (gapCount > 0) {
+                                    const gapRow = document.createElement('tr');
+                                    gapRow.className = 'timetable-gap-row';
+                                    
+                                    let pairWord = 'пар';
+                                    if (gapCount === 1) pairWord = 'пара';
+                                    else if (gapCount >= 2 && gapCount <= 4) pairWord = 'пары';
+
+                                    gapRow.innerHTML = `
+                                        <td class="pair_num"></td>
+                                        <td class="pair_info">
+                                            <div class="timetable-gap-capsule">
+                                                <span class="material-icons" style="font-size: 14px;">hourglass_empty</span>
+                                                Окно: ${gapCount} ${pairWord}
+                                            </div>
+                                        </td>
+                                        <td class="pair_teacher"></td>
+                                    `;
+                                    rows[gapStart].parentNode.insertBefore(gapRow, rows[gapStart]);
+                                }
+                            } else {
+                                rows[i].style.display = '';
                                 i++;
                             }
-
-                            if (gapCount > 0) {
-                                // ЛИНИЮ ПЕРЕД ОКНОМ БОЛЬШЕ НЕ УДАЛЯЕМ (удаляем старую строку кода с tr-before-gap)
-
-                                const gapRow = document.createElement('tr');
-                                gapRow.className = 'timetable-gap-row';
-                                
-                                let pairWord = 'пар';
-                                if (gapCount === 1) pairWord = 'пара';
-                                else if (gapCount >= 2 && gapCount <= 4) pairWord = 'пары';
-
-                                gapRow.innerHTML = `
-                                    <td class="pair_num"></td>
-                                    <td class="pair_info">
-                                        <div class="timetable-gap-capsule">
-                                            <span class="material-icons" style="font-size: 14px;">hourglass_empty</span>
-                                            Окно: ${gapCount} ${pairWord}
-                                        </div>
-                                    </td>
-                                    <td class="pair_teacher"></td>
-                                `;
-                                rows[gapStart].parentNode.insertBefore(gapRow, rows[gapStart]);
-                            }
-                        } else {
-                            i++;
                         }
-                    }
-                });
+
+                        // --- ФИКС ЛИНИЙ (Скрываем линию у последней видимой строки) ---
+                        // Сначала сбрасываем инлайновые стили у всех строк (если мы переключаем тумблер туда-сюда)
+                        Array.from(table.querySelectorAll('tr')).forEach(r => r.style.removeProperty('background-image'));
+                        
+                        // Выбираем все фактически видимые строки (учитывая окна и консультации)
+                        const visibleRows = Array.from(table.querySelectorAll('tr')).filter(r => 
+                            r.style.display !== 'none' && !r.classList.contains('hidden-by-filter')
+                        );
+
+                        // У самой последней убираем разделительную линию через инлайновый стиль
+                        if (visibleRows.length > 0) {
+                            visibleRows[visibleRows.length - 1].style.setProperty('background-image', 'none', 'important');
+                        }
+                    });
+                }
+
+                // Вызываем перерасчет сразу при загрузке расписания
+                recalculateTimetable();
                 break;
 
                 case 'stu.change_pass_form':
