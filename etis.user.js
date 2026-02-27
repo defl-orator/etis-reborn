@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.33
+// @version      1.34
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -1263,11 +1263,29 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     display: none !important;
 }
 
-.span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
-    background: var(--color-highlight) !important;
-    margin: 0 12px 4px 12px !important;
-    border-radius: var(--radius-small) !important;
-    width: auto !important;
+/* --- ФИКС ЗАЛИПАНИЯ: Ховер только для устройств с мышью --- */
+@media (hover: hover) {
+    .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
+        background: var(--color-highlight) !important;
+        margin: 0 12px 4px 12px !important;
+        border-radius: var(--radius-small) !important;
+        width: auto !important;
+    }
+    
+    /* То же самое для обычных кнопок и контента, чтобы они не моргали под капсулой */
+    .timetable-toolbar .toolbar-item:hover,
+    .submenu a:hover,
+    button:hover,
+    .cgrldatarow:hover,
+    table tbody tr:hover td {
+        background-color: var(--color-highlight) !important; 
+    }
+}
+
+/* Жирный текст в капсуле меню */
+.mobile-menu-btn {
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
 }
 
 .badge-point, 
@@ -4599,24 +4617,26 @@ injectStyles(styles);
             }
         }
 
+        // preventDefault() предотвращает "призрачные клики" и залипание ховера на элементах под кнопкой
         menuBtn.addEventListener('click', (e) => {
+            e.preventDefault(); 
             e.stopPropagation();
             const isOpen = sidebar.classList.contains('mobile-active');
             toggleMenu(!isOpen);
         });
 
-        overlay.addEventListener('click', () => toggleMenu(false));
+        overlay.addEventListener('click', (e) => {
+            e.preventDefault(); // Тоже блокируем проваливание клика сквозь затемнение
+            toggleMenu(false);
+        });
 
         // Логика при клике на ссылку
         sidebar.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
-                
-                sidebar.classList.remove('mobile-active'); // Убираем сайдбар
-                overlay.classList.remove('active');       // Убираем затемнение
-                
-                menuBtn.classList.remove('open');         // Убираем класс стрелочки
-                menuBtn.classList.add('is-loading');      // ДОБАВЛЯЕМ КЛАСС ЗАГРУЗКИ
-                
+                sidebar.classList.remove('mobile-active'); 
+                overlay.classList.remove('active');       
+                menuBtn.classList.remove('open');         
+                menuBtn.classList.add('is-loading');      
             });
         });
     }
@@ -5664,8 +5684,67 @@ injectStyles(styles);
                     const resourcesDiv = document.getElementById('resources');
                     if (resourcesDiv) {
                         resourcesDiv.className = 'sync-card'; 
+
+                        // 1. Удаляем заголовок "С помощью стандарта iCalendar"
+                        const h3 = resourcesDiv.querySelector('h3');
+                        if (h3) h3.remove();
+
+                        // 2. Очищаем текст "Ссылка на календарь:" и лишние <br>
+                        const wrapper = resourcesDiv.querySelector('div');
+                        if (wrapper) {
+                            wrapper.removeAttribute('style'); // Убираем кривой отступ ЕТИСа
+                            Array.from(wrapper.childNodes).forEach(node => {
+                                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('Ссылка на календарь')) node.remove();
+                                if (node.tagName === 'BR') node.remove();
+                            });
+                        }
+
+                        // 3. Пересобираем блок с кнопками
+                        const calendarDiv = resourcesDiv.querySelector('#calendar');
+                        if (calendarDiv) {
+                            const textBox = calendarDiv.querySelector('#textbox');
+                            const copyBtn = Array.from(calendarDiv.querySelectorAll('button')).find(b => b.textContent.includes('Скопировать'));
+                            const delBtn = Array.from(calendarDiv.querySelectorAll('button')).find(b => b.textContent.includes('Отписаться'));
+
+                            if (textBox && copyBtn && delBtn) {
+                                // Сохраняем саму ссылку
+                                const linkValue = textBox.value;
+
+                                // Стилизуем кнопку "Скопировать"
+                                copyBtn.className = 'answer-btn-custom';
+                                copyBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">content_copy</span>Скопировать';
+                                copyBtn.removeAttribute('onclick'); // Убиваем старый скрипт ЕТИСа
+                                copyBtn.addEventListener('click', () => {
+                                    navigator.clipboard.writeText(linkValue).then(() => {
+                                        const origHtml = copyBtn.innerHTML;
+                                        copyBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">check</span>Скопировано!';
+                                        // Форсированно делаем зеленой через !important
+                                        copyBtn.style.setProperty('background', 'var(--color-green)', 'important'); 
+                                        setTimeout(() => {
+                                            copyBtn.innerHTML = origHtml;
+                                            copyBtn.style.removeProperty('background'); // Возвращаем родной синий
+                                        }, 2000);
+                                    });
+                                });
+
+                                // Стилизуем кнопку "Отписаться"
+                                delBtn.className = 'answer-btn-custom';
+                                // Форсированно делаем красной через !important
+                                delBtn.style.setProperty('background', 'var(--color-red)', 'important');
+                                delBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">delete_outline</span>Отписаться';
+
+                                // Собираем блок заново (текстбокс исчезает, остаются только красивые кнопки)
+                                calendarDiv.innerHTML = '';
+                                calendarDiv.style.display = 'flex';
+                                calendarDiv.style.gap = '1.2rem';
+                                calendarDiv.style.marginTop = '2rem';
+                                calendarDiv.appendChild(copyBtn);
+                                calendarDiv.appendChild(delBtn);
+                            }
+                        }
                     }
 
+                    // Кнопка в тулбаре для вызова карточки
                     const newBtn = document.createElement('div');
                     newBtn.className = 'toolbar-item';
                     newBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">sync</span> Синхронизация';
@@ -6632,6 +6711,8 @@ injectStyles(styles);
                     // 3. ОБРАБОТКА "ОЦЕНКИ ЗА СЕССИИ"
                     if (pageMode === 'session' || !pageMode) {
                         const signsTables = span9.querySelectorAll('table.common');
+                        
+                        // Шаг 1. Разделяем одну большую таблицу на отдельные таблицы по триместрам
                         signsTables.forEach(table => {
                             const rows = Array.from(table.querySelectorAll('tr'));
                             const isHeader = (r) => r.textContent.toLowerCase().includes('дисциплина') && r.textContent.toLowerCase().includes('оценка');
@@ -6669,8 +6750,8 @@ injectStyles(styles);
                                     currentTbody = document.createElement('tbody');
                                     newTable.appendChild(currentTbody);
                                     
-                                    wrapper.appendChild(newTable); // Кладем таблицу в обертку
-                                    table.parentNode.insertBefore(wrapper, table); // Вставляем обертку в DOM
+                                    wrapper.appendChild(newTable); 
+                                    table.parentNode.insertBefore(wrapper, table); 
                                 } 
                                 // Добавляем строки в текущую созданную таблицу
                                 else if (currentTbody && !isHeader(row) && cells.length > 1) {
@@ -6678,6 +6759,84 @@ injectStyles(styles);
                                 }
                             });
                             if (validSplit) table.remove();
+                        });
+
+                        // Шаг 2. Сканируем новые таблицы и считаем средний балл (создаем капсулы)
+                        const sessionTables = span9.querySelectorAll('.session-table-v6');
+                        sessionTables.forEach(table => {
+                            const wrapper = table.closest('.wide-table-wrapper');
+                            const h3 = wrapper ? wrapper.previousElementSibling : null;
+                            if (!h3 || !h3.classList.contains('term-title')) return;
+
+                            let sum = 0, count = 0, hasFail = false, hasPass = false, hasAny = false;
+
+                            // Пробегаемся по всем строкам конкретного триместра
+                            const rows = table.querySelectorAll('tbody tr');
+                            rows.forEach(r => {
+                                const cells = r.querySelectorAll('td');
+                                if (cells.length >= 2) {
+                                    // Очищаем текст от HTML (тегов font) и приводим к нижнему регистру
+                                    const gradeText = cells[1].textContent.trim().toLowerCase();
+                                    
+                                    if (gradeText && gradeText !== 'н') { // 'н' (неявка без оценки) пропускаем
+                                        hasAny = true;
+                                        // Ищем "незачет" или "2"
+                                        if (gradeText.includes('незач') || gradeText === '2') {
+                                            hasFail = true;
+                                        } 
+                                        // Ищем "зачет"
+                                        else if (gradeText.includes('зач')) {
+                                            hasPass = true;
+                                        } 
+                                        // Ищем цифры (3, 4, 5)
+                                        else {
+                                            const num = parseInt(gradeText, 10);
+                                            if (!isNaN(num) && num >= 3 && num <= 5) {
+                                                sum += num;
+                                                count++;
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+
+                            // Оборачиваем заголовок в Flex-контейнер, чтобы расположить элементы в один ряд
+                            const headerContainer = document.createElement('div');
+                            headerContainer.className = 'subject-header-flex';
+                            h3.parentNode.insertBefore(headerContainer, h3);
+                            headerContainer.appendChild(h3);
+
+                            // Создаем саму капсулу
+                            const capsule = document.createElement('div');
+                            capsule.className = 'subject-score-capsule';
+
+                            // Логика заполнения и раскраски
+                            if (!hasAny) {
+                                capsule.textContent = 'Нет оценок';
+                                capsule.style.background = 'var(--color-highlight)';
+                                capsule.style.color = 'var(--color-text-secondary)';
+                            } else if (hasFail) {
+                                capsule.textContent = 'НЕЗАЧЕТ';
+                                capsule.style.background = 'var(--color-red)';
+                                capsule.style.color = '#fff';
+                            } else if (count > 0) {
+                                // Округляем средний балл до сотых (например, 4.33)
+                                const avg = Math.round((sum / count) * 100) / 100; 
+                                capsule.textContent = `${avg} / 5`;
+                                
+                                // Цветовая логика (такая же, как в "Оценках в триместре")
+                                const p = (avg / 5) * 100;
+                                if (p < 41) { capsule.style.background = 'var(--color-red)'; capsule.style.color = '#fff'; }
+                                else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
+                                else if (p < 81) { capsule.style.background = '#8BC34A'; capsule.style.color = '#fff'; } // Светло-зеленый
+                                else { capsule.style.background = 'var(--color-green)'; capsule.style.color = '#fff'; }
+                            } else if (hasPass) {
+                                capsule.textContent = 'ЗАЧЕТ';
+                                capsule.style.background = 'var(--color-green)';
+                                capsule.style.color = '#fff';
+                            }
+
+                            headerContainer.appendChild(capsule);
                         });
                     }
 
@@ -6740,6 +6899,94 @@ injectStyles(styles);
                             }
                         });
                     }
+
+                    // 5. ОБРАБОТКА "ОЦЕНКИ В ДИПЛОМ"
+                    if (pageMode === 'diplom') {
+                        const table = span9.querySelector('table.common');
+                        if (table) {
+                            // 1. Скрываем старый блок "Средний балл" от ЕТИСа
+                            const oldAvg = Array.from(span9.querySelectorAll('div')).find(d => d.textContent.includes('Средний балл') && !d.classList.contains('subject-score-capsule'));
+                            if (oldAvg) oldAvg.style.display = 'none';
+
+                            // 2. Создаем обертку для таблицы (скролл + красота)
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'wide-table-wrapper';
+                            table.parentNode.insertBefore(wrapper, table);
+                            wrapper.appendChild(table);
+
+                            // 3. Считаем средний балл
+                            let sum = 0, count = 0;
+                            let hasFail = false;
+
+                            const rows = table.querySelectorAll('tr');
+                            rows.forEach(row => {
+                                const cells = row.querySelectorAll('td');
+                                if (cells.length >= 2) {
+                                    const text = cells[1].textContent.toLowerCase().trim();
+                                    
+                                    // Логика перевода слов в цифры
+                                    if (text.includes('отлично')) {
+                                        sum += 5; count++;
+                                    } else if (text.includes('хорошо')) {
+                                        sum += 4; count++;
+                                    } else if (text.includes('удовлетворительно') || text.includes('удовл.')) {
+                                        sum += 3; count++;
+                                    } else if (text.includes('неудовлетворительно') || text.includes('незачет') || text.includes('незачёт')) {
+                                        hasFail = true;
+                                    }
+                                }
+                            });
+
+                            // 4. Создаем шапку с капсулой
+                            const headerContainer = document.createElement('div');
+                            headerContainer.className = 'subject-header-flex';
+                            
+                            // Добавляем красивый заголовок слева (так как его там нет)
+                            const title = document.createElement('h3');
+                            title.textContent = 'Выписка оценок к диплому';
+                            headerContainer.appendChild(title);
+
+                            // Создаем капсулу
+                            const capsule = document.createElement('div');
+                            capsule.className = 'subject-score-capsule';
+
+                            if (hasFail) {
+                                capsule.textContent = 'ЕСТЬ ДОЛГИ';
+                                capsule.style.background = 'var(--color-red)';
+                                capsule.style.color = '#fff';
+                            } else if (count > 0) {
+                                const avg = Math.round((sum / count) * 100) / 100;
+                                capsule.textContent = `${avg} / 5`;
+
+                                // Цветовая градация
+                                const p = (avg / 5) * 100;
+                                if (p < 61) { 
+                                    capsule.style.background = 'var(--color-yellow)'; 
+                                    capsule.style.color = '#000'; 
+                                } else if (p < 81) { 
+                                    capsule.style.background = '#8BC34A'; // Салатовый (4-ка)
+                                    capsule.style.color = '#fff'; 
+                                } else { 
+                                    capsule.style.background = 'var(--color-green)'; // Отлично
+                                    capsule.style.color = '#fff'; 
+                                }
+                                
+                                // Красный диплом (условно: если средний > 4.75)
+                                if (avg >= 4.75) {
+                                    capsule.style.boxShadow = '0 0 0 2px #FFD700'; // Золотая обводка
+                                    capsule.title = 'Претендент на красный диплом';
+                                }
+                            } else {
+                                capsule.textContent = 'Нет оценок';
+                                capsule.style.background = 'var(--color-highlight)';
+                                capsule.style.color = 'var(--color-text-secondary)';
+                            }
+
+                            headerContainer.appendChild(capsule);
+                            span9.insertBefore(headerContainer, wrapper);
+                        }
+                    }
+
                     break;
                 }
 
