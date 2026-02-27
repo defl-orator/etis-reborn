@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.35
+// @version      1.36
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -4506,6 +4506,11 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 .mobile-menu-btn.open .mobile-notify-dot {
     display: none !important;
 }
+
+/* Убираем подчеркивание в капсулах-кнопках */
+.answer-btn-custom, .answer-btn-custom:hover {
+    text-decoration: none !important;
+}
     `;
 
     // Внедряем стили
@@ -5201,13 +5206,49 @@ injectStyles(styles);
             switch (page) {
                 case 'stu.teach_plan': {
                     const isAdvanced = new URLSearchParams(window.location.search).get('p_mode') === 'advanced';
+                    const submenu = span9.querySelector('.submenu');
+                    const planEvalBtn = span9.querySelector('a[onclick*="cust.est_plan_form_stu"]');
+
+                    // --- ПЕРЕНОС КНОПКИ В ПОДМЕНЮ ---
+                    if (submenu && planEvalBtn) {
+                        // 1. Стилизуем под капсулу
+                        planEvalBtn.className = 'answer-btn-custom';
+                        // Используем margin-left: auto, чтобы прижать кнопку к правому краю ряда,
+                        // если на экране достаточно места.
+                        planEvalBtn.style.cssText = `
+                            margin-left: auto; 
+                            text-decoration: none !important; 
+                            padding: 0.6rem 1.4rem !important; 
+                            font-size: 1.2rem !important; 
+                            height: fit-content;
+                            white-space: nowrap;
+                        `;
+                        planEvalBtn.innerHTML = '<span class="material-icons" style="font-size:1.5rem; margin-right:4px">auto_awesome</span> Оценить план';
+                        
+                        // 2. Перемещаем в submenu
+                        submenu.appendChild(planEvalBtn);
+
+                        // 3. Удаляем старый пустой контейнер-обертку, который создавал отступ сверху
+                        const oldWrapper = span9.querySelector('div[style*="display: inline-block"]');
+                        if (oldWrapper) {
+                            // Проверяем, что внутри нет полезных h3 (триместров)
+                            const possibleH3 = oldWrapper.querySelector('h3');
+                            if (!possibleH3) {
+                                oldWrapper.remove();
+                            } else {
+                                // Если там h3, удаляем только лишний div с кнопкой внутри
+                                const btnContainer = oldWrapper.querySelector('div[style*="width:100%"]');
+                                if (btnContainer) btnContainer.remove();
+                            }
+                        }
+                    }
 
                     if (isAdvanced) {
-                        // 1. Оформляем кнопку отзыва в углу
+                        // Оформляем кнопку отзыва в детальном режиме (если она есть)
                         const feedbackBtn = span9.querySelector('a[href*="est_pkg"]');
                         if (feedbackBtn) {
                             feedbackBtn.className = 'answer-btn-custom';
-                            feedbackBtn.style.cssText = 'float: right; margin-top: -40px;';
+                            feedbackBtn.style.cssText = 'float: right; margin-top: -35px; text-decoration: none !important;';
                             feedbackBtn.innerHTML = '<span class="material-icons" style="font-size:16px; margin-right:6px">feedback</span> Оценить план';
                         }
 
