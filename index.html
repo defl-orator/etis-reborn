@@ -219,9 +219,15 @@
         }
 
         /* --- FOOTER & MODAL --- */
-        footer { padding: 40px 0; text-align: center; }
+        footer {
+            padding: 60px 0 40px;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            background: var(--card-bg); /* Сделаем футер чуть темнее фона */
+        }
+
         .credits { 
-            margin-top: 60px;
+            margin-top: 30px;
             color: var(--text-secondary); 
             font-size: 0.9rem; 
         }
@@ -231,9 +237,29 @@
             border-bottom: 1px dashed var(--text-secondary); 
             transition: opacity 0.2s ease;
         }
+        .credits a:hover { opacity: 0.7; }
 
-        .credits a:hover {
-            opacity: 0.7;
+        /* Ссылка на официальный ЕТИС */
+        .official-link {
+            margin-top: 15px;
+            display: inline-block;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--primary);
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+        .official-link:hover {
+            opacity: 1;
+            text-decoration: underline;
+        }
+
+        /* Копирайт */
+        .copyright {
+            margin-top: 25px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            opacity: 0.6;
         }
 
         .modal-overlay {
@@ -293,6 +319,85 @@
             color: var(--text-secondary);
             margin-top: 20px;
             opacity: 0.6;
+        }
+        /* --- FAQ SECTION --- */
+        .faq-section {
+            margin-bottom: 120px;
+        }
+        
+        .faq-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .faq-item {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            margin-bottom: 15px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+
+        .faq-item:hover {
+            box-shadow: 0 10px 20px var(--shadow);
+            transform: translateY(-2px);
+        }
+
+        .faq-question {
+            padding: 20px 25px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            list-style: none; /* Убираем стандартный треугольник */
+            user-select: none;
+        }
+        
+        /* Убираем стандартный маркер в Safari/Chrome */
+        .faq-question::-webkit-details-marker {
+            display: none;
+        }
+
+        .faq-question::after {
+            content: '+';
+            font-size: 1.5rem;
+            color: var(--primary);
+            font-weight: 400;
+            transition: transform 0.3s ease;
+        }
+
+        details[open] .faq-question::after {
+            transform: rotate(45deg);
+        }
+
+        details[open] .faq-question {
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .faq-answer {
+            padding: 20px 25px;
+            font-size: 1rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .faq-answer ul {
+            padding-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .faq-answer li {
+            margin-bottom: 5px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
@@ -431,13 +536,98 @@
 
             <h2 class="more-features">И много чего ещё...</h2>
 
+            <!-- 7. FAQ -->
+            <section class="faq-section">
+                <h2 class="block-title">Частые вопросы</h2>
+                
+                <div class="faq-container">
+                    
+                    <!-- Вопрос 1 -->
+                    <div class="faq-item">
+                        <details>
+                            <summary class="faq-question">Что я получу от расширения?</summary>
+                            <div class="faq-answer">
+                                Вы получите полностью переработанный интерфейс ЕТИСа, который удобно использовать на любом устройстве:
+                                <ul>
+                                    <li>✅ <b>Мобильная версия:</b> полноценное меню и адаптивные таблицы.</li>
+                                    <li>✅ <b>Тёмная тема:</b> бережет зрение и заряд батареи (включается автоматически или вручную).</li>
+                                    <li>✅ <b>Умное расписание:</b> показывает окна между парами и скрывает пустые дни и пары.</li>
+                                    <li>✅ <b>Поиск преподавателей и книг:</b> мгновенная фильтрация без перезагрузки страницы.</li>
+                                    <li>✅ <b>Понятные оценки:</b> благодаря цветным капсулам сразу видно что хорошо (или не очень 😁).</li>
+                                </ul>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Вопрос 2 -->
+                    <div class="faq-item">
+                        <details>
+                            <summary class="faq-question">Мои данные (логин/пароль) в безопасности?</summary>
+                            <div class="faq-answer">
+                                <b>Абсолютно.</b> Расширение работает исключительно локально в вашем браузере. Оно лишь меняет визуальное отображение (CSS) и структуру страницы (HTML) «на лету».<br><br>
+                                Никакие данные (логины, пароли, оценки) не отправляются на сторонние серверы. Всё общение происходит напрямую между вашим устройством и официальным сайтом ЕТИС ПГНИУ, как и раньше.
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Вопрос 3 -->
+                    <div class="faq-item">
+                        <details>
+                            <summary class="faq-question">Это официальная разработка ПГНИУ?</summary>
+                            <div class="faq-answer">
+                                Нет, это инициативная разработка студента университета для студентов. Проект создан с целью улучшить пользовательский опыт и сделать учебный процесс комфортнее. Однако расширение не нарушает работу сайта и безопасно для использования.
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Вопрос 4 -->
+                    <div class="faq-item">
+                        <details>
+                            <summary class="faq-question">Есть ли в расширении реклама?</summary>
+                            <div class="faq-answer">
+                                Нет и никогда не будет. Проект полностью некоммерческий и создан на энтузиазме. Никаких баннеров, скрытых майнеров или платных подписок.
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Вопрос 5 -->
+                    <div class="faq-item">
+                        <details>
+                            <summary class="faq-question">Почему расширения нет в Google Chrome Store или App Store?</summary>
+                            <div class="faq-answer">
+                                В скором времени расширение появится в официальных магазинах <b>Firefox, Opera и Яндекс.Браузер</b> (они проходят модерацию).<br><br>
+                                Публикация в <b>Google Chrome Web Store</b> и <b>Apple App Store</b> (для Safari) требует оплаты взноса разработчика в долларах. К сожалению, из-за текущих ограничений оплатить эти взносы из России технически невозможно.<br><br>
+                                Поэтому для Chrome и Safari используется установка через менеджеры скриптов (Tampermonkey/Userscripts) — это безопасно и работает так же стабильно.
+                            </div>
+                        </details>
+                    </div>
+
+                </div>
+            </section>
         </section>
     </div>
 
     <footer>
         <div class="container">
+            <!-- Кнопка установки -->
             <button class="btn" onclick="openModal()">Установить расширение</button>
-            <div id="footer-credits" class="credits"></div>
+            
+            <!-- Кредиты (кто сделал) -->
+            <div class="credits">
+                Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>
+            </div>
+
+            <!-- Ссылка на официальный сайт -->
+            <div>
+                <a href="https://student.psu.ru" target="_blank" class="official-link">
+                    Перейти на официальный сайт ЕТИС (student.psu.ru)
+                </a>
+            </div>
+
+            <!-- Копирайт -->
+            <div class="copyright">
+                &copy; 2026 ЕТИС REBORN. Не является официальным сайтом ПГНИУ.
+            </div>
         </div>
     </footer>
 
@@ -502,7 +692,6 @@
     </div>
 
     <script>
-        document.getElementById('footer-credits').innerHTML = 'Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
 
         // --- УПРАВЛЕНИЕ ТЕМОЙ ---
         const themeBtn = document.getElementById('themeBtn');
@@ -740,6 +929,19 @@
                 hideVideo('macos');
             }
         }
+        // --- АККОРДЕОН FAQ ---
+        const details = document.querySelectorAll("details");
+
+        details.forEach((targetDetail) => {
+            targetDetail.addEventListener("click", () => {
+                // Закрываем все остальные, кроме того, на который нажали
+                details.forEach((detail) => {
+                    if (detail !== targetDetail) {
+                        detail.removeAttribute("open");
+                    }
+                });
+            });
+        });
     </script>
 </body>
 </html>
