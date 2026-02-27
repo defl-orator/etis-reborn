@@ -152,7 +152,7 @@
         /* --- СЛАЙДЕРЫ --- */
         .comparison-block { margin-bottom: 120px; }
         .block-title { text-align: center; margin-bottom: 30px; font-size: 2rem; font-weight: 700; }
-        .more-features { text-align: center; font-size: 1.8rem; font-weight: 700; color: var(--text-secondary); margin-top: -20px; margin-bottom: 40px; opacity: 0.8; }
+        .more-features { text-align: center; font-size: 1.8rem; font-weight: 700; color: var(--text-secondary); margin-top: -20px; margin-bottom: 150px; opacity: 0.8; }
 
         .img-comp-container {
             position: relative; width: 100%; overflow: hidden;
@@ -216,14 +216,6 @@
             .view-side-by-side { display: none !important; }
             .view-slider { display: block !important; }
             .mobile-limit { max-width: 100%; } 
-        }
-
-        /* --- FOOTER & MODAL --- */
-        footer {
-            padding: 60px 0 40px;
-            text-align: center;
-            border-top: 1px solid var(--border-color);
-            background: var(--card-bg); /* Сделаем футер чуть темнее фона */
         }
 
         .credits { 
@@ -320,7 +312,7 @@
             margin-top: 20px;
             opacity: 0.6;
         }
-        /* --- FAQ SECTION --- */
+        /* --- FAQ SECTION (xFetishHub Style) --- */
         .faq-section {
             margin-bottom: 120px;
         }
@@ -337,12 +329,19 @@
             margin-bottom: 15px;
             overflow: hidden;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+            /* Плавное появление сетки */
+            display: grid;
+            grid-template-rows: auto 0fr;
         }
 
         .faq-item:hover {
+            border-color: var(--primary);
             box-shadow: 0 10px 20px var(--shadow);
-            transform: translateY(-2px);
+        }
+
+        /* Когда открыто — меняем размер строки */
+        .faq-item.active {
+            grid-template-rows: auto 1fr;
         }
 
         .faq-question {
@@ -353,52 +352,91 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            list-style: none; /* Убираем стандартный треугольник */
             user-select: none;
+            list-style: none;
         }
-        
-        /* Убираем стандартный маркер в Safari/Chrome */
-        .faq-question::-webkit-details-marker {
-            display: none;
-        }
+
+        /* Убираем стандартную стрелку */
+        .faq-question::-webkit-details-marker { display: none; }
 
         .faq-question::after {
             content: '+';
             font-size: 1.5rem;
             color: var(--primary);
-            font-weight: 400;
             transition: transform 0.3s ease;
         }
 
-        details[open] .faq-question::after {
+        .faq-item.active .faq-question::after {
             transform: rotate(45deg);
+            color: var(--text-secondary);
         }
 
-        details[open] .faq-question {
-            border-bottom: 1px solid var(--border-color);
+        .faq-content-wrapper {
+            overflow: hidden;
+            min-height: 0;
         }
 
         .faq-answer {
-            padding: 20px 25px;
+            padding: 0 25px 25px 25px;
             font-size: 1rem;
             color: var(--text-secondary);
             line-height: 1.6;
-            animation: fadeIn 0.3s ease;
         }
 
         .faq-answer ul {
             padding-left: 20px;
             margin-top: 10px;
         }
-        
-        .faq-answer li {
-            margin-bottom: 5px;
+
+        /* --- FOOTER & MODAL --- */
+        footer {
+            padding: 60px 0 40px;
+            text-align: center;
+            border-top: 1px solid var(--border-color);
+            background: var(--card-bg);
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .footer-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 35px;
         }
+
+        /* Контейнер для информационной строки */
+        .footer-info-row {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px 40px;
+        }
+
+        /* Сбрасываем уникальные цвета и оформления, делаем всё приглушенным */
+        .footer-info-row, 
+        .footer-info-row span, 
+        .footer-info-row a {
+            color: var(--text-secondary) !important;
+            font-size: 0.85rem !important;
+            font-weight: 400 !important;
+            text-decoration: none !important;
+            opacity: 0.7; /* Приглушаем еще сильнее */
+            transition: opacity 0.2s;
+            border: none !important;
+            margin: 0 !important;
+        }
+
+        .footer-info-row a:hover {
+            opacity: 1;
+            text-decoration: underline !important;
+        }
+
+        @media (min-width: 769px) {
+            .footer-info-row {
+                flex-direction: row;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -536,7 +574,6 @@
 
             <h2 class="more-features">И много чего ещё...</h2>
 
-            <!-- 7. FAQ -->
             <section class="faq-section">
                 <h2 class="block-title">Частые вопросы</h2>
                 
@@ -544,62 +581,61 @@
                     
                     <!-- Вопрос 1 -->
                     <div class="faq-item">
-                        <details>
-                            <summary class="faq-question">Что я получу от расширения?</summary>
+                        <div class="faq-question">Что я получу от расширения?</div>
+                        <div class="faq-content-wrapper">
                             <div class="faq-answer">
                                 Вы получите полностью переработанный интерфейс ЕТИСа, который удобно использовать на любом устройстве:
                                 <ul>
-                                    <li>✅ <b>Мобильная версия:</b> полноценное меню и адаптивные таблицы.</li>
-                                    <li>✅ <b>Тёмная тема:</b> бережет зрение и заряд батареи (включается автоматически или вручную).</li>
-                                    <li>✅ <b>Умное расписание:</b> показывает окна между парами и скрывает пустые дни и пары.</li>
-                                    <li>✅ <b>Поиск преподавателей и книг:</b> мгновенная фильтрация без перезагрузки страницы.</li>
-                                    <li>✅ <b>Понятные оценки:</b> благодаря цветным капсулам сразу видно что хорошо (или не очень 😁).</li>
+                                    <li>✅ <b>Мобильная версия:</b> полноценная шторка с меню и адаптивные таблицы.</li>
+                                    <li>✅ <b>Тёмная тема:</b> бережет зрение и заряд батареи.</li>
+                                    <li>✅ <b>Умное расписание:</b> показывает окна между парами, скрывает пустые дни, и даёт возможность поделиться им в виде картинки.</li>
+                                    <li>✅ <b>Поиск преподавателей и книг:</b> мгновенная фильтрация без перезагрузок.</li>
+                                    <li>✅ <b>Понятные оценки:</b> цветные капсулы помогают понять что хорошо (а что не очень 😁).</li>
                                 </ul>
                             </div>
-                        </details>
+                        </div>
                     </div>
 
                     <!-- Вопрос 2 -->
                     <div class="faq-item">
-                        <details>
-                            <summary class="faq-question">Мои данные (логин/пароль) в безопасности?</summary>
+                        <div class="faq-question">Мои данные (логин/пароль) в безопасности?</div>
+                        <div class="faq-content-wrapper">
                             <div class="faq-answer">
                                 <b>Абсолютно.</b> Расширение работает исключительно локально в вашем браузере. Оно лишь меняет визуальное отображение (CSS) и структуру страницы (HTML) «на лету».<br><br>
-                                Никакие данные (логины, пароли, оценки) не отправляются на сторонние серверы. Всё общение происходит напрямую между вашим устройством и официальным сайтом ЕТИС ПГНИУ, как и раньше.
+                                Никакие данные не отправляются на сторонние серверы. Всё общение происходит напрямую между вашим устройством и официальным сайтом ЕТИС ПГНИУ.
                             </div>
-                        </details>
+                        </div>
                     </div>
 
                     <!-- Вопрос 3 -->
                     <div class="faq-item">
-                        <details>
-                            <summary class="faq-question">Это официальная разработка ПГНИУ?</summary>
+                        <div class="faq-question">Это официальная разработка ПГНИУ?</div>
+                        <div class="faq-content-wrapper">
                             <div class="faq-answer">
-                                Нет, это инициативная разработка студента университета для студентов. Проект создан с целью улучшить пользовательский опыт и сделать учебный процесс комфортнее. Однако расширение не нарушает работу сайта и безопасно для использования.
+                                Нет, это инициатива студента университета для студентов. Проект создан с целью улучшить пользовательский опыт и сделать учебный процесс комфортнее. Но расширение не нарушает работу сайта и безопасно для использования.
                             </div>
-                        </details>
+                        </div>
                     </div>
 
                     <!-- Вопрос 4 -->
                     <div class="faq-item">
-                        <details>
-                            <summary class="faq-question">Есть ли в расширении реклама?</summary>
+                        <div class="faq-question">Есть ли в расширении реклама?</div>
+                        <div class="faq-content-wrapper">
                             <div class="faq-answer">
                                 Нет и никогда не будет. Проект полностью некоммерческий и создан на энтузиазме. Никаких баннеров, скрытых майнеров или платных подписок.
                             </div>
-                        </details>
+                        </div>
                     </div>
 
                     <!-- Вопрос 5 -->
                     <div class="faq-item">
-                        <details>
-                            <summary class="faq-question">Почему расширения нет в Google Chrome Store или App Store?</summary>
+                        <div class="faq-question">Почему расширения нет в магазинах Ch  rome или App Store?</div>
+                        <div class="faq-content-wrapper">
                             <div class="faq-answer">
-                                В скором времени расширение появится в официальных магазинах <b>Firefox, Opera и Яндекс.Браузер</b> (они проходят модерацию).<br><br>
-                                Публикация в <b>Google Chrome Web Store</b> и <b>Apple App Store</b> (для Safari) требует оплаты взноса разработчика в долларах. К сожалению, из-за текущих ограничений оплатить эти взносы из России технически невозможно.<br><br>
+                                Публикация в <b>Google Chrome Web Store</b> и <b>Apple App Store</b> требует ежегодной оплаты взноса разработчика в долларах. Из-за текущих ограничений оплатить эти взносы из России технически невозможно.<br><br>
                                 Поэтому для Chrome и Safari используется установка через менеджеры скриптов (Tampermonkey/Userscripts) — это безопасно и работает так же стабильно.
                             </div>
-                        </details>
+                        </div>
                     </div>
 
                 </div>
@@ -608,25 +644,25 @@
     </div>
 
     <footer>
-        <div class="container">
-            <!-- Кнопка установки -->
+        <div class="container footer-content">
+            <!-- Кнопка -->
             <button class="btn" onclick="openModal()">Установить расширение</button>
             
-            <!-- Кредиты (кто сделал) -->
-            <div class="credits">
-                Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>
-            </div>
+            <!-- Инфо-строка -->
+            <div class="footer-info-row">
+                <!-- Копирайт -->
+                <span>&copy; 2026 ЕТИС REBORN</span>
 
-            <!-- Ссылка на официальный сайт -->
-            <div>
-                <a href="https://student.psu.ru" target="_blank" class="official-link">
-                    Перейти на официальный сайт ЕТИС (student.psu.ru)
+                <!-- Сайт ВУЗа -->
+                <a href="https://student.psu.ru" target="_blank">
+                    Официальный сайт ЕТИС
                 </a>
-            </div>
 
-            <!-- Копирайт -->
-            <div class="copyright">
-                &copy; 2026 ЕТИС REBORN. Не является официальным сайтом ПГНИУ.
+                <!-- Авторы-->
+                <span>
+                    Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> 
+                    based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>
+                </span>
             </div>
         </div>
     </footer>
@@ -932,14 +968,21 @@
         // --- АККОРДЕОН FAQ ---
         const details = document.querySelectorAll("details");
 
-        details.forEach((targetDetail) => {
-            targetDetail.addEventListener("click", () => {
-                // Закрываем все остальные, кроме того, на который нажали
-                details.forEach((detail) => {
-                    if (detail !== targetDetail) {
-                        detail.removeAttribute("open");
-                    }
+        document.querySelectorAll('.faq-item').forEach(item => {
+            const question = item.querySelector('.faq-question');
+            
+            question.addEventListener('click', () => {
+                const isActive = item.classList.contains('active');
+
+                // Закрываем все остальные (эффект аккордеона)
+                document.querySelectorAll('.faq-item').forEach(otherItem => {
+                    otherItem.classList.remove('active');
                 });
+
+                // Если текущий не был активен — открываем его
+                if (!isActive) {
+                    item.classList.add('active');
+                }
             });
         });
     </script>
