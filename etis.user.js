@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.36
+// @version      1.37
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -5205,128 +5205,111 @@ injectStyles(styles);
 
             switch (page) {
                 case 'stu.teach_plan': {
-                    const isAdvanced = new URLSearchParams(window.location.search).get('p_mode') === 'advanced';
+                    const params = new URLSearchParams(window.location.search);
+                    const isAdvanced = params.get('p_mode') === 'advanced' || !params.has('p_mode');
+                    const isChooseDis = params.get('p_mode') === 'choose_dis';
                     const submenu = span9.querySelector('.submenu');
-                    const planEvalBtn = span9.querySelector('a[onclick*="cust.est_plan_form_stu"]');
+                    
+                    // 1. Ищем кнопку оценки (для краткого/детального планов)
+                    const planEvalBtn = span9.querySelector('a[onclick*="cust.est_plan_form_stu"], a[href*="cust.est_plan_form_stu"]');
 
-                    // --- ПЕРЕНОС КНОПКИ В ПОДМЕНЮ ---
-                    if (submenu && planEvalBtn) {
-                        // 1. Стилизуем под капсулу
+                    // 2. Ищем номер учебного плана (для вкладки "дисциплины по выбору")
+                    const tpInfo = Array.from(span9.querySelectorAll('div')).find(d => 
+                        d.textContent.includes('Учебный план') && d.textContent.trim().length < 30 && d.parentNode === span9
+                    );
+
+                    // --- КНОПКА ОЦЕНКИ В SUBMENU (Оставляем там, она обычно короткая) ---
+                    if (planEvalBtn && submenu) {
                         planEvalBtn.className = 'answer-btn-custom';
-                        // Используем margin-left: auto, чтобы прижать кнопку к правому краю ряда,
-                        // если на экране достаточно места.
-                        planEvalBtn.style.cssText = `
-                            margin-left: auto; 
-                            text-decoration: none !important; 
-                            padding: 0.6rem 1.4rem !important; 
-                            font-size: 1.2rem !important; 
-                            height: fit-content;
-                            white-space: nowrap;
-                        `;
-                        planEvalBtn.innerHTML = '<span class="material-icons" style="font-size:1.5rem; margin-right:4px">auto_awesome</span> Оценить план';
-                        
-                        // 2. Перемещаем в submenu
+                        planEvalBtn.style.cssText = `margin-left: auto; text-decoration: none !important; padding: 0.6rem 1.4rem !important; font-size: 1.2rem !important; height: fit-content; white-space: nowrap; display: inline-flex; align-items: center;`;
+                        planEvalBtn.innerHTML = '<span class="material-icons" style="font-size:1.6rem; margin-right:6px">auto_awesome</span> Оценить план';
                         submenu.appendChild(planEvalBtn);
+                    }
 
-                        // 3. Удаляем старый пустой контейнер-обертку, который создавал отступ сверху
-                        const oldWrapper = span9.querySelector('div[style*="display: inline-block"]');
-                        if (oldWrapper) {
-                            // Проверяем, что внутри нет полезных h3 (триместров)
-                            const possibleH3 = oldWrapper.querySelector('h3');
-                            if (!possibleH3) {
-                                oldWrapper.remove();
-                            } else {
-                                // Если там h3, удаляем только лишний div с кнопкой внутри
-                                const btnContainer = oldWrapper.querySelector('div[style*="width:100%"]');
-                                if (btnContainer) btnContainer.remove();
-                            }
+                    // --- ПЕРЕНОС НОМЕРА ПЛАНА К ЗАГОЛОВКУ ТАБЛИЦЫ ---
+                    if (tpInfo && isChooseDis) {
+                        const targetH3 = Array.from(span9.querySelectorAll('h3')).find(h => h.textContent.includes('Блоки дисциплин'));
+                        
+                        if (targetH3) {
+                            // Создаем контейнер как в "Оценках"
+                            const headerFlex = document.createElement('div');
+                            headerFlex.className = 'subject-header-flex';
+                            headerFlex.style.marginTop = '2rem';
+                            
+                            // Создаем капсулу
+                            const capsule = document.createElement('div');
+                            capsule.className = 'subject-score-capsule';
+                            capsule.style.background = 'var(--color-highlight)';
+                            capsule.style.color = 'var(--color-text-secondary)';
+                            capsule.style.border = '1px solid var(--color-table-border)';
+                            capsule.style.boxShadow = 'none';
+                            
+                            const tpNumber = tpInfo.textContent.replace(/Учебный план/i, '').trim();
+                            capsule.innerHTML = `<span class="material-icons" style="font-size:1.4rem; vertical-align: middle; margin-right:4px; opacity:0.7">info</span> План №${tpNumber}`;
+                            
+                            // Собираем конструкцию
+                            targetH3.parentNode.insertBefore(headerFlex, targetH3);
+                            headerFlex.appendChild(targetH3);
+                            headerFlex.appendChild(capsule);
+                            
+                            tpInfo.remove(); // Удаляем старый текст
                         }
                     }
 
-                    if (isAdvanced) {
-                        // Оформляем кнопку отзыва в детальном режиме (если она есть)
-                        const feedbackBtn = span9.querySelector('a[href*="est_pkg"]');
-                        if (feedbackBtn) {
-                            feedbackBtn.className = 'answer-btn-custom';
-                            feedbackBtn.style.cssText = 'float: right; margin-top: -35px; text-decoration: none !important;';
-                            feedbackBtn.innerHTML = '<span class="material-icons" style="font-size:16px; margin-right:6px">feedback</span> Оценить план';
-                        }
+                    // Чистка мусора сверху
+                    span9.querySelectorAll('br').forEach((br, i) => { if(i < 3) br.remove(); });
 
-                        // 2. Группируем календарный график в карточки
+                    if (isAdvanced) {
+                        // --- ЛОГИКА ДЕТАЛЬНОГО ПЛАНА (КАРТОЧКИ) ---
                         const calendarGrid = document.createElement('div');
                         calendarGrid.className = 'calendar-grid';
-
-                        // Находим все жирные заголовки триместров
-                        const headers = Array.from(span9.querySelectorAll('b')).filter(b => 
-                            b.textContent.toLowerCase().includes('триместр')
-                        );
+                        const headers = Array.from(span9.querySelectorAll('b')).filter(b => b.textContent.toLowerCase().includes('триместр'));
 
                         headers.forEach(header => {
                             const card = document.createElement('div');
                             card.className = 'calendar-card';
-                            
                             const h4 = document.createElement('h4');
                             h4.textContent = header.textContent.toUpperCase();
                             card.appendChild(h4);
-
-                            // Собираем все div-ы, которые идут после этого заголовка, пока не встретим следующий заголовок или таблицу
-                            let next = header.parentElement; // обычно это <p>
-                            if (next.tagName !== 'P') next = header;
-
+                            let next = header.parentElement.tagName === 'P' ? header.parentElement : header;
                             let current = next.nextSibling;
-                            const elementsToRemove = [header, header.parentElement];
-
+                            const toRem = [header, header.parentElement];
                             while (current && current.tagName !== 'TABLE' && !(current.querySelector && current.querySelector('b')?.textContent.toLowerCase().includes('триместр'))) {
-                                let nextToProcess = current.nextSibling;
-                                
-                                if (current.nodeType === Node.ELEMENT_NODE && (current.tagName === 'DIV' || current.tagName === 'P')) {
-                                    const eventRow = document.createElement('div');
-                                    eventRow.className = 'calendar-event';
-                                    
-                                    const text = current.textContent.trim();
-                                    const dateMatch = text.match(/^(\d{2}\.\d{2}\.\d{4}\s-\s\d{2}\.\d{2}\.\d{4})(.*)/);
-                                    
-                                    if (dateMatch) {
-                                        eventRow.innerHTML = `<span class="date-range">${dateMatch[1]}</span><span class="event-desc">${dateMatch[2].trim()}</span>`;
-                                        card.appendChild(eventRow);
-                                    } else if (text.length > 5) {
-                                        eventRow.innerHTML = `<span class="event-desc">${text}</span>`;
-                                        card.appendChild(eventRow);
-                                    }
-                                    elementsToRemove.push(current);
+                                let nxt = current.nextSibling;
+                                if (current.nodeType === 1 && (current.tagName === 'DIV' || current.tagName === 'P')) {
+                                    const row = document.createElement('div');
+                                    row.className = 'calendar-event';
+                                    const txt = current.textContent.trim();
+                                    const m = txt.match(/^(\d{2}\.\d{2}\.\d{4}\s-\s\d{2}\.\d{2}\.\d{4})(.*)/);
+                                    if (m) row.innerHTML = `<span class="date-range">${m[1]}</span><span class="event-desc">${m[2].trim()}</span>`;
+                                    else if (txt.length > 5) row.innerHTML = `<span class="event-desc">${txt}</span>`;
+                                    card.appendChild(row);
+                                    toRem.push(current);
                                 }
-                                current = nextToProcess;
+                                current = nxt;
                             }
                             if (card.children.length > 1) calendarGrid.appendChild(card);
-                            elementsToRemove.forEach(el => el && el.remove && el.remove());
+                            toRem.forEach(el => el?.remove?.());
                         });
 
-                        // Вставляем сетку после заголовка "Календарный учебный график"
                         const mainTitle = Array.from(span9.querySelectorAll('h3')).find(h => h.textContent.includes('Календарный учебный график'));
                         if (mainTitle) mainTitle.after(calendarGrid);
 
-                        // 3. Обработка таблиц
                         span9.querySelectorAll('table.teach_plan').forEach(table => {
-                            table.removeAttribute('bgcolor');
-                            table.removeAttribute('cellpadding');
-                            table.removeAttribute('cellspacing');
-                            table.removeAttribute('border');
-                            
                             const wrapper = document.createElement('div');
                             wrapper.className = 'wide-table-wrapper';
                             table.parentNode.insertBefore(wrapper, table);
                             wrapper.appendChild(table);
-                            
-                            table.querySelectorAll('td, th').forEach(el => el.removeAttribute('bgcolor'));
                         });
-                    } else {
-                        // Краткий вид
-                        const feedbackBtn = span9.querySelector('a[href*="est_pkg"]');
-                        if (feedbackBtn) {
-                            feedbackBtn.className = 'icon-button icon-feedback';
-                            feedbackBtn.style.float = 'right';
-                            feedbackBtn.innerHTML = '<span class="material-icons">feedback</span> Оставить отзыв';
-                        }
+                    }
+
+                    if (isChooseDis) {
+                        span9.querySelectorAll('table.common').forEach(table => {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'wide-table-wrapper';
+                            table.parentNode.insertBefore(wrapper, table);
+                            wrapper.appendChild(table);
+                        });
                     }
                     break;
                 }
@@ -6794,7 +6777,7 @@ injectStyles(styles);
                 }
 
                 case 'stu.signs': {
-                    // 1. УНИФИКАЦИЯ ПОДМЕНЮ (Кнопки)
+                    // 1. УНИФИКАЦИЯ ПОДМЕНЮ
                     span9.querySelectorAll('.submenu .submenu-item').forEach(span => {
                         const link = span.querySelector('a');
                         if (link) span.replaceWith(link);
@@ -6805,7 +6788,7 @@ injectStyles(styles);
                         }
                     });
 
-                    // 2. ГЛОБАЛЬНАЯ ОЧИСТКА
+                    // 2. ГЛОБАЛЬНАЯ ОЧИСТКА ТАБЛИЦ
                     span9.querySelectorAll('table.common').forEach(table => {
                         table.removeAttribute('width');
                         table.style.width = "100%";
@@ -6820,9 +6803,22 @@ injectStyles(styles);
 
                     // 3. ОБРАБОТКА "ОЦЕНКИ ЗА СЕССИИ"
                     if (pageMode === 'session' || !pageMode) {
+                        const submenu = span9.querySelector('.submenu');
+                        
+                        // --- ДОБАВЛЕНИЕ ПОИСКА (КАПСУЛА) ---
+                        const searchContainer = document.createElement('div');
+                        searchContainer.className = 'teacher-search-wrapper';
+                        searchContainer.innerHTML = `
+                            <div class="search-capsule">
+                                <span class="material-icons search-icon">filter_list</span>
+                                <input type="text" class="search-input signs-local-input" placeholder="Поиск">
+                            </div>
+                        `;
+                        if (submenu) submenu.after(searchContainer);
+
                         const signsTables = span9.querySelectorAll('table.common');
                         
-                        // Шаг 1. Разделяем одну большую таблицу на отдельные таблицы по триместрам
+                        // Шаг 1. Разделение таблиц по триместрам
                         signsTables.forEach(table => {
                             const rows = Array.from(table.querySelectorAll('tr'));
                             const isHeader = (r) => r.textContent.toLowerCase().includes('дисциплина') && r.textContent.toLowerCase().includes('оценка');
@@ -6833,18 +6829,15 @@ injectStyles(styles);
 
                             rows.forEach(row => {
                                 const cells = row.children;
-                                // Если это заголовок триместра
                                 if (cells.length === 1 && (cells[0].tagName === 'TH' || cells[0].classList.contains('subheader'))) {
                                     validSplit = true;
                                     
-                                    // Создаем заголовок
                                     const title = document.createElement('h3');
                                     title.className = 'term-title';
                                     title.style.marginTop = '2rem';
                                     title.textContent = cells[0].textContent.trim();
                                     table.parentNode.insertBefore(title, table);
 
-                                    // СОЗДАЕМ ОБЕРТКУ ДЛЯ СКРОЛЛА И СКРУГЛЕНИЙ
                                     const wrapper = document.createElement('div');
                                     wrapper.className = 'wide-table-wrapper';
                                     
@@ -6859,11 +6852,9 @@ injectStyles(styles);
                                     
                                     currentTbody = document.createElement('tbody');
                                     newTable.appendChild(currentTbody);
-                                    
                                     wrapper.appendChild(newTable); 
                                     table.parentNode.insertBefore(wrapper, table); 
                                 } 
-                                // Добавляем строки в текущую созданную таблицу
                                 else if (currentTbody && !isHeader(row) && cells.length > 1) {
                                     currentTbody.appendChild(row);
                                 }
@@ -6871,7 +6862,7 @@ injectStyles(styles);
                             if (validSplit) table.remove();
                         });
 
-                        // Шаг 2. Сканируем новые таблицы и считаем средний балл (создаем капсулы)
+                        // Шаг 2. Расчет среднего балла и создание Flex-заголовков
                         const sessionTables = span9.querySelectorAll('.session-table-v6');
                         sessionTables.forEach(table => {
                             const wrapper = table.closest('.wide-table-wrapper');
@@ -6879,74 +6870,84 @@ injectStyles(styles);
                             if (!h3 || !h3.classList.contains('term-title')) return;
 
                             let sum = 0, count = 0, hasFail = false, hasPass = false, hasAny = false;
-
-                            // Пробегаемся по всем строкам конкретного триместра
                             const rows = table.querySelectorAll('tbody tr');
                             rows.forEach(r => {
                                 const cells = r.querySelectorAll('td');
                                 if (cells.length >= 2) {
-                                    // Очищаем текст от HTML (тегов font) и приводим к нижнему регистру
                                     const gradeText = cells[1].textContent.trim().toLowerCase();
-                                    
-                                    if (gradeText && gradeText !== 'н') { // 'н' (неявка без оценки) пропускаем
+                                    if (gradeText && gradeText !== 'н') {
                                         hasAny = true;
-                                        // Ищем "незачет" или "2"
-                                        if (gradeText.includes('незач') || gradeText === '2') {
-                                            hasFail = true;
-                                        } 
-                                        // Ищем "зачет"
-                                        else if (gradeText.includes('зач')) {
-                                            hasPass = true;
-                                        } 
-                                        // Ищем цифры (3, 4, 5)
+                                        if (gradeText.includes('незач') || gradeText === '2') hasFail = true;
+                                        else if (gradeText.includes('зач')) hasPass = true;
                                         else {
                                             const num = parseInt(gradeText, 10);
-                                            if (!isNaN(num) && num >= 3 && num <= 5) {
-                                                sum += num;
-                                                count++;
-                                            }
+                                            if (!isNaN(num) && num >= 3 && num <= 5) { sum += num; count++; }
                                         }
                                     }
                                 }
                             });
 
-                            // Оборачиваем заголовок в Flex-контейнер, чтобы расположить элементы в один ряд
                             const headerContainer = document.createElement('div');
-                            headerContainer.className = 'subject-header-flex';
+                            headerContainer.className = 'subject-header-flex session-term-header-group'; // Класс для поиска
                             h3.parentNode.insertBefore(headerContainer, h3);
                             headerContainer.appendChild(h3);
 
-                            // Создаем саму капсулу
                             const capsule = document.createElement('div');
                             capsule.className = 'subject-score-capsule';
-
-                            // Логика заполнения и раскраски
-                            if (!hasAny) {
-                                capsule.textContent = 'Нет оценок';
-                                capsule.style.background = 'var(--color-highlight)';
-                                capsule.style.color = 'var(--color-text-secondary)';
-                            } else if (hasFail) {
-                                capsule.textContent = 'НЕЗАЧЕТ';
-                                capsule.style.background = 'var(--color-red)';
-                                capsule.style.color = '#fff';
-                            } else if (count > 0) {
-                                // Округляем средний балл до сотых (например, 4.33)
+                            if (!hasAny) { capsule.textContent = 'Нет оценок'; capsule.style.background = 'var(--color-highlight)'; capsule.style.color = 'var(--color-text-secondary)'; }
+                            else if (hasFail) { capsule.textContent = 'НЕЗАЧЕТ'; capsule.style.background = 'var(--color-red)'; capsule.style.color = '#fff'; }
+                            else if (count > 0) {
                                 const avg = Math.round((sum / count) * 100) / 100; 
                                 capsule.textContent = `${avg} / 5`;
-                                
-                                // Цветовая логика (такая же, как в "Оценках в триместре")
                                 const p = (avg / 5) * 100;
-                                if (p < 41) { capsule.style.background = 'var(--color-red)'; capsule.style.color = '#fff'; }
-                                else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
-                                else if (p < 81) { capsule.style.background = '#8BC34A'; capsule.style.color = '#fff'; } // Светло-зеленый
-                                else { capsule.style.background = 'var(--color-green)'; capsule.style.color = '#fff'; }
-                            } else if (hasPass) {
-                                capsule.textContent = 'ЗАЧЕТ';
-                                capsule.style.background = 'var(--color-green)';
-                                capsule.style.color = '#fff';
-                            }
-
+                                if (p < 41) capsule.style.background = 'var(--color-red)';
+                                else if (p < 61) capsule.style.background = 'var(--color-yellow)';
+                                else if (p < 81) capsule.style.background = '#8BC34A';
+                                else capsule.style.background = 'var(--color-green)';
+                                capsule.style.color = (p >= 41 && p < 61) ? '#000' : '#fff';
+                            } else if (hasPass) { capsule.textContent = 'ЗАЧЕТ'; capsule.style.background = 'var(--color-green)'; capsule.style.color = '#fff'; }
                             headerContainer.appendChild(capsule);
+                            
+                            // Помечаем обертку таблицы, чтобы легко найти её через хедер
+                            wrapper.classList.add('session-term-table-group');
+                        });
+
+                        // --- ИСПРАВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ ---
+                        const filterInput = searchContainer.querySelector('.signs-local-input');
+                        filterInput.addEventListener('input', (e) => {
+                            const val = e.target.value.toLowerCase().trim();
+                            const headers = document.querySelectorAll('.session-term-header-group');
+                            const wrappers = document.querySelectorAll('.session-term-table-group');
+
+                            headers.forEach((header, index) => {
+                                const wrapper = wrappers[index];
+                                if (!wrapper) return;
+                                
+                                const rows = Array.from(wrapper.querySelectorAll('tbody tr'));
+                                let visibleRowsCount = 0;
+
+                                rows.forEach(row => {
+                                    // 1-я колонка (предмет), 4-я колонка (преподаватель)
+                                    const subject = row.cells[0]?.textContent.toLowerCase() || "";
+                                    const teacher = row.cells[3]?.textContent.toLowerCase() || "";
+
+                                    if (val === "" || subject.includes(val) || teacher.includes(val)) {
+                                        row.style.display = "";
+                                        visibleRowsCount++;
+                                    } else {
+                                        row.style.display = "none";
+                                    }
+                                });
+
+                                // Если в триместре 0 подходящих строк и поиск не пустой — скрываем ВЕСЬ блок
+                                if (val !== "" && visibleRowsCount === 0) {
+                                    header.style.setProperty('display', 'none', 'important');
+                                    wrapper.style.setProperty('display', 'none', 'important');
+                                } else {
+                                    header.style.setProperty('display', 'flex', 'important');
+                                    wrapper.style.setProperty('display', 'block', 'important');
+                                }
+                            });
                         });
                     }
 
@@ -6960,14 +6961,11 @@ injectStyles(styles);
                                 table.parentNode.insertBefore(wrapper, table);
                                 wrapper.appendChild(table);
                             }
-
                             const wrapper = table.closest('.wide-table-wrapper');
                             const h3 = wrapper.previousElementSibling;
                             if (!h3 || h3.tagName !== 'H3') return;
-
                             const rows = Array.from(table.querySelectorAll('tr'));
                             const totalRow = rows.find(r => r.textContent.toLowerCase().includes('всего:'));
-
                             if (totalRow) {
                                 let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
                                 rows.forEach(r => {
@@ -6983,16 +6981,13 @@ injectStyles(styles);
                                         }
                                     }
                                 });
-
                                 const headerContainer = document.createElement('div');
                                 headerContainer.className = 'subject-header-flex';
                                 h3.parentNode.insertBefore(headerContainer, h3);
                                 headerContainer.appendChild(h3);
-
                                 const capsule = document.createElement('div');
                                 capsule.className = 'subject-score-capsule';
                                 capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? calculatedMax : 0}`;
-
                                 if (!hasAnyGrades || calculatedMax === 0) {
                                     capsule.style.background = 'var(--color-highlight)';
                                     capsule.style.color = 'var(--color-text-secondary)';
@@ -7014,89 +7009,47 @@ injectStyles(styles);
                     if (pageMode === 'diplom') {
                         const table = span9.querySelector('table.common');
                         if (table) {
-                            // 1. Скрываем старый блок "Средний балл" от ЕТИСа
                             const oldAvg = Array.from(span9.querySelectorAll('div')).find(d => d.textContent.includes('Средний балл') && !d.classList.contains('subject-score-capsule'));
                             if (oldAvg) oldAvg.style.display = 'none';
-
-                            // 2. Создаем обертку для таблицы (скролл + красота)
                             const wrapper = document.createElement('div');
                             wrapper.className = 'wide-table-wrapper';
                             table.parentNode.insertBefore(wrapper, table);
                             wrapper.appendChild(table);
-
-                            // 3. Считаем средний балл
-                            let sum = 0, count = 0;
-                            let hasFail = false;
-
+                            let sum = 0, count = 0, hasFail = false;
                             const rows = table.querySelectorAll('tr');
                             rows.forEach(row => {
                                 const cells = row.querySelectorAll('td');
                                 if (cells.length >= 2) {
                                     const text = cells[1].textContent.toLowerCase().trim();
-                                    
-                                    // Логика перевода слов в цифры
-                                    if (text.includes('отлично')) {
-                                        sum += 5; count++;
-                                    } else if (text.includes('хорошо')) {
-                                        sum += 4; count++;
-                                    } else if (text.includes('удовлетворительно') || text.includes('удовл.')) {
-                                        sum += 3; count++;
-                                    } else if (text.includes('неудовлетворительно') || text.includes('незачет') || text.includes('незачёт')) {
-                                        hasFail = true;
-                                    }
+                                    if (text.includes('отлично')) { sum += 5; count++; }
+                                    else if (text.includes('хорошо')) { sum += 4; count++; }
+                                    else if (text.includes('удовлетворительно') || text.includes('удовл.')) { sum += 3; count++; }
+                                    else if (text.includes('неудовлетворительно') || text.includes('незачет') || text.includes('незачёт')) { hasFail = true; }
                                 }
                             });
-
-                            // 4. Создаем шапку с капсулой
                             const headerContainer = document.createElement('div');
                             headerContainer.className = 'subject-header-flex';
-                            
-                            // Добавляем красивый заголовок слева (так как его там нет)
                             const title = document.createElement('h3');
                             title.textContent = 'Выписка оценок к диплому';
                             headerContainer.appendChild(title);
-
-                            // Создаем капсулу
                             const capsule = document.createElement('div');
                             capsule.className = 'subject-score-capsule';
-
-                            if (hasFail) {
-                                capsule.textContent = 'ЕСТЬ ДОЛГИ';
-                                capsule.style.background = 'var(--color-red)';
-                                capsule.style.color = '#fff';
-                            } else if (count > 0) {
+                            if (hasFail) { capsule.textContent = 'ЕСТЬ ДОЛГИ'; capsule.style.background = 'var(--color-red)'; capsule.style.color = '#fff'; }
+                            else if (count > 0) {
                                 const avg = Math.round((sum / count) * 100) / 100;
                                 capsule.textContent = `${avg} / 5`;
-
-                                // Цветовая градация
                                 const p = (avg / 5) * 100;
-                                if (p < 61) { 
-                                    capsule.style.background = 'var(--color-yellow)'; 
-                                    capsule.style.color = '#000'; 
-                                } else if (p < 81) { 
-                                    capsule.style.background = '#8BC34A'; // Салатовый (4-ка)
-                                    capsule.style.color = '#fff'; 
-                                } else { 
-                                    capsule.style.background = 'var(--color-green)'; // Отлично
-                                    capsule.style.color = '#fff'; 
-                                }
-                                
-                                // Красный диплом (условно: если средний > 4.75)
-                                if (avg >= 4.75) {
-                                    capsule.style.boxShadow = '0 0 0 2px #FFD700'; // Золотая обводка
-                                    capsule.title = 'Претендент на красный диплом';
-                                }
+                                if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
+                                else if (p < 81) { capsule.style.background = '#8BC34A'; capsule.style.color = '#fff'; }
+                                else { capsule.style.background = 'var(--color-green)'; capsule.style.color = '#fff'; }
+                                if (avg >= 4.75) capsule.style.boxShadow = '0 0 0 2px #FFD700';
                             } else {
-                                capsule.textContent = 'Нет оценок';
-                                capsule.style.background = 'var(--color-highlight)';
-                                capsule.style.color = 'var(--color-text-secondary)';
+                                capsule.textContent = 'Нет оценок'; capsule.style.background = 'var(--color-highlight)'; capsule.style.color = 'var(--color-text-secondary)';
                             }
-
                             headerContainer.appendChild(capsule);
                             span9.insertBefore(headerContainer, wrapper);
                         }
                     }
-
                     break;
                 }
 
@@ -7317,7 +7270,7 @@ injectStyles(styles);
                 case 'stu.library': {
                     const pageMode = new URLSearchParams(window.location.search).get('p_mode');
 
-                    // 1. Инфо-текст в плашку вниз
+                    // 1. Инфо-текст в плашку вниз (универсально для всех вкладок)
                     const libIntro = Array.from(span9.querySelectorAll('p')).find(p => p.textContent.includes('Для чтения полных текстов'));
                     if (libIntro) {
                         libIntro.className = 'electr-description';
@@ -7329,22 +7282,27 @@ injectStyles(styles);
                     if (pageMode === 'catalog') {
                         const searchWrap = span9.querySelector('.wrap');
                         if (searchWrap) {
-                            const newSearch = document.createElement('div');
-                            newSearch.className = 'library-search-wrap';
-                            newSearch.innerHTML = `
-                                <span class="material-icons search-icon">search</span>
-                                <input type="text" id="filter" placeholder="Поиск">
-                                <button id="search_btn" class="answer-btn-custom" style="margin-left:10px">Найти</button>
+                            const searchContainer = document.createElement('div');
+                            searchContainer.className = 'teacher-search-wrapper';
+                            searchContainer.innerHTML = `
+                                <div class="search-capsule">
+                                    <span class="material-icons search-icon">search</span>
+                                    <input type="text" id="filter" class="search-input" placeholder="Введите название или автора...">
+                                </div>
                             `;
-                            searchWrap.replaceWith(newSearch);
+                            searchWrap.replaceWith(searchContainer);
 
-                            const btn = document.getElementById('search_btn');
                             const input = document.getElementById('filter');
                             const recordList = document.getElementById('record_list');
+                            // Ссылка на гифку загрузки из оригинального кода ЕТИСа
+                            const loadGif = "/etis/dojo/dijit/themes/tundra/images/loading.gif";
 
-                            btn.onclick = function() {
-                                const filter = encodeURIComponent(input.value);
-                                $(recordList).html('<div style="padding:20px; text-align:center;">Загрузка...</div>');
+                            const performSearch = () => {
+                                const val = input.value.trim();
+                                if (val.length < 2) return;
+                                
+                                const filter = encodeURIComponent(val);
+                                $(recordList).html(`<div style="padding:20px; text-align:center;"><img src="${loadGif}"> Загрузка...</div>`);
                                 
                                 $(recordList).load("lib_search.get_books?p_filter=" + filter, function() {
                                     const table = recordList.querySelector('table');
@@ -7357,21 +7315,27 @@ injectStyles(styles);
                                     }
                                 });
                             };
-                            input.onkeypress = (e) => { if (e.which == 13) btn.click(); };
+
+                            // Поиск по нажатию Enter
+                            input.addEventListener('keypress', (e) => {
+                                if (e.key === 'Enter') performSearch();
+                            });
                         }
                     } 
                     // 3. РЕЖИМ РЕКОМЕНДАЦИЙ (Списки по предметам)
                     else if (pageMode === 'recommend' || (!pageMode && span9.querySelector('h3'))) {
                         const submenu = span9.querySelector('.submenu');
-                        const localSearch = document.createElement('div');
-                        localSearch.className = 'library-search-wrap';
-                        localSearch.style.maxWidth = "500px";
-                        localSearch.innerHTML = `
-                            <span class="material-icons search-icon">filter_list</span>
-                            <input type="text" class="lib-local-input" placeholder="Поиск">
+                        const searchContainer = document.createElement('div');
+                        searchContainer.className = 'teacher-search-wrapper';
+                        searchContainer.innerHTML = `
+                            <div class="search-capsule">
+                                <span class="material-icons search-icon">filter_list</span>
+                                <input type="text" class="search-input lib-local-input" placeholder="Поиск">
+                            </div>
                         `;
-                        if (submenu) submenu.after(localSearch);
+                        if (submenu) submenu.after(searchContainer);
 
+                        // Оформляем блоки литературы
                         const headers = Array.from(span9.querySelectorAll('h3'));
                         headers.forEach(h3 => {
                             const table = h3.nextElementSibling;
@@ -7392,24 +7356,20 @@ injectStyles(styles);
                             }
                         });
 
-                        // ГЛУБОКАЯ ЛОГИКА ФИЛЬТРАЦИИ
-                        const filterInput = localSearch.querySelector('.lib-local-input');
+                        // Логика фильтрации (живой поиск)
+                        const filterInput = searchContainer.querySelector('.lib-local-input');
                         filterInput.addEventListener('input', (e) => {
                             const val = e.target.value.toLowerCase().trim();
                             const blocks = document.querySelectorAll('.library-subject-block');
 
                             blocks.forEach(block => {
-                                const h3 = block.querySelector('h3');
-                                const h3Text = h3.textContent.toLowerCase();
+                                const h3Text = block.querySelector('h3').textContent.toLowerCase();
                                 const rows = Array.from(block.querySelectorAll('tr'));
                                 let blockHasVisibleRows = false;
 
-                                // Сначала фильтруем обычные строки с книгами
                                 rows.forEach(row => {
-                                    if (row.querySelector('th')) return; // Пропускаем заголовки (Обязательная/Дополнительная)
-                                    
+                                    if (row.querySelector('th')) return; 
                                     const rowText = row.textContent.toLowerCase();
-                                    // Показываем строку, если совпало название предмета ИЛИ текст строки (автор/название книги)
                                     if (val === "" || rowText.includes(val) || h3Text.includes(val)) {
                                         row.style.display = "";
                                         blockHasVisibleRows = true;
@@ -7418,31 +7378,19 @@ injectStyles(styles);
                                     }
                                 });
 
-                                // Теперь управляем заголовками секций (th)
-                                // Секция должна быть видна, только если под ней есть хотя бы одна видимая книга
+                                // Управление заголовками "Обязательная/Дополнительная"
                                 let currentHeader = null;
                                 let sectionVisible = false;
-
                                 rows.forEach(row => {
                                     if (row.querySelector('th')) {
-                                        // Если встретили новый заголовок, сохраняем состояние предыдущего
-                                        if (currentHeader) {
-                                            currentHeader.style.display = sectionVisible ? "" : "none";
-                                        }
+                                        if (currentHeader) currentHeader.style.display = sectionVisible ? "" : "none";
                                         currentHeader = row;
                                         sectionVisible = false;
-                                    } else {
-                                        if (row.style.display !== "none") {
-                                            sectionVisible = true;
-                                        }
+                                    } else if (row.style.display !== "none") {
+                                        sectionVisible = true;
                                     }
                                 });
-                                // Для последней секции в таблице
-                                if (currentHeader) {
-                                    currentHeader.style.display = sectionVisible ? "" : "none";
-                                }
-
-                                // Показываем или скрываем весь блок дисциплины
+                                if (currentHeader) currentHeader.style.display = sectionVisible ? "" : "none";
                                 block.style.display = (blockHasVisibleRows || val === "") ? "block" : "none";
                             });
                         });
