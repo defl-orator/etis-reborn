@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.38
+// @version      1.4
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -290,11 +290,18 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
 /* --- SUBMENU  --- */
 .submenu {
     display: flex !important;
-    flex-wrap: wrap !important;
+    flex-wrap: nowrap !important;
     gap: 0.8rem !important;
     margin-bottom: 2.4rem !important;
     border-bottom: none !important;
     align-items: center !important;
+    overflow-x: auto !important; 
+    padding-bottom: 0.8rem !important; 
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+}
+.submenu::-webkit-scrollbar { 
+    display: none !important; /* Прячем скроллбар в Chrome/Safari */
 }
 
 .submenu a {
@@ -4511,6 +4518,99 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 .answer-btn-custom, .answer-btn-custom:hover {
     text-decoration: none !important;
 }
+
+/* --- LIVE TIMETABLE INDICATORS --- */
+@keyframes pulse-live {
+    0% { transform: scale(0.9); box-shadow: 0 0 0 0 var(--pulse-color); }
+    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); }
+    100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+}
+
+.live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 10px;
+    vertical-align: middle;
+    position: relative;
+    z-index: 10;
+}
+
+/* Синяя точка - пара идет сейчас */
+.live-dot.active {
+    --pulse-color: rgba(0, 122, 255, 0.4);
+    background-color: var(--color-accent) !important;
+    animation: pulse-live 2s infinite;
+}
+
+/* Желтая точка - пара скоро начнется */
+.live-dot.soon {
+    --pulse-color: rgba(255, 204, 0, 0.4);
+    background-color: var(--color-yellow) !important;
+    animation: pulse-live 1.5s infinite;
+}
+
+/* Для заголовка дня подгоняем отступ */
+.day-name .live-dot {
+    margin-top: -3px;
+}
+
+/* --- ANALYTICS MODAL --- */
+.analytics-modal {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
+    background: var(--color-card); border-radius: var(--radius-large);
+    box-shadow: var(--shadow-dialog); z-index: 1000003;
+    width: 90%; max-width: 800px; max-height: 90vh; overflow-y: auto;
+    opacity: 0; visibility: hidden; transition: all 0.2s ease-out;
+}
+.analytics-modal.active { opacity: 1; visibility: visible; transform: translate(-50%, -50%) scale(1); }
+.analytics-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    z-index: 1000002; opacity: 0; visibility: hidden; transition: all 0.2s ease-out;
+}
+.analytics-overlay.active { opacity: 1; visibility: visible; }
+.stat-box {
+    background: var(--color-highlight); padding: 1.6rem;
+    border-radius: var(--radius-medium); display: flex; flex-direction: column; gap: 0.6rem;
+}
+.stat-box-title { font-size: 1.15rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
+.stat-box-value { font-size: 1.6rem; color: var(--color-text-primary); font-weight: 800; line-height: 1.3;}
+.stat-box-value.good { color: var(--color-green); }
+.stat-box-value.bad { color: var(--color-red); }
+.analytics-btn:hover { transform: scale(1.02); opacity: 0.9; }
+
+/* --- ФИКС ПЕРЕНОСА ТРИМЕСТРОВ НА ПК И МОБАЙЛ --- */
+.submenu a, .submenu b {
+    flex: 0 0 auto !important; /* Запрещаем сжимать кнопки */
+    white-space: nowrap !important; /* Запрещаем перенос текста на 2 строки */
+}
+
+/* --- LEADERBOARD (ТОП ПРЕДМЕТОВ) --- */
+.leaderboard-list { display: flex; flex-direction: column; gap: 1rem; }
+.leaderboard-item { 
+    display: flex; align-items: center; gap: 1.4rem; 
+    background: var(--color-highlight); padding: 1.2rem 1.6rem; 
+    border-radius: var(--radius-medium); transition: transform 0.2s;
+}
+.leaderboard-item:hover { transform: translateX(4px); }
+.leaderboard-rank { 
+    font-size: 1.6rem; font-weight: 800; width: 3.6rem; height: 3.6rem; 
+    display: flex; align-items: center; justify-content: center; 
+    border-radius: 50%; background: var(--color-card); color: var(--color-text-primary); 
+    flex-shrink: 0; box-shadow: var(--shadow-main); 
+}
+.rank-1 { background: linear-gradient(135deg, #FFD700, #FDB931) !important; color: #fff !important; }
+.rank-2 { background: linear-gradient(135deg, #E0E0E0, #BDBDBD) !important; color: #fff !important; }
+.rank-3 { background: linear-gradient(135deg, #FFB870, #CD7F32) !important; color: #fff !important; }
+
+.leaderboard-info { flex-grow: 1; min-width: 0; }
+.leaderboard-name { 
+    font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary); 
+    white-space: normal; line-height: 1.3; margin-bottom: 0.4rem;
+}
+.leaderboard-meta { font-size: 1.2rem; color: var(--color-text-secondary); }
     `;
 
     // Внедряем стили
@@ -4708,6 +4808,67 @@ injectStyles(styles);
                 menuBtn.classList.add('is-loading');      
             });
         });
+    }
+
+    function updateLiveTimetable() {
+        // Проверяем, на той ли мы неделе (только если нет параметра p_week или он совпадает с текущим)
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.has('p_week')) {
+            const actualWeek = localStorage.getItem('etis_actual_week');
+            if (urlParams.get('p_week') !== actualWeek) return;
+        }
+
+        const now = new Date();
+        const currentDay = now.getDay(); // 0 - вс, 1 - пн...
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+
+        const daysMap = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+        const todayName = daysMap[currentDay];
+
+        // 1. Ищем сегодняшний день
+        document.querySelectorAll('.day').forEach(dayBlock => {
+            const dayHeader = dayBlock.querySelector('.day-name');
+            if (!dayHeader) return;
+
+            // Очищаем старые точки
+            dayBlock.querySelectorAll('.live-dot').forEach(dot => dot.remove());
+
+            if (dayHeader.textContent.trim() === todayName) {
+                // Добавляем точку в заголовок дня
+                const dayDot = document.createElement('span');
+                dayDot.className = 'live-dot active';
+                dayHeader.appendChild(dayDot);
+
+                // 2. Ищем текущую или ближайшую пару
+                dayBlock.querySelectorAll('.timetable-grid tr').forEach(row => {
+                    const timeEl = row.querySelector('.eval');
+                    if (!timeEl) return;
+
+                    const startTimeParts = timeEl.textContent.split(':');
+                    const startMins = parseInt(startTimeParts[0]) * 60 + parseInt(startTimeParts[1]);
+                    const endMins = startMins + 90; // Стандартная пара 1.5 часа
+
+                    const timeToStart = startMins - currentTime;
+
+                    if (currentTime >= startMins && currentTime <= endMins) {
+                        // Пара идет сейчас
+                        addDot(row, 'active');
+                    } else if (timeToStart <= 15 && timeToStart > 0) {
+                        // До пары осталось менее 15 минут
+                        addDot(row, 'soon');
+                    }
+                });
+            }
+        });
+
+        function addDot(row, type) {
+            const target = row.querySelector('.pair_num');
+            if (target && !target.querySelector('.live-dot')) {
+                const dot = document.createElement('span');
+                dot.className = `live-dot ${type}`;
+                target.appendChild(dot);
+            }
+        }
     }
 
     // Модификация стилей страниц
@@ -6184,6 +6345,8 @@ injectStyles(styles);
 
                 // Вызываем перерасчет сразу при загрузке расписания
                 recalculateTimetable();
+                updateLiveTimetable();
+                setInterval(updateLiveTimetable, 60000);
                 break;
 
                 case 'stu.change_pass_form':
@@ -6809,14 +6972,30 @@ injectStyles(styles);
                     if (pageMode === 'session' || !pageMode) {
                         const submenu = span9.querySelector('.submenu');
                         
-                        // --- ДОБАВЛЕНИЕ ПОИСКА (КАПСУЛА) ---
+                        // Подгружаем библиотеку графиков Chart.js
+                        if (!window.Chart) {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                            document.head.appendChild(script);
+                        }
+
+                        // --- ДОБАВЛЕНИЕ ПОИСКА И КНОПКИ "АНАЛИТИКА" ---
                         const searchContainer = document.createElement('div');
                         searchContainer.className = 'teacher-search-wrapper';
+                        searchContainer.style.display = 'flex';
+                        searchContainer.style.gap = '1.2rem';
+                        searchContainer.style.maxWidth = '650px';
+                        searchContainer.style.margin = '0 auto 3rem auto';
+                        
+                        // Обе капсулы имеют класс search-capsule и flex: 1 для равного размера
                         searchContainer.innerHTML = `
-                            <div class="search-capsule">
+                            <div class="search-capsule" style="flex: 1; min-width: 0;">
                                 <span class="material-icons search-icon">filter_list</span>
                                 <input type="text" class="search-input signs-local-input" placeholder="Поиск">
                             </div>
+                            <button class="search-capsule analytics-btn" style="flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; background: var(--color-card); color: var(--color-text-primary); border: 1px solid var(--color-table-border); cursor: pointer; font-size: 1.4rem; font-weight: 600; padding: 0 1.6rem; transition: all 0.2s; text-decoration: none;">
+                                <span class="material-icons" style="margin-right: 8px; color: var(--color-accent); font-size: 2.2rem; position: static;">insights</span> Аналитика
+                            </button>
                         `;
                         if (submenu) submenu.after(searchContainer);
 
@@ -6881,27 +7060,49 @@ injectStyles(styles);
                                     const gradeText = cells[1].textContent.trim().toLowerCase();
                                     if (gradeText && gradeText !== 'н') {
                                         hasAny = true;
-                                        if (gradeText.includes('незач') || gradeText === '2') hasFail = true;
-                                        else if (gradeText.includes('зач')) hasPass = true;
-                                        else {
-                                            const num = parseInt(gradeText, 10);
-                                            if (!isNaN(num) && num >= 3 && num <= 5) { sum += num; count++; }
+                                        let num = parseInt(gradeText, 10);
+                                        
+                                        if (gradeText.includes('незач') || gradeText === '2') {
+                                            hasFail = true;
+                                            sum += 2; // Считаем незачет как 2 для аналитики
+                                            count++;
+                                        }
+                                        else if (gradeText.includes('зач')) {
+                                            hasPass = true;
+                                        }
+                                        else if (!isNaN(num) && num >= 3 && num <= 5) {
+                                            sum += num;
+                                            count++;
                                         }
                                     }
                                 }
                             });
 
+                            // Высчитываем средний балл даже для триместров с незачетом (для графика)
+                            const avg = count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
+                            wrapper.setAttribute('data-term-avg', avg);
+                            wrapper.setAttribute('data-term-name', h3.textContent.trim());
+
                             const headerContainer = document.createElement('div');
-                            headerContainer.className = 'subject-header-flex session-term-header-group'; // Класс для поиска
+                            headerContainer.className = 'subject-header-flex session-term-header-group'; 
                             h3.parentNode.insertBefore(headerContainer, h3);
                             headerContainer.appendChild(h3);
 
                             const capsule = document.createElement('div');
                             capsule.className = 'subject-score-capsule';
-                            if (!hasAny) { capsule.textContent = 'Нет оценок'; capsule.style.background = 'var(--color-highlight)'; capsule.style.color = 'var(--color-text-secondary)'; }
-                            else if (hasFail) { capsule.textContent = 'НЕЗАЧЕТ'; capsule.style.background = 'var(--color-red)'; capsule.style.color = '#fff'; }
+                            
+                            // Отображение капсулы
+                            if (!hasAny) { 
+                                capsule.textContent = 'Нет оценок'; 
+                                capsule.style.background = 'var(--color-highlight)'; 
+                                capsule.style.color = 'var(--color-text-secondary)'; 
+                            }
+                            else if (hasFail) { 
+                                capsule.textContent = 'НЕЗАЧЕТ'; 
+                                capsule.style.background = 'var(--color-red)'; 
+                                capsule.style.color = '#fff'; 
+                            }
                             else if (count > 0) {
-                                const avg = Math.round((sum / count) * 100) / 100; 
                                 capsule.textContent = `${avg} / 5`;
                                 const p = (avg / 5) * 100;
                                 if (p < 41) capsule.style.background = 'var(--color-red)';
@@ -6909,14 +7110,188 @@ injectStyles(styles);
                                 else if (p < 81) capsule.style.background = '#8BC34A';
                                 else capsule.style.background = 'var(--color-green)';
                                 capsule.style.color = (p >= 41 && p < 61) ? '#000' : '#fff';
-                            } else if (hasPass) { capsule.textContent = 'ЗАЧЕТ'; capsule.style.background = 'var(--color-green)'; capsule.style.color = '#fff'; }
+                            } 
+                            else if (hasPass) { 
+                                capsule.textContent = 'ЗАЧЕТ'; 
+                                capsule.style.background = 'var(--color-green)'; 
+                                capsule.style.color = '#fff'; 
+                            }
                             headerContainer.appendChild(capsule);
                             
-                            // Помечаем обертку таблицы, чтобы легко найти её через хедер
                             wrapper.classList.add('session-term-table-group');
                         });
 
-                        // --- ИСПРАВЛЕННАЯ ЛОГИКА ФИЛЬТРАЦИИ ---
+                        // --- ШАГ 3. СОЗДАНИЕ И ЛОГИКА ОКНА АНАЛИТИКИ ---
+                        
+                        const overlay = document.createElement('div');
+                        overlay.className = 'analytics-overlay';
+                        document.body.appendChild(overlay);
+                        
+                        const modal = document.createElement('div');
+                        modal.className = 'analytics-modal';
+                        modal.innerHTML = `
+                            <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                                <span class="ui-dialog-title">Ваша успеваемость</span>
+                                <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                            </div>
+                            <div class="ui-dialog-content" style="padding: 2.4rem;">
+                                <div id="analytics-empty" style="display:none; text-align:center; padding: 3rem; color:var(--color-text-secondary); font-size:1.4rem;">
+                                    Недостаточно данных с оценками (цифрами) для построения графиков.
+                                </div>
+                                <div id="analytics-content">
+                                    <div style="height: 250px; width: 100%; margin-bottom: 2rem; position: relative;">
+                                        <canvas id="gradesChart"></canvas>
+                                    </div>
+                                    <div class="analytics-stats" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.6rem;">
+                                        <div class="stat-box">
+                                            <span class="stat-box-title">Лучший триместр</span>
+                                            <span class="stat-box-value good" id="stat-best-term">-</span>
+                                        </div>
+                                        <div class="stat-box">
+                                            <span class="stat-box-title">Худший триместр</span>
+                                            <span class="stat-box-value bad" id="stat-worst-term">-</span>
+                                        </div>
+                                        <div class="stat-box" style="grid-column: 1 / -1;">
+                                            <span class="stat-box-title">Статистика по предметам</span>
+                                            <div style="font-size:1.4rem; margin-top:0.8rem; line-height:1.6; color: var(--color-text-primary);">
+                                                <div><strong style="color:var(--color-green);">Закрыто на «Отлично»:</strong> <span id="stat-5-count">0</span> предм.</div>
+                                                <div style="margin-top:1.2rem;">
+                                                    <strong style="color:var(--color-red);">Трудные предметы (оценка 3 и ниже):</strong>
+                                                    <div id="stat-bad-subj" style="margin-top: 0.5rem; color: var(--color-text-secondary);">Нет</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+
+                        const closeAnalytics = () => {
+                            overlay.classList.remove('active');
+                            modal.classList.remove('active');
+                        };
+                        overlay.addEventListener('click', closeAnalytics);
+                        modal.querySelector('.close-analytics').addEventListener('click', closeAnalytics);
+
+                        // Открытие и рендер графиков
+                        searchContainer.querySelector('.analytics-btn').addEventListener('click', () => {
+                            if (typeof Chart === 'undefined') {
+                                alert('Графики еще подгружаются, подождите пару секунд...');
+                                return;
+                            }
+                            
+                            const termsData =[];
+                            const subjectsData =[];
+                            
+                            document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
+                                const rawTermName = wrapper.getAttribute('data-term-name');
+                                const avg = parseFloat(wrapper.getAttribute('data-term-avg'));
+                                
+                                if (rawTermName) {
+                                    // Вытаскиваем номер триместра для правильной хронологической сортировки
+                                    const numMatch = rawTermName.match(/(\d+)\s*трим/i);
+                                    const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
+
+                                    // Сокращаем "10 триместр (5 курс)..." до "10 трим."
+                                    let cleanName = rawTermName.split(',')[0].replace(/\(.*\)/, '').replace(/триместр/i, 'трим.').trim();
+                                    
+                                    if (avg > 0) {
+                                        termsData.push({ name: cleanName, avg: avg, num: termNum });
+                                    }
+                                }
+                                
+                                wrapper.querySelectorAll('tbody tr').forEach(row => {
+                                    const cells = row.querySelectorAll('td');
+                                    if (cells.length >= 2) {
+                                        const subj = cells[0].textContent.trim();
+                                        const gradeText = cells[1].textContent.trim().toLowerCase();
+                                        
+                                        let num = parseInt(gradeText, 10);
+                                        if (gradeText.includes('незач')) num = 2; // Незачет идет как 2
+                                        
+                                        if (!isNaN(num) && num >= 2 && num <= 5) {
+                                            subjectsData.push({ subj, grade: num });
+                                        }
+                                    }
+                                });
+                            });
+                            
+                            // Жесткая сортировка по возрастанию номера триместра (от 1 до 11)
+                            termsData.sort((a, b) => a.num - b.num);
+                            
+                            if (termsData.length === 0) {
+                                document.getElementById('analytics-content').style.display = 'none';
+                                document.getElementById('analytics-empty').style.display = 'block';
+                            } else {
+                                document.getElementById('analytics-content').style.display = 'block';
+                                document.getElementById('analytics-empty').style.display = 'none';
+                                
+                                const bestTerm = [...termsData].sort((a,b) => b.avg - a.avg)[0];
+                                const worstTerm = [...termsData].sort((a,b) => a.avg - b.avg)[0];
+                                
+                                document.getElementById('stat-best-term').textContent = `${bestTerm.name} (${bestTerm.avg})`;
+                                document.getElementById('stat-worst-term').textContent = `${worstTerm.name} (${worstTerm.avg})`;
+                                
+                                let count5 = subjectsData.filter(s => s.grade === 5).length;
+                                let badSubj =[...new Set(subjectsData.filter(s => s.grade <= 3).map(s => s.subj))];
+                                
+                                document.getElementById('stat-5-count').textContent = count5;
+                                document.getElementById('stat-bad-subj').innerHTML = badSubj.length > 0 
+                                    ? `<ul style="margin: 0; padding-left: 1.8rem;">${badSubj.map(s => `<li style="margin-bottom:6px;">${s}</li>`).join('')}</ul>`
+                                    : 'Нет таких, отличная работа! 🥳';
+                                
+                                const ctx = document.getElementById('gradesChart').getContext('2d');
+                                if(window.etisChartInstance) window.etisChartInstance.destroy(); 
+                                
+                                const textColor = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
+                                const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#007AFF';
+                                const gridColor = getComputedStyle(document.body).getPropertyValue('--color-table-border').trim() || '#ddd';
+                                
+                                window.etisChartInstance = new Chart(ctx, {
+                                    type: 'line',
+                                    data: {
+                                        labels: termsData.map(t => t.name), 
+                                        datasets:[{
+                                            label: ' Средний балл',
+                                            data: termsData.map(t => t.avg),
+                                            borderColor: accentColor,
+                                            backgroundColor: accentColor + '22',
+                                            borderWidth: 3,
+                                            pointBackgroundColor: accentColor,
+                                            pointBorderColor: '#fff',
+                                            pointBorderWidth: 2,
+                                            pointRadius: 5,
+                                            pointHoverRadius: 7,
+                                            fill: true,
+                                            tension: 0.4 
+                                        }]
+                                    },
+                                    options: {
+                                        responsive: true,
+                                        maintainAspectRatio: false,
+                                        plugins: { legend: { display: false } },
+                                        scales: {
+                                            y: { 
+                                                min: 2.0, // Опустили минимум до 2.0 из-за незачетов
+                                                max: 5.0, 
+                                                ticks: { color: textColor, font: {size: 13} }, 
+                                                grid: { color: gridColor } 
+                                            },
+                                            x: { 
+                                                ticks: { color: textColor, font: {size: 13} }, 
+                                                grid: { display: false } 
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                            
+                            overlay.classList.add('active');
+                            modal.classList.add('active');
+                        });
+
+                        // --- ШАГ 4. ЛОГИКА ФИЛЬТРАЦИИ ПОИСКА ПО ПРЕДМЕТАМ ---
                         const filterInput = searchContainer.querySelector('.signs-local-input');
                         filterInput.addEventListener('input', (e) => {
                             const val = e.target.value.toLowerCase().trim();
@@ -6931,7 +7306,6 @@ injectStyles(styles);
                                 let visibleRowsCount = 0;
 
                                 rows.forEach(row => {
-                                    // 1-я колонка (предмет), 4-я колонка (преподаватель)
                                     const subject = row.cells[0]?.textContent.toLowerCase() || "";
                                     const teacher = row.cells[3]?.textContent.toLowerCase() || "";
 
@@ -6943,7 +7317,6 @@ injectStyles(styles);
                                     }
                                 });
 
-                                // Если в триместре 0 подходящих строк и поиск не пустой — скрываем ВЕСЬ блок
                                 if (val !== "" && visibleRowsCount === 0) {
                                     header.style.setProperty('display', 'none', 'important');
                                     wrapper.style.setProperty('display', 'none', 'important');
@@ -6957,21 +7330,49 @@ injectStyles(styles);
 
                     // 4. ОБРАБОТКА "ОЦЕНКИ В ТРИМЕСТРЕ"
                     if (pageMode === 'current' || (!pageMode && !span9.querySelector('.session-table-v6'))) {
+                        
+                        const submenus = span9.querySelectorAll('.submenu');
+                        const lastSubmenu = submenus[submenus.length - 1];
+
+                        // --- ДОБАВЛЕНИЕ ПОИСКА И КНОПКИ "РЕЙТИНГ" ---
+                        const searchContainer = document.createElement('div');
+                        searchContainer.className = 'teacher-search-wrapper term-search-wrapper';
+                        searchContainer.style.display = 'flex';
+                        searchContainer.style.gap = '1.2rem';
+                        searchContainer.style.maxWidth = '650px';
+                        searchContainer.style.margin = '1rem auto 3rem auto';
+                        
+                        searchContainer.innerHTML = `
+                            <div class="search-capsule" style="flex: 1; min-width: 0;">
+                                <span class="material-icons search-icon">filter_list</span>
+                                <input type="text" class="search-input term-local-input" placeholder="Поиск">
+                            </div>
+                            <button class="search-capsule analytics-btn" style="flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; background: var(--color-card); color: var(--color-text-primary); border: 1px solid var(--color-table-border); cursor: pointer; font-size: 1.4rem; font-weight: 600; padding: 0 1.6rem; transition: all 0.2s; text-decoration: none;">
+                                <span class="material-icons" style="margin-right: 8px; color: var(--color-accent); font-size: 2.2rem; position: static;">emoji_events</span> Топ предметов
+                            </button>
+                        `;
+                        if (lastSubmenu) lastSubmenu.after(searchContainer);
+
+                        // --- ПАРСИНГ ТАБЛИЦ И ДОБАВЛЕНИЕ КАПСУЛ ---
                         span9.querySelectorAll('table.common').forEach(table => {
                             table.classList.add('term-table-v6');
                             if (!table.parentNode.classList.contains('wide-table-wrapper')) {
                                 const wrapper = document.createElement('div');
-                                wrapper.className = 'wide-table-wrapper';
+                                wrapper.className = 'wide-table-wrapper term-subject-group';
                                 table.parentNode.insertBefore(wrapper, table);
                                 wrapper.appendChild(table);
                             }
+                            
                             const wrapper = table.closest('.wide-table-wrapper');
                             const h3 = wrapper.previousElementSibling;
                             if (!h3 || h3.tagName !== 'H3') return;
+                            
                             const rows = Array.from(table.querySelectorAll('tr'));
                             const totalRow = rows.find(r => r.textContent.toLowerCase().includes('всего:'));
+                            
+                            let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
+                            
                             if (totalRow) {
-                                let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
                                 rows.forEach(r => {
                                     if(r.querySelector('th') || r === totalRow) return;
                                     const cells = r.querySelectorAll('td');
@@ -6985,27 +7386,191 @@ injectStyles(styles);
                                         }
                                     }
                                 });
-                                const headerContainer = document.createElement('div');
-                                headerContainer.className = 'subject-header-flex';
-                                h3.parentNode.insertBefore(headerContainer, h3);
-                                headerContainer.appendChild(h3);
-                                const capsule = document.createElement('div');
-                                capsule.className = 'subject-score-capsule';
-                                capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? calculatedMax : 0}`;
-                                if (!hasAnyGrades || calculatedMax === 0) {
-                                    capsule.style.background = 'var(--color-highlight)';
-                                    capsule.style.color = 'var(--color-text-secondary)';
-                                } else {
-                                    const p = (calculatedCurrent / calculatedMax) * 100;
-                                    if (p < 41) capsule.style.background = 'var(--color-red)';
-                                    else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
-                                    else if (p < 81) capsule.style.background = '#8BC34A';
-                                    else capsule.style.background = 'var(--color-green)';
-                                    if (p < 41 || p >= 61) capsule.style.color = '#fff';
-                                }
-                                headerContainer.appendChild(capsule);
                                 totalRow.remove();
                             }
+
+                            wrapper.setAttribute('data-subject-name', h3.textContent.trim());
+                            wrapper.setAttribute('data-score-current', calculatedCurrent);
+                            wrapper.setAttribute('data-score-max', calculatedMax);
+
+                            const headerContainer = document.createElement('div');
+                            headerContainer.className = 'subject-header-flex term-header-group';
+                            h3.parentNode.insertBefore(headerContainer, h3);
+                            headerContainer.appendChild(h3);
+                            
+                            const capsule = document.createElement('div');
+                            capsule.className = 'subject-score-capsule';
+                            capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? calculatedMax : 0}`;
+                            
+                            if (!hasAnyGrades || calculatedMax === 0) {
+                                capsule.style.background = 'var(--color-highlight)';
+                                capsule.style.color = 'var(--color-text-secondary)';
+                            } else {
+                                const p = (calculatedCurrent / calculatedMax) * 100;
+                                if (p < 41) capsule.style.background = 'var(--color-red)';
+                                else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
+                                else if (p < 81) capsule.style.background = '#8BC34A';
+                                else capsule.style.background = 'var(--color-green)';
+                                if (p < 41 || p >= 61) capsule.style.color = '#fff';
+                            }
+                            headerContainer.appendChild(capsule);
+                        });
+
+                        // --- ЛОГИКА ФИЛЬТРАЦИИ ---
+                        const filterInput = searchContainer.querySelector('.term-local-input');
+                        filterInput.addEventListener('input', (e) => {
+                            const val = e.target.value.toLowerCase().trim();
+                            const headers = document.querySelectorAll('.term-header-group');
+                            const wrappers = document.querySelectorAll('.term-subject-group');
+
+                            headers.forEach((header, index) => {
+                                const wrapper = wrappers[index];
+                                if (!wrapper) return;
+
+                                // Достаем только название предмета (без баллов в капсуле)
+                                const h3 = header.querySelector('h3');
+                                const subjectName = h3 ? h3.textContent.toLowerCase() : header.textContent.toLowerCase();
+                                
+                                // Совпадает ли само название предмета с поиском?
+                                const isSubjectMatch = subjectName.includes(val);
+                                
+                                const rows = Array.from(wrapper.querySelectorAll('tr'));
+                                let visibleRowsCount = 0;
+
+                                rows.forEach(row => {
+                                    if (row.querySelector('th')) {
+                                        row.style.display = '';
+                                        return;
+                                    }
+
+                                    const rowContent = row.textContent.toLowerCase();
+
+                                    // Показываем строку, если: 
+                                    // 1. Поиск пуст 
+                                    // 2. Искали название самого предмета (показываем все его темы) 
+                                    // 3. Нашлась конкретная тема/преподаватель
+                                    if (val === "" || isSubjectMatch || rowContent.includes(val)) {
+                                        row.style.display = '';
+                                        visibleRowsCount++;
+                                    } else {
+                                        row.style.display = 'none';
+                                    }
+                                });
+
+                                // Если ни предмет не совпал, ни одна из его тем — скрываем всё
+                                if (val !== "" && !isSubjectMatch && visibleRowsCount === 0) {
+                                    header.style.setProperty('display', 'none', 'important');
+                                    wrapper.style.setProperty('display', 'none', 'important');
+                                } else {
+                                    header.style.setProperty('display', 'flex', 'important');
+                                    wrapper.style.setProperty('display', 'block', 'important');
+                                }
+                            });
+                        });
+
+                        // --- ОКНО РЕЙТИНГА ---
+                        let overlay = document.querySelector('.analytics-overlay');
+                        let modal = document.querySelector('.analytics-modal');
+
+                        if (!overlay || !modal) {
+                            overlay = document.createElement('div');
+                            overlay.className = 'analytics-overlay';
+                            document.body.appendChild(overlay);
+
+                            modal = document.createElement('div');
+                            modal.className = 'analytics-modal';
+                            document.body.appendChild(modal);
+                        }
+
+                        searchContainer.querySelector('.analytics-btn').addEventListener('click', () => {
+                            // Структура модального окна без графика
+                            modal.innerHTML = `
+                                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span class="ui-dialog-title">Топ предметов триместра</span>
+                                    <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                                </div>
+                                <div class="ui-dialog-content" style="padding: 2.4rem;">
+                                    <div id="analytics-empty" style="display:none; text-align:center; padding: 3rem; color:var(--color-text-secondary); font-size:1.4rem;">
+                                        Недостаточно данных (баллов) для построения рейтинга.
+                                    </div>
+                                    <div id="analytics-content">
+                                        <!-- Здесь будет сгенерированный список -->
+                                    </div>
+                                </div>
+                            `;
+
+                            const closeAnalytics = () => {
+                                overlay.classList.remove('active');
+                                modal.classList.remove('active');
+                            };
+                            overlay.onclick = closeAnalytics;
+                            modal.querySelector('.close-analytics').onclick = closeAnalytics;
+
+                            // Сбор данных
+                            const subjectsData =[];
+                            document.querySelectorAll('.term-subject-group').forEach(wrapper => {
+                                const name = wrapper.getAttribute('data-subject-name');
+                                const current = parseInt(wrapper.getAttribute('data-score-current'), 10) || 0;
+                                const max = parseInt(wrapper.getAttribute('data-score-max'), 10) || 0;
+
+                                if (max > 0) {
+                                    const percent = Math.round((current / max) * 100);
+                                    // Чистим название от мусора ЕТИСа, если есть
+                                    let cleanName = name.replace(/\[.*?\]/g, '').trim();
+                                    subjectsData.push({ name: cleanName, current, max, percent });
+                                }
+                            });
+
+                            // Сортировка по убыванию процентов
+                            subjectsData.sort((a, b) => b.percent - a.percent);
+
+                            if (subjectsData.length === 0) {
+                                document.getElementById('analytics-content').style.display = 'none';
+                                document.getElementById('analytics-empty').style.display = 'block';
+                            } else {
+                                document.getElementById('analytics-content').style.display = 'block';
+                                document.getElementById('analytics-empty').style.display = 'none';
+
+                                // Генерация HTML списка
+                                let leaderboardHtml = '<div class="leaderboard-list">';
+                                
+                                subjectsData.forEach((subj, index) => {
+                                    // Определяем стили для мест
+                                    let rankClass = '';
+                                    let rankContent = index + 1; 
+                                    
+                                    if (index === 0) { rankClass = 'rank-1'; }
+                                    else if (index === 1) { rankClass = 'rank-2'; }
+                                    else if (index === 2) { rankClass = 'rank-3'; }
+
+                                    // Цвет капсулы с процентами
+                                    let colorBg = 'var(--color-green)';
+                                    if (subj.percent < 41) colorBg = 'var(--color-red)';
+                                    else if (subj.percent < 61) colorBg = 'var(--color-yellow)';
+                                    else if (subj.percent < 81) colorBg = '#8BC34A';
+
+                                    let colorText = (subj.percent >= 41 && subj.percent < 61) ? '#000' : '#fff';
+
+                                    leaderboardHtml += `
+                                        <div class="leaderboard-item">
+                                            <div class="leaderboard-rank ${rankClass}">${rankContent}</div>
+                                            <div class="leaderboard-info">
+                                                <div class="leaderboard-name">${subj.name}</div>
+                                                <div class="leaderboard-meta">Набрано: ${subj.current} из ${subj.max}</div>
+                                            </div>
+                                            <div class="subject-score-capsule" style="background:${colorBg}; color:${colorText}; font-size:1.25rem; padding: 0.6rem 1.2rem; margin-left: 0;">
+                                                ${subj.percent}%
+                                            </div>
+                                        </div>
+                                    `;
+                                });
+                                leaderboardHtml += '</div>';
+
+                                document.getElementById('analytics-content').innerHTML = leaderboardHtml;
+                            }
+
+                            overlay.classList.add('active');
+                            modal.classList.add('active');
                         });
                     }
 
