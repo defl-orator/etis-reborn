@@ -532,7 +532,7 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
 .span9 .day h3 { 
     display: flex !important;
     align-items: center !important;
-    justify-content: space-between !important;
+    justify-content: space-between !important; /* День СЛЕВА, Дата СПРАВА */
     
     padding: 1.6rem 2rem !important; 
     background: var(--color-table-header) !important;
@@ -549,13 +549,20 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
     letter-spacing: 0.3px !important;
 }
 
+/* Дата (текст справа, без капсулы) */
 .span9 .day h3 .day-date {
-    font-weight: 700 !important;
-    font-size: 1.25rem !important;
-    color: var(--color-accent) !important;
-    background: var(--color-accent-active) !important;
-    padding: 0.5rem 1.4rem !important;
-    border-radius: 50px !important;
+    font-weight: 500 !important;
+    font-size: 1.5rem !important;
+    color: var(--color-text-secondary) !important; /* Серый цвет, как у обычного текста */
+    
+    /* СБРОС КАПСУЛЫ */
+    background: transparent !important; 
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    
+    /* Если нужно выравнивание текста по правому краю */
+    text-align: right !important;
 }
 .no_pairs { padding: 1.2rem 1.6rem 2rem !important; }
 .timetable { display: flex !important; flex-direction: column !important; width: 100% !important; }
@@ -4089,10 +4096,9 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
         text-overflow: ellipsis !important;
     }
     .span9 .day h3 .day-date {
-        padding: 0.4rem 1rem !important;
-        font-size: 1.15rem !important;
-        flex-shrink: 0 !important; 
-        margin-left: 0.8rem !important;
+        padding: 0 !important;
+        background: transparent !important;
+        font-size: 1.3rem !important;
     }
 
     /* 2. Жёсткая сетка для таблицы */
