@@ -209,6 +209,43 @@
         
         .mobile-limit { max-width: 400px; margin: 0 auto; }
 
+        /* --- БЛОК АНАЛИТИКИ --- */
+        .analytics-cards {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            align-items: stretch;
+        }
+        .analytics-card {
+            flex: 1;
+            max-width: 500px;
+            text-align: center;
+        }
+        .analytics-frame {
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 50px var(--shadow);
+            border: 1px solid var(--border-color);
+            background: var(--card-bg);
+            transition: transform 0.3s ease;
+            line-height: 0; /* Убирает отступ под картинкой */
+        }
+        .analytics-frame:hover {
+            transform: translateY(-10px);
+        }
+        .analytics-frame img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .analytics-label {
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: var(--text-color);
+        }
+
         @media (max-width: 768px) {
             .hero h1 { font-size: 2.2rem; }
             .img-comp-slider { width: 40px; height: 40px; }
@@ -216,6 +253,17 @@
             .view-side-by-side { display: none !important; }
             .view-slider { display: block !important; }
             .mobile-limit { max-width: 100%; } 
+            .analytics-cards {
+                flex-direction: column;
+                align-items: center;
+                gap: 40px;
+            }
+            .analytics-card {
+                width: 100%;
+            }
+            .analytics-frame {
+                border-radius: 40px;
+            }
         }
 
         .credits { 
@@ -437,6 +485,44 @@
             }
         }
 
+        /* --- ЛАЙТБОКС (УВЕЛИЧЕНИЕ КАРТИНОК) --- */
+        .lightbox-img {
+            max-width: 90%;
+            max-height: 90vh;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            object-fit: contain;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.7);
+            font-size: 50px;
+            cursor: pointer;
+            z-index: 3001;
+            transition: color 0.2s, transform 0.2s;
+            line-height: 1;
+        }
+
+        .lightbox-close:hover {
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        /* Курсор-лупа для кликабельных картинок только на ПК */
+        @media (min-width: 769px) {
+            .analytics-frame img,
+            .phone-frame img,
+            .img-comp-img img {
+                cursor: zoom-in;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -568,6 +654,25 @@
                     <div class="img-comp-img img-source">
                         <span class="label label-old">Original</span>
                         <img class="dynamic-img" data-ver="old" src="" alt="Old Spravka">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 7. АНАЛИТИКА -->
+            <div class="comparison-block" id="block-analytics">
+                <h2 class="block-title">Продвинутая аналитика</h2>
+                <div class="analytics-cards">
+                    <div class="analytics-card">
+                        <div class="analytics-label">Оценки за сессии</div>
+                        <div class="analytics-frame">
+                            <img id="img-analytics-sessions" src="" alt="График оценок за сессии">
+                        </div>
+                    </div>
+                    <div class="analytics-card">
+                        <div class="analytics-label">Топ предметов</div>
+                        <div class="analytics-frame">
+                            <img id="img-analytics-top" src="" alt="Топ предметов">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -727,6 +832,12 @@
         </div>
     </div>
 
+    <!-- ЛАЙТБОКС ДЛЯ ИЗОБРАЖЕНИЙ -->
+    <div class="modal-overlay" id="imageLightbox" style="z-index: 3000;">
+        <button class="lightbox-close" onclick="closeLightbox()">×</button>
+        <img class="lightbox-img" id="lightboxImg" src="" alt="Увеличенное изображение">
+    </div>
+
     <script>
 
         // --- УПРАВЛЕНИЕ ТЕМОЙ ---
@@ -790,6 +901,22 @@
 
                 sideNew.src = `img/schedule-mobile-${currentTheme}-new.png`;
                 sideOld.src = `img/schedule-mobile-${currentTheme}-old.png`;
+            }
+
+            // --- БЛОК АНАЛИТИКИ ---
+            const analyticsSessions = document.getElementById('img-analytics-sessions');
+            const analyticsTop = document.getElementById('img-analytics-top');
+            if (analyticsSessions && analyticsTop) {
+                // Формируем пути по вашей логике (без -new/-old, так как это просто скриншоты)
+                analyticsSessions.src = `img/analytics-sessions-${deviceType}-${currentTheme}.png`;
+                analyticsTop.src = `img/analytics-top-${deviceType}-${currentTheme}.png`;
+                
+                analyticsSessions.onerror = function() { 
+                    this.src = `https://via.placeholder.com/800x500/ccc/333?text=Analytics+Sessions`; 
+                };
+                analyticsTop.onerror = function() { 
+                    this.src = `https://via.placeholder.com/800x500/ccc/333?text=Analytics+Top`; 
+                };
             }
 
             // 2. ОСТАЛЬНЫЕ БЛОКИ (Расписание, Оценки и т.д.)
@@ -984,6 +1111,49 @@
                     item.classList.add('active');
                 }
             });
+        });
+        // --- ЛАЙТБОКС ДЛЯ КАРТИНОК (ТОЛЬКО ДЛЯ ПК) ---
+        const lightbox = document.getElementById('imageLightbox');
+        const lightboxImg = document.getElementById('lightboxImg');
+
+        function openLightbox(src) {
+            if (window.innerWidth <= 768) return; // Игнорируем на мобильных
+            
+            lightboxImg.src = src;
+            lightbox.style.display = 'flex';
+            setTimeout(() => lightbox.classList.add('active'), 10);
+        }
+
+        function closeLightbox() {
+            lightbox.classList.remove('active');
+            setTimeout(() => lightbox.style.display = 'none', 300);
+        }
+
+        // Закрытие по клику на тёмный фон вокруг картинки
+        lightbox.addEventListener('click', (e) => {
+            if (e.target === lightbox) closeLightbox();
+        });
+
+        // Закрытие по клавише Escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+                closeLightbox();
+            }
+        });
+
+        // Отслеживаем клики по картинкам
+        document.addEventListener('click', (e) => {
+            // Ищем, был ли клик по картинке внутри нужных нам блоков
+            const targetImg = e.target.closest('.analytics-frame img') || 
+                            e.target.closest('.phone-frame img') ||
+                            e.target.closest('.img-comp-img img');
+                            
+            // Игнорируем клики по самому ползунку слайдера (чтобы не мешать перетаскиванию)
+            if (e.target.closest('.img-comp-slider')) return;
+
+            if (targetImg) {
+                openLightbox(targetImg.src);
+            }
         });
     </script>
 </body>
