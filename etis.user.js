@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.41
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -4519,7 +4519,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
     text-decoration: none !important;
 }
 
-/* --- LIVE TIMETABLE INDICATORS --- */
+/* --- LIVE TIMETABLE INDICATORS (TRAFFIC LIGHT) --- */
 @keyframes pulse-live {
     0% { transform: scale(0.9); box-shadow: 0 0 0 0 var(--pulse-color); }
     70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); }
@@ -4537,18 +4537,25 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
     z-index: 10;
 }
 
-/* Синяя точка - пара идет сейчас */
+/* ЗЕЛЕНАЯ - Пара идет (безопасное время) */
 .live-dot.active {
-    --pulse-color: rgba(0, 122, 255, 0.4);
-    background-color: var(--color-accent) !important;
+    --pulse-color: rgba(52, 199, 89, 0.4);
+    background-color: var(--color-green) !important;
     animation: pulse-live 2s infinite;
 }
 
-/* Желтая точка - пара скоро начнется */
+/* ЖЕЛТАЯ - Пара скоро начнется (приготовься) */
 .live-dot.soon {
     --pulse-color: rgba(255, 204, 0, 0.4);
     background-color: var(--color-yellow) !important;
     animation: pulse-live 1.5s infinite;
+}
+
+/* КРАСНАЯ - Пара скоро закончится (завершение) */
+.live-dot.ending {
+    --pulse-color: rgba(255, 59, 48, 0.4);
+    background-color: var(--color-red) !important;
+    animation: pulse-live 1s infinite; /* Пульсирует быстрее */
 }
 
 /* Для заголовка дня подгоняем отступ */
@@ -4811,7 +4818,7 @@ injectStyles(styles);
     }
 
     function updateLiveTimetable() {
-        // Проверяем, на той ли мы неделе (только если нет параметра p_week или он совпадает с текущим)
+        // Проверяем, на той ли мы неделе
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('p_week')) {
             const actualWeek = localStorage.getItem('etis_actual_week');
@@ -4825,6 +4832,10 @@ injectStyles(styles);
         const daysMap = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
         const todayName = daysMap[currentDay];
 
+        // Настройки времени (в минутах)
+        const SOON_START_THRESHOLD = 20; // Желтый: за сколько минут до начала показывать
+        const SOON_END_THRESHOLD = 15;   // Красный: за сколько минут до конца показывать
+
         // 1. Ищем сегодняшний день
         document.querySelectorAll('.day').forEach(dayBlock => {
             const dayHeader = dayBlock.querySelector('.day-name');
@@ -4834,9 +4845,11 @@ injectStyles(styles);
             dayBlock.querySelectorAll('.live-dot').forEach(dot => dot.remove());
 
             if (dayHeader.textContent.trim() === todayName) {
-                // Добавляем точку в заголовок дня
+                // Добавляем точку в заголовок дня (просто индикатор "сегодня")
                 const dayDot = document.createElement('span');
                 dayDot.className = 'live-dot active';
+                // Убираем пульсацию у точки дня, чтобы не отвлекала
+                dayDot.style.animation = 'none'; 
                 dayHeader.appendChild(dayDot);
 
                 // 2. Ищем текущую или ближайшую пару
@@ -4849,12 +4862,19 @@ injectStyles(styles);
                     const endMins = startMins + 90; // Стандартная пара 1.5 часа
 
                     const timeToStart = startMins - currentTime;
+                    const timeToEnd = endMins - currentTime;
 
                     if (currentTime >= startMins && currentTime <= endMins) {
                         // Пара идет сейчас
-                        addDot(row, 'active');
-                    } else if (timeToStart <= 15 && timeToStart > 0) {
-                        // До пары осталось менее 15 минут
+                        if (timeToEnd <= SOON_END_THRESHOLD) {
+                            // Осталось мало времени -> КРАСНЫЙ
+                            addDot(row, 'ending');
+                        } else {
+                            // Времени еще много -> ЗЕЛЕНЫЙ
+                            addDot(row, 'active');
+                        }
+                    } else if (timeToStart <= SOON_START_THRESHOLD && timeToStart > 0) {
+                        // До пары осталось немного -> ЖЕЛТЫЙ
                         addDot(row, 'soon');
                     }
                 });
@@ -4866,6 +4886,14 @@ injectStyles(styles);
             if (target && !target.querySelector('.live-dot')) {
                 const dot = document.createElement('span');
                 dot.className = `live-dot ${type}`;
+                
+                // Добавим подсказку при наведении
+                let title = "";
+                if (type === 'active') title = "Пара идет";
+                if (type === 'soon') title = "Скоро начнется";
+                if (type === 'ending') title = "Скоро закончится";
+                dot.title = title;
+
                 target.appendChild(dot);
             }
         }
