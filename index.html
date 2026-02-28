@@ -691,11 +691,12 @@
                             <div class="faq-answer">
                                 Вы получите полностью переработанный интерфейс ЕТИСа, который удобно использовать на любом устройстве:
                                 <ul>
-                                    <li>✅ <b>Мобильная версия:</b> полноценная шторка с меню и адаптивные таблицы.</li>
-                                    <li>✅ <b>Тёмная тема:</b> бережет зрение и заряд батареи.</li>
-                                    <li>✅ <b>Умное расписание:</b> показывает окна между парами, скрывает пустые дни, и даёт возможность поделиться им в виде картинки.</li>
-                                    <li>✅ <b>Поиск преподавателей и книг:</b> мгновенная фильтрация без перезагрузок.</li>
-                                    <li>✅ <b>Понятные оценки:</b> цветные капсулы помогают понять что хорошо (а что не очень 😁).</li>
+                                    <li><b>Мобильная версия:</b> полноценная шторка с меню и адаптивные таблицы.</li>
+                                    <li><b>Тёмная тема:</b> бережет зрение и заряд батареи.</li>
+                                    <li><b>Умное расписание:</b> показывает окна между парами, скрывает пустые дни.</li>
+                                    <li><b>Аналитика:</b> узнайте свои лучшие (и худшие) предметы и триместры.</li>
+                                    <li><b>Поиск преподавателей и книг:</b> мгновенная фильтрация без перезагрузок.</li>
+                                    <li><b>Понятные оценки:</b> цветные капсулы помогают визуально оценить успеваемость.</li>
                                 </ul>
                             </div>
                         </div>
@@ -738,7 +739,7 @@
                         <div class="faq-content-wrapper">
                             <div class="faq-answer">
                                 Публикация в <b>Google Chrome Web Store</b> и <b>Apple App Store</b> требует ежегодной оплаты взноса разработчика в долларах. Из-за текущих ограничений оплатить эти взносы из России технически невозможно.<br><br>
-                                Поэтому для Chrome и Safari используется установка через менеджеры скриптов (Tampermonkey/Userscripts) — это безопасно и работает так же стабильно.
+                                Поэтому для Chrome и Safari используется установка через менеджеры скриптов (Tampermonkey/Stay) — это безопасно и работает так же стабильно.
                             </div>
                         </div>
                     </div>
@@ -806,26 +807,18 @@
                 </div>
             </div>
 
-            <!-- Контент для Safari (кнопка видео оставлена) -->
+            <!-- Контент для Safari -->
             <div id="tab-macos" class="instruction-content">
                 <div class="text-view" id="text-macos">
-                    <p style="margin-bottom: 15px;">Для Safari используйте приложение <a href="https://apps.apple.com/kz/app/userscripts/id1463298887" target="_blank" class="text-link">Userscripts</a>:</p>
+                    <p style="margin-bottom: 15px;">Для Safari рекомендую расширение <a href="https://apps.apple.com/ru/app/stay-for-safari/id1591620171" target="_blank" class="text-link">Stay</a>:</p>
                     <ol class="step-list">
-                        <li>Установите расширение <b>Userscripts</b> из App Store.</li>
-                        <li>Включите его в настройках Safari.</li>
-                        <li>Настройте папку для скриптов в приложении.</li>
-                        <li>Скачайте файл ниже и сохраните его в эту папку.</li>
+                        <li>Установите и настройте расширение <b>Stay</b> из App Store.</li>
+                        <li>Нажмите кнопку ниже — откроется вкладка со скриптом.</li>
+                        <li>Нажмите "Install" в нижнем правом углу.</li>
                     </ol>
                     <div class="action-buttons">
-                        <a href="etis.user.js" download class="download-btn">Скачать</a>
-                        <button class="video-btn" onclick="showVideo('macos')">Видео</button>
+                        <a href="etis.user.js" class="download-btn">Установить</a>
                     </div>
-                </div>
-                <div class="video-view" id="video-macos">
-                    <button class="back-btn" onclick="hideVideo('macos')">Назад к инструкции</button>
-                    <video class="tutorial-video" controls playsinline>
-                        <source src="img/install.mp4" type="video/mp4">
-                    </video>
                 </div>
             </div>
             <div class="modal-version">Версия от 28.02</div>
