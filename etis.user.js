@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.43
+// @version      1.44
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -4293,17 +4293,62 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 
 /* Капсула (теперь видимая всегда) */
 .search-capsule {
-    position: relative !important;
-    width: 100% !important;
-    max-width: 400px !important;
     display: flex !important;
     align-items: center !important;
-    background: var(--color-card) !important; /* Белый фон */
+    position: relative !important;
+    width: 100% !important;
+    height: 40px !important;
+    background: var(--color-card) !important;
     border: 1px solid var(--color-table-border) !important;
     border-radius: 22px !important;
-    padding: 0 16px !important;
-    height: 44px !important;
     box-shadow: var(--shadow-main) !important;
+    box-sizing: border-box !important;
+    text-decoration: none !important;
+}
+
+button.search-capsule {
+    justify-content: flex-start !important; 
+    padding: 0 10px 0 34px !important;    
+    color: var(--color-text-secondary) !important;
+    font-size: 1.4rem !important;          
+    font-weight: 400 !important;           
+    font-family: inherit !important;
+    cursor: pointer !important;
+    transition: background 0.2s ease !important;
+}
+
+/* Специфика для ИНПУТА внутри капсулы */
+.search-capsule input {
+    width: 100% !important;
+    height: 100% !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 10px 0 34px !important; /* Идентичный отступ */
+    margin: 0 !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.4rem !important;
+}
+.search-capsule input::placeholder {
+    color: var(--color-text-secondary) !important;
+    opacity: 1 !important;
+}
+
+/* Общая иконка (лупа или график) */
+.search-capsule .material-icons {
+    position: absolute !important;
+    left: 10px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    font-size: 20px !important;
+    color: var(--color-text-secondary) !important;
+    pointer-events: none !important;
+}
+
+/* Ховер для кнопки */
+button.search-capsule:hover {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-primary) !important;
 }
 
 /* Поле ввода внутри капсулы */
@@ -7393,11 +7438,12 @@ injectStyles(styles);
                         // Обе капсулы имеют класс search-capsule и flex: 1 для равного размера
                         searchContainer.innerHTML = `
                             <div class="search-capsule" style="flex: 1; min-width: 0;">
-                                <span class="material-icons search-icon">filter_list</span>
-                                <input type="text" class="search-input signs-local-input" placeholder="Поиск">
+                                <span class="material-icons">search</span>
+                                <input type="text" class="signs-local-input" placeholder="Поиск">
                             </div>
-                            <button class="search-capsule analytics-btn" style="flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; background: var(--color-card); color: var(--color-text-primary); border: 1px solid var(--color-table-border); cursor: pointer; font-size: 1.4rem; font-weight: 600; padding: 0 1.6rem; transition: all 0.2s; text-decoration: none;">
-                                <span class="material-icons" style="margin-right: 8px; color: var(--color-accent); font-size: 2.2rem; position: static;">insights</span> Аналитика
+                            <button class="search-capsule analytics-btn" style="flex: 1; min-width: 0;">
+                                <span class="material-icons">insights</span>
+                                Аналитика
                             </button>
                         `;
                         if (submenu) submenu.after(searchContainer);
@@ -7747,11 +7793,12 @@ injectStyles(styles);
                         
                         searchContainer.innerHTML = `
                             <div class="search-capsule" style="flex: 1; min-width: 0;">
-                                <span class="material-icons search-icon">filter_list</span>
-                                <input type="text" class="search-input term-local-input" placeholder="Поиск">
+                                <span class="material-icons">search</span>
+                                <input type="text" class="term-local-input" placeholder="Поиск">
                             </div>
-                            <button class="search-capsule analytics-btn" style="flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; background: var(--color-card); color: var(--color-text-primary); border: 1px solid var(--color-table-border); cursor: pointer; font-size: 1.4rem; font-weight: 600; padding: 0 1.6rem; transition: all 0.2s; text-decoration: none;">
-                                <span class="material-icons" style="margin-right: 8px; color: var(--color-accent); font-size: 2.2rem; position: static;">emoji_events</span> Топ предметов
+                            <button class="search-capsule analytics-btn" style="flex: 1; min-width: 0;">
+                                <span class="material-icons">emoji_events</span>
+                                Топ предметов
                             </button>
                         `;
                         if (lastSubmenu) lastSubmenu.after(searchContainer);
@@ -7775,20 +7822,65 @@ injectStyles(styles);
                             
                             let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
                             
-                            if (totalRow) {
-                                rows.forEach(r => {
-                                    if(r.querySelector('th') || r === totalRow) return;
-                                    const cells = r.querySelectorAll('td');
-                                    if(cells.length >= 7) {
-                                        const curStr = cells[5].textContent.trim();
-                                        const maxStr = cells[6].textContent.trim();
-                                        if(curStr !== '' && curStr !== 'н') {
-                                            hasAnyGrades = true;
-                                            calculatedCurrent += parseInt(curStr, 10) || 0;
-                                            calculatedMax += parseInt(maxStr, 10) || 0;
+                            rows.forEach(r => {
+                                if (r.querySelector('th') || r === totalRow) return;
+                                
+                                const cells = r.querySelectorAll('td');
+                                
+                                // 1. Красиво оформляем "Вид работы" (лек, практ, лаб, сам)
+                                if (cells.length > 1) {
+                                    let typeText = cells[1].textContent.trim().toLowerCase();
+                                    if (typeText) {
+                                        // Дефолтный стиль (серый)
+                                        let bg = 'var(--color-highlight)';
+                                        let color = 'var(--color-text-secondary)';
+                                        
+                                        // Настройка цветов
+                                        if (typeText === 'лек') { 
+                                            bg = 'rgba(0, 122, 255, 0.1)'; 
+                                            color = 'var(--color-blue)'; 
                                         }
+                                        else if (typeText === 'практ') { 
+                                            bg = 'rgba(52, 199, 89, 0.1)'; 
+                                            color = 'var(--color-green)'; 
+                                        }
+                                        else if (typeText === 'лаб') { 
+                                            bg = 'rgba(255, 149, 0, 0.1)'; 
+                                            color = 'var(--color-warning)'; 
+                                        }
+                                        else if (typeText === 'сам') { 
+                                            bg = 'rgba(175, 82, 222, 0.15)'; 
+                                            color = '#AF52DE'; 
+                                        }
+                                        
+                                        cells[1].innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block;">${typeText}</span>`;
                                     }
-                                });
+                                }
+
+                                // 2. Сокращаем "контрольное мероприятие" до "КМ" и делаем аккуратным
+                                if (cells.length > 2) {
+                                    let ctrlText = cells[2].textContent.trim();
+                                    if (ctrlText) {
+                                        ctrlText = ctrlText.replace(/контрольное мероприятие/ig, 'КМ');
+                                        // Делаем первую букву заглавной (например, "Письменное КМ")
+                                        ctrlText = ctrlText.charAt(0).toUpperCase() + ctrlText.slice(1);
+                                        cells[2].innerHTML = `<span style="color: var(--color-text-secondary); font-size: 1.25rem; font-weight: 500; white-space: nowrap;">${ctrlText}</span>`;
+                                    }
+                                }
+
+                                // 3. Считаем баллы для общей капсулы предмета
+                                if (cells.length >= 7) {
+                                    const curStr = cells[5].textContent.trim();
+                                    const maxStr = cells[6].textContent.trim();
+                                    if (curStr !== '' && curStr !== 'н') {
+                                        hasAnyGrades = true;
+                                        calculatedCurrent += parseInt(curStr, 10) || 0;
+                                        calculatedMax += parseInt(maxStr, 10) || 0;
+                                    }
+                                }
+                            });
+
+                            if (totalRow) {
                                 totalRow.remove();
                             }
 
