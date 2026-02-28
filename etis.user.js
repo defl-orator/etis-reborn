@@ -4639,10 +4639,14 @@ injectStyles(styles);
 
     // Установка иконки
     function setIcon() {
+        // Удаляем существующие иконки сайта, чтобы они не конфликтовали
+        const existingIcons = document.querySelectorAll("link[rel*='icon']");
+        existingIcons.forEach(el => el.remove());
+
         const icon = document.createElement('link');
         icon.rel = 'icon';
-        icon.type = 'image/svg+xml';
-        icon.href = 'https://raw.githubusercontent.com/ENAleksey/etis-extension/main/icon.svg';
+        icon.type = 'image/png';
+        icon.href = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/cf8b9cf9ab49c0eb14de7d2fdf32e5697004a13a/img/logo.png';
         document.querySelector('head').appendChild(icon);
     }
 
