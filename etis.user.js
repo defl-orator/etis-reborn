@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.42
+// @version      1.43
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -4687,37 +4687,54 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 
 /* --- ЗАМЕТКИ ДЛЯ ПРЕДМЕТОВ (To-Do) --- */
 .subject-note-btn {
-    display: inline-flex !important;
+    display: none !important; /* Убираем из потока. Пока не навели/не тапнули — места не занимает вообще */
     align-items: center !important;
     justify-content: center !important;
-    margin-left: 8px !important;
-    padding: 6px !important;
+    margin-left: 6px !important;
+    padding: 4px !important;
     border-radius: 50% !important;
     cursor: pointer !important;
-    color: var(--color-text-secondary) !important;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    transition: all 0.2s ease !important;
-    vertical-align: middle !important;
-    opacity: 0;
+    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease !important;
 }
-.timetable-grid tr:hover .subject-note-btn {
-    opacity: 1 !important; 
-}
+
+/* При наведении/тапе ИЛИ если есть заметка - кнопка встраивается в структуру и плавно появляется */
+.timetable-grid tr:hover .subject-note-btn,
 .subject-note-btn.has-note {
-    opacity: 1 !important; 
+    display: inline-flex !important; 
+    animation: notePopIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Цвет для заполненной заметки */
+.subject-note-btn.has-note {
     color: var(--color-warning) !important;
 }
+
+/* Цвет пустой кнопки */
+.subject-note-btn:not(.has-note) {
+    color: var(--color-text-secondary) !important;
+}
+
 .subject-note-btn:hover {
     transform: scale(1.15) !important;
     color: var(--color-accent) !important;
     background: var(--color-highlight) !important;
 }
+
 .subject-note-btn .material-icons {
     font-size: 1.8rem !important; 
     margin: 0 !important;
 }
+
+/* Анимация появления из пустоты */
+@keyframes notePopIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Стили текстового поля в модалке */
 .note-modal-textarea {
     width: 100%;
     min-height: 140px;
@@ -4732,6 +4749,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
     font-family: inherit;
     line-height: 1.5;
 }
+
 .note-modal-textarea:focus {
     border-color: var(--color-accent);
     outline: none;
