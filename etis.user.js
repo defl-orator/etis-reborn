@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.41
+// @version      1.42
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*   
@@ -1370,8 +1370,8 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     background: rgba(45, 140, 255, 0.12) !important;
     color: #2D8CFF !important; 
     
-    padding: 0.6rem 1.2rem !important;
-    border-radius: 20px !important; 
+    padding: 0.5rem 1.4rem 0.5rem 1.5rem !important; 
+    border-radius: 50px !important;
     
     text-decoration: none !important;
     font-weight: 600 !important;
@@ -4049,6 +4049,31 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 .type-badge-lab { color: var(--color-warning) !important; }
 .type-badge-exam { color: var(--color-red) !important; } /* На случай зачетов/экзаменов */
 
+/* --- АНИМАЦИИ ДЛЯ СТРОК РАСПИСАНИЯ --- */
+@keyframes cellScaleIn {
+    0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes cellScaleOut {
+    0% { opacity: 1; transform: scale(1) translateY(0); }
+    100% { opacity: 0; transform: scale(0.95) translateY(-10px); }
+}
+
+/* Анимация для вновь появляющихся "Окон" */
+.timetable-gap-row td {
+    animation: cellScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Анимации, которые будет переключать JS */
+.row-animating-in td {
+    animation: cellScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.row-animating-out td {
+    animation: cellScaleOut 0.25s ease forwards;
+}
+
 /* --- РАСПИСАНИЕ ДЛЯ МОБИЛЬНЫХ --- */
 @media (max-width: 960px) {
     
@@ -4618,6 +4643,100 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
     white-space: normal; line-height: 1.3; margin-bottom: 0.4rem;
 }
 .leaderboard-meta { font-size: 1.2rem; color: var(--color-text-secondary); }
+
+/* --- GRADE CALCULATOR (Прогноз оценок) --- */
+.subject-score-capsule {
+    position: relative;
+    cursor: help;
+}
+.score-tooltip {
+    position: absolute;
+    bottom: 130%;
+    left: 50%;
+    transform: translateX(-50%) translateY(10px);
+    background: #2A2C2F;
+    color: #fff;
+    padding: 0.6rem 1.2rem;
+    border-radius: var(--radius-small);
+    font-size: 1.2rem;
+    font-weight: 600;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    z-index: 100;
+    pointer-events: none;
+}
+.score-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 5px;
+    border-style: solid;
+    border-color: #2A2C2F transparent transparent transparent;
+}
+.subject-score-capsule:hover .score-tooltip,
+.subject-score-capsule:active .score-tooltip {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* --- ЗАМЕТКИ ДЛЯ ПРЕДМЕТОВ (To-Do) --- */
+.subject-note-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-left: 8px !important;
+    padding: 6px !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    color: var(--color-text-secondary) !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+    vertical-align: middle !important;
+    opacity: 0;
+}
+.timetable-grid tr:hover .subject-note-btn {
+    opacity: 1 !important; 
+}
+.subject-note-btn.has-note {
+    opacity: 1 !important; 
+    color: var(--color-warning) !important;
+}
+.subject-note-btn:hover {
+    transform: scale(1.15) !important;
+    color: var(--color-accent) !important;
+    background: var(--color-highlight) !important;
+}
+.subject-note-btn .material-icons {
+    font-size: 1.8rem !important; 
+    margin: 0 !important;
+}
+.note-modal-textarea {
+    width: 100%;
+    min-height: 140px;
+    padding: 1.4rem;
+    border-radius: var(--radius-small);
+    border: 1px solid var(--color-table-border);
+    background: var(--color-input);
+    color: var(--color-text-primary);
+    font-size: 1.4rem;
+    resize: vertical;
+    margin-top: 1rem;
+    font-family: inherit;
+    line-height: 1.5;
+}
+.note-modal-textarea:focus {
+    border-color: var(--color-accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--color-accent-active);
+}
     `;
 
     // Внедряем стили
@@ -5947,16 +6066,43 @@ injectStyles(styles);
                     toolbar.appendChild(wrapper);
                     consultDiv.remove();
 
-                    // Логика фильтрации
-                    checkbox.addEventListener('change', () => {
-                        const show = checkbox.checked;
-                        localStorage.setItem('etis_show_consultations', show);
-                        span9.querySelectorAll('.consultation-row').forEach(row => {
-                            if (show) row.classList.remove('hidden-by-filter');
-                            else row.classList.add('hidden-by-filter');
+                    // Логика фильтрации (с плавным кроссфейдом таблиц)
+                        checkbox.addEventListener('change', () => {
+                            const show = checkbox.checked;
+                            localStorage.setItem('etis_show_consultations', show);
+                            
+                            const tables = span9.querySelectorAll('.timetable-grid');
+                            
+                            // 1. Плавно скрываем все таблицы с расписанием (уменьшаем и делаем прозрачными)
+                            tables.forEach(t => {
+                                t.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
+                                t.style.opacity = '0';
+                                t.style.transform = 'translateY(-5px) scale(0.99)';
+                            });
+                            
+                            // 2. Ждем окончания затухания (150мс), пересчитываем структуру невидимой таблицы
+                            setTimeout(() => {
+                                span9.querySelectorAll('.consultation-row').forEach(row => {
+                                    if (show) {
+                                        row.classList.remove('hidden-by-filter');
+                                        row.style.display = ''; // Возвращаем строку
+                                    } else {
+                                        row.classList.add('hidden-by-filter');
+                                        row.style.display = 'none'; // Убираем строку
+                                    }
+                                });
+                                
+                                // Пересчитываем окна и нумерацию пар (которую мы написали ранее)
+                                if (typeof recalculateTimetable === 'function') recalculateTimetable();
+                                renderNotes();
+                                
+                                // 3. Плавно проявляем обновленные таблицы обратно
+                                tables.forEach(t => {
+                                    t.style.opacity = '1';
+                                    t.style.transform = 'translateY(0) scale(1)';
+                                });
+                            }, 150);
                         });
-                        if (typeof recalculateTimetable === 'function') recalculateTimetable();
-                    });
 
                     // Применяем фильтр при загрузке
                     if (!checkbox.checked) {
@@ -6200,31 +6346,22 @@ injectStyles(styles);
                 span9.querySelectorAll('.pair_info .aud').forEach(aud => {
                     let text = aud.innerHTML;
                     
-                    // Ищем паттерн: ауд. 329/12 (12 корпус, 3 этаж)
-                    // Иногда бывает без дроби, поэтому [^\s(<]+ берет все до пробела
                     const match = text.match(/ауд\.\s*([^\s(<]+)\s*\((.*?)\s*корпус,\s*(.*?)\s*этаж\)/i);
-                    
                     if (match) {
                         let roomNumber = match[1];
-                        // Отрезаем дублирующий номер корпуса после слэша, если он есть (329/12 -> 329)
-                        if (roomNumber.includes('/')) {
-                            roomNumber = roomNumber.split('/')[0]; 
-                        }
+                        if (roomNumber.includes('/')) roomNumber = roomNumber.split('/')[0]; 
                         const building = match[2];
                         const floor = match[3];
-                        
-                        // Собираем новую красивую строку с иконкой "place"
                         const newFormat = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>ауд. ${roomNumber}, к. ${building}, э. ${floor}</div>`;
-                        
-                        // Заменяем оригинальный кусок текста на наш HTML, не трогая ссылки (на Zoom и тд)
                         aud.innerHTML = text.replace(match[0], newFormat);
                     }
                     
-                    // Выстраиваем аудиторию и Zoom-кнопку (если она есть) аккуратно друг под другом
+                    // Выстраиваем аудиторию и Zoom-кнопку (и кнопку заметки) горизонтально в линию
                     aud.style.display = 'flex';
-                    aud.style.flexDirection = 'column';
-                    aud.style.alignItems = 'flex-start';
-                    aud.style.gap = '0.6rem';
+                    aud.style.flexDirection = 'row';
+                    aud.style.flexWrap = 'wrap';
+                    aud.style.alignItems = 'center';
+                    aud.style.gap = '0.8rem';
                     aud.style.marginTop = '0.6rem';
                 });
 
@@ -6368,8 +6505,228 @@ injectStyles(styles);
                         if (visibleRows.length > 0) {
                             visibleRows[visibleRows.length - 1].style.setProperty('background-image', 'none', 'important');
                         }
+                        // --- ДИНАМИЧЕСКАЯ НУМЕРАЦИЯ ПАР ДЛЯ СТУДЕНТА ---
+                        let pairCounter = 1;
+                        visibleRows.forEach(row => {
+                            // Пропускаем строки с "окнами" и выходными днями (0 пар)
+                            if (row.classList.contains('timetable-gap-row') || row.classList.contains('custom-no-pairs')) return;
+
+                            const numTd = row.querySelector('.pair_num');
+                            if (numTd) {
+                                // Перебираем содержимое ячейки, чтобы изменить ТОЛЬКО текст номера пары, 
+                                // не сломав при этом время (<font>) и капсулы типа (ЛЕК/ПРАКТ)
+                                Array.from(numTd.childNodes).forEach(node => {
+                                    if (node.nodeType === Node.TEXT_NODE && /пара/i.test(node.nodeValue)) {
+                                        node.nodeValue = node.nodeValue.replace(/\d+\s*пара/i, `${pairCounter} пара`);
+                                        pairCounter++;
+                                    }
+                                });
+                            }
+                        });
                     });
                 }
+
+                // --- УМНЫЕ ЗАМЕТКИ (Логика привязки к конкретной паре) ---
+                function renderNotes() {
+                    let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+                    const seenSubjects = new Set();
+                    const allRowsArray = Array.from(document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
+                    
+                    const currentWeekEl = document.querySelector('.week.current');
+                    const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 0;
+                    
+                    allRowsArray.forEach((row, index) => {
+                        const disContainer = row.querySelector('.pair_info .dis');
+                        const numTd = row.querySelector('.pair_num');
+                        if (!disContainer || !numTd) return;
+                        
+                        const targetEl = disContainer.querySelector('a') || disContainer;
+                        const cleanSubjectName = targetEl.textContent.trim();
+                        
+                        const dayContainer = row.closest('.day');
+                        const dayDateEl = dayContainer ? dayContainer.querySelector('.day-date') : null;
+                        const dayDateStr = dayDateEl ? dayDateEl.textContent.trim() : 'UnknownDate';
+                        
+                        let rawPairNum = "";
+                        Array.from(numTd.childNodes).forEach(n => {
+                            if (n.nodeType === Node.TEXT_NODE && /пара/i.test(n.nodeValue)) {
+                                rawPairNum = n.nodeValue.trim();
+                            }
+                        });
+                        if (!rawPairNum) rawPairNum = numTd.textContent.trim().split(' ')[0] + ' пара';
+                        
+                        const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
+                        
+                        // Перенос висящей заметки "К следующей паре"
+                        if (notesData.next_unbound && notesData.next_unbound[cleanSubjectName] && !seenSubjects.has(cleanSubjectName)) {
+                            const unbound = notesData.next_unbound[cleanSubjectName];
+                            if (typeof unbound === 'string') {
+                                notesData.specific[pairId] = unbound;
+                                delete notesData.next_unbound[cleanSubjectName];
+                                localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
+                            } else if (currentWeek > unbound.week) {
+                                notesData.specific[pairId] = unbound.text;
+                                delete notesData.next_unbound[cleanSubjectName];
+                                localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
+                            }
+                        }
+                        seenSubjects.add(cleanSubjectName);
+                        
+                        const currentNote = notesData.specific[pairId] || '';
+                        
+                        // ТОТАЛЬНАЯ ОЧИСТКА ВСЕХ СТАРЫХ КНОПОК В ЭТОЙ СТРОКЕ
+                        row.querySelectorAll('.subject-note-btn').forEach(btn => btn.remove());
+                        
+                        // Определяем, куда вставлять кнопку (справа от аудитории или предмета)
+                        let audContainer = row.querySelector('.pair_info .aud');
+                        let targetContainer = audContainer;
+                        
+                        // Если аудитории нет или она пустая (как на консультациях) - цепляем прямо к названию
+                        if (!audContainer || (audContainer.textContent.trim() === '' && !audContainer.querySelector('a'))) {
+                            targetContainer = disContainer;
+                            targetContainer.style.display = 'inline-flex';
+                            targetContainer.style.alignItems = 'center';
+                            targetContainer.style.flexWrap = 'wrap';
+                        } else {
+                            // Иначе выстраиваем аудиторию и кнопку в линию
+                            targetContainer.style.display = 'flex';
+                            targetContainer.style.flexDirection = 'row';
+                            targetContainer.style.flexWrap = 'wrap';
+                            targetContainer.style.alignItems = 'center';
+                            targetContainer.style.gap = '0.8rem';
+                        }
+                        
+                        const noteBtn = document.createElement('button');
+                        noteBtn.className = 'subject-note-btn';
+                        if (currentNote) {
+                            noteBtn.classList.add('has-note');
+                            noteBtn.innerHTML = '<span class="material-icons">assignment</span>';
+                            noteBtn.title = 'Посмотреть заметку / ДЗ';
+                        } else {
+                            noteBtn.innerHTML = '<span class="material-icons">edit</span>'; // Заменили edit_note на чистый edit
+                            noteBtn.title = 'Добавить заметку';
+                        }
+                        
+                        noteBtn.addEventListener('click', (e) => {
+                            e.preventDefault(); e.stopPropagation();
+                            openNoteModal(cleanSubjectName, pairId, index, allRowsArray, currentNote);
+                        });
+                        
+                        targetContainer.appendChild(noteBtn);
+                    });
+                }
+
+                function openNoteModal(subjectName, pairId, currentIndex, allRowsArray, existingNoteText) {
+                    let overlay = document.querySelector('.notes-overlay');
+                    let modal = document.querySelector('.notes-modal');
+
+                    if (!overlay || !modal) {
+                        overlay = document.createElement('div');
+                        overlay.className = 'analytics-overlay notes-overlay';
+                        document.body.appendChild(overlay);
+
+                        modal = document.createElement('div');
+                        modal.className = 'analytics-modal notes-modal';
+                        document.body.appendChild(modal);
+                    }
+
+                    modal.innerHTML = `
+                        <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${subjectName}</span>
+                            <button class="close-notes" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                        </div>
+                        <div class="ui-dialog-content" style="padding: 2.4rem;">
+                            <p style="margin-bottom: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Заметка / Домашнее задание:</p>
+                            <textarea class="note-modal-textarea" placeholder="Что нужно сделать?">${existingNoteText}</textarea>
+                            
+                            <div style="margin: 1.5rem 0 2rem 0;">
+                                <label style="display:inline-flex; align-items:center; cursor:pointer; font-size:1.3rem; color:var(--color-text-primary); user-select:none;">
+                                    <input type="checkbox" id="note-next-class-cb" style="margin-right:10px; width:18px; height:18px; accent-color:var(--color-accent); cursor:pointer;">
+                                    На следующую пару
+                                </label>
+                            </div>
+
+                            <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                                <button class="answer-btn-custom clear-note-btn" style="background: var(--color-highlight); color: var(--color-red); border: 1px solid var(--color-table-border); box-shadow: none;">Удалить</button>
+                                <button class="answer-btn-custom save-note-btn" style="box-shadow: none;">Сохранить</button>
+                            </div>
+                        </div>
+                    `;
+
+                    const closeModal = () => {
+                        overlay.classList.remove('active');
+                        modal.classList.remove('active');
+                    };
+
+                    overlay.onclick = closeModal;
+                    modal.querySelector('.close-notes').onclick = closeModal;
+
+                    modal.querySelector('.save-note-btn').onclick = () => {
+                        const val = modal.querySelector('.note-modal-textarea').value.trim();
+                        const isNext = modal.querySelector('#note-next-class-cb').checked;
+                        
+                        let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+                        const currentWeekEl = document.querySelector('.week.current');
+                        const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 0;
+                        
+                        if (!val) {
+                            delete notesData.specific[pairId];
+                        } else {
+                            // СОХРАНЯЕМ В ТЕКУЩУЮ ВСЕГДА (чтобы вы видели, что она сохранилась)
+                            notesData.specific[pairId] = val; 
+                            
+                            if (isNext) {
+                                // Если стоит галочка - ищем следующую пару и копируем туда
+                                let nextPairId = null;
+                                for (let i = currentIndex + 1; i < allRowsArray.length; i++) {
+                                    const r = allRowsArray[i];
+                                    const dCont = r.querySelector('.pair_info .dis');
+                                    const tEl = dCont ? (dCont.querySelector('a') || dCont) : null;
+                                    
+                                    if (tEl && tEl.textContent.trim() === subjectName) {
+                                        const dD = r.closest('.day')?.querySelector('.day-date');
+                                        const dStr = dD ? dD.textContent.trim() : 'UnknownDate';
+                                        const nTd = r.querySelector('.pair_num');
+                                        let rNum = "";
+                                        if (nTd) {
+                                            Array.from(nTd.childNodes).forEach(n => {
+                                                if (n.nodeType === Node.TEXT_NODE && /пара/i.test(n.nodeValue)) {
+                                                    rNum = n.nodeValue.trim();
+                                                }
+                                            });
+                                            if (!rNum) rNum = nTd.textContent.trim().split(' ')[0] + ' пара';
+                                        }
+                                        nextPairId = `${dStr}_${rNum}_${subjectName}`;
+                                        break;
+                                    }
+                                }
+                                
+                                if (nextPairId) {
+                                    notesData.specific[nextPairId] = val; // Дублируем на следующую на ЭТОЙ неделе
+                                } else {
+                                    if (!notesData.next_unbound) notesData.next_unbound = {};
+                                    notesData.next_unbound[subjectName] = { text: val, week: currentWeek }; // На следующую неделю
+                                }
+                            }
+                        }
+                        
+                        localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
+                        closeModal();
+                        renderNotes(); // Мгновенно обновляем интерфейс
+                    };
+
+                    modal.querySelector('.clear-note-btn').onclick = () => {
+                        modal.querySelector('.note-modal-textarea').value = '';
+                        modal.querySelector('.save-note-btn').click();
+                    };
+
+                    overlay.classList.add('active');
+                    modal.classList.add('active');
+                    setTimeout(() => modal.querySelector('.note-modal-textarea').focus(), 100);
+                }
+
+                // Запускаем отрисовку заметок при загрузке страницы
+                renderNotes();
 
                 // Вызываем перерасчет сразу при загрузке расписания
                 recalculateTimetable();
@@ -7440,6 +7797,24 @@ injectStyles(styles);
                                 else if (p < 81) capsule.style.background = '#8BC34A';
                                 else capsule.style.background = 'var(--color-green)';
                                 if (p < 41 || p >= 61) capsule.style.color = '#fff';
+                            }
+                            // --- КАЛЬКУЛЯТОР БАЛЛОВ (Прогноз) ---
+                            let tooltipText = '';
+                            if (calculatedMax > 0 && hasAnyGrades) {
+                                if (calculatedCurrent < 41) {
+                                    tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
+                                } else if (calculatedCurrent < 61) {
+                                    tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
+                                } else if (calculatedCurrent < 81) {
+                                    tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
+                                } else {
+                                    tooltipText = `Отлично! 😎`;
+                                }
+                                
+                                const tooltip = document.createElement('div');
+                                tooltip.className = 'score-tooltip';
+                                tooltip.textContent = tooltipText;
+                                capsule.appendChild(tooltip);
                             }
                             headerContainer.appendChild(capsule);
                         });
@@ -8861,8 +9236,6 @@ injectStyles(styles);
                     span9.querySelectorAll('br').forEach(br => br.remove());
                     break;
                 }
-
-
                 }
             // --- ГЛОБАЛЬНЫЕ УЛУЧШЕНИЯ ДЛЯ ЛЮБЫХ СТРАНИЦ ---
             
@@ -8883,7 +9256,14 @@ injectStyles(styles);
                     sendBtn.innerHTML = '<span class="material-icons" style="font-size: 2rem; margin-right: 0.8rem;">send</span>' + sendBtn.textContent;
                 }
             }
+            // --- АНТИ-РАЗЛОГИНИВАНИЕ (Keep-Alive) ---
+            // Делает легкий незаметный запрос в фоне каждые 12 минут
+            setInterval(() => {
+                fetch('/etis/stu.main', { method: 'HEAD' }).catch(() => {});
+            }, 12 * 60 * 1000);
         }
     }
+
+    
 
 })();
