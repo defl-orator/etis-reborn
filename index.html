@@ -769,6 +769,8 @@
                     Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> 
                     based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>
                 </span>
+
+                <span>Установок: <b id="install-counter">...</b></span>
             </div>
         </div>
     </footer>
@@ -1196,5 +1198,26 @@
         // Запускаем при загрузке страницы
         window.addEventListener('DOMContentLoaded', fetchLatestVersion);
     </script>
+
+    // Название репозитория
+    const repo = 'defl-orator/etis-reborn';
+
+    fetch(`https://api.github.com/repos/${repo}/releases`)
+        .then(res => res.json())
+        .then(releases => {
+            let totalDownloads = 0;
+            
+            // Считаем скачивания со всех версий (или можно взять только latest)
+            releases.forEach(release => {
+                release.assets.forEach(asset => {
+                    if (asset.name === 'etis.user.js') {
+                        totalDownloads += asset.download_count;
+                    }
+                });
+            });
+
+            document.getElementById('install-counter').innerText = totalDownloads;
+        })
+        .catch(err => console.error('Ошибка загрузки статистики GitHub', err));
 </body>
 </html>
