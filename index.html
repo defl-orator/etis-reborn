@@ -1148,35 +1148,44 @@
                 openLightbox(targetImg.src);
             }
         });
-        // --- АВТООПРЕДЕЛЕНИЕ АКТУАЛЬНОЙ ВЕРСИИ СКРИПТА ---
+       // --- АВТООПРЕДЕЛЕНИЕ АКТУАЛЬНОЙ ВЕРСИИ СКРИПТА ---
         async function fetchLatestVersion() {
-            const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
-            const versionEl = document.getElementById('script-version-info');
+            // URL самого файла для парсинга версии
+            const RAW_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js';
+            // URL API GitHub для получения даты изменения файла
+            const API_URL = 'https://api.github.com/repos/defl-orator/etis-reborn/commits?path=etis.user.js&page=1&per_page=1';
             
+            const versionEl = document.getElementById('script-version-info');
             if (!versionEl) return;
 
             try {
-                // Добавляем Date.now() чтобы избежать кеширования браузером
-                const response = await fetch(UPDATE_URL + '?t=' + Date.now());
-                if (!response.ok) throw new Error('Ошибка сети');
+                // 1. Получаем версию из текста файла
+                const rawResponse = await fetch(RAW_URL + '?t=' + Date.now());
+                if (!rawResponse.ok) throw new Error('Ошибка скачивания файла');
+                const text = await rawResponse.text();
                 
-                const text = await response.text();
-                
-                // Достаем версию через регулярное выражение
                 const verMatch = text.match(/@version\s+([\d\.]+)/);
                 const version = verMatch ? verMatch[1] : '1.0';
                 
-                // Достаем дату из заголовков ответа сервера GitHub
+                // 2. Получаем точную дату обновления через API GitHub
                 let dateStr = "н/д";
-                const lastMod = response.headers.get("Last-Modified") || response.headers.get("Date");
-                if (lastMod) {
-                    const d = new Date(lastMod);
-                    if (!isNaN(d.getTime())) {
-                        dateStr = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
+                try {
+                    const apiResponse = await fetch(API_URL);
+                    if (apiResponse.ok) {
+                        const data = await apiResponse.json();
+                        if (data && data.length > 0) {
+                            // Берем дату коммита
+                            const dateIso = data[0].commit.committer.date;
+                            const d = new Date(dateIso);
+                            // Форматируем в ДД.ММ.ГГ
+                            dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
+                        }
                     }
+                } catch (e) {
+                    console.warn('Не удалось получить дату из API GitHub', e);
                 }
                 
-                // Подставляем в модальное окно
+                // 3. Выводим на экран
                 versionEl.textContent = `Версия ${version} от ${dateStr}`;
             } catch (error) {
                 console.error('Не удалось получить версию скрипта:', error);
@@ -1184,7 +1193,7 @@
             }
         }
 
-        // Запускаем проверку при загрузке страницы
+        // Запускаем при загрузке страницы
         window.addEventListener('DOMContentLoaded', fetchLatestVersion);
     </script>
 </body>
