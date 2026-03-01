@@ -1213,22 +1213,81 @@
             // 2. Вешаем обработчик клика на все кнопки установки
             document.querySelectorAll('.install-btn').forEach(btn => {
                 btn.addEventListener('click', () => {
-                    // Отправляем сигнал +1 в фоне
+                    
+                    // --- ЗАЩИТА ОТ СПАМА ---
+                    // Проверяем, есть ли в браузере метка 'etis_installed'
+                    if (localStorage.getItem('etis_installed') === 'true') {
+                        // Метка есть. Человек уже устанавливал. 
+                        // Ничего не делаем со счетчиком (вкладка со скриптом откроется сама)
+                        return; 
+                    }
+
+                    // Если метки нет, отправляем сигнал +1
                     fetch('https://api.counterapi.dev/v1/etis-reborn/installs/up')
                         .then(res => res.json())
                         .then(data => {
-                            // Сразу обновляем цифру на экране для красоты
+                            // Обновляем цифру на экране
                             if (counterEl) counterEl.innerText = data.count;
+                            
+                            // Записываем метку в браузер навсегда
+                            localStorage.setItem('etis_installed', 'true');
                         })
                         .catch(e => console.error(e));
                 });
             });
         }
 
-        // Запускаем обе функции при загрузке страницы
+        async function initCounter() {
+            const counterEl = document.getElementById('install-counter');
+            if (!counterEl) return;
+
+            const API_URL = 'https://api.counterapi.dev/v1/etis-reborn/installs';
+
+            // --- ШАГ А: Сразу получаем текущее значение (READ) ---
+            try {
+                const res = await fetch(API_URL);
+                if (res.ok) {
+                    const data = await res.json();
+                    // Обновляем текст СРАЗУ при загрузке
+                    counterEl.innerText = data.count;
+                } else {
+                    console.warn('Счетчик пока не создан или ошибка сети');
+                    counterEl.innerText = '0'; // Если ошибка, покажем 0
+                }
+            } catch (err) {
+                console.error('Ошибка загрузки счетчика:', err);
+            }
+
+            // --- ШАГ Б: Настраиваем клик по кнопкам (UP + SPAM PROTECTION) ---
+            // Ищем все кнопки с классом .download-btn (у вас в коде они так называются)
+            const buttons = document.querySelectorAll('.download-btn, .install-btn');
+            
+            buttons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // 1. Проверка защиты от накрутки
+                    if (localStorage.getItem('etis_installed') === 'true') {
+                        // Если уже устанавливал — просто выходим (файл скачается, но счетчик не накрутится)
+                        return;
+                    }
+
+                    // 2. Если новый пользователь — отправляем +1
+                    fetch(API_URL + '/up')
+                        .then(r => r.json())
+                        .then(data => {
+                            // Обновляем цифру на экране
+                            counterEl.innerText = data.count;
+                            // Запоминаем этого пользователя
+                            localStorage.setItem('etis_installed', 'true');
+                        })
+                        .catch(e => console.error(e));
+                });
+            });
+        }
+
+        // Запускаем всё, когда страница готова
         window.addEventListener('DOMContentLoaded', () => {
             fetchLatestVersion();
-            fetchInstallCount();
+            initCounter();
         });
     </script>
 </body>
