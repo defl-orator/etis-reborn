@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.464
-// @changelog    Добавлена поддержка обновлений и логов
+// @version      1.5
+// @changelog    Добавлена поддержка обновлений и сообщение об ошибке
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -12,6 +12,7 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @connect      raw.githubusercontent.com
+// @connect      api.web3forms.com
 // ==/UserScript==
 
 (function() {
@@ -5277,6 +5278,96 @@ injectStyles(styles);
         }
     }
 
+    // --- ФУНКЦИЯ ОКНА "СООБЩИТЬ ОБ ОШИБКЕ" ---
+    function openUserscriptBugModal() {
+        // Удаляем старое окно, если есть
+        const old = document.getElementById('etis-bug-modal');
+        if (old) old.remove();
+
+        // HTML окна
+        const modalHTML = `
+            <div id="etis-bug-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999999;backdrop-filter:blur(4px);"></div>
+            <div id="etis-bug-modal" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:90%;max-width:450px;background:var(--color-card);border-radius:24px;z-index:1000000;box-shadow:var(--shadow-dialog);overflow:hidden; font-family: var(--font-family);">
+                <div class="ui-widget-header" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;background:var(--color-table-header);border-bottom:1px solid var(--color-table-border);">
+                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Нашли баг?</span>
+                    <span class="material-icons close-btn" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
+                </div>
+                <div style="padding:24px; display:flex; flex-direction:column; gap:15px;">
+                    
+                    <input type="email" id="bug-email" placeholder="Ваш Email (для ответа)" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);">
+                    
+                    <textarea id="bug-text" placeholder="Что случилось? Опишите действия..." style="width:100%;height:120px;padding:10px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);resize:vertical;"></textarea>
+                    
+                    <div style="font-size:1.1rem;color:var(--color-text-secondary);line-height:1.4;">
+                        Техническая информация (версия, браузер, страница) прикрепится автоматически.
+                    </div>
+
+                    <button id="bug-send-btn" class="answer-btn-custom" style="justify-content:center;width:100%;margin-top:10px;border:none;">Отправить</button>
+                </div>
+            </div>
+        `;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = modalHTML;
+        document.body.appendChild(wrapper);
+
+        // Закрытие
+        const close = () => wrapper.remove();
+        wrapper.querySelector('#etis-bug-overlay').onclick = close;
+        wrapper.querySelector('.close-btn').onclick = close;
+
+        // Отправка
+        wrapper.querySelector('#bug-send-btn').onclick = function() {
+            const btn = this;
+            const text = document.getElementById('bug-text').value;
+            const email = document.getElementById('bug-email').value || 'Anonymous';
+            
+            const ACCESS_KEY = '87463068-d122-4ff0-8077-070eca2b25b1'; 
+            
+            if (!text.trim()) { alert('Напишите хоть что-нибудь!'); return; }
+
+            btn.innerText = 'Отправка...';
+            btn.disabled = true;
+
+            // Техническая инфа
+            const techInfo = `Page: ${window.location.pathname}\nVer: ${GM_info.script.version}\nUA: ${navigator.userAgent}`;
+            const fullMessage = `${text}\n\n--- TECH INFO ---\n${techInfo}`;
+
+            GM_xmlhttpRequest({
+                method: "POST",
+                url: "https://api.web3forms.com/submit",
+                headers: { 
+                    "Content-Type": "application/json",
+                    "Accept": "application/json"
+                },
+                data: JSON.stringify({
+                    access_key: ACCESS_KEY, // Ключ авторизации
+                    subject: "Баг-репорт ЕТИС REBORN",
+                    email: email,
+                    message: fullMessage,
+                    from_name: "ETIS User Script"
+                }),
+                onload: function(response) {
+                    // Web3Forms всегда возвращает 200 OK, если ключ верный
+                    if (response.status === 200) {
+                        btn.innerText = 'Отправлено! ✅';
+                        btn.style.background = 'var(--color-green)';
+                        setTimeout(close, 2000);
+                    } else {
+                        console.error(response.responseText);
+                        btn.innerText = 'Ошибка ключа';
+                        btn.disabled = false;
+                    }
+                },
+                onerror: function(err) {
+                    console.error(err);
+                    btn.innerText = 'Ошибка сети';
+                    btn.disabled = false;
+                }
+            });
+        };
+    }
+
     // Модификация стилей страниц
     function stylePages() {
         initMobileMenu();
@@ -5560,11 +5651,33 @@ injectStyles(styles);
                 verLi.appendChild(verLink);
                 allListItems.push(verLi);
 
+                // --- Вкладка "Сообщить об ошибке" ---
+                const bugLi = document.createElement("li");
+                bugLi.className = 'theme-switcher-item';
+                const bugLink = document.createElement("a");
+                bugLink.style.cursor = 'pointer';
+                bugLink.href = "#report-bug";
+                bugLink.textContent = 'Нашли ошибку?'; 
+                
+                bugLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Закрываем мобильное меню, если оно открыто
+                    const side = document.querySelector('.span3');
+                    if (side && side.classList.contains('mobile-active')) {
+                        side.classList.remove('mobile-active');
+                        document.querySelector('.mobile-overlay')?.classList.remove('active');
+                        document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                    }
+                    openUserscriptBugModal(); // Вызываем функцию
+                });
+                bugLi.appendChild(bugLink);
+                allListItems.push(bugLi);
 
                 // Функция иконок
                 const getIconForHref = (href) => {
                     if (href === '#theme-switch') return 'brightness_6';
                     if (href === '#version-check') return 'system_update';
+                    if (href === '#report-bug') return 'bug_report';
                     if (href.includes('teach_plan')) return 'school';
                     if (href.includes('ebl_choice')) return 'check_circle_outline';
                     if (href.includes('timetable')) return 'calendar_today'; 
