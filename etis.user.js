@@ -1,7 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.463
+// @version      1.464
+// @changelog    Добавлена поддержка обновлений и логов
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -4952,7 +4953,7 @@ injectStyles(styles);
     }
 
     // ==========================================
-    // ЛОГИКА ОБНОВЛЕНИЯ (V5 - UNIVERSAL)
+    // ЛОГИКА ОБНОВЛЕНИЯ
     // ==========================================
     const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
     
@@ -4961,6 +4962,7 @@ injectStyles(styles);
         hasUpdate: false,
         remoteVer: '',
         remoteDate: '',
+        remoteLog: '',
         details: ''
     };
 
@@ -5006,7 +5008,10 @@ injectStyles(styles);
                     const remoteVer = verMatch[1];
                     const currentVer = GM_info.script.version;
 
-                    // Получаем дату из заголовков (Last-Modified или Date)
+                    // ПАРСИНГ ЛОГА ИЗ ТЕКСТА
+                    const logMatch = text.match(/@changelog\s+(.*)/);
+                    const remoteLog = logMatch ? logMatch[1].trim() : "";
+
                     let dateStr = "н/д";
                     const lastMod = getHeaderSafe(res, "Last-Modified") || getHeaderSafe(res, "Date");
                     if (lastMod) {
@@ -5018,6 +5023,7 @@ injectStyles(styles);
 
                     updateState.remoteVer = remoteVer;
                     updateState.remoteDate = dateStr;
+                    updateState.remoteLog = remoteLog; // Сохраняем лог
                     updateState.hasUpdate = compareVersions(remoteVer, currentVer) > 0;
                     updateState.status = 'success';
 
@@ -5053,19 +5059,31 @@ injectStyles(styles);
                 <div style="text-align:center;">
                     <span class="material-icons" style="font-size:48px;color:var(--color-green);margin-bottom:1rem;">system_update</span>
                     <div style="font-size:1.8rem;font-weight:800;margin-bottom:1.5rem;color:var(--color-text-primary);">Новая версия!</div>
-                    <div style="background:var(--color-highlight);padding:1.5rem;border-radius:12px;text-align:left;margin-bottom:2rem;border:1px solid var(--color-table-border);">
-                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:1.4rem;">
-                            <span style="color:var(--color-text-secondary);">Доступно:</span>
-                            <b>${updateState.remoteVer} от ${updateState.remoteDate}</b>
+                    
+                    <div style="background:var(--color-highlight);padding:1.6rem;border-radius:12px;text-align:left;margin-bottom:2rem;border:1px solid var(--color-table-border);">
+                        <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Доступно:</div>
+                        <div style="font-size:1.4rem;font-weight:700;margin-bottom:12px;color:var(--color-text-primary);">
+                            ${updateState.remoteVer} от ${updateState.remoteDate}
                         </div>
-                        <div style="display:flex;justify-content:space-between;font-size:1.4rem;">
-                            <span style="color:var(--color-text-secondary);">У вас:</span>
-                            <b>${cur}</b>
+                        
+                        ${updateState.remoteLog ? `
+                            <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Что нового:</div>
+                            <div style="font-size:1.4rem;line-height:1.4;margin-bottom:12px;color:var(--color-text-primary);">
+                                ${updateState.remoteLog}
+                            </div>
+                        ` : ''}
+                        
+                        <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">У вас:</div>
+                        <div style="font-size:1.4rem;font-weight:700;color:var(--color-text-primary);">
+                            ${cur}
                         </div>
                     </div>
-                    <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;">Обновить</button>
+                    
+                    <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700;">Обновить</button>
                 </div>`;
         }
+        
+        // Обычное состояние (когда обновы нет) остается прежним
         return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-accent);margin-bottom:1rem;">check_circle</span><div style="font-size:1.8rem;font-weight:700;">Версия актуальна</div><div style="color:var(--color-text-secondary);margin-top:0.5rem;">У вас установлена v${cur}</div><button id="retry-update" class="answer-btn-custom" style="margin:2rem auto 0;background:var(--color-highlight)!important;color:var(--color-text-primary)!important;">Проверить снова</button></div>`;
     }
 
