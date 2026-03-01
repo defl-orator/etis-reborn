@@ -4950,18 +4950,20 @@ injectStyles(styles);
     }
 
     // ==========================================
-    // ЛОГИКА ОБНОВЛЕНИЯ (АВТОМАТИЧЕСКАЯ)
+    // ЛОГИКА ОБНОВЛЕНИЯ
     // ==========================================
     const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
     
-    // Хранилище состояния обновления
+    // Глобальное состояние
     let updateState = {
-        hasUpdate: false,
-        remoteVer: '',
-        remoteDate: '',
-        checked: false
+        checked: false,    // Проверка завершена?
+        hasUpdate: false,  // Есть ли обнова?
+        remoteVer: '',     // Версия на сервере
+        remoteDate: '',    // Дата на сервере
+        error: false       // Была ли ошибка?
     };
 
+    // Сравнение версий
     function compareVersions(v1, v2) {
         const p1 = v1.split('.').map(Number);
         const p2 = v2.split('.').map(Number);
@@ -4974,66 +4976,165 @@ injectStyles(styles);
         return 0;
     }
 
-    // Фоновая проверка при запуске
-    function initAutoUpdateCheck() {
+    // Генерация HTML для окна (чтобы не дублировать код)
+    function getUpdateModalHTML() {
         const currentVer = GM_info.script.version;
-        
+
+        if (updateState.error) {
+            return `
+                <span class="material-icons" style="font-size: 48px; color: var(--color-red); margin-bottom: 1rem;">wifi_off</span>
+                <div style="font-size: 1.6rem; margin-bottom: 1rem;">Ошибка соединения</div>
+                <div style="color: var(--color-text-secondary);">Не удалось связаться с GitHub.</div>
+                <button id="retry-update-btn" class="answer-btn-custom" style="margin-top: 2rem;">Повторить</button>
+            `;
+        }
+
+        if (!updateState.checked) {
+            return `
+                <div style="padding: 2rem;">
+                    <span class="material-icons" style="font-size: 48px; color: var(--color-accent); animation: spin 1s linear infinite; display: block; margin: 0 auto 1.5rem;">sync</span>
+                    <div style="font-size: 1.6rem; font-weight: 500;">Проверка версии...</div>
+                </div>
+                <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+            `;
+        }
+
+        if (updateState.hasUpdate) {
+            return `
+                <span class="material-icons" style="font-size: 48px; color: var(--color-green); margin-bottom: 1rem;">system_update</span>
+                <div style="font-size: 1.8rem; font-weight: 800; margin-bottom: 2rem; color: var(--color-text-primary);">Доступна новая версия!</div>
+                
+                <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); text-align: left; margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);">
+                    <div style="margin-bottom: 1rem; font-size: 1.4rem; display: flex; justify-content: space-between;">
+                        <span style="color: var(--color-text-secondary);">Доступно:</span> 
+                        <b style="color: var(--color-green);">${updateState.remoteVer} от ${updateState.remoteDate}</b>
+                    </div>
+                    <div style="font-size: 1.4rem; display: flex; justify-content: space-between;">
+                        <span style="color: var(--color-text-secondary);">У вас:</span> 
+                        <span style="font-weight: 600;">${currentVer}</span>
+                    </div>
+                </div>
+
+                <button id="install-update-btn" class="answer-btn-custom" style="font-size: 1.4rem; padding: 1.2rem; width: 100%; justify-content: center; background: var(--color-green) !important; color: #fff !important; font-weight: 700;">
+                    <span class="material-icons" style="margin-right: 8px;">download</span>Обновить
+                </button>
+            `;
+        } else {
+            return `
+                <span class="material-icons" style="font-size: 48px; color: var(--color-accent); margin-bottom: 1.5rem;">check_circle</span>
+                <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem;">Версия актуальна</div>
+                <div style="color: var(--color-text-secondary); font-size: 1.4rem;">У вас установлена версия ${currentVer}</div>
+            `;
+        }
+    }
+
+    // Основная функция проверки
+    function initAutoUpdateCheck() {
+        // Сброс ошибок перед новой проверкой
+        updateState.error = false; 
+
         GM_xmlhttpRequest({
             method: "GET",
-            url: UPDATE_URL,
+            url: UPDATE_URL + '?t=' + new Date().getTime(), // Анти-кэш
+            timeout: 10000,
             onload: function(response) {
-                // 1. Парсим версию
+                if (response.status !== 200) {
+                    updateState.error = true;
+                    updateState.checked = true;
+                    refreshModalIfOpen();
+                    return;
+                }
+
                 const match = response.responseText.match(/@version\s+([\d\.]+)/);
                 const remoteVer = match ? match[1] : null;
 
-                // 2. Парсим дату изменения файла из заголовков (GitHub отдает Last-Modified)
-                const lastModHeader = response.getResponseHeader("Last-Modified");
+                // Парсинг даты
                 let dateStr = "н/д";
-                
+                const lastModHeader = response.getResponseHeader("Last-Modified");
                 if (lastModHeader) {
-                    const dateObj = new Date(lastModHeader);
-                    const day = String(dateObj.getDate()).padStart(2, '0');
-                    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-                    const year = String(dateObj.getFullYear()).slice(2); // берем последние 2 цифры года
+                    const d = new Date(lastModHeader);
+                    // Формат: 1.03.26
+                    const day = d.getDate(); // без ведущего нуля, если <10 (как в примере)
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const year = String(d.getFullYear()).slice(2);
                     dateStr = `${day}.${month}.${year}`;
                 }
 
                 if (remoteVer) {
-                    const comparison = compareVersions(remoteVer, currentVer);
-                    
-                    updateState = {
-                        hasUpdate: comparison > 0,
-                        remoteVer: remoteVer,
-                        remoteDate: dateStr,
-                        checked: true
-                    };
+                    const currentVer = GM_info.script.version;
+                    updateState.hasUpdate = compareVersions(remoteVer, currentVer) > 0;
+                    updateState.remoteVer = remoteVer;
+                    updateState.remoteDate = dateStr;
+                    updateState.checked = true;
 
-                    // Если есть обновление — ЗАЖИГАЕМ ТОЧКИ
                     if (updateState.hasUpdate) {
                         triggerUpdateIndicators();
                     }
+                } else {
+                    updateState.error = true;
+                    updateState.checked = true;
                 }
+                
+                // Если окно открыто — обновляем его содержимое
+                refreshModalIfOpen();
+            },
+            onerror: function() {
+                updateState.error = true;
+                updateState.checked = true;
+                refreshModalIfOpen();
+            },
+            ontimeout: function() {
+                updateState.error = true;
+                updateState.checked = true;
+                refreshModalIfOpen();
             }
         });
     }
 
-    // Функция включения красных точек
+    // Обновляет контент модалки, если она сейчас открыта
+    function refreshModalIfOpen() {
+        const modal = document.querySelector('.analytics-modal.active');
+        if (modal && modal.getAttribute('data-type') === 'version') {
+            const contentDiv = modal.querySelector('.ui-dialog-content');
+            if (contentDiv) {
+                contentDiv.innerHTML = getUpdateModalHTML();
+                attachModalEvents(modal); // Перевешиваем кнопки
+            }
+        }
+    }
+
+    // Зажигает красные точки
     function triggerUpdateIndicators() {
-        // 1. Точка в сайдбаре (ищем ссылку по href)
+        // 1. Точка в сайдбаре
         const sidebarLink = document.querySelector('a[href="#version-check"]');
         if (sidebarLink && !sidebarLink.querySelector('.badge-point')) {
             const dot = document.createElement('span');
             dot.className = 'badge-point';
             sidebarLink.appendChild(dot);
         }
-
         // 2. Точка на мобильной кнопке
         const mobileBtn = document.querySelector('.mobile-menu-btn');
-        if (mobileBtn) {
-            mobileBtn.classList.add('has-updates');
+        if (mobileBtn) mobileBtn.classList.add('has-updates');
+    }
+
+    // Вешает события на кнопки внутри модалки
+    function attachModalEvents(modal) {
+        const installBtn = modal.querySelector('#install-update-btn');
+        if (installBtn) {
+            installBtn.onclick = () => window.location.href = UPDATE_URL;
+        }
+        const retryBtn = modal.querySelector('#retry-update-btn');
+        if (retryBtn) {
+            retryBtn.onclick = () => {
+                updateState.checked = false;
+                updateState.error = false;
+                modal.querySelector('.ui-dialog-content').innerHTML = getUpdateModalHTML();
+                initAutoUpdateCheck();
+            };
         }
     }
 
+    // Открытие окна
     function showUpdateModal() {
         let overlay = document.querySelector('.analytics-overlay');
         let modal = document.querySelector('.analytics-modal');
@@ -5041,59 +5142,18 @@ injectStyles(styles);
         if (!overlay || !modal) {
             overlay = document.createElement('div');
             overlay.className = 'analytics-overlay';
+            // Z-Index выше, чем у мобильного меню (1000001)
+            overlay.style.zIndex = '1000005'; 
             document.body.appendChild(overlay);
+            
             modal = document.createElement('div');
             modal.className = 'analytics-modal';
+            modal.style.zIndex = '1000006'; // Еще выше
             document.body.appendChild(modal);
         }
 
-        const currentVer = GM_info.script.version;
-        const closeModal = () => {
-            overlay.classList.remove('active');
-            modal.classList.remove('active');
-        };
-        overlay.onclick = closeModal;
-        // Важно: пересоздаем кнопку закрытия каждый раз, чтобы не терять привязку
-        
-        let contentHTML = '';
-
-        if (!updateState.checked) {
-            // Если вдруг открыли до завершения проверки (интернет медленный)
-            contentHTML = `
-                <span class="material-icons" style="font-size: 48px; color: var(--color-accent); animation: spin 1s linear infinite;">sync</span>
-                <div style="font-size: 1.6rem; margin-top: 1rem;">Проверка версии...</div>
-            `;
-            // Перезапускаем проверку, если зависла
-            initAutoUpdateCheck(); 
-        } else if (updateState.hasUpdate) {
-            // ЕСТЬ ОБНОВЛЕНИЕ
-            contentHTML = `
-                <span class="material-icons" style="font-size: 48px; color: var(--color-green); margin-bottom: 1rem;">system_update</span>
-                <div style="font-size: 1.8rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--color-text-primary);">Доступна новая версия!</div>
-                
-                <div style="background: var(--color-highlight); padding: 1.5rem; border-radius: var(--radius-medium); text-align: left; margin-bottom: 2rem; border: 1px solid var(--color-table-border);">
-                    <div style="margin-bottom: 0.8rem; font-size: 1.4rem;">
-                        <span style="color: var(--color-text-secondary);">Доступно:</span> 
-                        <b style="color: var(--color-green); float: right;">${updateState.remoteVer} от ${updateState.remoteDate}</b>
-                    </div>
-                    <div style="font-size: 1.4rem;">
-                        <span style="color: var(--color-text-secondary);">У вас:</span> 
-                        <span style="float: right; font-weight: 600;">${currentVer}</span>
-                    </div>
-                </div>
-
-                <button id="install-update-btn" class="answer-btn-custom" style="font-size: 1.4rem; padding: 1.2rem 3rem; width: 100%; justify-content: center; background: var(--color-green) !important;">
-                    <span class="material-icons" style="margin-right: 8px;">download</span>Обновить
-                </button>
-            `;
-        } else {
-            // НЕТ ОБНОВЛЕНИЯ
-            contentHTML = `
-                <span class="material-icons" style="font-size: 48px; color: var(--color-accent); margin-bottom: 1rem;">check_circle</span>
-                <div style="font-size: 1.6rem; font-weight: bold; margin-bottom: 0.5rem;">Установлена последняя версия</div>
-                <div style="color: var(--color-text-secondary);">Версия ${currentVer} актуальна.</div>
-            `;
-        }
+        // Помечаем, что это окно версии (чтобы не путать с графиками)
+        modal.setAttribute('data-type', 'version');
 
         modal.innerHTML = `
             <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
@@ -5103,18 +5163,25 @@ injectStyles(styles);
                 </button>
             </div>
             <div class="ui-dialog-content" style="padding: 2.4rem; text-align: center;">
-                ${contentHTML}
+                ${getUpdateModalHTML()}
             </div>
-            <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
         `;
 
-        // Вешаем события
+        const closeModal = () => {
+            overlay.classList.remove('active');
+            modal.classList.remove('active');
+        };
+        
+        overlay.onclick = closeModal;
         modal.querySelector('.close-analytics').onclick = closeModal;
-        const installBtn = modal.querySelector('#install-update-btn');
-        if (installBtn) {
-            installBtn.onclick = () => window.location.href = UPDATE_URL;
-        }
 
+        attachModalEvents(modal);
+
+        // Если данные еще не загрузились и не загружаются — пнем проверку
+        if (!updateState.checked && !updateState.error) {
+        } 
+        
+        // Показываем
         overlay.classList.add('active');
         modal.classList.add('active');
     }
