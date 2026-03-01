@@ -1269,49 +1269,39 @@
             });
         }
 
-        // --- ЕДИНАЯ ФУНКЦИЯ СЧЕТЧИКА УСТАНОВОК ---
         async function initInstallCounter() {
             const counterEl = document.getElementById('install-counter');
             if (!counterEl) return;
 
-            // Название счетчика в системе CounterAPI
-            const API_URL = 'https://api.counterapi.dev/v1/etis-reborn/installs';
+            const API_URL = 'https://api.counterapi.dev/v1/etis-reborn/installs/';
 
-            // 1. СРАЗУ получаем текущее значение с сервера
+            // 1. Сразу получаем текущее значение
             try {
                 const response = await fetch(API_URL);
                 if (response.ok) {
                     const data = await response.json();
-                    // Если API вернуло число, отображаем его
                     counterEl.innerText = data.count || 0;
                 } else {
-                    // Если счетчик еще не создан на сервере, он может вернуть 404
-                    console.warn('Счетчик не найден, ставим 0');
+                    console.warn('Счетчик не найден');
                     counterEl.innerText = '0';
                 }
             } catch (err) {
-                console.error('Ошибка сети при загрузке счетчика:', err);
-                counterEl.innerText = '150+'; // Запасной вариант, если API лежит
+                console.error('Ошибка CORS или сети. Проверьте наличие слеша в URL:', err);
+                counterEl.innerText = '150+'; 
             }
 
-            // 2. Логика клика по кнопкам установки
+            // 2. Логика клика
             const installButtons = document.querySelectorAll('.download-btn, .install-btn');
-            
             installButtons.forEach(btn => {
                 btn.addEventListener('click', async () => {
-                    // Проверка защиты от накрутки (один клик = один голос от пользователя)
-                    if (localStorage.getItem('etis_installed') === 'true') {
-                        return; // Уже засчитано ранее
-                    }
+                    if (localStorage.getItem('etis_installed') === 'true') return;
 
                     try {
-                        // Отправляем запрос на увеличение (+1)
-                        const res = await fetch(API_URL + '/up');
+                        // Здесь тоже добавляем / в конце: /up/
+                        const res = await fetch(API_URL + 'up/');
                         if (res.ok) {
                             const data = await res.json();
-                            // Обновляем цифру на странице в реальном времени
                             counterEl.innerText = data.count;
-                            // Помечаем в браузере, что установка засчитана
                             localStorage.setItem('etis_installed', 'true');
                         }
                     } catch (e) {
