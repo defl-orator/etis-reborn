@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.462
+// @version      1.463
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -4952,7 +4952,7 @@ injectStyles(styles);
     }
 
     // ==========================================
-    // ЛОГИКА ОБНОВЛЕНИЯ (V4 - FINAL STABLE)
+    // ЛОГИКА ОБНОВЛЕНИЯ (V5 - UNIVERSAL)
     // ==========================================
     const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
     
@@ -4975,35 +4975,45 @@ injectStyles(styles);
         return 0;
     }
 
+    // Безопасное получение заголовка (даже если метода .getResponseHeader нет)
+    function getHeaderSafe(res, headerName) {
+        if (typeof res.getResponseHeader === 'function') {
+            try { return res.getResponseHeader(headerName); } catch(e) {}
+        }
+        if (res.responseHeaders) {
+            const regex = new RegExp(headerName + ':\\s*(.*)', 'i');
+            const match = res.responseHeaders.match(regex);
+            return match ? match[1] : null;
+        }
+        return null;
+    }
+
     function initAutoUpdateCheck(isManual = false) {
         if (updateState.status === 'loading' && !isManual) return;
-        
         updateState.status = 'loading';
         if (isManual) refreshModalUI();
 
         GM_xmlhttpRequest({
             method: "GET",
-            url: UPDATE_URL + '?nocache=' + Date.now(),
+            url: UPDATE_URL + '?t=' + Date.now(),
             timeout: 10000,
             onload: function(res) {
                 try {
                     const text = res.responseText;
                     const verMatch = text.match(/@version\s+([\d\.]+)/);
-                    if (!verMatch) throw new Error("Версия не найдена");
+                    if (!verMatch) throw new Error("Версия не найдена в файле");
                     
                     const remoteVer = verMatch[1];
                     const currentVer = GM_info.script.version;
 
-                    // Пытаемся достать дату (1. Из заголовка, 2. Из текста скрипта, если вы там её напишете)
-                    let dateStr = "";
-                    const lastMod = res.getResponseHeader("Last-Modified") || res.getResponseHeader("Date");
+                    // Получаем дату из заголовков (Last-Modified или Date)
+                    let dateStr = "н/д";
+                    const lastMod = getHeaderSafe(res, "Last-Modified") || getHeaderSafe(res, "Date");
                     if (lastMod) {
                         const d = new Date(lastMod);
-                        dateStr = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
-                    } else {
-                        // Если заголовков нет, ищем в тексте (на будущее, если добавите в комментарии)
-                        const dateMatch = text.match(/\/\/\s*@date\s+([\d\.]+)/);
-                        dateStr = dateMatch ? dateMatch[1] : "неизвестно";
+                        if (!isNaN(d.getTime())) {
+                            dateStr = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
+                        }
                     }
 
                     updateState.remoteVer = remoteVer;
@@ -5103,9 +5113,8 @@ injectStyles(styles);
 
         overlay.style.display = 'block';
         modal.style.display = 'block';
-        
+        refreshModalUI();
         if (updateState.status === 'idle') initAutoUpdateCheck(true);
-        else refreshModalUI();
     }
 
     function initMobileMenu() {
@@ -5524,16 +5533,15 @@ injectStyles(styles);
                     // Закрываем мобильное меню
                     const side = document.querySelector('.span3');
                     if (side && side.classList.contains('mobile-active')) {
-                        const mobBtn = document.querySelector('.mobile-menu-btn');
-                        const mobOver = document.querySelector('.mobile-overlay');
                         side.classList.remove('mobile-active');
-                        if (mobBtn) mobBtn.classList.remove('open');
-                        if (mobOver) mobOver.classList.remove('active');
+                        document.querySelector('.mobile-overlay')?.classList.remove('active');
+                        document.querySelector('.mobile-menu-btn')?.classList.remove('open');
                     }
                     showUpdateModal();
                 });
                 verLi.appendChild(verLink);
                 allListItems.push(verLi);
+
 
                 // Функция иконок
                 const getIconForHref = (href) => {
