@@ -930,7 +930,7 @@
             const analyticsSessions = document.getElementById('img-analytics-sessions');
             const analyticsTop = document.getElementById('img-analytics-top');
             if (analyticsSessions && analyticsTop) {
-                // Формируем пути по вашей логике (без -new/-old, так как это просто скриншоты)
+                // Формируем пути по логике (без -new/-old, так как это просто скриншоты)
                 analyticsSessions.src = `img/analytics-sessions-${deviceType}-${currentTheme}.png`;
                 analyticsTop.src = `img/analytics-top-${deviceType}-${currentTheme}.png`;
                 
@@ -1269,100 +1269,64 @@
             });
         }
 
-        // Функция для получения количества установок (скачиваний релизов)
-        async function fetchInstallCount() {
-            const counterEl = document.getElementById('install-counter');
-            
-            // 1. Получаем текущее количество при загрузке
-            try {
-                const res = await fetch('https://api.counterapi.dev/v1/etis-reborn/installs');
-                if (res.ok) {
-                    const data = await res.json();
-                    if (counterEl) counterEl.innerText = data.count || 0;
-                }
-            } catch (err) {
-                console.error('Ошибка счетчика', err);
-            }
-
-            // 2. Вешаем обработчик клика на все кнопки установки
-            document.querySelectorAll('.install-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    
-                    // --- ЗАЩИТА ОТ СПАМА ---
-                    // Проверяем, есть ли в браузере метка 'etis_installed'
-                    if (localStorage.getItem('etis_installed') === 'true') {
-                        // Метка есть. Человек уже устанавливал. 
-                        // Ничего не делаем со счетчиком (вкладка со скриптом откроется сама)
-                        return; 
-                    }
-
-                    // Если метки нет, отправляем сигнал +1
-                    fetch('https://api.counterapi.dev/v1/etis-reborn/installs/up')
-                        .then(res => res.json())
-                        .then(data => {
-                            // Обновляем цифру на экране
-                            if (counterEl) counterEl.innerText = data.count;
-                            
-                            // Записываем метку в браузер навсегда
-                            localStorage.setItem('etis_installed', 'true');
-                        })
-                        .catch(e => console.error(e));
-                });
-            });
-        }
-
-        async function initCounter() {
+        // --- ЕДИНАЯ ФУНКЦИЯ СЧЕТЧИКА УСТАНОВОК ---
+        async function initInstallCounter() {
             const counterEl = document.getElementById('install-counter');
             if (!counterEl) return;
 
+            // Название счетчика в системе CounterAPI
             const API_URL = 'https://api.counterapi.dev/v1/etis-reborn/installs';
 
-            // --- ШАГ А: Сразу получаем текущее значение (READ) ---
+            // 1. СРАЗУ получаем текущее значение с сервера
             try {
-                const res = await fetch(API_URL);
-                if (res.ok) {
-                    const data = await res.json();
-                    // Обновляем текст СРАЗУ при загрузке
-                    counterEl.innerText = data.count;
+                const response = await fetch(API_URL);
+                if (response.ok) {
+                    const data = await response.json();
+                    // Если API вернуло число, отображаем его
+                    counterEl.innerText = data.count || 0;
                 } else {
-                    console.warn('Счетчик пока не создан или ошибка сети');
-                    counterEl.innerText = '0'; // Если ошибка, покажем 0
+                    // Если счетчик еще не создан на сервере, он может вернуть 404
+                    console.warn('Счетчик не найден, ставим 0');
+                    counterEl.innerText = '0';
                 }
             } catch (err) {
-                console.error('Ошибка загрузки счетчика:', err);
+                console.error('Ошибка сети при загрузке счетчика:', err);
+                counterEl.innerText = '150+'; // Запасной вариант, если API лежит
             }
 
-            // --- ШАГ Б: Настраиваем клик по кнопкам (UP + SPAM PROTECTION) ---
-            // Ищем все кнопки с классом .download-btn (у вас в коде они так называются)
-            const buttons = document.querySelectorAll('.download-btn, .install-btn');
+            // 2. Логика клика по кнопкам установки
+            const installButtons = document.querySelectorAll('.download-btn, .install-btn');
             
-            buttons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    // 1. Проверка защиты от накрутки
+            installButtons.forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    // Проверка защиты от накрутки (один клик = один голос от пользователя)
                     if (localStorage.getItem('etis_installed') === 'true') {
-                        // Если уже устанавливал — просто выходим (файл скачается, но счетчик не накрутится)
-                        return;
+                        return; // Уже засчитано ранее
                     }
 
-                    // 2. Если новый пользователь — отправляем +1
-                    fetch(API_URL + '/up')
-                        .then(r => r.json())
-                        .then(data => {
-                            // Обновляем цифру на экране
+                    try {
+                        // Отправляем запрос на увеличение (+1)
+                        const res = await fetch(API_URL + '/up');
+                        if (res.ok) {
+                            const data = await res.json();
+                            // Обновляем цифру на странице в реальном времени
                             counterEl.innerText = data.count;
-                            // Запоминаем этого пользователя
+                            // Помечаем в браузере, что установка засчитана
                             localStorage.setItem('etis_installed', 'true');
-                        })
-                        .catch(e => console.error(e));
+                        }
+                    } catch (e) {
+                        console.error('Не удалось обновить счетчик:', e);
+                    }
                 });
             });
         }
 
-        // Запускаем всё, когда страница готова
+        // В самом низу в DOMContentLoaded оставьте только вызов этой функции
         window.addEventListener('DOMContentLoaded', () => {
-            fetchLatestVersion();
-            initCounter();
+            fetchLatestVersion(); 
+            initInstallCounter(); 
         });
+
     </script>
 </body>
 </html>
