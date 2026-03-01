@@ -1,14 +1,15 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.461
+// @version      1.462
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
 // @run-at       document-start
 // @grant        GM_xmlhttpRequest
 // @grant        GM_info
-// @grant        GM_openInTab
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @connect      raw.githubusercontent.com
 // ==/UserScript==
 
@@ -4927,8 +4928,8 @@ injectStyles(styles);
         addViewport();
         setIcon();
         stylePages();
-        // Запуск проверки с задержкой 1с, чтобы не тормозить загрузку страницы
-        setTimeout(() => initAutoUpdateCheck(), 1000); 
+        // Запуск через секунду, чтобы страница прогрузилась
+        setTimeout(initAutoUpdateCheck, 1500);
     }
 
     if (document.readyState === 'loading') {
@@ -4951,230 +4952,160 @@ injectStyles(styles);
     }
 
     // ==========================================
-    // ЛОГИКА ОБНОВЛЕНИЯ (V3 - ROBUST)
+    // ЛОГИКА ОБНОВЛЕНИЯ (V4 - FINAL STABLE)
     // ==========================================
     const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
     
-    // Состояние
     let updateState = {
-        status: 'idle', // idle | loading | success | error
+        status: 'idle', 
         hasUpdate: false,
         remoteVer: '',
         remoteDate: '',
-        errorDetails: ''
+        details: ''
     };
 
     function compareVersions(v1, v2) {
+        if (!v1 || !v2) return 0;
         const p1 = v1.split('.').map(Number);
         const p2 = v2.split('.').map(Number);
         for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
-            const num1 = p1[i] || 0;
-            const num2 = p2[i] || 0;
-            if (num1 > num2) return 1;
-            if (num1 < num2) return -1;
+            if ((p1[i] || 0) > (p2[i] || 0)) return 1;
+            if ((p1[i] || 0) < (p2[i] || 0)) return -1;
         }
         return 0;
     }
 
-    // Основная функция проверки
-    function initAutoUpdateCheck(force = false) {
-        // Если уже проверяем, не запускаем повторно (если не force)
-        if (updateState.status === 'loading' && !force) return;
+    function initAutoUpdateCheck(isManual = false) {
+        if (updateState.status === 'loading' && !isManual) return;
         
-        console.log('[ETIS] Starting update check...');
         updateState.status = 'loading';
-        
-        // Если окно открыто, покажем спиннер
-        refreshModalUI(); 
+        if (isManual) refreshModalUI();
 
         GM_xmlhttpRequest({
             method: "GET",
-            url: UPDATE_URL + '?t=' + new Date().getTime(),
-            timeout: 15000,
-            onload: function(response) {
+            url: UPDATE_URL + '?nocache=' + Date.now(),
+            timeout: 10000,
+            onload: function(res) {
                 try {
-                    if (response.status !== 200) throw new Error("HTTP " + response.status);
-
-                    const match = response.responseText.match(/@version\s+([\d\.]+)/);
-                    if (!match) throw new Error("Не удалось найти версию в файле");
+                    const text = res.responseText;
+                    const verMatch = text.match(/@version\s+([\d\.]+)/);
+                    if (!verMatch) throw new Error("Версия не найдена");
                     
-                    const remoteVer = match[1];
+                    const remoteVer = verMatch[1];
                     const currentVer = GM_info.script.version;
-                    
-                    // Парсинг даты (безопасный)
-                    let dateStr = "н/д";
-                    try {
-                        const lastMod = response.getResponseHeader("Last-Modified");
-                        if (lastMod) {
-                            const d = new Date(lastMod);
-                            const day = d.getDate(); 
-                            const month = String(d.getMonth() + 1).padStart(2, '0');
-                            const year = String(d.getFullYear()).slice(2);
-                            dateStr = `${day}.${month}.${year}`;
-                        }
-                    } catch (e) { console.warn('[ETIS] Date parse error', e); }
 
-                    // Успех
-                    updateState.hasUpdate = compareVersions(remoteVer, currentVer) > 0;
+                    // Пытаемся достать дату (1. Из заголовка, 2. Из текста скрипта, если вы там её напишете)
+                    let dateStr = "";
+                    const lastMod = res.getResponseHeader("Last-Modified") || res.getResponseHeader("Date");
+                    if (lastMod) {
+                        const d = new Date(lastMod);
+                        dateStr = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
+                    } else {
+                        // Если заголовков нет, ищем в тексте (на будущее, если добавите в комментарии)
+                        const dateMatch = text.match(/\/\/\s*@date\s+([\d\.]+)/);
+                        dateStr = dateMatch ? dateMatch[1] : "неизвестно";
+                    }
+
                     updateState.remoteVer = remoteVer;
                     updateState.remoteDate = dateStr;
+                    updateState.hasUpdate = compareVersions(remoteVer, currentVer) > 0;
                     updateState.status = 'success';
-                    
-                    console.log('[ETIS] Check success. Update available:', updateState.hasUpdate);
 
-                    if (updateState.hasUpdate) {
-                        triggerUpdateIndicators();
-                    }
-                } catch (err) {
-                    console.error('[ETIS] Update parsing error:', err);
+                    if (updateState.hasUpdate) triggerUpdateIndicators();
+                } catch (e) {
                     updateState.status = 'error';
-                    updateState.errorDetails = err.message;
+                    updateState.details = e.message;
                 }
                 refreshModalUI();
             },
-            onerror: function(err) {
-                console.error('[ETIS] Network error:', err);
-                updateState.status = 'error';
-                updateState.errorDetails = "Ошибка сети";
-                refreshModalUI();
-            },
-            ontimeout: function() {
-                console.error('[ETIS] Timeout');
-                updateState.status = 'error';
-                updateState.errorDetails = "Превышено время ожидания";
-                refreshModalUI();
-            }
+            onerror: () => { updateState.status = 'error'; updateState.details = "Сеть недоступна"; refreshModalUI(); }
         });
     }
 
-    // Включение индикаторов
     function triggerUpdateIndicators() {
-        // Красная точка в сайдбаре
-        const verLink = document.querySelector('a[href="#version-check"]');
-        if (verLink && !verLink.querySelector('.badge-point')) {
+        const link = document.querySelector('a[href="#version-check"]');
+        if (link && !link.querySelector('.badge-point')) {
             const dot = document.createElement('span');
             dot.className = 'badge-point';
-            verLink.appendChild(dot);
+            link.appendChild(dot);
         }
-        // Красная точка на мобильной кнопке
-        const mobileBtn = document.querySelector('.mobile-menu-btn');
-        if (mobileBtn) mobileBtn.classList.add('has-updates');
+        const mob = document.querySelector('.mobile-menu-btn');
+        if (mob) mob.classList.add('has-updates');
     }
 
-    // Генерация HTML
-    function getModalContent() {
-        const currentVer = GM_info.script.version;
-
-        if (updateState.status === 'loading' || updateState.status === 'idle') {
-            return `
-                <div style="padding: 2rem;">
-                    <span class="material-icons" style="font-size: 48px; color: var(--color-accent); animation: spin 1s linear infinite; display: block; margin: 0 auto 1.5rem;">sync</span>
-                    <div style="font-size: 1.6rem; font-weight: 500;">Проверка версии...</div>
-                </div>
-                <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
-            `;
-        }
-
-        if (updateState.status === 'error') {
-            return `
-                <span class="material-icons" style="font-size: 48px; color: var(--color-red); margin-bottom: 1rem;">wifi_off</span>
-                <div style="font-size: 1.6rem; margin-bottom: 1rem;">Ошибка</div>
-                <div style="color: var(--color-text-secondary); margin-bottom: 2rem;">${updateState.errorDetails}</div>
-                <button id="retry-btn" class="answer-btn-custom">Повторить</button>
-            `;
-        }
-
+    function getUpdateHTML() {
+        const cur = GM_info.script.version;
+        if (updateState.status === 'loading') return `<div style="padding:2rem;text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-accent);animation:spin 1s linear infinite;">sync</span><div style="margin-top:1rem;font-size:1.6rem;">Проверка...</div></div><style>@keyframes spin{100%{transform:rotate(360deg)}}</style>`;
+        if (updateState.status === 'error') return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-red);">error_outline</span><div style="font-size:1.6rem;margin:1rem 0;">Ошибка: ${updateState.details}</div><button id="retry-update" class="answer-btn-custom" style="margin:0 auto;">Повторить</button></div>`;
+        
         if (updateState.hasUpdate) {
             return `
-                <span class="material-icons" style="font-size: 48px; color: var(--color-green); margin-bottom: 1rem;">system_update</span>
-                <div style="font-size: 1.8rem; font-weight: 800; margin-bottom: 2rem; color: var(--color-text-primary);">Доступна новая версия!</div>
-                
-                <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); text-align: left; margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);">
-                    <div style="margin-bottom: 1rem; font-size: 1.4rem; display: flex; justify-content: space-between;">
-                        <span style="color: var(--color-text-secondary);">Доступно:</span> 
-                        <b style="color: var(--color-green);">${updateState.remoteVer} от ${updateState.remoteDate}</b>
+                <div style="text-align:center;">
+                    <span class="material-icons" style="font-size:48px;color:var(--color-green);margin-bottom:1rem;">system_update</span>
+                    <div style="font-size:1.8rem;font-weight:800;margin-bottom:1.5rem;color:var(--color-text-primary);">Новая версия!</div>
+                    <div style="background:var(--color-highlight);padding:1.5rem;border-radius:12px;text-align:left;margin-bottom:2rem;border:1px solid var(--color-table-border);">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:8px;font-size:1.4rem;">
+                            <span style="color:var(--color-text-secondary);">Доступно:</span>
+                            <b>${updateState.remoteVer} от ${updateState.remoteDate}</b>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;font-size:1.4rem;">
+                            <span style="color:var(--color-text-secondary);">У вас:</span>
+                            <b>${cur}</b>
+                        </div>
                     </div>
-                    <div style="font-size: 1.4rem; display: flex; justify-content: space-between;">
-                        <span style="color: var(--color-text-secondary);">У вас:</span> 
-                        <span style="font-weight: 600;">${currentVer}</span>
-                    </div>
-                </div>
-
-                <button id="install-btn" class="answer-btn-custom" style="font-size: 1.4rem; padding: 1.2rem; width: 100%; justify-content: center; background: var(--color-green) !important; color: #fff !important; font-weight: 700;">
-                    <span class="material-icons" style="margin-right: 8px;">download</span>Обновить
-                </button>
-            `;
-        } 
-        
-        return `
-            <span class="material-icons" style="font-size: 48px; color: var(--color-accent); margin-bottom: 1.5rem;">check_circle</span>
-            <div style="font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem;">Версия актуальна</div>
-            <div style="color: var(--color-text-secondary); font-size: 1.4rem;">У вас установлена версия ${currentVer}</div>
-            <button id="retry-btn" class="answer-btn-custom" style="margin-top: 2rem; background: var(--color-highlight) !important; color: var(--color-text-primary) !important;">Проверить снова</button>
-        `;
+                    <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;">Обновить</button>
+                </div>`;
+        }
+        return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-accent);margin-bottom:1rem;">check_circle</span><div style="font-size:1.8rem;font-weight:700;">Версия актуальна</div><div style="color:var(--color-text-secondary);margin-top:0.5rem;">У вас установлена v${cur}</div><button id="retry-update" class="answer-btn-custom" style="margin:2rem auto 0;background:var(--color-highlight)!important;color:var(--color-text-primary)!important;">Проверить снова</button></div>`;
     }
 
-    // Функция отрисовки/обновления окна
     function refreshModalUI() {
-        const modal = document.querySelector('.analytics-modal[data-modal="version"]');
-        if (modal && modal.classList.contains('active')) {
+        const modal = document.getElementById('etis-update-modal');
+        if (modal && modal.style.display !== 'none') {
             const content = modal.querySelector('.ui-dialog-content');
-            content.innerHTML = getModalContent();
-            
-            // Вешаем обработчики заново
-            const install = content.querySelector('#install-btn');
-            if(install) install.onclick = () => window.location.href = UPDATE_URL;
-            
-            const retry = content.querySelector('#retry-btn');
-            if(retry) retry.onclick = () => initAutoUpdateCheck(true);
+            if (content) {
+                content.innerHTML = getUpdateHTML();
+                const btn = content.querySelector('#update-confirm');
+                if (btn) btn.onclick = () => window.location.href = UPDATE_URL;
+                const retry = content.querySelector('#retry-update');
+                if (retry) retry.onclick = () => initAutoUpdateCheck(true);
+            }
         }
     }
 
     function showUpdateModal() {
-        let overlay = document.querySelector('.analytics-overlay');
-        let modal = document.querySelector('.analytics-modal[data-modal="version"]');
+        let overlay = document.getElementById('etis-update-overlay');
+        let modal = document.getElementById('etis-update-modal');
 
         if (!overlay) {
             overlay = document.createElement('div');
-            overlay.className = 'analytics-overlay';
-            overlay.style.zIndex = '1000005';
+            overlay.id = 'etis-update-overlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000000;display:none;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);';
             document.body.appendChild(overlay);
         }
-        
+
         if (!modal) {
             modal = document.createElement('div');
-            modal.className = 'analytics-modal';
-            modal.setAttribute('data-modal', 'version');
-            modal.style.zIndex = '1000006';
-            
+            modal.id = 'etis-update-modal';
+            modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:90%;max-width:400px;background:var(--color-card);border-radius:24px;z-index:2000001;display:none;box-shadow:var(--shadow-dialog);overflow:hidden;font-family:var(--font-family);';
             modal.innerHTML = `
-                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
-                    <span class="ui-dialog-title">Обновление</span>
-                    <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;">
-                        <span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span>
-                    </button>
+                <div class="ui-widget-header" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--color-table-border);background:var(--color-table-header);">
+                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Обновление</span>
+                    <span id="close-update" class="material-icons" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
                 </div>
-                <div class="ui-dialog-content" style="padding: 2.4rem; text-align: center;"></div>
+                <div class="ui-dialog-content" style="padding:24px;"></div>
             `;
             document.body.appendChild(modal);
             
-            // Клик по крестику и фону
-            const close = () => {
-                overlay.classList.remove('active');
-                modal.classList.remove('active');
-            };
-            overlay.onclick = close;
-            modal.querySelector('.close-analytics').onclick = close;
+            overlay.onclick = () => { overlay.style.display = 'none'; modal.style.display = 'none'; };
+            modal.querySelector('#close-update').onclick = () => overlay.onclick();
         }
 
-        // Если при открытии статус 'idle' (не запускалось) или 'error', запустим проверку
-        if (updateState.status === 'idle' || updateState.status === 'error') {
-            initAutoUpdateCheck(true);
-        }
-
-        refreshModalUI();
-        overlay.classList.add('active');
-        modal.classList.add('active');
+        overlay.style.display = 'block';
+        modal.style.display = 'block';
+        
+        if (updateState.status === 'idle') initAutoUpdateCheck(true);
+        else refreshModalUI();
     }
 
     function initMobileMenu() {
@@ -5586,14 +5517,21 @@ injectStyles(styles);
                 const verLink = document.createElement("a");
                 verLink.style.cursor = 'pointer';
                 verLink.href = "#version-check";
-
-                verLink.textContent = 'Версия'; 
+                verLink.textContent = 'Версия';
 
                 verLink.addEventListener('click', (e) => {
                     e.preventDefault();
+                    // Закрываем мобильное меню
+                    const side = document.querySelector('.span3');
+                    if (side && side.classList.contains('mobile-active')) {
+                        const mobBtn = document.querySelector('.mobile-menu-btn');
+                        const mobOver = document.querySelector('.mobile-overlay');
+                        side.classList.remove('mobile-active');
+                        if (mobBtn) mobBtn.classList.remove('open');
+                        if (mobOver) mobOver.classList.remove('active');
+                    }
                     showUpdateModal();
                 });
-
                 verLi.appendChild(verLink);
                 allListItems.push(verLi);
 
