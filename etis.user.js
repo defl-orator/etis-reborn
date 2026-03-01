@@ -1,12 +1,15 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.44
+// @version      1.45
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
-// @match        https://student.psu.ru/*   
+// @match        https://student.psu.ru/*
 // @run-at       document-start
-// @grant        none
+// @grant        GM_xmlhttpRequest
+// @grant        GM_info
+// @grant        GM_openInTab
+// @connect      raw.githubusercontent.com
 // ==/UserScript==
 
 (function() {
@@ -4945,6 +4948,122 @@ injectStyles(styles);
         document.querySelector('head').appendChild(icon);
     }
 
+    // ==========================================
+    // ЛОГИКА ОБНОВЛЕНИЯ (VERSION CHECKER)
+    // ==========================================
+    const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
+
+    function compareVersions(v1, v2) {
+        const p1 = v1.split('.').map(Number);
+        const p2 = v2.split('.').map(Number);
+        for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+            const num1 = p1[i] || 0;
+            const num2 = p2[i] || 0;
+            if (num1 > num2) return 1;
+            if (num1 < num2) return -1;
+        }
+        return 0;
+    }
+
+    function showUpdateModal() {
+        // 1. Создаем модалку (используем стили analytics-modal)
+        let overlay = document.querySelector('.analytics-overlay');
+        let modal = document.querySelector('.analytics-modal');
+
+        if (!overlay || !modal) {
+            overlay = document.createElement('div');
+            overlay.className = 'analytics-overlay';
+            document.body.appendChild(overlay);
+            modal = document.createElement('div');
+            modal.className = 'analytics-modal';
+            document.body.appendChild(modal);
+        }
+
+        const currentVer = GM_info.script.version;
+
+        // Начальное состояние модалки
+        modal.innerHTML = `
+            <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="ui-dialog-title">Проверка обновлений</span>
+                <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;">
+                    <span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span>
+                </button>
+            </div>
+            <div class="ui-dialog-content" style="padding: 2.4rem; text-align: center;">
+                <div id="update-status-icon" style="margin-bottom: 1.5rem;">
+                    <span class="material-icons" style="font-size: 48px; color: var(--color-accent); animation: spin 1s linear infinite;">sync</span>
+                </div>
+                <div style="font-size: 1.6rem; font-weight: bold; margin-bottom: 1rem;">Проверка версии...</div>
+                <div style="color: var(--color-text-secondary);">Текущая версия: ${currentVer}</div>
+            </div>
+            <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+        `;
+
+        const closeModal = () => {
+            overlay.classList.remove('active');
+            modal.classList.remove('active');
+        };
+        overlay.onclick = closeModal;
+        modal.querySelector('.close-analytics').onclick = closeModal;
+        overlay.classList.add('active');
+        modal.classList.add('active');
+
+        // 2. Делаем запрос к GitHub
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: UPDATE_URL,
+            onload: function(response) {
+                // Парсим версию из текста скрипта
+                const match = response.responseText.match(/@version\s+([\d\.]+)/);
+                const remoteVer = match ? match[1] : null;
+
+                const contentDiv = modal.querySelector('.ui-dialog-content');
+
+                if (!remoteVer) {
+                    contentDiv.innerHTML = `
+                        <span class="material-icons" style="font-size: 48px; color: var(--color-red); margin-bottom: 1rem;">error</span>
+                        <div style="font-size: 1.6rem; margin-bottom: 1rem;">Ошибка проверки</div>
+                        <div style="color: var(--color-text-secondary);">Не удалось узнать версию на сервере.</div>
+                    `;
+                    return;
+                }
+
+                const comparison = compareVersions(remoteVer, currentVer);
+
+                if (comparison > 0) {
+                    // ЕСТЬ ОБНОВЛЕНИЕ
+                    contentDiv.innerHTML = `
+                        <span class="material-icons" style="font-size: 48px; color: var(--color-green); margin-bottom: 1rem;">system_update</span>
+                        <div style="font-size: 1.6rem; font-weight: bold; margin-bottom: 0.5rem;">Доступна новая версия!</div>
+                        <div style="margin-bottom: 2rem; font-size: 1.3rem;">
+                            Доступно: <b style="color: var(--color-green)">${remoteVer}</b><br>
+                            У вас: <span style="color: var(--color-text-secondary)">${currentVer}</span>
+                        </div>
+                        <button id="install-update-btn" class="answer-btn-custom" style="font-size: 1.4rem; padding: 1rem 2rem;">
+                            <span class="material-icons" style="margin-right: 8px;">download</span>Обновить
+                        </button>
+                    `;
+                    contentDiv.querySelector('#install-update-btn').onclick = () => {
+                        window.location.href = UPDATE_URL; // Tampermonkey перехватит это и предложит обновить
+                    };
+                } else {
+                    // АКТУАЛЬНАЯ ВЕРСИЯ
+                    contentDiv.innerHTML = `
+                        <span class="material-icons" style="font-size: 48px; color: var(--color-accent); margin-bottom: 1rem;">check_circle</span>
+                        <div style="font-size: 1.6rem; font-weight: bold; margin-bottom: 0.5rem;">Установлена последняя версия</div>
+                        <div style="color: var(--color-text-secondary);">Версия ${currentVer} актуальна.</div>
+                    `;
+                }
+            },
+            onerror: function() {
+                modal.querySelector('.ui-dialog-content').innerHTML = `
+                    <span class="material-icons" style="font-size: 48px; color: var(--color-red); margin-bottom: 1rem;">wifi_off</span>
+                    <div>Ошибка соединения с GitHub</div>
+                `;
+            }
+        });
+    }
+
     function initMobileMenu() {
         if (document.querySelector('.mobile-menu-btn') || document.querySelector('.login')) return;
 
@@ -5348,9 +5467,27 @@ injectStyles(styles);
                 themeLi.appendChild(themeLink);
                 allListItems.push(themeLi);
 
+                // --- Вкладка "Версия" ---
+                const verLi = document.createElement("li");
+                verLi.className = 'theme-switcher-item';
+                const verLink = document.createElement("a");
+                verLink.style.cursor = 'pointer';
+                verLink.href = "#version-check";
+
+                verLink.textContent = 'Версия'; 
+
+                verLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showUpdateModal();
+                });
+
+                verLi.appendChild(verLink);
+                allListItems.push(verLi);
+
                 // Функция иконок
                 const getIconForHref = (href) => {
                     if (href === '#theme-switch') return 'brightness_6';
+                    if (href === '#version-check') return 'system_update';
                     if (href.includes('teach_plan')) return 'school';
                     if (href.includes('ebl_choice')) return 'check_circle_outline';
                     if (href.includes('timetable')) return 'calendar_today'; 
@@ -5469,8 +5606,8 @@ injectStyles(styles);
                     ['library', 'electr', 'advice', 'ses', 'about'],
                     // 6. Опросы
                     ['term_test', 'special_est_list', 'оцените дистанционное'], 
-                    // 7. Настройки (Тема, Пароль, Email, Профиль, Выход)
-                    ['#theme-switch', 'change_pass', 'change_email', 'change_pr_page', 'logout']
+                    // 7. Настройки (Тема, Версия, Пароль, Email, Профиль, Выход)
+                    ['#version-check', '#theme-switch', 'change_pass', 'change_email', 'change_pr_page', 'logout']
                 ];
 
                 const usedItems = new Set();
@@ -5559,7 +5696,17 @@ injectStyles(styles);
                 if (!sidebar.querySelector('.sidebar-footer')) {
                     const footer = document.createElement('div');
                     footer.className = 'sidebar-footer';
-                    footer.innerHTML = 'Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>';
+                    
+                    // используем HTML-шаблонную строку (кавычки ` `), чтобы добавить ссылку сверху
+                    footer.innerHTML = `
+                        <div style="margin-bottom: 4px; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px;">
+                            <a href="https://etisreborn.ru" target="_blank" style="text-decoration: none; color: var(--color-text-primary); border-bottom: none;">
+                                ЕТИС REBORN
+                            </a>
+                        </div>
+                        Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>
+                    `;
+                    
                     sidebar.appendChild(footer);
                 }
             }
