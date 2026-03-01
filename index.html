@@ -821,7 +821,7 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-version">Версия от 1.03.26</div>
+            <div class="modal-version" id="script-version-info">Загрузка информации о версии...</div>
         </div>
     </div>
 
@@ -1148,6 +1148,44 @@
                 openLightbox(targetImg.src);
             }
         });
+        // --- АВТООПРЕДЕЛЕНИЕ АКТУАЛЬНОЙ ВЕРСИИ СКРИПТА ---
+        async function fetchLatestVersion() {
+            const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
+            const versionEl = document.getElementById('script-version-info');
+            
+            if (!versionEl) return;
+
+            try {
+                // Добавляем Date.now() чтобы избежать кеширования браузером
+                const response = await fetch(UPDATE_URL + '?t=' + Date.now());
+                if (!response.ok) throw new Error('Ошибка сети');
+                
+                const text = await response.text();
+                
+                // Достаем версию через регулярное выражение
+                const verMatch = text.match(/@version\s+([\d\.]+)/);
+                const version = verMatch ? verMatch[1] : '1.0';
+                
+                // Достаем дату из заголовков ответа сервера GitHub
+                let dateStr = "н/д";
+                const lastMod = response.headers.get("Last-Modified") || response.headers.get("Date");
+                if (lastMod) {
+                    const d = new Date(lastMod);
+                    if (!isNaN(d.getTime())) {
+                        dateStr = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
+                    }
+                }
+                
+                // Подставляем в модальное окно
+                versionEl.textContent = `Версия ${version} от ${dateStr}`;
+            } catch (error) {
+                console.error('Не удалось получить версию скрипта:', error);
+                versionEl.textContent = 'Не удалось загрузить данные о версии';
+            }
+        }
+
+        // Запускаем проверку при загрузке страницы
+        window.addEventListener('DOMContentLoaded', fetchLatestVersion);
     </script>
 </body>
 </html>
