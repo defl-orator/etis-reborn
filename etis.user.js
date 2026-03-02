@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.51
 // @changelog    Добавлена поддержка обновлений и сообщение об ошибке
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -4709,8 +4709,8 @@ button.search-capsule:hover {
 .score-tooltip {
     position: absolute;
     bottom: 130%;
-    left: 50%;
-    transform: translateX(-50%) translateY(10px);
+    right: 0; /* Привязываем подсказку к правому краю капсулы */
+    transform: translateY(10px); /* Убираем translateX, оставляем только анимацию по Y */
     background: #2A2C2F;
     color: #fff;
     padding: 0.6rem 1.2rem;
@@ -4729,8 +4729,7 @@ button.search-capsule:hover {
     content: '';
     position: absolute;
     top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
+    right: 20px; /* Смещаем стрелочку к правому краю, чтобы она указывала ровно в центр капсулы */
     border-width: 5px;
     border-style: solid;
     border-color: #2A2C2F transparent transparent transparent;
@@ -4739,7 +4738,7 @@ button.search-capsule:hover {
 .subject-score-capsule:active .score-tooltip {
     opacity: 1;
     visibility: visible;
-    transform: translateX(-50%) translateY(0);
+    transform: translateY(0);
 }
 
 /* --- ЗАМЕТКИ ДЛЯ ПРЕДМЕТОВ (To-Do) --- */
@@ -5165,10 +5164,16 @@ injectStyles(styles);
                 sidebar.classList.add('mobile-active');
                 overlay.classList.add('active');
                 menuBtn.classList.add('open');
+                // Блокируем скролл фона
+                document.body.style.overflow = 'hidden';
+                document.documentElement.style.overflow = 'hidden';
             } else {
                 sidebar.classList.remove('mobile-active');
                 overlay.classList.remove('active');
                 menuBtn.classList.remove('open');
+                // Возвращаем скролл
+                document.body.style.overflow = '';
+                document.documentElement.style.overflow = '';
             }
         }
 
@@ -5191,7 +5196,10 @@ injectStyles(styles);
                 sidebar.classList.remove('mobile-active'); 
                 overlay.classList.remove('active');       
                 menuBtn.classList.remove('open');         
-                menuBtn.classList.add('is-loading');      
+                menuBtn.classList.add('is-loading');  
+                // Возвращаем скролл при переходе по ссылке
+                document.body.style.overflow = '';
+                document.documentElement.style.overflow = '';    
             });
         });
     }
@@ -5233,8 +5241,14 @@ injectStyles(styles);
 
                 // 2. Ищем текущую или ближайшую пару
                 dayBlock.querySelectorAll('.timetable-grid tr').forEach(row => {
+                    // Игнорируем строки-окна и выходные дни
+                    if (row.classList.contains('timetable-gap-row') || row.classList.contains('custom-no-pairs')) return;
+
                     const timeEl = row.querySelector('.eval');
                     if (!timeEl) return;
+                    
+                    // Дополнительная проверка на время выходного дня
+                    if (timeEl.textContent.trim() === '00:00') return;
 
                     const startTimeParts = timeEl.textContent.split(':');
                     const startMins = parseInt(startTimeParts[0]) * 60 + parseInt(startTimeParts[1]);
@@ -5645,6 +5659,8 @@ injectStyles(styles);
                         side.classList.remove('mobile-active');
                         document.querySelector('.mobile-overlay')?.classList.remove('active');
                         document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                        document.body.style.overflow = '';
+                        document.documentElement.style.overflow = '';
                     }
                     showUpdateModal();
                 });
@@ -5667,6 +5683,8 @@ injectStyles(styles);
                         side.classList.remove('mobile-active');
                         document.querySelector('.mobile-overlay')?.classList.remove('active');
                         document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                        document.body.style.overflow = '';
+                        document.documentElement.style.overflow = '';
                     }
                     openUserscriptBugModal(); // Вызываем функцию
                 });
@@ -7861,6 +7879,8 @@ injectStyles(styles);
                                         }
                                         else if (gradeText.includes('зач')) {
                                             hasPass = true;
+                                            sum += 5; // Считаем зачет как 5
+                                            count++;
                                         }
                                         else if (!isNaN(num) && num >= 3 && num <= 5) {
                                             sum += num;
@@ -7944,13 +7964,9 @@ injectStyles(styles);
                                             <span class="stat-box-value bad" id="stat-worst-term">-</span>
                                         </div>
                                         <div class="stat-box" style="grid-column: 1 / -1;">
-                                            <span class="stat-box-title">Статистика по предметам</span>
-                                            <div style="font-size:1.4rem; margin-top:0.8rem; line-height:1.6; color: var(--color-text-primary);">
-                                                <div><strong style="color:var(--color-green);">Закрыто на «Отлично»:</strong> <span id="stat-5-count">0</span> предм.</div>
-                                                <div style="margin-top:1.2rem;">
-                                                    <strong style="color:var(--color-red);">Трудные предметы (оценка 3 и ниже):</strong>
-                                                    <div id="stat-bad-subj" style="margin-top: 0.5rem; color: var(--color-text-secondary);">Нет</div>
-                                                </div>
+                                            <span class="stat-box-title">Успеваемость по предметам</span>
+                                            <div id="dynamic-stats-container" style="font-size:1.4rem; margin-top:0.8rem; line-height:1.6; color: var(--color-text-primary);">
+                                                <!-- Сюда вставятся динамические данные -->
                                             </div>
                                         </div>
                                     </div>
@@ -8001,6 +8017,7 @@ injectStyles(styles);
                                         
                                         let num = parseInt(gradeText, 10);
                                         if (gradeText.includes('незач')) num = 2; // Незачет идет как 2
+                                        else if (gradeText.includes('зач')) num = 5; // Зачет идет как 5
                                         
                                         if (!isNaN(num) && num >= 2 && num <= 5) {
                                             subjectsData.push({ subj, grade: num });
@@ -8025,13 +8042,49 @@ injectStyles(styles);
                                 document.getElementById('stat-best-term').textContent = `${bestTerm.name} (${bestTerm.avg})`;
                                 document.getElementById('stat-worst-term').textContent = `${worstTerm.name} (${worstTerm.avg})`;
                                 
-                                let count5 = subjectsData.filter(s => s.grade === 5).length;
-                                let badSubj =[...new Set(subjectsData.filter(s => s.grade <= 3).map(s => s.subj))];
-                                
-                                document.getElementById('stat-5-count').textContent = count5;
-                                document.getElementById('stat-bad-subj').innerHTML = badSubj.length > 0 
-                                    ? `<ul style="margin: 0; padding-left: 1.8rem;">${badSubj.map(s => `<li style="margin-bottom:6px;">${s}</li>`).join('')}</ul>`
-                                    : 'Нет таких, отличная работа! 🥳';
+                                const count5 = subjectsData.filter(s => s.grade === 5).length;
+                                const count4 = subjectsData.filter(s => s.grade === 4).length;
+                                const count3 = subjectsData.filter(s => s.grade === 3).length;
+                                const count2 = subjectsData.filter(s => s.grade === 2).length;
+
+                                let statsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">';
+
+                                if (count5 > 0) {
+                                    statsHtml += `
+                                        <div style="flex: 1 1 0; min-width: 80px; background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                            <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-green); line-height: 1;">${count5}</span>
+                                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-green); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Отлично</span>
+                                        </div>`;
+                                }
+                                if (count4 > 0) {
+                                    statsHtml += `
+                                        <div style="flex: 1 1 0; min-width: 80px; background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                            <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-blue); line-height: 1;">${count4}</span>
+                                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-blue); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Хорошо</span>
+                                        </div>`;
+                                }
+                                if (count3 > 0) {
+                                    statsHtml += `
+                                        <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                            <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-warning); line-height: 1;">${count3}</span>
+                                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-warning); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Удовл.</span>
+                                        </div>`;
+                                }
+                                if (count2 > 0) {
+                                    statsHtml += `
+                                        <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                            <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-red); line-height: 1;">${count2}</span>
+                                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-red); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Долги</span>
+                                        </div>`;
+                                }
+
+                                statsHtml += '</div>';
+
+                                if (count5 === 0 && count4 === 0 && count3 === 0 && count2 === 0) {
+                                    statsHtml = '<div style="color: var(--color-text-secondary); margin-top: 1rem;">Нет данных об оценках</div>';
+                                }
+
+                                document.getElementById('dynamic-stats-container').innerHTML = statsHtml;
                                 
                                 const ctx = document.getElementById('gradesChart').getContext('2d');
                                 if(window.etisChartInstance) window.etisChartInstance.destroy(); 
@@ -8056,16 +8109,24 @@ injectStyles(styles);
                                             pointRadius: 5,
                                             pointHoverRadius: 7,
                                             fill: true,
-                                            tension: 0.4 
+                                            tension: 0.4,
+                                            clip: false 
                                         }]
                                     },
                                     options: {
                                         responsive: true,
                                         maintainAspectRatio: false,
+                                        layout: {
+                                            padding: {
+                                                top: 15,    // Даем физическое место для отрисовки на холсте
+                                                right: 15,
+                                                left: 15
+                                            }
+                                        },
                                         plugins: { legend: { display: false } },
                                         scales: {
                                             y: { 
-                                                min: 2.0, // Опустили минимум до 2.0 из-за незачетов
+                                                min: 2.0, 
                                                 max: 5.0, 
                                                 ticks: { color: textColor, font: {size: 13} }, 
                                                 grid: { color: gridColor } 
@@ -8096,25 +8157,85 @@ injectStyles(styles);
                                 
                                 const rows = Array.from(wrapper.querySelectorAll('tbody tr'));
                                 let visibleRowsCount = 0;
+                                let sum = 0, count = 0, hasFail = false, hasPass = false, hasAny = false;
 
                                 rows.forEach(row => {
                                     const subject = row.cells[0]?.textContent.toLowerCase() || "";
                                     const teacher = row.cells[3]?.textContent.toLowerCase() || "";
 
+                                    // Показываем строку, если совпал поиск
                                     if (val === "" || subject.includes(val) || teacher.includes(val)) {
                                         row.style.display = "";
                                         visibleRowsCount++;
+
+                                        // --- ПЕРЕСЧЕТ ОЦЕНОК НА ЛЕТУ ---
+                                        const cells = row.querySelectorAll('td');
+                                        if (cells.length >= 2) {
+                                            const gradeText = cells[1].textContent.trim().toLowerCase();
+                                            if (gradeText && gradeText !== 'н') {
+                                                hasAny = true;
+                                                let num = parseInt(gradeText, 10);
+                                                
+                                                if (gradeText.includes('незач') || gradeText === '2') {
+                                                    hasFail = true;
+                                                    sum += 2; // Считаем незачет как 2 для аналитики
+                                                    count++;
+                                                }
+                                                else if (gradeText.includes('зач')) {
+                                                    hasPass = true;
+                                                    sum += 5; // Считаем зачет как 5
+                                                    count++;
+                                                }
+                                                else if (!isNaN(num) && num >= 3 && num <= 5) {
+                                                    sum += num;
+                                                    count++;
+                                                }
+                                            }
+                                        }
                                     } else {
                                         row.style.display = "none";
                                     }
                                 });
 
+                                // Скрытие пустых триместров или обновление их капсул
                                 if (val !== "" && visibleRowsCount === 0) {
                                     header.style.setProperty('display', 'none', 'important');
                                     wrapper.style.setProperty('display', 'none', 'important');
                                 } else {
                                     header.style.setProperty('display', 'flex', 'important');
                                     wrapper.style.setProperty('display', 'block', 'important');
+
+                                    // --- ОБНОВЛЕНИЕ КАПСУЛЫ ---
+                                    const capsule = header.querySelector('.subject-score-capsule');
+                                    if (capsule) {
+                                        const avg = count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
+                                        wrapper.setAttribute('data-term-avg', avg); // Записываем для обновления графиков
+
+                                        if (!hasAny) { 
+                                            capsule.textContent = 'Нет оценок'; 
+                                            capsule.style.background = 'var(--color-highlight)'; 
+                                            capsule.style.color = 'var(--color-text-secondary)'; 
+                                        }
+                                        else if (hasFail) { 
+                                            capsule.textContent = 'НЕЗАЧЕТ'; 
+                                            capsule.style.background = 'var(--color-red)'; 
+                                            capsule.style.color = '#fff'; 
+                                        }
+                                        else if (count > 0) {
+                                            capsule.textContent = `${avg} / 5`;
+                                            const p = (avg / 5) * 100;
+                                            if (p < 41) capsule.style.background = 'var(--color-red)';
+                                            else if (p < 61) capsule.style.background = 'var(--color-yellow)';
+                                            else if (p < 81) capsule.style.background = '#8BC34A';
+                                            else capsule.style.background = 'var(--color-green)';
+                                            capsule.style.color = (p >= 41 && p < 61) ? '#000' : '#fff';
+                                        } 
+                                        else if (hasPass) { 
+                                            capsule.textContent = 'ЗАЧЕТ'; 
+                                            capsule.style.background = 'var(--color-green)'; 
+                                            capsule.style.color = '#fff'; 
+                                        }
+                                    }
                                 }
                             });
                         });
@@ -8272,7 +8393,7 @@ injectStyles(styles);
                             headerContainer.appendChild(capsule);
                         });
 
-                        // --- ЛОГИКА ФИЛЬТРАЦИИ ---
+                        // --- ЛОГИКА ФИЛЬТРАЦИИ И ДИНАМИЧЕСКОГО ПЕРЕСЧЕТА ---
                         const filterInput = searchContainer.querySelector('.term-local-input');
                         filterInput.addEventListener('input', (e) => {
                             const val = e.target.value.toLowerCase().trim();
@@ -8283,15 +8404,13 @@ injectStyles(styles);
                                 const wrapper = wrappers[index];
                                 if (!wrapper) return;
 
-                                // Достаем только название предмета (без баллов в капсуле)
                                 const h3 = header.querySelector('h3');
                                 const subjectName = h3 ? h3.textContent.toLowerCase() : header.textContent.toLowerCase();
-                                
-                                // Совпадает ли само название предмета с поиском?
                                 const isSubjectMatch = subjectName.includes(val);
                                 
                                 const rows = Array.from(wrapper.querySelectorAll('tr'));
                                 let visibleRowsCount = 0;
+                                let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
 
                                 rows.forEach(row => {
                                     if (row.querySelector('th')) {
@@ -8301,25 +8420,70 @@ injectStyles(styles);
 
                                     const rowContent = row.textContent.toLowerCase();
 
-                                    // Показываем строку, если: 
-                                    // 1. Поиск пуст 
-                                    // 2. Искали название самого предмета (показываем все его темы) 
-                                    // 3. Нашлась конкретная тема/преподаватель
+                                    // Показываем строку, если совпал поиск или искали предмет целиком
                                     if (val === "" || isSubjectMatch || rowContent.includes(val)) {
                                         row.style.display = '';
                                         visibleRowsCount++;
+
+                                        // --- ПЕРЕСЧЕТ БАЛЛОВ НА ЛЕТУ ---
+                                        const cells = row.querySelectorAll('td');
+                                        if (cells.length >= 7) {
+                                            const curStr = cells[5].textContent.trim();
+                                            const maxStr = cells[6].textContent.trim();
+                                            if (curStr !== '' && curStr !== 'н') {
+                                                hasAnyGrades = true;
+                                                calculatedCurrent += parseInt(curStr, 10) || 0;
+                                                calculatedMax += parseInt(maxStr, 10) || 0;
+                                            }
+                                        }
                                     } else {
                                         row.style.display = 'none';
                                     }
                                 });
 
-                                // Если ни предмет не совпал, ни одна из его тем — скрываем всё
+                                // Скрываем или обновляем предмет
                                 if (val !== "" && !isSubjectMatch && visibleRowsCount === 0) {
                                     header.style.setProperty('display', 'none', 'important');
                                     wrapper.style.setProperty('display', 'none', 'important');
                                 } else {
                                     header.style.setProperty('display', 'flex', 'important');
                                     wrapper.style.setProperty('display', 'block', 'important');
+
+                                    // --- ОБНОВЛЕНИЕ КАПСУЛЫ И ТУЛТИПА ---
+                                    const capsule = header.querySelector('.subject-score-capsule');
+                                    if (capsule) {
+                                        wrapper.setAttribute('data-score-current', calculatedCurrent); // Обновляем для топа предметов
+                                        wrapper.setAttribute('data-score-max', calculatedMax);
+
+                                        capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? calculatedMax : 0}`;
+                                        
+                                        if (!hasAnyGrades || calculatedMax === 0) {
+                                            capsule.style.background = 'var(--color-highlight)';
+                                            capsule.style.color = 'var(--color-text-secondary)';
+                                        } else {
+                                            const p = (calculatedCurrent / calculatedMax) * 100;
+                                            if (p < 41) capsule.style.background = 'var(--color-red)';
+                                            else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
+                                            else if (p < 81) capsule.style.background = '#8BC34A';
+                                            else capsule.style.background = 'var(--color-green)';
+                                            
+                                            if (p < 41 || p >= 61) capsule.style.color = '#fff';
+                                        }
+
+                                        // Динамический прогноз
+                                        let tooltipText = '';
+                                        if (calculatedMax > 0 && hasAnyGrades) {
+                                            if (calculatedCurrent < 41) tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
+                                            else if (calculatedCurrent < 61) tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
+                                            else if (calculatedCurrent < 81) tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
+                                            else tooltipText = `Отлично! 😎`;
+                                            
+                                            const tooltip = document.createElement('div');
+                                            tooltip.className = 'score-tooltip';
+                                            tooltip.textContent = tooltipText;
+                                            capsule.appendChild(tooltip);
+                                        }
+                                    }
                                 }
                             });
                         });
