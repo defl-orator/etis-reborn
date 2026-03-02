@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.522
+// @version      1.523
 // @changelog    Добавлена поддержка обновлений, сообщение об ошибке и аналитики
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -455,67 +455,108 @@ form.que_form { margin-top: 1rem !important; }
 .tpr_part { line-height: 1.5 !important; }
 .ses_part { line-height: 1.5 !important; }
 
-/* Week Select */
-.week-select { margin: 3rem auto 3.2rem !important; width: 100% !important; margin-top: 0 !important; margin-bottom: 1.5rem !important; }
+/* Week Select (Капсула) */
+.week-select { margin: 0 auto 1.5rem !important; width: 100% !important; }
 .week-select h3 { display: none !important; }
-.weeks { display: flex !important; justify-content: center !important; flex-wrap: wrap !important; gap: 0.6rem !important; }
-.week { position: relative !important; display: flex !important; justify-content: center !important; align-items: center !important; margin: 0 !important; padding: 0 !important; width: 3.8rem !important; height: 3.8rem !important; background-color: var(--color-card) !important; box-shadow: var(--shadow-main) !important; border-radius: var(--radius-medium) !important; border: none !important; font-size: 1.2rem !important; overflow: hidden !important; transition: background 0.2s !important; }
-.week:hover { background: var(--color-highlight) !important; }
-.weeks > .week > a { display: flex !important; justify-content: center !important; align-items: center !important; width: 100% !important; height: 100% !important; color: var(--color-text-primary) !important; text-decoration: none !important; }
 
-/* Базовый цвет для активной недели */
-.weeks .week.current { 
-    font-weight: bold !important; 
-    background-color: var(--color-accent) !important; /* Берет синий или желтый из темы */
-    color: var(--color-text-primary-invert) !important; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+/* Капсула для недель */
+.weeks { 
+    display: flex !important; 
+    flex-wrap: nowrap !important; 
+    justify-content: flex-start !important; 
+    align-items: center !important;
+    gap: 8px !important; 
+    margin: 0 !important;
+    
+    width: 100% !important;
+    padding: 6px !important; 
+    background-color: var(--color-card) !important; 
+    box-shadow: var(--shadow-main) !important; 
+    border-radius: 50px !important; 
+    
+    overflow-x: auto !important; 
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+
+    /* Индикация скролла по бокам */
+    background-image: 
+        linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
+        linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
+    background-position: left center, right center !important;
+    background-repeat: no-repeat !important;
+    background-size: 40px 100% !important;
+    background-attachment: scroll !important;
+}
+.weeks::-webkit-scrollbar { display: none !important; }
+
+/* Темная тема для градиентов скролла */
+[theme="dark"] .weeks {
+    background: 
+        linear-gradient(to right, var(--color-card) 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local,
+        linear-gradient(to left, var(--color-card) 30%, rgba(255,255,255,0)) right center / 40px 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) left center / 15px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) right center / 15px 100% no-repeat scroll !important;
+    background-color: var(--color-card) !important;
+}
+
+/* Базовые стили для всех кружков (фон нейтральный) */
+.weeks .week { 
+    position: relative !important; 
+    display: flex !important; 
+    justify-content: center !important; 
+    align-items: center !important; 
+    flex: 0 0 auto !important; 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    width: 3.8rem !important; 
+    height: 3.8rem !important; 
+    background-color: var(--color-highlight) !important; 
+    color: var(--color-text-primary) !important; 
+    border-radius: 50% !important; 
+    border: none !important; 
+    font-size: 1.3rem !important; 
+    font-weight: 500 !important;
+    transition: background 0.2s, transform 0.2s !important; 
+    box-shadow: none !important;
+}
+
+.weeks > .week > a { 
+    display: flex !important; 
+    justify-content: center !important; 
+    align-items: center !important; 
+    width: 100% !important; 
+    height: 100% !important; 
+    color: inherit !important; 
+    text-decoration: none !important; 
+    border-radius: 50% !important;
 }
 
 /* Ховер на обычные недели */
 .weeks .week:not(.current):hover {
-    background: var(--color-highlight) !important;
-    border: 1px solid var(--color-accent) !important;
-}
-/* Дефолтные цвета для сессии, каникул и практики */
-.weeks .week.session, .weeks .week.session > a { color: var(--color-red) !important; }
-.weeks .week.holiday, .weeks .week.holiday > a { color: var(--color-green) !important; }
-/* Цвета фона и текста для активных сессий/каникул/практики */
-.weeks .week.session.current { background: var(--color-red) !important; color: var(--color-text-primary-invert) !important; }
-.weeks .week.session.current > a { color: var(--color-text-primary-invert) !important; }
-.weeks .week.holiday.current { background: var(--color-green) !important; color: var(--color-text-primary-invert) !important; }
-.weeks .week.holiday.current > a { color: var(--color-text-primary-invert) !important; }
-.weeks .week.pract.current { background: var(--color-yellow) !important; color: var(--color-text-primary-invert) !important; }
-.weeks .week.pract.current > a { color: var(--color-text-primary-invert) !important; }
-
-.weeks .week.current, 
-.weeks .week.current > a,
-.weeks .week.pract.current,
-.weeks .week.pract.current > a,
-.weeks .week.session.current,
-.weeks .week.session.current > a,
-.weeks .week.holiday.current,
-.weeks .week.holiday.current > a { 
-    background-color: var(--color-accent) !important; 
-    color: var(--color-text-primary-invert) !important; 
-    font-weight: bold !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+    background-color: var(--color-highlight-light) !important;
 }
 
-.weeks .week.holiday > a { color: var(--color-green) !important; }
-.weeks .week.session > a { color: var(--color-red) !important; }
+/* ВОЗВРАЩАЕМ ЦВЕТА ТЕКСТА ДЛЯ СЕССИИ И КАНИКУЛ (только для неактивных) */
+.weeks .week.session:not(.current) { color: var(--color-red) !important; }
+.weeks .week.holiday:not(.current) { color: var(--color-green) !important; }
 
+/* Практику делаем нейтральной, чтобы избежать нечитаемого желтого на сером фоне */
+.weeks .week.pract:not(.current) { color: var(--color-text-primary) !important; }
+
+/* АКТИВНАЯ НЕДЕЛЯ (перебивает всё: синий фон, белый текст) */
 .weeks .week.current { 
     background-color: var(--color-accent) !important; 
+    color: var(--color-text-primary-invert) !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
 }
 
 .weeks .week.current > a { 
-    color: var(--color-text-primary-invert) !important; 
-    font-weight: bold !important;
+    font-weight: 700 !important; 
 }
 
-/* Выделение актуальной недели */
-.weeks .week.actual-week a {
+/* Выделение актуальной (календарной) недели, если мы сейчас смотрим другую */
+.weeks .week.actual-week:not(.current) > a {
     color: var(--color-accent) !important;
     font-weight: 800 !important;
 }
@@ -1076,42 +1117,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         width: 35% !important;
         padding-left: 0.5rem !important;
         padding-right: 1.6rem !important; /* Ровняем по правому краю */
-    }
-
-    .week-select { 
-        position: relative !important; 
-        width: 100% !important; 
-    }
-    .week-select::before, .week-select::after {
-        content: "" !important;
-        position: absolute !important;
-        top: 0 !important; bottom: 0 !important;
-        width: 24px !important;
-        z-index: 5 !important;
-        pointer-events: none !important;
-    }
-    .week-select::before {
-        left: 0 !important;
-        background: linear-gradient(to right, var(--color-body) 10%, rgba(255,255,255,0)) !important;
-    }
-    .week-select::after {
-        right: 0 !important;
-        background: linear-gradient(to left, var(--color-body) 10%, rgba(255,255,255,0)) !important;
-    }
-    .weeks {
-        display: flex !important;
-        padding: 0 20px !important; /* Даем запас, чтобы можно было доскроллить крайние недели */
-        margin: 0 !important;
-        width: 100% !important;
-        flex-wrap: nowrap !important;
-        justify-content: flex-start !important;
-        overflow-x: auto !important;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-    }
-    .weeks::-webkit-scrollbar { display: none; }
-    .week {
-        flex: 0 0 auto !important;
     }
 
     /* Тулбар расписания на мобильном */
@@ -4813,6 +4818,28 @@ button.search-capsule:hover {
     outline: none;
     box-shadow: 0 0 0 3px var(--color-accent-active);
 }
+
+/* --- ФИКС: Одинаковая высота для капсул тулбара и кружков недель --- */
+.timetable-toolbar > *,
+.timetable-toolbar .toolbar-item,
+.timetable-toolbar label.toolbar-item,
+.timetable-toolbar .sync-btn {
+    height: 3.8rem !important; /* Жёстко задаем высоту как у кружков недель */
+    padding: 0 1.6rem !important; /* Обнуляем вертикальный padding, текст отцентрирован flex'ом */
+    box-sizing: border-box !important;
+}
+
+/* Перебиваем старые урезанные отступы на мобильных экранах */
+@media (max-width: 960px) {
+    .timetable-toolbar > *,
+    .timetable-toolbar .toolbar-item,
+    .timetable-toolbar label.toolbar-item,
+    .timetable-toolbar .sync-btn {
+        height: 3.8rem !important;
+        padding: 0 1.4rem !important; /* Чуть уменьшаем боковые отступы для экономии ширины */
+        border-radius: 50px !important; /* Защита от сброса формы капсулы */
+    }
+}
     `;
 
     // Внедряем стили
@@ -5669,30 +5696,6 @@ injectStyles(styles);
                 verLi.appendChild(verLink);
                 allListItems.push(verLi);
 
-                // --- Вкладка "Сообщить об ошибке" ---
-                const bugLi = document.createElement("li");
-                bugLi.className = 'theme-switcher-item';
-                const bugLink = document.createElement("a");
-                bugLink.style.cursor = 'pointer';
-                bugLink.href = "#report-bug";
-                bugLink.textContent = 'Нашли ошибку?'; 
-                
-                bugLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    // Закрываем мобильное меню, если оно открыто
-                    const side = document.querySelector('.span3');
-                    if (side && side.classList.contains('mobile-active')) {
-                        side.classList.remove('mobile-active');
-                        document.querySelector('.mobile-overlay')?.classList.remove('active');
-                        document.querySelector('.mobile-menu-btn')?.classList.remove('open');
-                        document.body.style.overflow = '';
-                        document.documentElement.style.overflow = '';
-                    }
-                    openUserscriptBugModal(); // Вызываем функцию
-                });
-                bugLi.appendChild(bugLink);
-                allListItems.push(bugLi);
-
                 // Функция иконок
                 const getIconForHref = (href) => {
                     if (href === '#theme-switch') return 'brightness_6';
@@ -5914,10 +5917,28 @@ injectStyles(styles);
                                 ЕТИС REBORN
                             </a>
                         </div>
-                        Designed by <a href="https://vk.com/defl_orator1" target="_blank">Masalkin Nikolai</a> based on <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>
+                        <a href="#report-bug" id="footer-report-bug" style="cursor: pointer; text-decoration: none; color: var(--color-text-secondary); transition: color 0.2s;">Нашли ошибку?</a>
                     `;
                     
                     sidebar.appendChild(footer);
+
+                    // Логика кнопки "Нашли ошибку?" в подвале
+                    const bugLinkFooter = footer.querySelector('#footer-report-bug');
+                    if (bugLinkFooter) {
+                        bugLinkFooter.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            // Закрываем мобильное меню, если оно открыто
+                            const side = document.querySelector('.span3');
+                            if (side && side.classList.contains('mobile-active')) {
+                                side.classList.remove('mobile-active');
+                                document.querySelector('.mobile-overlay')?.classList.remove('active');
+                                document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                                document.body.style.overflow = '';
+                                document.documentElement.style.overflow = '';
+                            }
+                            openUserscriptBugModal(); // Вызываем окно баг-репорта
+                        });
+                    }
                 }
             }
 
