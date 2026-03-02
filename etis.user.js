@@ -5802,7 +5802,7 @@ injectStyles(styles);
                 // Очищаем главный список
                 mainNav.innerHTML = '';
 
-                // Карта порядка групп (как вы просили)
+                // Карта порядка групп
                 const groupsOrder = [
                     // 1. Учеба
                     ['teach_plan', 'ebl_choice'], 
@@ -7098,7 +7098,7 @@ injectStyles(styles);
                         if (!val) {
                             delete notesData.specific[pairId];
                         } else {
-                            // СОХРАНЯЕМ В ТЕКУЩУЮ ВСЕГДА (чтобы вы видели, что она сохранилась)
+                            // СОХРАНЯЕМ В ТЕКУЩУЮ ВСЕГДА
                             notesData.specific[pairId] = val; 
                             
                             if (isNext) {
@@ -7984,7 +7984,6 @@ injectStyles(styles);
                         overlay.addEventListener('click', closeAnalytics);
                         modal.querySelector('.close-analytics').addEventListener('click', closeAnalytics);
 
-                        // --- ИСПРАВЛЕННАЯ ВЕРСИЯ (unsafeWindow) ---
                         searchContainer.querySelector('.analytics-btn').addEventListener('click', function() {
                             const btn = this;
                             
