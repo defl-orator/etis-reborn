@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.523
-// @changelog    Добавлена поддержка обновлений, сообщение об ошибке и аналитики
+// @version      1.6
+// @changelog    Добавлены отзывы
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -4840,6 +4840,29 @@ button.search-capsule:hover {
         border-radius: 50px !important; /* Защита от сброса формы капсулы */
     }
 }
+
+/* --- REVIEWS MODAL --- */
+.star-rating {
+    display: flex; gap: 4px; cursor: pointer; color: var(--color-yellow); margin-bottom: 1rem;
+}
+.star-rating .material-icons {
+    font-size: 32px !important; transition: transform 0.1s;
+}
+.star-rating .material-icons:hover { transform: scale(1.1); }
+
+.reviews-list-container {
+    max-height: 300px; overflow-y: auto; margin-top: 2rem; padding-top: 2rem;
+    border-top: 1px solid var(--color-table-border); display: flex; flex-direction: column; gap: 1rem;
+}
+.review-item-db {
+    background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium);
+}
+.review-item-db-header {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;
+}
+.review-item-db-stars { color: var(--color-yellow); display: flex; align-items: center; font-size: 1.6rem; }
+.review-item-db-date { color: var(--color-text-secondary); font-size: 1.1rem; }
+.review-item-db-text { color: var(--color-text-primary); font-size: 1.3rem; line-height: 1.5; }
     `;
 
     // Внедряем стили
@@ -5411,6 +5434,169 @@ injectStyles(styles);
         };
     }
 
+    // --- ФУНКЦИЯ ОКНА "ОТЗЫВЫ О РАСШИРЕНИИ" ---
+    function openReviewsModal() {
+        const FIREBASE_URL = 'https://etisreborn-2b49e-default-rtdb.europe-west1.firebasedatabase.app/reviews.json';
+
+        const old = document.getElementById('etis-reviews-modal');
+        if (old) old.remove();
+
+        const modalHTML = `
+            <div id="etis-reviews-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999999;backdrop-filter:blur(4px);"></div>
+            <div id="etis-reviews-modal" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:90%;max-width:500px;background:var(--color-card);border-radius:24px;z-index:1000000;box-shadow:var(--shadow-dialog);overflow:hidden; font-family: var(--font-family);">
+                <div class="ui-widget-header" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;background:var(--color-table-header);border-bottom:1px solid var(--color-table-border);">
+                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Оценить расширение</span>
+                    <span class="material-icons close-btn" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
+                </div>
+                <div style="padding:24px; display:flex; flex-direction:column;">
+                    
+                    <!-- Измененный блок звёзд (теперь без material-icons) -->
+                    <div class="star-rating" id="review-stars" style="font-size: 40px; line-height: 1; user-select: none; display: flex; gap: 8px; cursor: pointer; color: var(--color-yellow); margin-bottom: 1rem;">
+                        <span data-val="1" style="transition: transform 0.1s;">☆</span>
+                        <span data-val="2" style="transition: transform 0.1s;">☆</span>
+                        <span data-val="3" style="transition: transform 0.1s;">☆</span>
+                        <span data-val="4" style="transition: transform 0.1s;">☆</span>
+                        <span data-val="5" style="transition: transform 0.1s;">☆</span>
+                    </div>
+
+                    <textarea id="review-text" placeholder="Напишите пару слов о ЕТИС REBORN..." style="width:100%;height:80px;padding:12px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);resize:vertical;font-family:inherit;margin-bottom:15px;"></textarea>
+                    
+                    <button id="review-send-btn" class="answer-btn-custom" style="justify-content:center;width:100%;border:none;">Оставить отзыв</button>
+
+                    <div class="reviews-list-container" id="reviews-list">
+                        <div style="text-align:center; color:var(--color-text-secondary);">Загрузка отзывов...</div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = modalHTML;
+        document.body.appendChild(wrapper);
+
+        const close = () => wrapper.remove();
+        wrapper.querySelector('#etis-reviews-overlay').onclick = close;
+        wrapper.querySelector('.close-btn').onclick = close;
+
+        // Логика звёздочек (добавлена подсветка при наведении)
+        let currentRating = 0;
+        const starContainer = wrapper.querySelector('#review-stars');
+        const stars = wrapper.querySelectorAll('#review-stars span');
+
+        const fillStars = (rating) => {
+            stars.forEach(s => {
+                const val = parseInt(s.getAttribute('data-val'));
+                s.textContent = val <= rating ? '★' : '☆';
+            });
+        };
+
+        stars.forEach(star => {
+            // Анимация и заливка при наведении (hover)
+            star.addEventListener('mouseenter', function() {
+                fillStars(parseInt(this.getAttribute('data-val')));
+                this.style.transform = 'scale(1.2)';
+            });
+
+            star.addEventListener('mouseleave', function() {
+                this.style.transform = 'scale(1)';
+            });
+
+            // Фиксация оценки при клике
+            star.addEventListener('click', function() {
+                currentRating = parseInt(this.getAttribute('data-val'));
+                fillStars(currentRating);
+            });
+        });
+
+        // Возврат к сохраненной оценке, если убрали мышку
+        starContainer.addEventListener('mouseleave', function() {
+            fillStars(currentRating);
+        });
+
+        // Отправка отзыва
+        const btn = wrapper.querySelector('#review-send-btn');
+        btn.onclick = async function() {
+            const text = document.getElementById('review-text').value.trim();
+            if (currentRating === 0) { alert('Пожалуйста, поставьте оценку от 1 до 5 звёзд!'); return; }
+            if (!text) { alert('Напишите текст отзыва!'); return; }
+
+            btn.innerText = 'Отправка...';
+            btn.disabled = true;
+
+            const reviewData = {
+                rating: currentRating,
+                text: text,
+                date: new Date().toISOString(),
+                version: typeof GM_info !== 'undefined' ? GM_info.script.version : 'Неизвестно'
+            };
+
+            try {
+                await fetch(FIREBASE_URL, {
+                    method: 'POST',
+                    body: JSON.stringify(reviewData),
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                // Очистка формы
+                document.getElementById('review-text').value = '';
+                currentRating = 0;
+                fillStars(0);
+                
+                btn.innerText = 'Спасибо за отзыв!';
+                btn.style.background = 'var(--color-green)';
+                setTimeout(() => {
+                    btn.innerText = 'Оставить отзыв';
+                    btn.disabled = false;
+                    btn.style.background = '';
+                    loadReviews(); // Перезагружаем список сразу после отправки
+                }, 2000);
+            } catch(e) {
+                btn.innerText = 'Ошибка сети';
+                btn.disabled = false;
+            }
+        };
+
+        // Загрузка отзывов
+        async function loadReviews() {
+            const list = document.getElementById('reviews-list');
+            try {
+                const res = await fetch(FIREBASE_URL);
+                const data = await res.json();
+                
+                list.innerHTML = '';
+                if (!data) {
+                    list.innerHTML = '<div style="text-align:center;color:var(--color-text-secondary);">Пока нет отзывов. Станьте первым!</div>';
+                    return;
+                }
+
+                // Преобразуем объект Firebase в массив и сортируем (новые сверху)
+                const reviewsArr = Object.values(data).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+                reviewsArr.forEach(rev => {
+                    const dateObj = new Date(rev.date);
+                    const dateStr = `${String(dateObj.getDate()).padStart(2,'0')}.${String(dateObj.getMonth()+1).padStart(2,'0')}.${dateObj.getFullYear()}`;
+                    
+                    const starsHtml = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
+
+                    const div = document.createElement('div');
+                    div.className = 'review-item-db';
+                    div.innerHTML = `
+                        <div class="review-item-db-header">
+                            <div class="review-item-db-stars">${starsHtml}</div>
+                            <div class="review-item-db-date">${dateStr}</div>
+                        </div>
+                        <div class="review-item-db-text">${rev.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+                    `;
+                    list.appendChild(div);
+                });
+            } catch(e) {
+                list.innerHTML = '<div style="text-align:center;color:var(--color-red);">Не удалось загрузить отзывы</div>';
+            }
+        }
+
+        loadReviews();
+    }
+
     // Модификация стилей страниц
     function stylePages() {
         initMobileMenu();
@@ -5696,11 +5882,36 @@ injectStyles(styles);
                 verLi.appendChild(verLink);
                 allListItems.push(verLi);
 
+                // --- Вкладка "Оценить расширение" ---
+                const revLi = document.createElement("li");
+                revLi.className = 'theme-switcher-item';
+                const revLink = document.createElement("a");
+                revLink.style.cursor = 'pointer';
+                revLink.href = "#reviews";
+                revLink.textContent = 'Отзывы о REBORN';
+
+                revLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Закрываем мобильное меню
+                    const side = document.querySelector('.span3');
+                    if (side && side.classList.contains('mobile-active')) {
+                        side.classList.remove('mobile-active');
+                        document.querySelector('.mobile-overlay')?.classList.remove('active');
+                        document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                        document.body.style.overflow = '';
+                        document.documentElement.style.overflow = '';
+                    }
+                    openReviewsModal(); // Открываем нашу модалку
+                });
+                revLi.appendChild(revLink);
+                allListItems.push(revLi);
+
                 // Функция иконок
                 const getIconForHref = (href) => {
                     if (href === '#theme-switch') return 'brightness_6';
                     if (href === '#version-check') return 'system_update';
                     if (href === '#report-bug') return 'bug_report';
+                    if (href === '#reviews') return 'star_rate';
                     if (href.includes('teach_plan')) return 'school';
                     if (href.includes('ebl_choice')) return 'check_circle_outline';
                     if (href.includes('timetable')) return 'calendar_today'; 
@@ -5820,7 +6031,7 @@ injectStyles(styles);
                     // 6. Опросы
                     ['term_test', 'special_est_list', 'оцените дистанционное'], 
                     // 7. Настройки (Тема, Версия, Пароль, Email, Профиль, Выход)
-                    ['#version-check', '#theme-switch', 'change_pass', 'change_email', 'change_pr_page', 'logout']
+                    ['#version-check', '#reviews', '#theme-switch', 'change_pass', 'change_email', 'change_pr_page', 'logout']
                 ];
 
                 const usedItems = new Set();
