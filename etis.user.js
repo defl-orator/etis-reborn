@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.51
-// @changelog    Добавлена поддержка обновлений и сообщение об ошибке
+// @version      1.52
+// @changelog    Добавлена поддержка обновлений, сообщение об ошибке и аналитики
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -7983,165 +7983,188 @@ injectStyles(styles);
                         modal.querySelector('.close-analytics').addEventListener('click', closeAnalytics);
 
                         // Открытие и рендер графиков
-                        searchContainer.querySelector('.analytics-btn').addEventListener('click', () => {
-                            if (typeof Chart === 'undefined') {
-                                alert('Графики еще подгружаются, подождите пару секунд...');
-                                return;
-                            }
+                        searchContainer.querySelector('.analytics-btn').addEventListener('click', function() {
+                            const btn = this;
                             
-                            const termsData =[];
-                            const subjectsData =[];
-                            
-                            document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
-                                const rawTermName = wrapper.getAttribute('data-term-name');
-                                const avg = parseFloat(wrapper.getAttribute('data-term-avg'));
+                            // Заворачиваем всю логику рендера в отдельную функцию
+                            const renderAnalytics = () => {
+                                const termsData =[];
+                                const subjectsData =[];
                                 
-                                if (rawTermName) {
-                                    // Вытаскиваем номер триместра для правильной хронологической сортировки
-                                    const numMatch = rawTermName.match(/(\d+)\s*трим/i);
-                                    const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
-
-                                    // Сокращаем "10 триместр (5 курс)..." до "10 трим."
-                                    let cleanName = rawTermName.split(',')[0].replace(/\(.*\)/, '').replace(/триместр/i, 'трим.').trim();
+                                document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
+                                    const rawTermName = wrapper.getAttribute('data-term-name');
+                                    const avg = parseFloat(wrapper.getAttribute('data-term-avg'));
                                     
-                                    if (avg > 0) {
-                                        termsData.push({ name: cleanName, avg: avg, num: termNum });
-                                    }
-                                }
-                                
-                                wrapper.querySelectorAll('tbody tr').forEach(row => {
-                                    const cells = row.querySelectorAll('td');
-                                    if (cells.length >= 2) {
-                                        const subj = cells[0].textContent.trim();
-                                        const gradeText = cells[1].textContent.trim().toLowerCase();
+                                    if (rawTermName) {
+                                        const numMatch = rawTermName.match(/(\d+)\s*трим/i);
+                                        const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
+                                        let cleanName = rawTermName.split(',')[0].replace(/\(.*\)/, '').replace(/триместр/i, 'трим.').trim();
                                         
-                                        let num = parseInt(gradeText, 10);
-                                        if (gradeText.includes('незач')) num = 2; // Незачет идет как 2
-                                        else if (gradeText.includes('зач')) num = 5; // Зачет идет как 5
-                                        
-                                        if (!isNaN(num) && num >= 2 && num <= 5) {
-                                            subjectsData.push({ subj, grade: num });
+                                        if (avg > 0) {
+                                            termsData.push({ name: cleanName, avg: avg, num: termNum });
                                         }
                                     }
-                                });
-                            });
-                            
-                            // Жесткая сортировка по возрастанию номера триместра (от 1 до 11)
-                            termsData.sort((a, b) => a.num - b.num);
-                            
-                            if (termsData.length === 0) {
-                                document.getElementById('analytics-content').style.display = 'none';
-                                document.getElementById('analytics-empty').style.display = 'block';
-                            } else {
-                                document.getElementById('analytics-content').style.display = 'block';
-                                document.getElementById('analytics-empty').style.display = 'none';
-                                
-                                const bestTerm = [...termsData].sort((a,b) => b.avg - a.avg)[0];
-                                const worstTerm = [...termsData].sort((a,b) => a.avg - b.avg)[0];
-                                
-                                document.getElementById('stat-best-term').textContent = `${bestTerm.name} (${bestTerm.avg})`;
-                                document.getElementById('stat-worst-term').textContent = `${worstTerm.name} (${worstTerm.avg})`;
-                                
-                                const count5 = subjectsData.filter(s => s.grade === 5).length;
-                                const count4 = subjectsData.filter(s => s.grade === 4).length;
-                                const count3 = subjectsData.filter(s => s.grade === 3).length;
-                                const count2 = subjectsData.filter(s => s.grade === 2).length;
-
-                                let statsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">';
-
-                                if (count5 > 0) {
-                                    statsHtml += `
-                                        <div style="flex: 1 1 0; min-width: 80px; background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                            <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-green); line-height: 1;">${count5}</span>
-                                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-green); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Отлично</span>
-                                        </div>`;
-                                }
-                                if (count4 > 0) {
-                                    statsHtml += `
-                                        <div style="flex: 1 1 0; min-width: 80px; background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                            <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-blue); line-height: 1;">${count4}</span>
-                                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-blue); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Хорошо</span>
-                                        </div>`;
-                                }
-                                if (count3 > 0) {
-                                    statsHtml += `
-                                        <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                            <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-warning); line-height: 1;">${count3}</span>
-                                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-warning); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Удовл.</span>
-                                        </div>`;
-                                }
-                                if (count2 > 0) {
-                                    statsHtml += `
-                                        <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                            <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-red); line-height: 1;">${count2}</span>
-                                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-red); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Долги</span>
-                                        </div>`;
-                                }
-
-                                statsHtml += '</div>';
-
-                                if (count5 === 0 && count4 === 0 && count3 === 0 && count2 === 0) {
-                                    statsHtml = '<div style="color: var(--color-text-secondary); margin-top: 1rem;">Нет данных об оценках</div>';
-                                }
-
-                                document.getElementById('dynamic-stats-container').innerHTML = statsHtml;
-                                
-                                const ctx = document.getElementById('gradesChart').getContext('2d');
-                                if(window.etisChartInstance) window.etisChartInstance.destroy(); 
-                                
-                                const textColor = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
-                                const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#007AFF';
-                                const gridColor = getComputedStyle(document.body).getPropertyValue('--color-table-border').trim() || '#ddd';
-                                
-                                window.etisChartInstance = new Chart(ctx, {
-                                    type: 'line',
-                                    data: {
-                                        labels: termsData.map(t => t.name), 
-                                        datasets:[{
-                                            label: ' Средний балл',
-                                            data: termsData.map(t => t.avg),
-                                            borderColor: accentColor,
-                                            backgroundColor: accentColor + '22',
-                                            borderWidth: 3,
-                                            pointBackgroundColor: accentColor,
-                                            pointBorderColor: '#fff',
-                                            pointBorderWidth: 2,
-                                            pointRadius: 5,
-                                            pointHoverRadius: 7,
-                                            fill: true,
-                                            tension: 0.4,
-                                            clip: false 
-                                        }]
-                                    },
-                                    options: {
-                                        responsive: true,
-                                        maintainAspectRatio: false,
-                                        layout: {
-                                            padding: {
-                                                top: 15,    // Даем физическое место для отрисовки на холсте
-                                                right: 15,
-                                                left: 15
+                                    
+                                    wrapper.querySelectorAll('tbody tr').forEach(row => {
+                                        const cells = row.querySelectorAll('td');
+                                        if (cells.length >= 2) {
+                                            const subj = cells[0].textContent.trim();
+                                            const gradeText = cells[1].textContent.trim().toLowerCase();
+                                            
+                                            let num = parseInt(gradeText, 10);
+                                            if (gradeText.includes('незач')) num = 2; 
+                                            else if (gradeText.includes('зач')) num = 5; 
+                                            
+                                            if (!isNaN(num) && num >= 2 && num <= 5) {
+                                                subjectsData.push({ subj, grade: num });
                                             }
+                                        }
+                                    });
+                                });
+                                
+                                termsData.sort((a, b) => a.num - b.num);
+                                
+                                if (termsData.length === 0) {
+                                    document.getElementById('analytics-content').style.display = 'none';
+                                    document.getElementById('analytics-empty').style.display = 'block';
+                                } else {
+                                    document.getElementById('analytics-content').style.display = 'block';
+                                    document.getElementById('analytics-empty').style.display = 'none';
+                                    
+                                    const bestTerm = [...termsData].sort((a,b) => b.avg - a.avg)[0];
+                                    const worstTerm = [...termsData].sort((a,b) => a.avg - b.avg)[0];
+                                    
+                                    document.getElementById('stat-best-term').textContent = `${bestTerm.name} (${bestTerm.avg})`;
+                                    document.getElementById('stat-worst-term').textContent = `${worstTerm.name} (${worstTerm.avg})`;
+                                    
+                                    const count5 = subjectsData.filter(s => s.grade === 5).length;
+                                    const count4 = subjectsData.filter(s => s.grade === 4).length;
+                                    const count3 = subjectsData.filter(s => s.grade === 3).length;
+                                    const count2 = subjectsData.filter(s => s.grade === 2).length;
+
+                                    let statsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">';
+
+                                    if (count5 > 0) {
+                                        statsHtml += `
+                                            <div style="flex: 1 1 0; min-width: 80px; background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                                <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-green); line-height: 1;">${count5}</span>
+                                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-green); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Отлично</span>
+                                            </div>`;
+                                    }
+                                    if (count4 > 0) {
+                                        statsHtml += `
+                                            <div style="flex: 1 1 0; min-width: 80px; background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                                <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-blue); line-height: 1;">${count4}</span>
+                                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-blue); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Хорошо</span>
+                                            </div>`;
+                                    }
+                                    if (count3 > 0) {
+                                        statsHtml += `
+                                            <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                                <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-warning); line-height: 1;">${count3}</span>
+                                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-warning); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Удовл.</span>
+                                            </div>`;
+                                    }
+                                    if (count2 > 0) {
+                                        statsHtml += `
+                                            <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                                <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-red); line-height: 1;">${count2}</span>
+                                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-red); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Долги</span>
+                                            </div>`;
+                                    }
+
+                                    statsHtml += '</div>';
+
+                                    if (count5 === 0 && count4 === 0 && count3 === 0 && count2 === 0) {
+                                        statsHtml = '<div style="color: var(--color-text-secondary); margin-top: 1rem;">Нет данных об оценках</div>';
+                                    }
+
+                                    document.getElementById('dynamic-stats-container').innerHTML = statsHtml;
+                                    
+                                    const ctx = document.getElementById('gradesChart').getContext('2d');
+                                    if(window.etisChartInstance) window.etisChartInstance.destroy(); 
+                                    
+                                    const textColor = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
+                                    const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#007AFF';
+                                    const gridColor = getComputedStyle(document.body).getPropertyValue('--color-table-border').trim() || '#ddd';
+                                    
+                                    window.etisChartInstance = new Chart(ctx, {
+                                        type: 'line',
+                                        data: {
+                                            labels: termsData.map(t => t.name), 
+                                            datasets:[{
+                                                label: ' Средний балл',
+                                                data: termsData.map(t => t.avg),
+                                                borderColor: accentColor,
+                                                backgroundColor: accentColor + '22',
+                                                borderWidth: 3,
+                                                pointBackgroundColor: accentColor,
+                                                pointBorderColor: '#fff',
+                                                pointBorderWidth: 2,
+                                                pointRadius: 5,
+                                                pointHoverRadius: 7,
+                                                fill: true,
+                                                tension: 0.4,
+                                                clip: false 
+                                            }]
                                         },
-                                        plugins: { legend: { display: false } },
-                                        scales: {
-                                            y: { 
-                                                min: 2.0, 
-                                                max: 5.0, 
-                                                ticks: { color: textColor, font: {size: 13} }, 
-                                                grid: { color: gridColor } 
+                                        options: {
+                                            responsive: true,
+                                            maintainAspectRatio: false,
+                                            layout: {
+                                                padding: { top: 15, right: 15, left: 15 }
                                             },
-                                            x: { 
-                                                ticks: { color: textColor, font: {size: 13} }, 
-                                                grid: { display: false } 
+                                            plugins: { legend: { display: false } },
+                                            scales: {
+                                                y: { 
+                                                    min: 2.0, 
+                                                    max: 5.0, 
+                                                    ticks: { color: textColor, font: {size: 13} }, 
+                                                    grid: { color: gridColor } 
+                                                },
+                                                x: { 
+                                                    ticks: { color: textColor, font: {size: 13} }, 
+                                                    grid: { display: false } 
+                                                }
                                             }
                                         }
+                                    });
+                                }
+                                
+                                overlay.classList.add('active');
+                                modal.classList.add('active');
+                            };
+
+                            // Если библиотека Chart еще не загрузилась
+                            if (typeof Chart === 'undefined') {
+                                const origHtml = btn.innerHTML;
+                                // Блокируем кнопку и показываем лоадер
+                                btn.innerHTML = '<span class="material-icons">hourglass_empty</span> Загрузка...';
+                                btn.style.pointerEvents = 'none';
+                                
+                                // Проверяем 10 раз в секунду, не прогрузилась ли библиотека
+                                const checkInterval = setInterval(() => {
+                                    if (typeof Chart !== 'undefined') {
+                                        clearInterval(checkInterval);
+                                        btn.innerHTML = origHtml;
+                                        btn.style.pointerEvents = 'auto';
+                                        renderAnalytics(); // Запускаем окно!
                                     }
-                                });
+                                }, 100);
+
+                                // Если через 5 секунд так и не прогрузилась - значит беда с интернетом
+                                setTimeout(() => {
+                                    if (typeof Chart === 'undefined') {
+                                        clearInterval(checkInterval);
+                                        btn.innerHTML = origHtml;
+                                        btn.style.pointerEvents = 'auto';
+                                        alert('Не удалось загрузить модуль графиков. Проверьте интернет-соединение.');
+                                    }
+                                }, 5000);
+                            } else {
+                                // Если библиотека уже была загружена - открываем мгновенно
+                                renderAnalytics();
                             }
-                            
-                            overlay.classList.add('active');
-                            modal.classList.add('active');
                         });
 
                         // --- ШАГ 4. ЛОГИКА ФИЛЬТРАЦИИ ПОИСКА ПО ПРЕДМЕТАМ ---
