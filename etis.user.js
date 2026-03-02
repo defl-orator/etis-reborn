@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.521
+// @version      1.522
 // @changelog    Добавлена поддержка обновлений, сообщение об ошибке и аналитики
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -11,6 +11,8 @@
 // @grant        GM_info
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        unsafeWindow
+// @require      https://cdn.jsdelivr.net/npm/chart.js
 // @connect      raw.githubusercontent.com
 // @connect      api.web3forms.com
 // ==/UserScript==
@@ -7782,7 +7784,7 @@ injectStyles(styles);
                         const submenu = span9.querySelector('.submenu');
                         
                         // Подгружаем библиотеку графиков Chart.js
-                        if (!window.Chart) {
+                        if (typeof Chart === 'undefined' && !document.querySelector('script[src*="chart.js"]')) {
                             const script = document.createElement('script');
                             script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
                             document.head.appendChild(script);
@@ -7982,183 +7984,204 @@ injectStyles(styles);
                         overlay.addEventListener('click', closeAnalytics);
                         modal.querySelector('.close-analytics').addEventListener('click', closeAnalytics);
 
-                        // Открытие и рендер графиков
+                        // --- ИСПРАВЛЕННАЯ ВЕРСИЯ (unsafeWindow) ---
                         searchContainer.querySelector('.analytics-btn').addEventListener('click', function() {
                             const btn = this;
                             
-                            // 1. Функция отрисовки (содержит ваши правки: плитки + целые кружки)
-                            const renderAnalytics = () => {
-                                const termsData =[];
-                                const subjectsData =[];
-                                
-                                document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
-                                    const rawTermName = wrapper.getAttribute('data-term-name');
-                                    const avg = parseFloat(wrapper.getAttribute('data-term-avg'));
-                                    
-                                    if (rawTermName) {
-                                        const numMatch = rawTermName.match(/(\d+)\s*трим/i);
-                                        const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
-                                        let cleanName = rawTermName.split(',')[0].replace(/\(.*\)/, '').replace(/триместр/i, 'трим.').trim();
-                                        
-                                        if (avg > 0) {
-                                            termsData.push({ name: cleanName, avg: avg, num: termNum });
-                                        }
-                                    }
-                                    
-                                    wrapper.querySelectorAll('tbody tr').forEach(row => {
-                                        const cells = row.querySelectorAll('td');
-                                        if (cells.length >= 2) {
-                                            const subj = cells[0].textContent.trim();
-                                            const gradeText = cells[1].textContent.trim().toLowerCase();
-                                            
-                                            let num = parseInt(gradeText, 10);
-                                            if (gradeText.includes('незач')) num = 2; 
-                                            else if (gradeText.includes('зач')) num = 5; 
-                                            
-                                            if (!isNaN(num) && num >= 2 && num <= 5) {
-                                                subjectsData.push({ subj, grade: num });
-                                            }
-                                        }
-                                    });
-                                });
-                                
-                                termsData.sort((a, b) => a.num - b.num);
-                                
-                                if (termsData.length === 0) {
-                                    document.getElementById('analytics-content').style.display = 'none';
-                                    document.getElementById('analytics-empty').style.display = 'block';
-                                } else {
-                                    document.getElementById('analytics-content').style.display = 'block';
-                                    document.getElementById('analytics-empty').style.display = 'none';
-                                    
-                                    const bestTerm = [...termsData].sort((a,b) => b.avg - a.avg)[0];
-                                    const worstTerm = [...termsData].sort((a,b) => a.avg - b.avg)[0];
-                                    
-                                    document.getElementById('stat-best-term').textContent = `${bestTerm.name} (${bestTerm.avg})`;
-                                    document.getElementById('stat-worst-term').textContent = `${worstTerm.name} (${worstTerm.avg})`;
-                                    
-                                    const count5 = subjectsData.filter(s => s.grade === 5).length;
-                                    const count4 = subjectsData.filter(s => s.grade === 4).length;
-                                    const count3 = subjectsData.filter(s => s.grade === 3).length;
-                                    const count2 = subjectsData.filter(s => s.grade === 2).length;
-
-                                    let statsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">';
-
-                                    if (count5 > 0) {
-                                        statsHtml += `
-                                            <div style="flex: 1 1 0; min-width: 80px; background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                                <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-green); line-height: 1;">${count5}</span>
-                                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-green); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Отлично</span>
-                                            </div>`;
-                                    }
-                                    if (count4 > 0) {
-                                        statsHtml += `
-                                            <div style="flex: 1 1 0; min-width: 80px; background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                                <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-blue); line-height: 1;">${count4}</span>
-                                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-blue); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Хорошо</span>
-                                            </div>`;
-                                    }
-                                    if (count3 > 0) {
-                                        statsHtml += `
-                                            <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                                <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-warning); line-height: 1;">${count3}</span>
-                                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-warning); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Удовл.</span>
-                                            </div>`;
-                                    }
-                                    if (count2 > 0) {
-                                        statsHtml += `
-                                            <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                                <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-red); line-height: 1;">${count2}</span>
-                                                <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-red); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Долги</span>
-                                            </div>`;
-                                    }
-
-                                    statsHtml += '</div>';
-
-                                    if (count5 === 0 && count4 === 0 && count3 === 0 && count2 === 0) {
-                                        statsHtml = '<div style="color: var(--color-text-secondary); margin-top: 1rem;">Нет данных об оценках</div>';
-                                    }
-
-                                    document.getElementById('dynamic-stats-container').innerHTML = statsHtml;
-                                    
-                                    const ctx = document.getElementById('gradesChart').getContext('2d');
-                                    if(window.etisChartInstance) window.etisChartInstance.destroy(); 
-                                    
-                                    const textColor = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
-                                    const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#007AFF';
-                                    const gridColor = getComputedStyle(document.body).getPropertyValue('--color-table-border').trim() || '#ddd';
-                                    
-                                    window.etisChartInstance = new Chart(ctx, {
-                                        type: 'line',
-                                        data: {
-                                            labels: termsData.map(t => t.name), 
-                                            datasets:[{
-                                                label: ' Средний балл',
-                                                data: termsData.map(t => t.avg),
-                                                borderColor: accentColor,
-                                                backgroundColor: accentColor + '22',
-                                                borderWidth: 3,
-                                                pointBackgroundColor: accentColor,
-                                                pointBorderColor: '#fff',
-                                                pointBorderWidth: 2,
-                                                pointRadius: 5,
-                                                pointHoverRadius: 7,
-                                                fill: true,
-                                                tension: 0.4,
-                                                clip: false 
-                                            }]
-                                        },
-                                        options: {
-                                            responsive: true,
-                                            maintainAspectRatio: false,
-                                            layout: {
-                                                padding: { top: 15, right: 15, left: 15 }
-                                            },
-                                            plugins: { legend: { display: false } },
-                                            scales: {
-                                                y: { 
-                                                    min: 2.0, 
-                                                    max: 5.0, 
-                                                    ticks: { color: textColor, font: {size: 13} }, 
-                                                    grid: { color: gridColor } 
-                                                },
-                                                x: { 
-                                                    ticks: { color: textColor, font: {size: 13} }, 
-                                                    grid: { display: false } 
-                                                }
-                                            }
-                                        }
-                                    });
-                                }
-                                
-                                overlay.classList.add('active');
-                                modal.classList.add('active');
+                            // Хелпер для поиска библиотеки в разных контекстах (песочница vs реальная страница)
+                            const getChartLib = () => {
+                                if (typeof Chart !== 'undefined') return Chart;
+                                if (typeof window.Chart !== 'undefined') return window.Chart;
+                                if (typeof unsafeWindow !== 'undefined' && unsafeWindow.Chart) return unsafeWindow.Chart;
+                                return null;
                             };
 
-                            // 2. ЛОГИКА ЗАГРУЗКИ (ЖЕЛЕЗОБЕТОННАЯ)
-                            // Если библиотека уже есть — просто открываем
-                            if (typeof Chart !== 'undefined') {
+                            // Функция отрисовки
+                            const renderAnalytics = () => {
+                                try {
+                                    // Получаем библиотеку через хелпер
+                                    const ChartConstructor = getChartLib();
+
+                                    if (!ChartConstructor) {
+                                        throw new Error('Chart.js не найден ни в window, ни в unsafeWindow');
+                                    }
+
+                                    const termsData =[];
+                                    const subjectsData =[];
+                                    
+                                    // Сбор данных
+                                    document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
+                                        const rawTermName = wrapper.getAttribute('data-term-name');
+                                        const avgStr = wrapper.getAttribute('data-term-avg');
+                                        const avg = parseFloat(avgStr);
+                                        
+                                        if (rawTermName) {
+                                            const numMatch = rawTermName.match(/(\d+)\s*трим/i);
+                                            const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
+                                            let cleanName = rawTermName.split(',')[0].replace(/\(.*\)/, '').replace(/триместр/i, 'трим.').trim();
+                                            
+                                            if (avg > 0) {
+                                                termsData.push({ name: cleanName, avg: avg, num: termNum });
+                                            }
+                                        }
+                                        
+                                        wrapper.querySelectorAll('tbody tr').forEach(row => {
+                                            const cells = row.querySelectorAll('td');
+                                            if (cells.length >= 2) {
+                                                const subj = cells[0].textContent.trim();
+                                                const gradeText = cells[1].textContent.trim().toLowerCase();
+                                                
+                                                let num = parseInt(gradeText, 10);
+                                                if (gradeText.includes('незач')) num = 2; 
+                                                else if (gradeText.includes('зач')) num = 5; 
+                                                
+                                                if (!isNaN(num) && num >= 2 && num <= 5) {
+                                                    subjectsData.push({ subj, grade: num });
+                                                }
+                                            }
+                                        });
+                                    });
+                                    
+                                    termsData.sort((a, b) => a.num - b.num);
+                                    
+                                    if (termsData.length === 0) {
+                                        document.getElementById('analytics-content').style.display = 'none';
+                                        document.getElementById('analytics-empty').style.display = 'block';
+                                    } else {
+                                        document.getElementById('analytics-content').style.display = 'block';
+                                        document.getElementById('analytics-empty').style.display = 'none';
+                                        
+                                        const bestTerm = [...termsData].sort((a,b) => b.avg - a.avg)[0];
+                                        const worstTerm = [...termsData].sort((a,b) => a.avg - b.avg)[0];
+                                        
+                                        document.getElementById('stat-best-term').textContent = `${bestTerm.name} (${bestTerm.avg})`;
+                                        document.getElementById('stat-worst-term').textContent = `${worstTerm.name} (${worstTerm.avg})`;
+                                        
+                                        const count5 = subjectsData.filter(s => s.grade === 5).length;
+                                        const count4 = subjectsData.filter(s => s.grade === 4).length;
+                                        const count3 = subjectsData.filter(s => s.grade === 3).length;
+                                        const count2 = subjectsData.filter(s => s.grade === 2).length;
+
+                                        let statsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">';
+
+                                        if (count5 > 0) {
+                                            statsHtml += `
+                                                <div style="flex: 1 1 0; min-width: 80px; background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                                    <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-green); line-height: 1;">${count5}</span>
+                                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-green); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Отлично</span>
+                                                </div>`;
+                                        }
+                                        if (count4 > 0) {
+                                            statsHtml += `
+                                                <div style="flex: 1 1 0; min-width: 80px; background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                                    <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-blue); line-height: 1;">${count4}</span>
+                                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-blue); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Хорошо</span>
+                                                </div>`;
+                                        }
+                                        if (count3 > 0) {
+                                            statsHtml += `
+                                                <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                                    <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-warning); line-height: 1;">${count3}</span>
+                                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-warning); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Удовл.</span>
+                                                </div>`;
+                                        }
+                                        if (count2 > 0) {
+                                            statsHtml += `
+                                                <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
+                                                    <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-red); line-height: 1;">${count2}</span>
+                                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-red); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Долги</span>
+                                                </div>`;
+                                        }
+
+                                        statsHtml += '</div>';
+
+                                        if (count5 === 0 && count4 === 0 && count3 === 0 && count2 === 0) {
+                                            statsHtml = '<div style="color: var(--color-text-secondary); margin-top: 1rem;">Нет данных об оценках</div>';
+                                        }
+
+                                        document.getElementById('dynamic-stats-container').innerHTML = statsHtml;
+                                        
+                                        const ctx = document.getElementById('gradesChart').getContext('2d');
+                                        if(window.etisChartInstance) window.etisChartInstance.destroy(); 
+                                        
+                                        const textColor = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
+                                        const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#007AFF';
+                                        const gridColor = getComputedStyle(document.body).getPropertyValue('--color-table-border').trim() || '#ddd';
+                                        
+                                        // Создаем график через найденный конструктор
+                                        window.etisChartInstance = new ChartConstructor(ctx, {
+                                            type: 'line',
+                                            data: {
+                                                labels: termsData.map(t => t.name), 
+                                                datasets:[{
+                                                    label: ' Средний балл',
+                                                    data: termsData.map(t => t.avg),
+                                                    borderColor: accentColor,
+                                                    backgroundColor: accentColor + '22',
+                                                    borderWidth: 3,
+                                                    pointBackgroundColor: accentColor,
+                                                    pointBorderColor: '#fff',
+                                                    pointBorderWidth: 2,
+                                                    pointRadius: 5,
+                                                    pointHoverRadius: 7,
+                                                    fill: true,
+                                                    tension: 0.4,
+                                                    clip: false 
+                                                }]
+                                            },
+                                            options: {
+                                                responsive: true,
+                                                maintainAspectRatio: false,
+                                                layout: {
+                                                    padding: { top: 15, right: 15, left: 15 }
+                                                },
+                                                plugins: { legend: { display: false } },
+                                                scales: {
+                                                    y: { 
+                                                        min: 2.0, 
+                                                        max: 5.0, 
+                                                        ticks: { color: textColor, font: {size: 13} }, 
+                                                        grid: { color: gridColor } 
+                                                    },
+                                                    x: { 
+                                                        ticks: { color: textColor, font: {size: 13} }, 
+                                                        grid: { display: false } 
+                                                    }
+                                                }
+                                            }
+                                        });
+                                    }
+                                    
+                                    overlay.classList.add('active');
+                                    modal.classList.add('active');
+                                } catch (e) {
+                                    alert('Ошибка в renderAnalytics:\n' + e.message);
+                                    console.error(e);
+                                }
+                            };
+
+                            // ЛОГИКА ЗАГРУЗКИ С ALERT-АМИ И ПРОВЕРКОЙ UNSAFEWINDOW
+                            if (getChartLib()) {
                                 renderAnalytics();
                             } else {
-                                // Если нет — меняем кнопку на лоадер и начинаем качать скрипт
                                 const origHtml = btn.innerHTML;
                                 btn.innerHTML = '<span class="material-icons">hourglass_top</span> Загрузка...';
-                                btn.style.pointerEvents = 'none'; // Блокируем повторные клики
+                                btn.style.pointerEvents = 'none';
 
                                 const script = document.createElement('script');
                                 script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
                                 
                                 script.onload = () => {
-                                    // Как только скачалось — возвращаем кнопку и открываем окно
                                     btn.innerHTML = origHtml;
                                     btn.style.pointerEvents = 'auto';
                                     renderAnalytics();
                                 };
 
-                                script.onerror = () => {
+                                script.onerror = (e) => {
                                     btn.innerHTML = origHtml;
                                     btn.style.pointerEvents = 'auto';
-                                    alert('Не удалось загрузить графики. Проверьте интернет.');
+                                    alert('ОШИБКА ЗАГРУЗКИ СКРИПТА!\nНе удалось скачать Chart.js.');
+                                    console.error('Chart.js loading error:', e);
                                 };
 
                                 document.head.appendChild(script);
