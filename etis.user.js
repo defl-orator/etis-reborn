@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.52
+// @version      1.521
 // @changelog    Добавлена поддержка обновлений, сообщение об ошибке и аналитики
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -7986,7 +7986,7 @@ injectStyles(styles);
                         searchContainer.querySelector('.analytics-btn').addEventListener('click', function() {
                             const btn = this;
                             
-                            // Заворачиваем всю логику рендера в отдельную функцию
+                            // 1. Функция отрисовки (содержит ваши правки: плитки + целые кружки)
                             const renderAnalytics = () => {
                                 const termsData =[];
                                 const subjectsData =[];
@@ -8135,35 +8135,33 @@ injectStyles(styles);
                                 modal.classList.add('active');
                             };
 
-                            // Если библиотека Chart еще не загрузилась
-                            if (typeof Chart === 'undefined') {
-                                const origHtml = btn.innerHTML;
-                                // Блокируем кнопку и показываем лоадер
-                                btn.innerHTML = '<span class="material-icons">hourglass_empty</span> Загрузка...';
-                                btn.style.pointerEvents = 'none';
-                                
-                                // Проверяем 10 раз в секунду, не прогрузилась ли библиотека
-                                const checkInterval = setInterval(() => {
-                                    if (typeof Chart !== 'undefined') {
-                                        clearInterval(checkInterval);
-                                        btn.innerHTML = origHtml;
-                                        btn.style.pointerEvents = 'auto';
-                                        renderAnalytics(); // Запускаем окно!
-                                    }
-                                }, 100);
-
-                                // Если через 5 секунд так и не прогрузилась - значит беда с интернетом
-                                setTimeout(() => {
-                                    if (typeof Chart === 'undefined') {
-                                        clearInterval(checkInterval);
-                                        btn.innerHTML = origHtml;
-                                        btn.style.pointerEvents = 'auto';
-                                        alert('Не удалось загрузить модуль графиков. Проверьте интернет-соединение.');
-                                    }
-                                }, 5000);
-                            } else {
-                                // Если библиотека уже была загружена - открываем мгновенно
+                            // 2. ЛОГИКА ЗАГРУЗКИ (ЖЕЛЕЗОБЕТОННАЯ)
+                            // Если библиотека уже есть — просто открываем
+                            if (typeof Chart !== 'undefined') {
                                 renderAnalytics();
+                            } else {
+                                // Если нет — меняем кнопку на лоадер и начинаем качать скрипт
+                                const origHtml = btn.innerHTML;
+                                btn.innerHTML = '<span class="material-icons">hourglass_top</span> Загрузка...';
+                                btn.style.pointerEvents = 'none'; // Блокируем повторные клики
+
+                                const script = document.createElement('script');
+                                script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                                
+                                script.onload = () => {
+                                    // Как только скачалось — возвращаем кнопку и открываем окно
+                                    btn.innerHTML = origHtml;
+                                    btn.style.pointerEvents = 'auto';
+                                    renderAnalytics();
+                                };
+
+                                script.onerror = () => {
+                                    btn.innerHTML = origHtml;
+                                    btn.style.pointerEvents = 'auto';
+                                    alert('Не удалось загрузить графики. Проверьте интернет.');
+                                };
+
+                                document.head.appendChild(script);
                             }
                         });
 
