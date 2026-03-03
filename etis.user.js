@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.61
 // @changelog    Добавлены отзывы
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -5441,29 +5441,45 @@ injectStyles(styles);
         const old = document.getElementById('etis-reviews-modal');
         if (old) old.remove();
 
+        // Проверяем, оставлял ли пользователь отзыв ранее
+        const hasReviewed = localStorage.getItem('etis_reborn_reviewed') === 'true';
+
+        // Пытаемся достать имя студента из сайдбара, который мы создали ранее
+        const userInfoB = document.querySelector('.sidebar-user-info b');
+        const defaultName = userInfoB ? userInfoB.textContent.trim() : '';
+
         const modalHTML = `
             <div id="etis-reviews-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999999;backdrop-filter:blur(4px);"></div>
             <div id="etis-reviews-modal" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:90%;max-width:500px;background:var(--color-card);border-radius:24px;z-index:1000000;box-shadow:var(--shadow-dialog);overflow:hidden; font-family: var(--font-family);">
                 <div class="ui-widget-header" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;background:var(--color-table-header);border-bottom:1px solid var(--color-table-border);">
-                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Оценить расширение</span>
+                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Отзывы</span>
                     <span class="material-icons close-btn" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
                 </div>
                 <div style="padding:24px; display:flex; flex-direction:column;">
                     
-                    <!-- Измененный блок звёзд (теперь без material-icons) -->
-                    <div class="star-rating" id="review-stars" style="font-size: 40px; line-height: 1; user-select: none; display: flex; gap: 8px; cursor: pointer; color: var(--color-yellow); margin-bottom: 1rem;">
-                        <span data-val="1" style="transition: transform 0.1s;">☆</span>
-                        <span data-val="2" style="transition: transform 0.1s;">☆</span>
-                        <span data-val="3" style="transition: transform 0.1s;">☆</span>
-                        <span data-val="4" style="transition: transform 0.1s;">☆</span>
-                        <span data-val="5" style="transition: transform 0.1s;">☆</span>
+                    <!-- Блок формы (скрывается, если отзыв уже оставлен) -->
+                    <div id="review-form-container" style="display: ${hasReviewed ? 'none' : 'block'};">
+                        <div class="star-rating" id="review-stars" style="font-size: 40px; line-height: 1; user-select: none; display: flex; gap: 8px; cursor: pointer; color: var(--color-yellow); margin-bottom: 1rem;">
+                            <span data-val="1" style="transition: transform 0.1s;">☆</span>
+                            <span data-val="2" style="transition: transform 0.1s;">☆</span>
+                            <span data-val="3" style="transition: transform 0.1s;">☆</span>
+                            <span data-val="4" style="transition: transform 0.1s;">☆</span>
+                            <span data-val="5" style="transition: transform 0.1s;">☆</span>
+                        </div>
+
+                        <input type="text" id="review-author" placeholder="Ваше имя (оставьте пустым для анонимности)" value="${defaultName}" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);font-family:inherit;margin-bottom:10px;font-size:1.3rem;">
+
+                        <textarea id="review-text" placeholder="Напишите пару слов о ЕТИС REBORN..." style="width:100%;height:80px;padding:12px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);resize:vertical;font-family:inherit;margin-bottom:15px;font-size:1.3rem;"></textarea>
+                        
+                        <button id="review-send-btn" class="answer-btn-custom" style="justify-content:center;width:100%;border:none;">Отправить отзыв</button>
                     </div>
 
-                    <textarea id="review-text" placeholder="Напишите пару слов о ЕТИС REBORN..." style="width:100%;height:80px;padding:12px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);resize:vertical;font-family:inherit;margin-bottom:15px;"></textarea>
-                    
-                    <button id="review-send-btn" class="answer-btn-custom" style="justify-content:center;width:100%;border:none;">Оставить отзыв</button>
+                    <!-- Сообщение об успехе (показывается, если отзыв уже оставлен) -->
+                    <div id="review-success-msg" style="display: ${hasReviewed ? 'block' : 'none'}; text-align:center; padding: 15px; background: rgba(52, 199, 89, 0.1); color: var(--color-green); border-radius: 12px; margin-bottom: 15px; font-size: 1.4rem; font-weight: 600;">
+                        Вы уже оставили отзыв! Спасибо 💙
+                    </div>
 
-                    <div class="reviews-list-container" id="reviews-list">
+                    <div class="reviews-list-container" id="reviews-list" style="${hasReviewed ? 'margin-top: 0; border-top: none;' : ''}">
                         <div style="text-align:center; color:var(--color-text-secondary);">Загрузка отзывов...</div>
                     </div>
                 </div>
@@ -5478,7 +5494,7 @@ injectStyles(styles);
         wrapper.querySelector('#etis-reviews-overlay').onclick = close;
         wrapper.querySelector('.close-btn').onclick = close;
 
-        // Логика звёздочек (добавлена подсветка при наведении)
+        // Логика звёздочек
         let currentRating = 0;
         const starContainer = wrapper.querySelector('#review-stars');
         const stars = wrapper.querySelectorAll('#review-stars span');
@@ -5490,71 +5506,67 @@ injectStyles(styles);
             });
         };
 
-        stars.forEach(star => {
-            // Анимация и заливка при наведении (hover)
-            star.addEventListener('mouseenter', function() {
-                fillStars(parseInt(this.getAttribute('data-val')));
-                this.style.transform = 'scale(1.2)';
+        if (!hasReviewed) {
+            stars.forEach(star => {
+                star.addEventListener('mouseenter', function() {
+                    fillStars(parseInt(this.getAttribute('data-val')));
+                    this.style.transform = 'scale(1.2)';
+                });
+                star.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                });
+                star.addEventListener('click', function() {
+                    currentRating = parseInt(this.getAttribute('data-val'));
+                    fillStars(currentRating);
+                });
             });
 
-            star.addEventListener('mouseleave', function() {
-                this.style.transform = 'scale(1)';
-            });
-
-            // Фиксация оценки при клике
-            star.addEventListener('click', function() {
-                currentRating = parseInt(this.getAttribute('data-val'));
+            starContainer.addEventListener('mouseleave', function() {
                 fillStars(currentRating);
             });
-        });
 
-        // Возврат к сохраненной оценке, если убрали мышку
-        starContainer.addEventListener('mouseleave', function() {
-            fillStars(currentRating);
-        });
-
-        // Отправка отзыва
-        const btn = wrapper.querySelector('#review-send-btn');
-        btn.onclick = async function() {
-            const text = document.getElementById('review-text').value.trim();
-            if (currentRating === 0) { alert('Пожалуйста, поставьте оценку от 1 до 5 звёзд!'); return; }
-            if (!text) { alert('Напишите текст отзыва!'); return; }
-
-            btn.innerText = 'Отправка...';
-            btn.disabled = true;
-
-            const reviewData = {
-                rating: currentRating,
-                text: text,
-                date: new Date().toISOString(),
-                version: typeof GM_info !== 'undefined' ? GM_info.script.version : 'Неизвестно'
-            };
-
-            try {
-                await fetch(FIREBASE_URL, {
-                    method: 'POST',
-                    body: JSON.stringify(reviewData),
-                    headers: { 'Content-Type': 'application/json' }
-                });
+            // Отправка отзыва
+            const btn = wrapper.querySelector('#review-send-btn');
+            btn.onclick = async function() {
+                const text = document.getElementById('review-text').value.trim();
+                const authorInput = document.getElementById('review-author').value.trim();
                 
-                // Очистка формы
-                document.getElementById('review-text').value = '';
-                currentRating = 0;
-                fillStars(0);
-                
-                btn.innerText = 'Спасибо за отзыв!';
-                btn.style.background = 'var(--color-green)';
-                setTimeout(() => {
-                    btn.innerText = 'Оставить отзыв';
+                if (currentRating === 0) { alert('Пожалуйста, поставьте оценку от 1 до 5 звёзд!'); return; }
+                if (!text) { alert('Напишите текст отзыва!'); return; }
+
+                btn.innerText = 'Отправка...';
+                btn.disabled = true;
+
+                const reviewData = {
+                    rating: currentRating,
+                    text: text,
+                    author: authorInput || 'Аноним', // Если стерли имя, будет "Аноним"
+                    date: new Date().toISOString(),
+                    version: typeof GM_info !== 'undefined' ? GM_info.script.version : 'Неизвестно'
+                };
+
+                try {
+                    await fetch(FIREBASE_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(reviewData),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    // Блокируем повторную отправку
+                    localStorage.setItem('etis_reborn_reviewed', 'true');
+                    
+                    document.getElementById('review-form-container').style.display = 'none';
+                    document.getElementById('review-success-msg').style.display = 'block';
+                    document.getElementById('reviews-list').style.marginTop = '0';
+                    document.getElementById('reviews-list').style.borderTop = 'none';
+                    
+                    loadReviews(); 
+                } catch(e) {
+                    btn.innerText = 'Ошибка сети';
                     btn.disabled = false;
-                    btn.style.background = '';
-                    loadReviews(); // Перезагружаем список сразу после отправки
-                }, 2000);
-            } catch(e) {
-                btn.innerText = 'Ошибка сети';
-                btn.disabled = false;
-            }
-        };
+                }
+            };
+        }
 
         // Загрузка отзывов
         async function loadReviews() {
@@ -5569,23 +5581,26 @@ injectStyles(styles);
                     return;
                 }
 
-                // Преобразуем объект Firebase в массив и сортируем (новые сверху)
                 const reviewsArr = Object.values(data).sort((a,b) => new Date(b.date) - new Date(a.date));
 
                 reviewsArr.forEach(rev => {
                     const dateObj = new Date(rev.date);
                     const dateStr = `${String(dateObj.getDate()).padStart(2,'0')}.${String(dateObj.getMonth()+1).padStart(2,'0')}.${dateObj.getFullYear()}`;
-                    
                     const starsHtml = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
+                    
+                    // Защита от XSS
+                    const safeText = rev.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                    const safeAuthor = (rev.author || 'Аноним').replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
                     const div = document.createElement('div');
                     div.className = 'review-item-db';
                     div.innerHTML = `
                         <div class="review-item-db-header">
-                            <div class="review-item-db-stars">${starsHtml}</div>
+                            <div style="font-weight: 700; color: var(--color-text-primary); font-size: 1.4rem;">${safeAuthor}</div>
                             <div class="review-item-db-date">${dateStr}</div>
                         </div>
-                        <div class="review-item-db-text">${rev.text.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</div>
+                        <div class="review-item-db-stars" style="margin-bottom: 6px;">${starsHtml}</div>
+                        <div class="review-item-db-text">${safeText}</div>
                     `;
                     list.appendChild(div);
                 });

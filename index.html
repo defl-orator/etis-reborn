@@ -1347,16 +1347,18 @@
                         const dateStr = `${String(dateObj.getDate()).padStart(2,'0')}.${String(dateObj.getMonth()+1).padStart(2,'0')}.${dateObj.getFullYear()}`;
                         const starsHtml = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
 
-                        // Защита от XSS (вставка тегов в текст)
+                        // Защита от XSS
                         const safeText = rev.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                        const safeAuthor = (rev.author || 'Аноним').replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
                         const card = document.createElement('div');
                         card.className = 'landing-review-card';
                         card.innerHTML = `
-                            <div class="l-rev-header">
-                                <div class="l-rev-stars">${starsHtml}</div>
+                            <div class="l-rev-header" style="margin-bottom: 4px;">
+                                <div style="font-weight: 700; color: var(--text-color); font-size: 1.1rem;">${safeAuthor}</div>
                                 <div class="l-rev-date">${dateStr}</div>
                             </div>
+                            <div class="l-rev-stars" style="margin-bottom: 12px;">${starsHtml}</div>
                             <div class="l-rev-text">"${safeText}"</div>
                         `;
                         grid.appendChild(card);
