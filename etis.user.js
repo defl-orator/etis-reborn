@@ -15,6 +15,8 @@
 // @require      https://cdn.jsdelivr.net/npm/chart.js
 // @connect      raw.githubusercontent.com
 // @connect      api.web3forms.com
+// @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
+// @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
 // ==/UserScript==
 
 (function() {
