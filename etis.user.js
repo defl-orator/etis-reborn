@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.61
+// @version      1.62
 // @changelog    Добавлены отзывы
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -3300,6 +3300,17 @@ td.empty {
 }
 .message-pages li:first-child { display: none !important; } /* Скрываем слово "Страницы" */
 
+/* Кнопка "Поделиться" в сообщениях */
+.share-msg-btn {
+    color: var(--color-text-secondary);
+    user-select: none;
+    transition: all 0.2s ease;
+}
+.share-msg-btn:hover {
+    color: var(--color-accent) !important;
+    transform: scale(1.15);
+}
+
 /* --- АНТИ-МОРГАНИЕ --- */
 .span9 > ul.nav.msg {
     display: none !important;
@@ -4863,6 +4874,67 @@ button.search-capsule:hover {
 .review-item-db-stars { color: var(--color-yellow); display: flex; align-items: center; font-size: 1.6rem; }
 .review-item-db-date { color: var(--color-text-secondary); font-size: 1.1rem; }
 .review-item-db-text { color: var(--color-text-primary); font-size: 1.3rem; line-height: 1.5; }
+
+/* --- АНИМАЦИЯ И ВЫРАВНИВАНИЕ ИКОНКИ ПОДЕЛИТЬСЯ --- */
+.msg-date-wrapper {
+    display: flex !important;
+    align-items: flex-end !important; /* Строгое выравнивание по нижнему краю */
+    justify-content: flex-end;
+}
+
+.msg-date-text {
+    line-height: 1 !important; /* Убираем лишнее пустое пространство снизу у шрифта */
+    padding-bottom: 1px; /* Ювелирная подгонка текста под нижнюю грань иконки */
+}
+
+.share-msg-wrap {
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    /* Плавная анимация появления ширины заставит текст мягко отъехать влево */
+    transition: max-width 0.3s ease, opacity 0.3s ease, margin-left 0.3s ease, transform 0.3s ease;
+}
+
+.share-msg-btn {
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: block;
+    transition: color 0.2s ease, transform 0.2s ease;
+    margin-bottom: -1px; /* Визуальная компенсация скруглений SVG */
+}
+
+.share-msg-btn:hover {
+    color: var(--color-accent) !important;
+    transform: scale(1.15) translateY(-1px);
+}
+
+/* Логика для ПК (появляется при наведении на карточку) */
+@media (hover: hover) and (pointer: fine) {
+    .share-msg-wrap {
+        max-width: 0;
+        opacity: 0;
+        margin-left: 0;
+        transform: translateX(10px);
+        pointer-events: none;
+    }
+    .msg-card:hover .share-msg-wrap {
+        max-width: 24px;
+        opacity: 1;
+        margin-left: 8px; /* Создает отступ, сдвигая текст влево */
+        transform: translateX(0);
+        pointer-events: auto;
+    }
+}
+
+/* Логика для смартфонов (иконка всегда видима, так как нет курсора) */
+@media (hover: none), (pointer: coarse) {
+    .share-msg-wrap {
+        max-width: 24px;
+        opacity: 1;
+        margin-left: 8px;
+        transform: none;
+    }
+}
     `;
 
     // Внедряем стили
@@ -5441,12 +5513,52 @@ injectStyles(styles);
         const old = document.getElementById('etis-reviews-modal');
         if (old) old.remove();
 
-        // Проверяем, оставлял ли пользователь отзыв ранее
         const hasReviewed = localStorage.getItem('etis_reborn_reviewed') === 'true';
 
-        // Пытаемся достать имя студента из сайдбара, который мы создали ранее
-        const userInfoB = document.querySelector('.sidebar-user-info b');
-        const defaultName = userInfoB ? userInfoB.textContent.trim() : '';
+        // --- УМНЫЙ ПАРСИНГ ИМЕНИ И НАПРАВЛЕНИЯ ---
+        let formattedAuthor = '';
+        try {
+            const userInfoB = document.querySelector('.sidebar-user-info b');
+            if (userInfoB) {
+                const rawName = userInfoB.textContent.trim();
+                // Убираем г.р. и скобки
+                const cleanName = rawName.replace(/\(.*?\)/g, '').trim();
+                const nameParts = cleanName.split(/\s+/);
+                
+                if (nameParts.length >= 2) {
+                    // Фамилия - индекс 0, Имя - индекс 1
+                    formattedAuthor = `${nameParts[1]} ${nameParts[0].charAt(0)}.`;
+                } else {
+                    formattedAuthor = nameParts[0] || '';
+                }
+            }
+
+            const spans = document.querySelectorAll('.sidebar-user-info span');
+            for (let span of spans) {
+                const text = span.textContent;
+                if (text.toLowerCase().includes('специальность') || text.toLowerCase().includes('направление')) {
+                    let major = text
+                        .replace(/Специальность\s*:?\s*/i, '')
+                        .replace(/Направление\s*:?\s*/i, '')
+                        .replace(/\d{2}\.\d{2}\.\d{2}/g, '') // Убираем шифры (напр. 41.03.05)
+                        .replace(/\(бакалавр.*?\)/gi, '')    // Убираем уровни образования
+                        .replace(/\(магистр.*?\)/gi, '')
+                        .replace(/\(специалист.*?\)/gi, '')
+                        .trim();
+                    
+                    // Убираем лишние точки или дефисы в начале, если остались
+                    major = major.replace(/^[-.,\s]+/, '');
+                    
+                    if (major) {
+                        major = major.charAt(0).toUpperCase() + major.slice(1);
+                        formattedAuthor += ` ${major}`;
+                    }
+                    break;
+                }
+            }
+        } catch(e) {
+            console.error('Ошибка парсинга имени:', e);
+        }
 
         const modalHTML = `
             <div id="etis-reviews-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999999;backdrop-filter:blur(4px);"></div>
@@ -5457,24 +5569,27 @@ injectStyles(styles);
                 </div>
                 <div style="padding:24px; display:flex; flex-direction:column;">
                     
-                    <!-- Блок формы (скрывается, если отзыв уже оставлен) -->
                     <div id="review-form-container" style="display: ${hasReviewed ? 'none' : 'block'};">
-                        <div class="star-rating" id="review-stars" style="font-size: 40px; line-height: 1; user-select: none; display: flex; gap: 8px; cursor: pointer; color: var(--color-yellow); margin-bottom: 1rem;">
-                            <span data-val="1" style="transition: transform 0.1s;">☆</span>
-                            <span data-val="2" style="transition: transform 0.1s;">☆</span>
-                            <span data-val="3" style="transition: transform 0.1s;">☆</span>
-                            <span data-val="4" style="transition: transform 0.1s;">☆</span>
-                            <span data-val="5" style="transition: transform 0.1s;">☆</span>
+                        
+                        <!-- Звёздочки центрированы, фиксированная ширина для стабильного ховера -->
+                        <div class="star-rating" id="review-stars" style="font-size: 44px; line-height: 1; user-select: none; display: flex; gap: 4px; justify-content: center; cursor: pointer; color: var(--color-yellow); margin-bottom: 1.5rem;">
+                            <span data-val="1" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
+                            <span data-val="2" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
+                            <span data-val="3" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
+                            <span data-val="4" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
+                            <span data-val="5" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
                         </div>
 
-                        <input type="text" id="review-author" placeholder="Ваше имя (оставьте пустым для анонимности)" value="${defaultName}" style="width:100%;padding:12px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);font-family:inherit;margin-bottom:10px;font-size:1.3rem;">
+                        <!-- Инпут с жестко заданными стилями !important для перебития глобальных -->
+                        <input type="text" id="review-author" placeholder="Ваше имя (оставьте пустым для анонимности)" value="${formattedAuthor}" 
+                            style="width:100% !important; padding:12px 16px !important; border-radius:12px !important; border:1px solid var(--color-table-border) !important; background:var(--color-input) !important; color:var(--color-text-primary) !important; font-family:inherit !important; margin-bottom:15px !important; font-size:1.3rem !important; box-shadow:none !important; outline:none !important; box-sizing:border-box !important;">
 
-                        <textarea id="review-text" placeholder="Напишите пару слов о ЕТИС REBORN..." style="width:100%;height:80px;padding:12px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);resize:vertical;font-family:inherit;margin-bottom:15px;font-size:1.3rem;"></textarea>
+                        <textarea id="review-text" placeholder="Напишите пару слов о ЕТИС REBORN..." 
+                            style="width:100% !important; height:80px !important; padding:12px 16px !important; border-radius:12px !important; border:1px solid var(--color-table-border) !important; background:var(--color-input) !important; color:var(--color-text-primary) !important; resize:vertical !important; font-family:inherit !important; margin-bottom:15px !important; font-size:1.3rem !important; box-shadow:none !important; outline:none !important; box-sizing:border-box !important;"></textarea>
                         
                         <button id="review-send-btn" class="answer-btn-custom" style="justify-content:center;width:100%;border:none;">Отправить отзыв</button>
                     </div>
 
-                    <!-- Сообщение об успехе (показывается, если отзыв уже оставлен) -->
                     <div id="review-success-msg" style="display: ${hasReviewed ? 'block' : 'none'}; text-align:center; padding: 15px; background: rgba(52, 199, 89, 0.1); color: var(--color-green); border-radius: 12px; margin-bottom: 15px; font-size: 1.4rem; font-weight: 600;">
                         Вы уже оставили отзыв! Спасибо 💙
                     </div>
@@ -5499,7 +5614,7 @@ injectStyles(styles);
         const starContainer = wrapper.querySelector('#review-stars');
         const stars = wrapper.querySelectorAll('#review-stars span');
 
-        const fillStars = (rating) => {
+        const renderStars = (rating) => {
             stars.forEach(s => {
                 const val = parseInt(s.getAttribute('data-val'));
                 s.textContent = val <= rating ? '★' : '☆';
@@ -5508,21 +5623,23 @@ injectStyles(styles);
 
         if (!hasReviewed) {
             stars.forEach(star => {
+                // Подсветка при наведении
                 star.addEventListener('mouseenter', function() {
-                    fillStars(parseInt(this.getAttribute('data-val')));
-                    this.style.transform = 'scale(1.2)';
+                    renderStars(parseInt(this.getAttribute('data-val')));
                 });
-                star.addEventListener('mouseleave', function() {
-                    this.style.transform = 'scale(1)';
-                });
+                
+                // Фиксация при клике + легкая анимация
                 star.addEventListener('click', function() {
                     currentRating = parseInt(this.getAttribute('data-val'));
-                    fillStars(currentRating);
+                    renderStars(currentRating);
+                    this.style.transform = 'scale(1.2)';
+                    setTimeout(() => this.style.transform = 'scale(1)', 150);
                 });
             });
 
+            // Сброс визуализации при уходе курсора с блока звёзд
             starContainer.addEventListener('mouseleave', function() {
-                fillStars(currentRating);
+                renderStars(currentRating);
             });
 
             // Отправка отзыва
@@ -5540,7 +5657,7 @@ injectStyles(styles);
                 const reviewData = {
                     rating: currentRating,
                     text: text,
-                    author: authorInput || 'Аноним', // Если стерли имя, будет "Аноним"
+                    author: authorInput || 'Аноним',
                     date: new Date().toISOString(),
                     version: typeof GM_info !== 'undefined' ? GM_info.script.version : 'Неизвестно'
                 };
@@ -5552,7 +5669,6 @@ injectStyles(styles);
                         headers: { 'Content-Type': 'application/json' }
                     });
                     
-                    // Блокируем повторную отправку
                     localStorage.setItem('etis_reborn_reviewed', 'true');
                     
                     document.getElementById('review-form-container').style.display = 'none';
@@ -5568,7 +5684,6 @@ injectStyles(styles);
             };
         }
 
-        // Загрузка отзывов
         async function loadReviews() {
             const list = document.getElementById('reviews-list');
             try {
@@ -5588,7 +5703,6 @@ injectStyles(styles);
                     const dateStr = `${String(dateObj.getDate()).padStart(2,'0')}.${String(dateObj.getMonth()+1).padStart(2,'0')}.${dateObj.getFullYear()}`;
                     const starsHtml = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
                     
-                    // Защита от XSS
                     const safeText = rev.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                     const safeAuthor = (rev.author || 'Аноним').replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -6186,6 +6300,132 @@ injectStyles(styles);
                 if (!rawStr) return '';
                 const match = rawStr.match(/(\d{2}\.\d{2})\.\d{4}\s(\d{2}:\d{2})/);
                 return match ? `${match[1]} в ${match[2]}` : rawStr;
+            };
+
+            // --- МЯГКАЯ ИКОНКА ПОДЕЛИТЬСЯ (SVG) ---
+            const softShareSVG = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="share-msg-btn" title="Поделиться">
+                    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                    <polyline points="16 6 12 2 8 6"></polyline>
+                    <line x1="12" y1="2" x2="12" y2="15"></line>
+                </svg>
+            `;
+
+            // --- ФУНКЦИЯ СКРИНШОТА СООБЩЕНИЯ/ОБЪЯВЛЕНИЯ ---
+            const shareMessageCard = (cardElement, defaultFileName) => {
+                const originalBtnContainer = cardElement.querySelector('.share-msg-wrap');
+                const originalSVG = originalBtnContainer ? originalBtnContainer.innerHTML : '';
+                
+                if (originalBtnContainer) {
+                    originalBtnContainer.innerHTML = '<span class="material-icons" style="font-size: 17px; line-height: 1; color:var(--color-text-secondary);">hourglass_empty</span>';
+                }
+
+                const renderScreenshot = () => {
+                    let h2c = null;
+                    if (typeof html2canvas !== 'undefined') h2c = html2canvas;
+                    else if (typeof unsafeWindow !== 'undefined' && unsafeWindow.html2canvas) h2c = unsafeWindow.html2canvas;
+                    else if (typeof window !== 'undefined' && window.html2canvas) h2c = window.html2canvas;
+
+                    if (!h2c) {
+                        console.error('html2canvas не найден');
+                        cleanup(true);
+                        return;
+                    }
+
+                    const isMobile = window.innerWidth <= 960;
+                    const renderWidth = 540; 
+                    
+                    const exportContainer = document.createElement('div');
+                    exportContainer.style.position = 'fixed';
+                    exportContainer.style.top = '100vh';
+                    exportContainer.style.left = '0';
+                    exportContainer.style.width = renderWidth + 'px';
+                    exportContainer.style.padding = '24px';
+                    exportContainer.style.boxSizing = 'border-box';
+                    exportContainer.style.background = getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6';
+                    exportContainer.style.fontFamily = getComputedStyle(document.body).fontFamily;
+                    exportContainer.style.zIndex = '-9999';
+
+                    const span9Wrapper = document.createElement('div');
+                    span9Wrapper.className = 'span9';
+                    span9Wrapper.style.setProperty('margin', '0', 'important');
+                    span9Wrapper.style.setProperty('padding', '0', 'important');
+                    span9Wrapper.style.setProperty('width', '100%', 'important');
+
+                    // Клонируем карточку
+                    const clone = cardElement.cloneNode(true);
+                    
+                    // Принудительно убиваем отступы снаружи карточки у клона
+                    clone.style.setProperty('margin', '0', 'important');
+                    
+                    // Удаляем обертку кнопки из клона
+                    const cloneShareBtn = clone.querySelector('.share-msg-wrap');
+                    if (cloneShareBtn) cloneShareBtn.remove();
+                    
+                    clone.querySelectorAll('.answer-wrapper, .send-reply-btn, div[id^="frm_"], .msg-footer button').forEach(el => el.remove());
+
+                    const cloneFooter = clone.querySelector('.msg-footer');
+                    if (cloneFooter && cloneFooter.innerHTML.trim() === '') cloneFooter.remove();
+
+                    span9Wrapper.appendChild(clone);
+                    exportContainer.appendChild(span9Wrapper);
+                    document.body.appendChild(exportContainer);
+
+                    h2c(exportContainer, {
+                        scale: 2,
+                        useCORS: true,
+                        windowWidth: renderWidth,
+                        backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'
+                    }).then(canvas => {
+                        canvas.toBlob(blob => {
+                            if (!blob) throw new Error('Blob creation failed');
+                            const file = new File([blob], defaultFileName, { type: 'image/png' });
+                            
+                            if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                navigator.share({
+                                    files: [file],
+                                    title: defaultFileName.replace('.png', '')
+                                }).then(() => cleanup())
+                                .catch(err => cleanup(true));
+                            } else {
+                                const link = document.createElement('a');
+                                link.download = defaultFileName;
+                                link.href = URL.createObjectURL(blob);
+                                link.click();
+                                URL.revokeObjectURL(link.href);
+                                cleanup();
+                            }
+                        }, 'image/png');
+                    }).catch(err => {
+                        console.error('Screenshot error:', err);
+                        cleanup(true);
+                    });
+
+                    function cleanup(isError = false) {
+                        exportContainer.remove();
+                        if (originalBtnContainer) {
+                            originalBtnContainer.innerHTML = isError ? '<span class="material-icons" style="font-size:18px; color:var(--color-red);">error</span>' : '<span class="material-icons" style="font-size:18px; color:var(--color-green);">check</span>';
+                            setTimeout(() => { originalBtnContainer.innerHTML = originalSVG; }, 2000);
+                        }
+                    }
+                };
+
+                let existingH2c = null;
+                if (typeof html2canvas !== 'undefined') existingH2c = html2canvas;
+                else if (typeof unsafeWindow !== 'undefined' && unsafeWindow.html2canvas) existingH2c = unsafeWindow.html2canvas;
+                else if (typeof window !== 'undefined' && window.html2canvas) existingH2c = window.html2canvas;
+
+                if (!existingH2c) {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                    script.onload = renderScreenshot;
+                    script.onerror = () => {
+                        if (originalBtnContainer) originalBtnContainer.innerHTML = '<span class="material-icons" style="color:var(--color-red);">error</span>';
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    renderScreenshot();
+                }
             };
 
             switch (page) {
@@ -7565,12 +7805,24 @@ injectStyles(styles);
                         card.innerHTML = `
                             <div class="msg-header">
                                 <div class="msg-sender"><span class="material-icons">campaign</span>${authorStr}</div>
-                                <div class="msg-date">${dateStr}</div>
+                                <div class="msg-date msg-date-wrapper">
+                                    <span class="msg-date-text">${dateStr}</span>
+                                    <div class="share-msg-wrap">
+                                        ${softShareSVG}
+                                    </div>
+                                </div>
                             </div>
                             ${titleStr ? `<div class="msg-subject">${titleStr}</div>` : ''}
                             <div class="msg-body">${bodyHtml}</div>
                             ${attachmentsHtml ? `<div class="msg-footer">${attachmentsHtml}</div>` : ''}
                         `;
+
+                        const shareBtnWrap = card.querySelector('.share-msg-wrap');
+                        if (shareBtnWrap) {
+                            // Убираем букву "в" и меняем двоеточие на тире для безопасности файловой системы
+                            const safeDate = dateStr.replace(' в ', ' ').replace(/:/g, '-');
+                            shareBtnWrap.addEventListener('click', () => shareMessageCard(card, `Объявление от ${safeDate}.png`));
+                        }
 
                         container.appendChild(card);
                     });
@@ -7648,11 +7900,23 @@ injectStyles(styles);
                         card.innerHTML = `
                             <div class="msg-header">
                                 <div class="msg-sender"><span class="material-icons">person</span>${teacherName}</div>
-                                <div class="msg-date">${dateStr}</div>
+                                <div class="msg-date msg-date-wrapper">
+                                    <span class="msg-date-text">${dateStr}</span>
+                                    <div class="share-msg-wrap">
+                                        ${softShareSVG}
+                                    </div>
+                                </div>
                             </div>
                             ${titleStr ? `<div class="msg-subject">${titleStr}</div>` : ''}
                             <div class="msg-body">${bodyHtml}</div>
                         `;
+
+                        const shareBtnWrap = card.querySelector('.share-msg-wrap');
+                        if (shareBtnWrap) {
+                            // Делаем красивое название с именем и датой
+                            const safeDate = dateStr.replace(' в ', ' ').replace(/:/g, '-');
+                            shareBtnWrap.addEventListener('click', () => shareMessageCard(card, `Сообщение от ${teacherName} (${safeDate}).png`));
+                        }
 
                         // 7. Строим футер с файлами и кнопкой
                         if (files.length > 0 || oldReplyBtn) {
