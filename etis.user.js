@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.63
-// @changelog    Добавлены отзывы и автообновления
+// @version      1.64
+// @changelog    Добавлены отзывы, автообновление и пуш-уведомления
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -4937,6 +4937,106 @@ button.search-capsule:hover {
         transform: none;
     }
 }
+
+/* --- PSEUDO PUSH NOTIFICATIONS REBORN (iOS Style) --- */
+.push-container {
+    position: fixed;
+    z-index: 2000000;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    pointer-events: none;
+}
+
+@media (min-width: 961px) {
+    .push-container { top: 2.5rem; right: 2rem; width: 380px; }
+}
+
+@media (max-width: 960px) {
+    .push-container { top: 1.5rem; left: 1rem; right: 1rem; }
+}
+
+.push-toast {
+    box-sizing: border-box !important;
+    /* Усиливаем эффект стекла: блюр + насыщенность */
+    backdrop-filter: blur(18px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+    
+    /* Делаем фон более прозрачным (0.65 вместо 0.85) */
+    background-color: rgba(var(--push-bg-rgb), 0.65) !important;
+    
+    color: var(--color-text-primary);
+    padding: 1.6rem;
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    
+    /* Тонкая светящаяся граница для объема */
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    
+    width: 100% !important;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+    transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+/* Цвета фона для темной и светлой темы */
+[theme="light"] .push-toast { --push-bg-rgb: 255, 255, 255; border-color: rgba(0,0,0,0.05) !important; }
+[theme="dark"] .push-toast { --push-bg-rgb: 28, 30, 32; }
+
+.push-toast.show { opacity: 1; transform: scale(1) translateY(0); }
+
+.push-icon-wrap {
+    width: 4.4rem;
+    height: 4.4rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    /* Внутреннее свечение иконок */
+    box-shadow: inset 0 0 12px rgba(255,255,255,0.05);
+}
+
+.push-icon-wrap .material-icons { font-size: 2.4rem !important; }
+
+/* Настройки цветов для типов уведомлений */
+.push-toast.info .push-icon-wrap { background: rgba(0, 122, 255, 0.25); color: #007AFF; }
+.push-toast.success .push-icon-wrap { background: rgba(52, 199, 89, 0.25); color: #34C759; }
+.push-toast.warning .push-icon-wrap { background: rgba(255, 149, 0, 0.25); color: #FF9500; }
+
+.push-content { flex-grow: 1; display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+
+.push-toast-title {
+    font-weight: 800;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-primary);
+    opacity: 0.5;
+}
+
+.push-subject {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-text-primary);
+}
+
+.push-detail {
+    font-size: 1.35rem;
+    color: var(--color-text-primary);
+    opacity: 0.7;
+}
+
+.push-toast:hover { 
+    transform: translateY(-2px) scale(1.02); 
+    background-color: rgba(var(--push-bg-rgb), 0.8) !important;
+}
     `;
 
     // Внедряем стили
@@ -9259,6 +9359,164 @@ injectStyles(styles);
                             span9.insertBefore(headerContainer, wrapper);
                         }
                     }
+
+                    // --- ЛОГИКА УВЕДОМЛЕНИЙ ОБ ИЗМЕНЕНИИ ОЦЕНОК (PSEUDO-PUSH) ---
+                    setTimeout(() => {
+                        // 1. Создаем контейнер для уведомлений, если его нет
+                        let pushContainer = document.getElementById('etis-push-container');
+                        if (!pushContainer) {
+                            pushContainer = document.createElement('div');
+                            pushContainer.id = 'etis-push-container';
+                            pushContainer.className = 'push-container';
+                            document.body.appendChild(pushContainer);
+                        }
+
+                        // Функция показа уведомления
+                        const showPush = (title, subject, body, type = 'info', icon = 'notifications') => {
+                            const toast = document.createElement('div');
+                            toast.className = `push-toast ${type}`;
+                            toast.innerHTML = `
+                                <div class="push-icon-wrap">
+                                    <span class="material-icons">${icon}</span>
+                                </div>
+                                <div class="push-content">
+                                    <div class="push-toast-title">${title}</div>
+                                    <div class="push-subject">${subject}</div>
+                                    <div class="push-detail">${body}</div>
+                                </div>
+                            `;
+                            
+                            toast.onclick = () => {
+                                toast.classList.remove('show');
+                                setTimeout(() => toast.remove(), 400);
+                            };
+
+                            pushContainer.appendChild(toast);
+                            requestAnimationFrame(() => {
+                                setTimeout(() => toast.classList.add('show'), 50);
+                            });
+
+                            setTimeout(() => {
+                                if(toast.parentNode) {
+                                    toast.classList.remove('show');
+                                    setTimeout(() => toast.remove(), 400);
+                                }
+                            }, 8000);
+                        };
+
+                        // 2. Собираем текущее состояние оценок со страницы
+                        const currentSnapshot = {};
+                        
+                        // Собираем данные из оберток (wrapper)
+                        const allWrappers = document.querySelectorAll('.term-subject-group, .session-term-table-group');
+                        
+                        allWrappers.forEach(wrapper => {
+                            let name = wrapper.getAttribute('data-subject-name') || wrapper.getAttribute('data-term-name');
+                            if (!name) {
+                                // Фолбэк: ищем заголовок внутри
+                                const h3 = wrapper.previousElementSibling;
+                                if (h3 && (h3.tagName === 'H3' || h3.classList.contains('subject-header-flex'))) {
+                                    name = h3.textContent.replace(/\d+\s*\/\s*\d+/, '').trim(); // Убираем цифры капсулы из заголовка если попали
+                                }
+                            }
+                            if (!name) return;
+                            
+                            // Чистим имя
+                            name = name.replace(/\[.*?\]/g, '').trim(); 
+
+                            const currentScore = parseInt(wrapper.getAttribute('data-score-current')) || 0;
+                            const maxScore = parseInt(wrapper.getAttribute('data-score-max')) || 0;
+                            
+                            // Пытаемся найти итоговую оценку (текстом)
+                            let finalMark = null;
+                            
+                            // Поиск текстовой оценки (Зачет/Экзамен) в таблице
+                            const rows = wrapper.querySelectorAll('tr');
+                            rows.forEach(row => {
+                                const cells = row.querySelectorAll('td');
+                                if (cells.length > 1) {
+                                    // Проверка на зачет/экзамен в ячейке оценки (обычно 2-я колонка в сессиях)
+                                    const possibleMark = cells[1]?.textContent.trim().toLowerCase();
+                                    if (['зачет', 'зачёт', 'отлично', 'хорошо', 'удовлетворительно', 'неудовлетворительно'].some(m => possibleMark && possibleMark.includes(m))) {
+                                        finalMark = cells[1].textContent.trim();
+                                    }
+                                    // Или числовая оценка (5, 4, 3, 2)
+                                    if (['5', '4', '3', '2'].includes(possibleMark)) {
+                                        finalMark = possibleMark;
+                                    }
+                                }
+                            });
+
+                            currentSnapshot[name] = {
+                                score: currentScore,
+                                max: maxScore,
+                                mark: finalMark
+                            };
+                        });
+
+                        // 3. Загружаем прошлое состояние
+                        const storageKey = 'etis_reborn_grades_snapshot_v1';
+                        const previousSnapshotJSON = localStorage.getItem(storageKey);
+                        
+                        if (previousSnapshotJSON) {
+                            const previousSnapshot = JSON.parse(previousSnapshotJSON);
+                            let hasUpdates = false;
+
+                            // Сравниваем
+                            for (const [subject, currData] of Object.entries(currentSnapshot)) {
+                                const prevData = previousSnapshot[subject];
+
+                                // Если предмета не было раньше — это новый предмет, не спамим (или можно поздравить с началом)
+                                if (!prevData) continue;
+
+                                // А. Если изменились баллы
+                                if (currData.score > prevData.score) {
+                                    const diff = currData.score - prevData.score;
+                                    showPush(
+                                        `Новые баллы: +${diff}`,
+                                        subject,
+                                        `Теперь у вас ${currData.score} из ${currData.max}`,
+                                        'info',
+                                        'trending_up'
+                                    );
+                                    hasUpdates = true;
+                                }
+
+                                // Б. Если изменилась оценка
+                                if (currData.mark && currData.mark !== prevData.mark) {
+                                    let statusTitle = 'Выставлена оценка';
+                                    let type = 'info';
+                                    let icon = 'assignment_turned_in';
+
+                                    if (currData.mark.toLowerCase().includes('зачет') || ['5','4'].includes(currData.mark)) {
+                                        statusTitle = 'Успех! 🎉';
+                                        type = 'success';
+                                        icon = 'emoji_events';
+                                    } else if (currData.mark === '2' || currData.mark.toLowerCase().includes('незачет')) {
+                                        statusTitle = 'Внимание';
+                                        type = 'warning';
+                                        icon = 'priority_high';
+                                    }
+
+                                    showPush(statusTitle, subject, `Итог: ${currData.mark}`, type, icon);
+                                    hasUpdates = true;
+                                }
+                            }
+                            
+                            if (!hasUpdates) {
+                                console.log('ETIS Reborn: Новых оценок нет');
+                            }
+
+                        } else {
+                            // Первый запуск функционала
+                            console.log('ETIS Reborn: Первый запуск трекинга оценок. Сохраняем базу.');
+                        }
+
+                        // 4. Сохраняем текущее состояние как эталон
+                        localStorage.setItem(storageKey, JSON.stringify(currentSnapshot));
+
+                    }, 1000); // Небольшая задержка, чтобы DOM точно отрисовался
+
                     break;
                 }
 
