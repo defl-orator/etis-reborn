@@ -14,7 +14,6 @@
 // @grant        unsafeWindow
 // @require      https://cdn.jsdelivr.net/npm/chart.js
 // @connect      raw.githubusercontent.com
-// @connect      api.web3forms.com
 // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
 // @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
 // ==/UserScript==
@@ -10556,11 +10555,6 @@ injectStyles(styles);
                     sendBtn.innerHTML = '<span class="material-icons" style="font-size: 2rem; margin-right: 0.8rem;">send</span>' + sendBtn.textContent;
                 }
             }
-            // --- АНТИ-РАЗЛОГИНИВАНИЕ (Keep-Alive) ---
-            // Делает легкий незаметный запрос в фоне каждые 12 минут
-            setInterval(() => {
-                fetch('/etis/stu.main', { method: 'HEAD' }).catch(() => {});
-            }, 12 * 60 * 1000);
         }
     }
 
