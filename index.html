@@ -1154,8 +1154,8 @@
             function closeModal() { modal.classList.remove('active'); setTimeout(() => modal.style.display = 'none', 300); }
             modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-            function showVideo(os) { document.getElementById('text-' + os).style.display = 'none'; const v = document.getElementById('video-' + os); v.style.display = 'block'; v.querySelector('video')?.play(); }
-            function hideVideo(os) { document.getElementById('text-' + os).style.display = 'block'; const v = document.getElementById('video-' + os); v.style.display = 'none'; const vid = v.querySelector('video'); if(vid){ vid.pause(); vid.currentTime = 0; } }
+            // Функции showVideo и hideVideo удалены за ненадобностью
+
             function switchTab(os) {
                 document.querySelectorAll('.os-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelectorAll('.instruction-content').forEach(c => c.classList.remove('active'));
@@ -1166,7 +1166,7 @@
                 } else {
                     document.querySelector('.os-btn:nth-child(1)').classList.add('active');
                     document.getElementById('tab-other').classList.add('active');
-                    hideVideo('macos');
+                    // Убрали вызов hideVideo('macos'), который вызывал краш скрипта
                 }
             }
             // --- АККОРДЕОН FAQ ---
@@ -1442,7 +1442,7 @@
                     });
                 });
             }
-            
+
             // вызовы функций
             window.addEventListener('DOMContentLoaded', () => {
                 fetchLatestVersion(); 
