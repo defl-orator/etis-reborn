@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.65
-// @changelog    Фикс экспорта расписания
+// @version      1.66
+// @changelog    Фикс экспорта расписания и улучшение безопасности
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -5520,92 +5520,8 @@ injectStyles(styles);
 
     // --- ФУНКЦИЯ ОКНА "СООБЩИТЬ ОБ ОШИБКЕ" ---
     function openUserscriptBugModal() {
-        // Удаляем старое окно, если есть
-        const old = document.getElementById('etis-bug-modal');
-        if (old) old.remove();
-
-        // HTML окна
-        const modalHTML = `
-            <div id="etis-bug-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999999;backdrop-filter:blur(4px);"></div>
-            <div id="etis-bug-modal" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:90%;max-width:450px;background:var(--color-card);border-radius:24px;z-index:1000000;box-shadow:var(--shadow-dialog);overflow:hidden; font-family: var(--font-family);">
-                <div class="ui-widget-header" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;background:var(--color-table-header);border-bottom:1px solid var(--color-table-border);">
-                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Нашли баг?</span>
-                    <span class="material-icons close-btn" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
-                </div>
-                <div style="padding:24px; display:flex; flex-direction:column; gap:15px;">
-                    
-                    <input type="email" id="bug-email" placeholder="Ваш Email (для ответа)" style="width:100%;padding:10px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);">
-                    
-                    <textarea id="bug-text" placeholder="Что случилось? Опишите действия..." style="width:100%;height:120px;padding:10px;border-radius:12px;border:1px solid var(--color-table-border);background:var(--color-input);color:var(--color-text-primary);resize:vertical;"></textarea>
-                    
-                    <div style="font-size:1.1rem;color:var(--color-text-secondary);line-height:1.4;">
-                        Техническая информация (версия, браузер, страница) прикрепится автоматически.
-                    </div>
-
-                    <button id="bug-send-btn" class="answer-btn-custom" style="justify-content:center;width:100%;margin-top:10px;border:none;">Отправить</button>
-                </div>
-            </div>
-        `;
-
-        const wrapper = document.createElement('div');
-        wrapper.innerHTML = modalHTML;
-        document.body.appendChild(wrapper);
-
-        // Закрытие
-        const close = () => wrapper.remove();
-        wrapper.querySelector('#etis-bug-overlay').onclick = close;
-        wrapper.querySelector('.close-btn').onclick = close;
-
-        // Отправка
-        wrapper.querySelector('#bug-send-btn').onclick = function() {
-            const btn = this;
-            const text = document.getElementById('bug-text').value;
-            const email = document.getElementById('bug-email').value || 'Anonymous';
-            
-            const ACCESS_KEY = '87463068-d122-4ff0-8077-070eca2b25b1'; 
-            
-            if (!text.trim()) { alert('Напишите хоть что-нибудь!'); return; }
-
-            btn.innerText = 'Отправка...';
-            btn.disabled = true;
-
-            // Техническая инфа
-            const techInfo = `Page: ${window.location.pathname}\nVer: ${GM_info.script.version}\nUA: ${navigator.userAgent}`;
-            const fullMessage = `${text}\n\n--- TECH INFO ---\n${techInfo}`;
-
-            GM_xmlhttpRequest({
-                method: "POST",
-                url: "https://api.web3forms.com/submit",
-                headers: { 
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-                data: JSON.stringify({
-                    access_key: ACCESS_KEY, // Ключ авторизации
-                    subject: "Баг-репорт ЕТИС REBORN",
-                    email: email,
-                    message: fullMessage,
-                    from_name: "ETIS User Script"
-                }),
-                onload: function(response) {
-                    // Web3Forms всегда возвращает 200 OK, если ключ верный
-                    if (response.status === 200) {
-                        btn.innerText = 'Отправлено! ✅';
-                        btn.style.background = 'var(--color-green)';
-                        setTimeout(close, 2000);
-                    } else {
-                        console.error(response.responseText);
-                        btn.innerText = 'Ошибка ключа';
-                        btn.disabled = false;
-                    }
-                },
-                onerror: function(err) {
-                    console.error(err);
-                    btn.innerText = 'Ошибка сети';
-                    btn.disabled = false;
-                }
-            });
-        };
+        // Просто открываем лендинг, где модалка откроется сама
+        window.open('https://etisreborn.ru/#bugreport', '_blank');
     }
 
     // --- ФУНКЦИЯ ОКНА "ОТЗЫВЫ О РАСШИРЕНИИ" ---
@@ -5614,53 +5530,6 @@ injectStyles(styles);
 
         const old = document.getElementById('etis-reviews-modal');
         if (old) old.remove();
-
-        const hasReviewed = localStorage.getItem('etis_reborn_reviewed') === 'true';
-
-        // --- УМНЫЙ ПАРСИНГ ИМЕНИ И НАПРАВЛЕНИЯ ---
-        let formattedAuthor = '';
-        try {
-            const userInfoB = document.querySelector('.sidebar-user-info b');
-            if (userInfoB) {
-                const rawName = userInfoB.textContent.trim();
-                // Убираем г.р. и скобки
-                const cleanName = rawName.replace(/\(.*?\)/g, '').trim();
-                const nameParts = cleanName.split(/\s+/);
-                
-                if (nameParts.length >= 2) {
-                    // Фамилия - индекс 0, Имя - индекс 1
-                    formattedAuthor = `${nameParts[1]} ${nameParts[0].charAt(0)}.`;
-                } else {
-                    formattedAuthor = nameParts[0] || '';
-                }
-            }
-
-            const spans = document.querySelectorAll('.sidebar-user-info span');
-            for (let span of spans) {
-                const text = span.textContent;
-                if (text.toLowerCase().includes('специальность') || text.toLowerCase().includes('направление')) {
-                    let major = text
-                        .replace(/Специальность\s*:?\s*/i, '')
-                        .replace(/Направление\s*:?\s*/i, '')
-                        .replace(/\d{2}\.\d{2}\.\d{2}/g, '') // Убираем шифры (напр. 41.03.05)
-                        .replace(/\(бакалавр.*?\)/gi, '')    // Убираем уровни образования
-                        .replace(/\(магистр.*?\)/gi, '')
-                        .replace(/\(специалист.*?\)/gi, '')
-                        .trim();
-                    
-                    // Убираем лишние точки или дефисы в начале, если остались
-                    major = major.replace(/^[-.,\s]+/, '');
-                    
-                    if (major) {
-                        major = major.charAt(0).toUpperCase() + major.slice(1);
-                        formattedAuthor += ` ${major}`;
-                    }
-                    break;
-                }
-            }
-        } catch(e) {
-            console.error('Ошибка парсинга имени:', e);
-        }
 
         const modalHTML = `
             <div id="etis-reviews-overlay" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:999999;backdrop-filter:blur(4px);"></div>
@@ -5671,33 +5540,18 @@ injectStyles(styles);
                 </div>
                 <div style="padding:24px; display:flex; flex-direction:column;">
                     
-                    <div id="review-form-container" style="display: ${hasReviewed ? 'none' : 'block'};">
-                        
-                        <!-- Звёздочки центрированы, фиксированная ширина для стабильного ховера -->
-                        <div class="star-rating" id="review-stars" style="font-size: 44px; line-height: 1; user-select: none; display: flex; gap: 4px; justify-content: center; cursor: pointer; color: var(--color-yellow); margin-bottom: 1.5rem;">
-                            <span data-val="1" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
-                            <span data-val="2" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
-                            <span data-val="3" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
-                            <span data-val="4" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
-                            <span data-val="5" style="display:inline-block; width:44px; text-align:center; transition: transform 0.1s;">☆</span>
-                        </div>
-
-                        <!-- Инпут с жестко заданными стилями !important для перебития глобальных -->
-                        <input type="text" id="review-author" placeholder="Ваше имя (оставьте пустым для анонимности)" value="${formattedAuthor}" 
-                            style="width:100% !important; padding:12px 16px !important; border-radius:12px !important; border:1px solid var(--color-table-border) !important; background:var(--color-input) !important; color:var(--color-text-primary) !important; font-family:inherit !important; margin-bottom:15px !important; font-size:1.3rem !important; box-shadow:none !important; outline:none !important; box-sizing:border-box !important;">
-
-                        <textarea id="review-text" placeholder="Напишите пару слов о ЕТИС REBORN..." 
-                            style="width:100% !important; height:80px !important; padding:12px 16px !important; border-radius:12px !important; border:1px solid var(--color-table-border) !important; background:var(--color-input) !important; color:var(--color-text-primary) !important; resize:vertical !important; font-family:inherit !important; margin-bottom:15px !important; font-size:1.3rem !important; box-shadow:none !important; outline:none !important; box-sizing:border-box !important;"></textarea>
-                        
-                        <button id="review-send-btn" class="answer-btn-custom" style="justify-content:center;width:100%;border:none;">Отправить отзыв</button>
+                    <!-- Кнопка перехода на сайт вместо формы -->
+                    <div id="review-redirect-block" style="text-align: center; margin-bottom: 20px;">
+                        <p style="color: var(--color-text-secondary); margin-bottom: 15px; font-size: 1.3rem;">
+                            Хотите поделиться мнением? Оставьте отзыв на нашем сайте!
+                        </p>
+                        <button id="redirect-review-btn" class="answer-btn-custom" style="justify-content:center; width:100%; border:none; padding: 12px; font-size: 1.4rem;">
+                            Написать отзыв на сайте
+                        </button>
                     </div>
 
-                    <div id="review-success-msg" style="display: ${hasReviewed ? 'block' : 'none'}; text-align:center; padding: 15px; background: rgba(52, 199, 89, 0.1); color: var(--color-green); border-radius: 12px; margin-bottom: 15px; font-size: 1.4rem; font-weight: 600;">
-                        Вы уже оставили отзыв! Спасибо 💙
-                    </div>
-
-                    <div class="reviews-list-container" id="reviews-list" style="${hasReviewed ? 'margin-top: 0; border-top: none;' : ''}">
-                        <div style="text-align:center; color:var(--color-text-secondary);">Загрузка отзывов...</div>
+                    <div class="reviews-list-container" id="reviews-list" style="margin-top: 0; border-top: 1px solid var(--color-table-border);">
+                        <div style="text-align:center; color:var(--color-text-secondary); padding: 20px;">Загрузка отзывов...</div>
                     </div>
                 </div>
             </div>
@@ -5711,81 +5565,15 @@ injectStyles(styles);
         wrapper.querySelector('#etis-reviews-overlay').onclick = close;
         wrapper.querySelector('.close-btn').onclick = close;
 
-        // Логика звёздочек
-        let currentRating = 0;
-        const starContainer = wrapper.querySelector('#review-stars');
-        const stars = wrapper.querySelectorAll('#review-stars span');
-
-        const renderStars = (rating) => {
-            stars.forEach(s => {
-                const val = parseInt(s.getAttribute('data-val'));
-                s.textContent = val <= rating ? '★' : '☆';
-            });
-        };
-
-        if (!hasReviewed) {
-            stars.forEach(star => {
-                // Подсветка при наведении
-                star.addEventListener('mouseenter', function() {
-                    renderStars(parseInt(this.getAttribute('data-val')));
-                });
-                
-                // Фиксация при клике + легкая анимация
-                star.addEventListener('click', function() {
-                    currentRating = parseInt(this.getAttribute('data-val'));
-                    renderStars(currentRating);
-                    this.style.transform = 'scale(1.2)';
-                    setTimeout(() => this.style.transform = 'scale(1)', 150);
-                });
-            });
-
-            // Сброс визуализации при уходе курсора с блока звёзд
-            starContainer.addEventListener('mouseleave', function() {
-                renderStars(currentRating);
-            });
-
-            // Отправка отзыва
-            const btn = wrapper.querySelector('#review-send-btn');
-            btn.onclick = async function() {
-                const text = document.getElementById('review-text').value.trim();
-                const authorInput = document.getElementById('review-author').value.trim();
-                
-                if (currentRating === 0) { alert('Пожалуйста, поставьте оценку от 1 до 5 звёзд!'); return; }
-                if (!text) { alert('Напишите текст отзыва!'); return; }
-
-                btn.innerText = 'Отправка...';
-                btn.disabled = true;
-
-                const reviewData = {
-                    rating: currentRating,
-                    text: text,
-                    author: authorInput || 'Аноним',
-                    date: new Date().toISOString(),
-                    version: typeof GM_info !== 'undefined' ? GM_info.script.version : 'Неизвестно'
-                };
-
-                try {
-                    await fetch(FIREBASE_URL, {
-                        method: 'POST',
-                        body: JSON.stringify(reviewData),
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    
-                    localStorage.setItem('etis_reborn_reviewed', 'true');
-                    
-                    document.getElementById('review-form-container').style.display = 'none';
-                    document.getElementById('review-success-msg').style.display = 'block';
-                    document.getElementById('reviews-list').style.marginTop = '0';
-                    document.getElementById('reviews-list').style.borderTop = 'none';
-                    
-                    loadReviews(); 
-                } catch(e) {
-                    btn.innerText = 'Ошибка сети';
-                    btn.disabled = false;
-                }
+        // Логика кнопки перехода
+        const redirectBtn = wrapper.querySelector('#redirect-review-btn');
+        if (redirectBtn) {
+            redirectBtn.onclick = function() {
+                window.open('https://etisreborn.ru/#writereview', '_blank');
             };
         }
 
+        // Загрузка отзывов (только чтение)
         async function loadReviews() {
             const list = document.getElementById('reviews-list');
             try {
@@ -5794,7 +5582,7 @@ injectStyles(styles);
                 
                 list.innerHTML = '';
                 if (!data) {
-                    list.innerHTML = '<div style="text-align:center;color:var(--color-text-secondary);">Пока нет отзывов. Станьте первым!</div>';
+                    list.innerHTML = '<div style="text-align:center;color:var(--color-text-secondary);padding:20px;">Пока нет отзывов.</div>';
                     return;
                 }
 
@@ -5821,7 +5609,7 @@ injectStyles(styles);
                     list.appendChild(div);
                 });
             } catch(e) {
-                list.innerHTML = '<div style="text-align:center;color:var(--color-red);">Не удалось загрузить отзывы</div>';
+                list.innerHTML = '<div style="text-align:center;color:var(--color-red);padding:20px;">Не удалось загрузить отзывы</div>';
             }
         }
 
@@ -9779,7 +9567,6 @@ injectStyles(styles);
 
                             const input = document.getElementById('filter');
                             const recordList = document.getElementById('record_list');
-                            // Ссылка на гифку загрузки из оригинального кода ЕТИСа
                             const loadGif = "/etis/dojo/dijit/themes/tundra/images/loading.gif";
 
                             const performSearch = () => {
