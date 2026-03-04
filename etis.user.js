@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.66
-// @changelog    Фикс экспорта расписания и улучшение безопасности
+// @version      1.67
+// @changelog    Фикс отображения необычных аудиторий
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -5308,7 +5308,6 @@ injectStyles(styles);
                 </div>`;
         }
         
-        // Обычное состояние (когда обновы нет) остается прежним
         return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-accent);margin-bottom:1rem;">check_circle</span><div style="font-size:1.8rem;font-weight:700;">Версия актуальна</div><div style="color:var(--color-text-secondary);margin-top:0.5rem;">У вас установлена v${cur}</div><button id="retry-update" class="answer-btn-custom" style="margin:2rem auto 0;background:var(--color-highlight)!important;color:var(--color-text-primary)!important;">Проверить снова</button></div>`;
     }
 
@@ -7230,17 +7229,22 @@ injectStyles(styles);
                 span9.querySelectorAll('.pair_info .aud').forEach(aud => {
                     let text = aud.innerHTML;
                     
-                    const match = text.match(/ауд\.\s*([^\s(<]+)\s*\((.*?)\s*корпус,\s*(.*?)\s*этаж\)/i);
+                    const match = text.match(/ауд\.\s*(.+)\s*\((.+?)\s*корпус,\s*(.*?)\s*этаж\)/i);
+                    
                     if (match) {
-                        let roomNumber = match[1];
-                        if (roomNumber.includes('/')) roomNumber = roomNumber.split('/')[0]; 
-                        const building = match[2];
-                        const floor = match[3];
+                        let roomNumber = match[1].trim(); 
+                        const building = match[2].trim(); 
+                        const floor = match[3].trim();   
+                        
+                        if (roomNumber.includes('/')) roomNumber = roomNumber.split('/')[0];
+
                         const newFormat = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>ауд. ${roomNumber}, к. ${building}, э. ${floor}</div>`;
+                        
+                        // Заменяем старый текст на новый блок
                         aud.innerHTML = text.replace(match[0], newFormat);
                     }
                     
-                    // Выстраиваем аудиторию и Zoom-кнопку (и кнопку заметки) горизонтально в линию
+                    // Выстраиваем аудиторию и Zoom-кнопку в линию
                     aud.style.display = 'flex';
                     aud.style.flexDirection = 'row';
                     aud.style.flexWrap = 'wrap';
@@ -8195,7 +8199,7 @@ injectStyles(styles);
                                 else if (rawStatus.includes('обработк') || rawStatus.includes('заявка')) {
                                     statusBg = 'rgba(255, 149, 0, 0.15)';
                                     statusColor = 'var(--color-warning)';
-                                    displayStatus = 'ОБРАБОТКА'; // <--- ЗАМЕНЯЕМ ТЕКСТ ЗДЕСЬ
+                                    displayStatus = 'ОБРАБОТКА';
                                 } 
                                 else if (rawStatus.includes('отказ') || rawStatus.includes('отклон')) {
                                     statusBg = 'rgba(255, 59, 48, 0.15)';
@@ -10557,7 +10561,4 @@ injectStyles(styles);
             }
         }
     }
-
-    
-
 })();
