@@ -1385,53 +1385,64 @@
 
                 const FIREBASE_URL = 'https://etisreborn-2b49e-default-rtdb.europe-west1.firebasedatabase.app/installs.json';
 
-                // Задаем стартовое число с учетом старых скачиваний
-                let currentCount = 12; 
+                let currentCount = 12;
 
-                // 1. Получаем текущее значение счетчика
+                // 1. Показываем счетчик при загрузке страницы
                 try {
-                    // Указываем no-store, чтобы получать самое свежее значение
                     const response = await fetch(FIREBASE_URL, { cache: 'no-store' });
                     if (response.ok) {
                         const data = await response.json();
-                        // Если в Firebase уже есть число, берем его. Если пусто (null) — оставляем 12.
                         currentCount = data !== null ? parseInt(data) : currentCount;
                         counterEl.innerText = currentCount;
                     } else {
                         counterEl.innerText = currentCount;
                     }
                 } catch (err) {
-                    console.error('Ошибка загрузки счетчика из Firebase:', err);
+                    console.error('Ошибка загрузки счетчика:', err);
                     counterEl.innerText = currentCount + '+'; 
                 }
 
-                // 2. Логика клика по кнопке установки
+                // 2. Логика клика
                 const installButtons = document.querySelectorAll('.download-btn, .install-btn');
                 installButtons.forEach(btn => {
                     btn.addEventListener('click', async () => {
-                        if (localStorage.getItem('etis_installed') === 'true') return;
+                        // Защита от накрутки
+                        if (localStorage.getItem('etis_installed') === 'true') {
+                            console.log('Установка уже была засчитана ранее.');
+                            return; 
+                        }
 
                         try {
-                            // Мгновенно обновляем интерфейс для плавности
-                            currentCount++;
-                            counterEl.innerText = currentCount;
-                            localStorage.setItem('etis_installed', 'true');
+                            // Запрашиваем самое свежее число прямо перед кликом 
+                            // (на случай, если пока мы сидели на сайте, кто-то другой уже скачал)
+                            const res = await fetch(FIREBASE_URL, { cache: 'no-store' });
+                            let latestCount = 12;
+                            if (res.ok) {
+                                const data = await res.json();
+                                latestCount = data !== null ? parseInt(data) : 12;
+                            }
+                            
+                            latestCount++; // Увеличиваем на 1
+                            
+                            // Сразу обновляем интерфейс, чтобы юзер не ждал
+                            counterEl.innerText = latestCount;
+                            localStorage.setItem('etis_installed', 'true'); // Блокируем дальнейшие клики
 
-                            // Отправляем новое значение в Firebase
+                            // Отправляем в Firebase
                             await fetch(FIREBASE_URL, {
                                 method: 'PUT',
-                                headers: {
-                                    'Content-Type': 'application/json'
-                                },
-                                body: JSON.stringify(currentCount)
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(latestCount)
                             });
+                            
+                            console.log('Счетчик успешно обновлен в базе!');
                         } catch (e) {
                             console.error('Не удалось обновить счетчик в Firebase:', e);
                         }
                     });
                 });
             }
-
+            
             // вызовы функций
             window.addEventListener('DOMContentLoaded', () => {
                 fetchLatestVersion(); 
