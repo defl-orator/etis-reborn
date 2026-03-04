@@ -1373,45 +1373,56 @@
                 const counterEl = document.getElementById('install-counter');
                 if (!counterEl) return;
 
-                const API_URL = 'https://api.counterapi.dev/v1/etis-reborn/installs/';
+                const FIREBASE_URL = 'https://etisreborn-2b49e-default-rtdb.europe-west1.firebasedatabase.app/installs.json';
 
-                // 1. Сразу получаем текущее значение
+                // Задаем стартовое число с учетом старых скачиваний
+                let currentCount = 12; 
+
+                // 1. Получаем текущее значение счетчика
                 try {
-                    const response = await fetch(API_URL);
+                    // Указываем no-store, чтобы получать самое свежее значение
+                    const response = await fetch(FIREBASE_URL, { cache: 'no-store' });
                     if (response.ok) {
                         const data = await response.json();
-                        counterEl.innerText = data.count || 0;
+                        // Если в Firebase уже есть число, берем его. Если пусто (null) — оставляем 12.
+                        currentCount = data !== null ? parseInt(data) : currentCount;
+                        counterEl.innerText = currentCount;
                     } else {
-                        console.warn('Счетчик не найден');
-                        counterEl.innerText = '0';
+                        counterEl.innerText = currentCount;
                     }
                 } catch (err) {
-                    console.error('Ошибка CORS или сети. Проверьте наличие слеша в URL:', err);
-                    counterEl.innerText = '150+'; 
+                    console.error('Ошибка загрузки счетчика из Firebase:', err);
+                    counterEl.innerText = currentCount + '+'; 
                 }
 
-                // 2. Логика клика
+                // 2. Логика клика по кнопке установки
                 const installButtons = document.querySelectorAll('.download-btn, .install-btn');
                 installButtons.forEach(btn => {
                     btn.addEventListener('click', async () => {
                         if (localStorage.getItem('etis_installed') === 'true') return;
 
                         try {
-                            // Здесь тоже добавляем / в конце: /up/
-                            const res = await fetch(API_URL + 'up/');
-                            if (res.ok) {
-                                const data = await res.json();
-                                counterEl.innerText = data.count;
-                                localStorage.setItem('etis_installed', 'true');
-                            }
+                            // Мгновенно обновляем интерфейс для плавности
+                            currentCount++;
+                            counterEl.innerText = currentCount;
+                            localStorage.setItem('etis_installed', 'true');
+
+                            // Отправляем новое значение в Firebase
+                            await fetch(FIREBASE_URL, {
+                                method: 'PUT',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(currentCount)
+                            });
                         } catch (e) {
-                            console.error('Не удалось обновить счетчик:', e);
+                            console.error('Не удалось обновить счетчик в Firebase:', e);
                         }
                     });
                 });
             }
 
-            // В самом низу в DOMContentLoaded оставьте только вызов этой функции
+            // вызовы функций
             window.addEventListener('DOMContentLoaded', () => {
                 fetchLatestVersion(); 
                 initInstallCounter(); 
