@@ -1140,7 +1140,17 @@
 
             // --- МОДАЛКА И ВИДЕО ---
             const modal = document.getElementById('installModal');
-            function openModal() { modal.style.display = 'flex'; setTimeout(() => modal.classList.add('active'), 10); }
+            function openModal() { 
+                // Проверяем, использует ли человек Mac, iPhone или iPad
+                const isApple = /Macintosh|Mac OS X|iPad|iPhone|iPod/i.test(navigator.userAgent);
+                
+                // Переключаем вкладку до того, как окно станет видимым
+                switchTab(isApple ? 'macos' : 'other');
+
+                // Открываем само модальное окно
+                modal.style.display = 'flex'; 
+                setTimeout(() => modal.classList.add('active'), 10); 
+            }
             function closeModal() { modal.classList.remove('active'); setTimeout(() => modal.style.display = 'none', 300); }
             modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
