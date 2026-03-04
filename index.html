@@ -710,6 +710,10 @@
 
                 <section class="reviews-section" style="margin-bottom: 120px;">
                     <h2 class="block-title">Что говорят студенты</h2>
+
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <button class="btn" onclick="openReviewModal()">Написать отзыв</button>
+                    </div>
                     
                     <div class="avg-rating-block" id="landing-avg-block" style="display:none;">
                         <div class="avg-rating-value" id="landing-avg-val">5.0</div>
@@ -902,6 +906,35 @@
                     <button type="submit" class="btn" style="width:100%;">Отправить</button>
                 </form>
                 <div id="bugStatus" style="display:none; text-align:center; margin-top:15px; color:var(--primary);"></div>
+            </div>
+        </div>
+
+        <!-- Модальное окно для отзыва -->
+        <div class="modal-overlay" id="reviewModal">
+            <div class="modal-window" style="max-width: 500px;">
+                <button class="modal-close" onclick="closeReviewModal()">×</button>
+                <h3 class="modal-title">Ваш отзыв</h3>
+                
+                <div id="review-form-content">
+                    <!-- Звезды -->
+                    <div class="star-rating" id="modal-stars" style="font-size: 40px; color: #FFD700; display: flex; justify-content: center; cursor: pointer; margin-bottom: 20px;">
+                        <span data-val="1">☆</span>
+                        <span data-val="2">☆</span>
+                        <span data-val="3">☆</span>
+                        <span data-val="4">☆</span>
+                        <span data-val="5">☆</span>
+                    </div>
+
+                    <input type="text" id="review-author-input" placeholder="Ваше имя (или Аноним)" style="width:100%; padding:12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color); margin-bottom:15px;">
+                    
+                    <textarea id="review-text-input" placeholder="Пара слов о расширении..." style="width:100%; height:100px; padding:12px; border-radius:12px; border:1px solid var(--border-color); background:var(--bg-color); color:var(--text-color); resize:vertical; margin-bottom:20px;"></textarea>
+                    
+                    <button class="btn" onclick="submitReview()" style="width:100%;">Отправить</button>
+                </div>
+                
+                <div id="review-success" style="display:none; text-align:center; color: var(--primary); font-size: 1.2rem; font-weight: 600;">
+                    Спасибо за отзыв! 💙
+                </div>
             </div>
         </div>
 
@@ -1442,6 +1475,80 @@
                     });
                 });
             }
+
+            /* --- ЛОГИКА ОТЗЫВОВ --- */
+            const reviewModal = document.getElementById('reviewModal');
+            let currentRating = 0;
+
+            function openReviewModal() {
+                reviewModal.style.display = 'flex';
+                setTimeout(() => reviewModal.classList.add('active'), 10);
+            }
+
+            function closeReviewModal() {
+                reviewModal.classList.remove('active');
+                setTimeout(() => reviewModal.style.display = 'none', 300);
+            }
+
+            // Логика звезд
+            document.querySelectorAll('#modal-stars span').forEach(star => {
+                star.addEventListener('click', function() {
+                    currentRating = parseInt(this.dataset.val);
+                    updateStars(currentRating);
+                });
+            });
+
+            function updateStars(rating) {
+                document.querySelectorAll('#modal-stars span').forEach(s => {
+                    s.textContent = parseInt(s.dataset.val) <= rating ? '★' : '☆';
+                });
+            }
+
+            async function submitReview() {
+                const text = document.getElementById('review-text-input').value.trim();
+                const author = document.getElementById('review-author-input').value.trim() || 'Аноним';
+                const FIREBASE_URL = 'https://etisreborn-2b49e-default-rtdb.europe-west1.firebasedatabase.app/reviews.json';
+
+                if (currentRating === 0) { alert('Поставьте оценку!'); return; }
+                if (!text) { alert('Напишите текст!'); return; }
+
+                const reviewData = {
+                    rating: currentRating,
+                    text: text,
+                    author: author,
+                    date: new Date().toISOString(),
+                    source: 'landing' // Пометка, что отзыв с лендинга
+                };
+
+                try {
+                    await fetch(FIREBASE_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(reviewData),
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    document.getElementById('review-form-content').style.display = 'none';
+                    document.getElementById('review-success').style.display = 'block';
+                    
+                    // Обновляем список отзывов на странице
+                    setTimeout(() => {
+                        closeReviewModal();
+                        loadLandingReviews(); 
+                    }, 2000);
+                } catch(e) {
+                    alert('Ошибка отправки');
+                }
+            }
+
+            /* --- АВТООТКРЫТИЕ ПО ССЫЛКЕ (ДЛЯ СКРИПТА) --- */
+            window.addEventListener('load', () => {
+                const hash = window.location.hash;
+                if (hash === '#bugreport') {
+                    openBugModal();
+                } else if (hash === '#writereview') {
+                    openReviewModal();
+                }
+            });
 
             // вызовы функций
             window.addEventListener('DOMContentLoaded', () => {
