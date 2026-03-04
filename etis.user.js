@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.64
-// @changelog    Добавлены отзывы, автообновление и пуш-уведомления
+// @version      1.65
+// @changelog    Фикс экспорта расписания
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -6989,6 +6989,19 @@ injectStyles(styles);
                     shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">hourglass_empty</span> Загрузка...';
 
                     const renderTimetable = () => {
+                        // Хелпер для получения html2canvas из любых контекстов
+                        let h2c = null;
+                        if (typeof html2canvas !== 'undefined') h2c = html2canvas;
+                        else if (typeof unsafeWindow !== 'undefined' && unsafeWindow.html2canvas) h2c = unsafeWindow.html2canvas;
+                        else if (typeof window !== 'undefined' && window.html2canvas) h2c = window.html2canvas;
+
+                        if (!h2c) {
+                            console.error('html2canvas не найден');
+                            shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">error</span> Ошибка';
+                            setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
+                            return;
+                        }
+
                         const isMobile = window.innerWidth <= 960;
                         const renderWidth = isMobile ? 540 : 1000;
                         
@@ -7057,7 +7070,7 @@ injectStyles(styles);
                         document.body.appendChild(exportContainer);
 
                         // Рендерим канвас
-                        window.html2canvas(exportContainer, { 
+                        h2c(exportContainer, { 
                             scale: 2, 
                             useCORS: true,
                             windowWidth: isMobile ? renderWidth : 1200, // Включает мобильные стили CSS при рендере
@@ -7105,7 +7118,12 @@ injectStyles(styles);
                     };
 
                     // Подгружаем библиотеку
-                    if (typeof window.html2canvas === 'undefined') {
+                    let existingH2c = null;
+                    if (typeof html2canvas !== 'undefined') existingH2c = html2canvas;
+                    else if (typeof unsafeWindow !== 'undefined' && unsafeWindow.html2canvas) existingH2c = unsafeWindow.html2canvas;
+                    else if (typeof window !== 'undefined' && window.html2canvas) existingH2c = window.html2canvas;
+
+                    if (!existingH2c) {
                         const script = document.createElement('script');
                         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
                         script.onload = renderTimetable;
