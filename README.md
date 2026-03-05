@@ -13,7 +13,7 @@
   [**🌐 Официальный сайт**](https://etisreborn.ru/) • [**🚀 Установить расширение**](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js) •[**🐛 Сообщить об ошибке**](https://etisreborn.ru/#bugreport)
 
   <br>
-  <img src="img/schedule-pc-dark-new.png" alt="Preview PC" width="800" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+  <img src="img/schedule-pc-light-new.png" alt="Preview PC" width="800" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
 </div>
 
 ---
@@ -24,15 +24,15 @@
 Оригинальный ЕТИС невозможно использовать с телефона без лупы. **REBORN** перестраивает интерфейс: появляется удобное боковое меню, таблицы получают горизонтальную прокрутку, а расписание идеально адаптируется под узкие экраны.
 
 <div align="center">
-  <img src="img/schedule-mobile-dark-new.png" width="280" style="border-radius: 20px; margin: 0 10px;">
-  <img src="img/grades-mobile-dark-new.png" width="280" style="border-radius: 20px; margin: 0 10px;">
+  <img src="img/schedule-mobile-light-new.png" width="280" style="border-radius: 20px; margin: 0 10px;">
+  <img src="img/grades-mobile-light-new.png" width="280" style="border-radius: 20px; margin: 0 10px;">
 </div>
 
 ### 🌙 Тёмная тема
 Автоматически подстраивается под систему вашего устройства или переключается вручную. Бережет зрение при ночной подготовке к сессии и экономит заряд батареи на смартфонах с OLED-экранами.
 
 <div align="center">
-  <img src="img/schedule-pc-light-new.png" width="400" style="border-radius: 8px;">
+  <img src="img/grades-mobile-dark-new.png" width="400" style="border-radius: 8px;">
   <img src="img/schedule-pc-dark-new.png" width="400" style="border-radius: 8px;">
 </div>
 
@@ -49,8 +49,8 @@
 *   **Графики сессий:** Автоматический расчет среднего балла и построение красивых графиков успеваемости.
 
 <div align="center">
-  <img src="img/analytics-sessions-pc-dark.png" width="400" style="border-radius: 8px;">
-  <img src="img/analytics-top-pc-dark.png" width="400" style="border-radius: 8px;">
+  <img src="img/analytics-sessions-pc-light.png" width="400" style="border-radius: 8px;">
+  <img src="img/analytics-top-pc-light.png" width="400" style="border-radius: 8px;">
 </div>
 
 ### 🛠 Множество улучшений (QoL)
