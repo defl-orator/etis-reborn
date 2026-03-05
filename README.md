@@ -58,7 +58,7 @@
 1. Скачайте приложение **[Stay for Safari](https://apps.apple.com/ru/app/stay-for-safari/id1591620171)** из App Store.
 2. Включите расширение *Stay* в настройках Safari.
 3. Нажмите на **[эту ссылку](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)**.
-4. В появившемся окне Stay нажмите **«Create»** (или Install).
+4. В появившемся окне Stay нажмите **«Install»**.
 
 *(⚠️ Обычный мобильный Google Chrome на Android и iOS не поддерживает расширения. Используйте Safari на iOS или браузеры с поддержкой расширений на Android, например, Firefox или Kiwi Browser).*
 
