@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.67
-// @changelog    Фикс отображения необычных аудиторий
+// @version      1.7
+// @changelog    Поиск и улучшенное отображение дат в объявлениях и сообщениях от преподавателей. Возможность добавлять свои пары в расписании
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -5036,6 +5036,83 @@ button.search-capsule:hover {
     transform: translateY(-2px) scale(1.02); 
     background-color: rgba(var(--push-bg-rgb), 0.8) !important;
 }
+
+/* --- CUSTOM PAIRS (ПОЛЬЗОВАТЕЛЬСКИЕ ПАРЫ) --- */
+.add-custom-pair-btn {
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    opacity: 0;
+    transition: all 0.2s ease;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+}
+.day h3:hover .add-custom-pair-btn { opacity: 1; }
+.add-custom-pair-btn:hover { color: var(--color-accent); background: var(--color-highlight); }
+@media (max-width: 960px) { .add-custom-pair-btn { opacity: 1; } }
+
+/* Строка пользовательской пары (Без синего фона и палок) */
+.custom-pair-row .pair_info .dis a {
+    color: var(--color-accent) !important;
+    font-weight: 700 !important;
+}
+
+/* Кнопка удаления (крестик справа от названия предмета) */
+.delete-custom-pair-btn {
+    opacity: 0;
+    cursor: pointer;
+    color: var(--color-red);
+    transition: all 0.2s ease;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 2px;
+    vertical-align: middle;
+}
+.custom-pair-row:hover .delete-custom-pair-btn { opacity: 1; }
+.delete-custom-pair-btn:hover { background: rgba(255, 59, 48, 0.1); }
+
+/* Инпуты в модалке */
+.custom-pair-input-group { display: flex; gap: 1rem; margin-bottom: 1.2rem; }
+.custom-pair-input-group > input, .custom-pair-input-group > select {
+    flex: 1;
+    padding: 1rem 1.2rem !important;
+    border: 1px solid var(--color-table-border) !important;
+    background: var(--color-input) !important;
+    border-radius: var(--radius-small) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.4rem !important;
+}
+
+/* Вкладки в модальном окне редактирования */
+.modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-table-border);
+    margin-bottom: 1.5rem;
+}
+.modal-tab {
+    flex: 1;
+    padding: 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1.3rem;
+    transition: all 0.2s;
+}
+.modal-tab.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+}
+.tab-content { display: none; }
+.tab-content.active { display: block; }
     `;
 
     // Внедряем стили
@@ -6141,12 +6218,38 @@ injectStyles(styles);
 
             let el, btn, img;
 
-            // УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ДЛЯ КРАСИВОЙ ДАТЫ
-            // Превращает "24.02.2026 08:32:33" в "24.02 в 08:32"
+            // УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ДЛЯ КРАСИВОЙ ДАТЫ (macOS Style)
+            // Текущий год: "Пт, 6 марта 16:35"
+            // Прошлые годы: "6 марта 2024" (без времени)
             const formatEtisDate = (rawStr) => {
                 if (!rawStr) return '';
-                const match = rawStr.match(/(\d{2}\.\d{2})\.\d{4}\s(\d{2}:\d{2})/);
-                return match ? `${match[1]} в ${match[2]}` : rawStr;
+                
+                const match = rawStr.match(/(\d{2})\.(\d{2})\.(\d{4})\s(\d{2}:\d{2})/);
+                
+                if (match) {
+                    const day = parseInt(match[1], 10);
+                    const monthIndex = parseInt(match[2], 10) - 1; // Месяцы в JS от 0 до 11
+                    const year = parseInt(match[3], 10);
+                    const time = match[4];
+                    
+                    const dateObj = new Date(year, monthIndex, day);
+                    const now = new Date();
+                    
+                    const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+                    const shortDays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+                    
+                    const monthName = months[monthIndex];
+
+                    // 1. Текущий год: День недели, Число Месяц Время
+                    if (year === now.getFullYear()) {
+                        const dayName = shortDays[dateObj.getDay()];
+                        return `${dayName}, ${day} ${monthName} ${time}`;
+                    }
+                    
+                    // 2. Прошлые годы: Число Месяц Год (время убираем)
+                    return `${day} ${monthName} ${year}`;
+                }
+                return rawStr;
             };
 
             // --- МЯГКАЯ ИКОНКА ПОДЕЛИТЬСЯ (SVG) ---
@@ -6837,9 +6940,10 @@ injectStyles(styles);
                         // Клонируем всю таблицу расписания
                         const timetableClone = document.querySelector('.timetable').cloneNode(true);
                         
-                        // Удаляем кнопки "оценить занятие" и скрытые пары
+                        // Удаляем кнопки "оценить занятие", скрытые пары и точки
                         timetableClone.querySelectorAll('.pair_teacher .eval').forEach(el => el.remove());
                         timetableClone.querySelectorAll('.hidden-by-filter').forEach(el => el.remove());
+                        timetableClone.querySelectorAll('.live-dot').forEach(el => el.remove());
                         
                         // Снимаем синие подчеркивания у ссылок
                         timetableClone.querySelectorAll('a').forEach(a => {
@@ -6853,6 +6957,21 @@ injectStyles(styles);
 
                         span9Wrapper.appendChild(timetableClone);
                         exportContainer.appendChild(span9Wrapper);
+                        
+                        // --- СКРЫТИЕ UI-ЭЛЕМЕНТОВ ДЛЯ СКРИНШОТА ---
+                        const hideUIStyle = document.createElement('style');
+                        hideUIStyle.innerHTML = `
+                            .live-dot, 
+                            .add-custom-pair-btn, 
+                            .delete-custom-pair-btn, 
+                            .subject-note-btn { 
+                                display: none !important; 
+                                opacity: 0 !important;
+                                visibility: hidden !important;
+                            }
+                        `;
+                        exportContainer.appendChild(hideUIStyle);
+
                         document.body.appendChild(exportContainer);
 
                         // Рендерим канвас
@@ -7205,25 +7324,314 @@ injectStyles(styles);
                     });
                 }
 
-                // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ) ---
+                // --- ЛОГИКА КАСТОМНЫХ ПАР ---
+                const CUSTOM_PAIRS_KEY = 'etis_custom_pairs_v1';
+                let customPairs = JSON.parse(localStorage.getItem(CUSTOM_PAIRS_KEY) || '[]');
+
+                function saveCustomPair(pair) {
+                    const existingIndex = customPairs.findIndex(p => p.id === pair.id);
+                    if (existingIndex > -1) customPairs[existingIndex] = pair;
+                    else customPairs.push(pair);
+                    localStorage.setItem(CUSTOM_PAIRS_KEY, JSON.stringify(customPairs));
+                }
+
+                function removeCustomPair(id) {
+                    customPairs = customPairs.filter(p => p.id !== id);
+                    localStorage.setItem(CUSTOM_PAIRS_KEY, JSON.stringify(customPairs));
+                }
+
+                // Вставка кастомных пар в DOM
+                function injectCustomPairs() {
+                    const currentWeekEl = document.querySelector('.week.current');
+                    const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 1;
+
+                    const days = span9.querySelectorAll("div.day");
+                    days.forEach(day => {
+                        const dayNameEl = day.querySelector('.day-name');
+                        if (!dayNameEl) return;
+                        
+                        const currentDayName = dayNameEl.textContent.trim();
+                        const table = day.querySelector('table');
+                        if (!table) return;
+                        const tbody = table.querySelector('tbody') || table;
+
+                        customPairs.forEach(pair => {
+                            if (pair.dayName !== currentDayName) return;
+
+                            let shouldShow = false;
+                            if (pair.recurrence === 'once' && pair.addedWeek === currentWeek) shouldShow = true;
+                            if (pair.recurrence === 'every') shouldShow = true;
+                            if (pair.recurrence === 'biweekly' && (currentWeek % 2 === pair.addedWeek % 2)) shouldShow = true;
+
+                            if (shouldShow) {
+                                // Жестко вычищаем плашку "Выходной / 0 пар", чтобы она не дублировалась
+                                Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+                                    if (r.textContent.includes('0 пар') || r.textContent.includes('Выходной')) r.remove();
+                                });
+
+                                let typeClass = 'type-badge-lek';
+                                if (pair.type === 'практ') typeClass = 'type-badge-pract';
+                                else if (pair.type === 'лаб') typeClass = 'type-badge-lab';
+
+                                const tr = document.createElement('tr');
+                                tr.className = 'custom-pair-row';
+                                tr.setAttribute('data-custom-id', pair.id);
+                                
+                                tr.innerHTML = `
+                                    <td class="pair_num">
+                                        <span class="pair-type-badge ${typeClass}">${pair.type}</span>
+                                        1 пара<br><font class="eval">${pair.startTime}</font>
+                                    </td>
+                                    <td class="pair_info">
+                                        <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
+                                            <a href="#" style="pointer-events: none;">${pair.subject}</a>
+                                            <span class="material-icons delete-custom-pair-btn" title="Удалить пару">close</span>
+                                        </div>
+                                        ${pair.aud ? `
+                                        <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">
+                                            <div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);">
+                                                <span class="material-icons" style="font-size: 1.5rem;">place</span>${pair.aud}
+                                            </div>
+                                        </div>` : ''}
+                                    </td>
+                                    <td class="pair_teacher">
+                                        ${pair.teacher ? `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${pair.teacher}</a>` : ''}
+                                    </td>
+                                `;
+
+                                // Логика удаления (крестик)
+                                tr.querySelector('.delete-custom-pair-btn').addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    if(confirm(`Удалить пару "${pair.subject}"?`)) {
+                                        removeCustomPair(pair.id);
+                                        tr.remove();
+                                        window.location.reload(); // Перезагружаем для чистого пересчета окон ЕТИСом
+                                    }
+                                });
+
+                                tbody.appendChild(tr);
+                            }
+                        });
+
+                        // Сортировка строк по времени начала, чтобы пара встала в правильное место по времени
+                        const rows = Array.from(tbody.querySelectorAll('tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
+                        rows.sort((a, b) => {
+                            const timeAStr = a.querySelector('.eval')?.textContent.split(':') || ['23','59'];
+                            const timeBStr = b.querySelector('.eval')?.textContent.split(':') || ['23','59'];
+                            return (parseInt(timeAStr[0])*60 + parseInt(timeAStr[1])) - (parseInt(timeBStr[0])*60 + parseInt(timeBStr[1]));
+                        });
+                        rows.forEach(r => tbody.appendChild(r));
+                    });
+                }
+
+                // Модальное окно создания/редактирования пары
+                function openCustomPairModal(dayName, existingPair = null) {
+                    let overlay = document.querySelector('.analytics-overlay');
+                    let modal = document.querySelector('.analytics-modal');
+
+                    if (!overlay || !modal) {
+                        overlay = document.createElement('div');
+                        overlay.className = 'analytics-overlay';
+                        document.body.appendChild(overlay);
+
+                        modal = document.createElement('div');
+                        modal.className = 'analytics-modal';
+                        document.body.appendChild(modal);
+                    }
+
+                    const title = existingPair ? `Редактировать пару` : `Добавить пару (${dayName})`;
+                    const pairId = existingPair ? existingPair.id : ('cp_' + Date.now());
+                    
+                    // Если создаем новую, ставим текущее время + 1.5 часа, иначе берем из сохраненного
+                    let defStart = "08:00";
+                    let defEnd = "09:30";
+                    if (existingPair) {
+                        defStart = existingPair.startTime;
+                        defEnd = existingPair.endTime;
+                    }
+
+                    modal.innerHTML = `
+                        <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="ui-dialog-title">${title}</span>
+                            <button class="close-modal" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                        </div>
+                        <div class="ui-dialog-content" style="padding: 2.4rem;">
+                            
+                            ${existingPair ? `
+                            <div class="modal-tabs">
+                                <button class="modal-tab" data-tab="notes">Заметки / ДЗ</button>
+                                <button class="modal-tab active" data-tab="edit">Настройки пары</button>
+                            </div>
+                            <div class="tab-content" id="tab-notes">
+                                <textarea class="note-modal-textarea" id="cp-notes-area" placeholder="Что нужно сделать?"></textarea>
+                                <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+                                    <button class="answer-btn-custom clear-cp-note-btn" style="background: var(--color-highlight); color: var(--color-red); border: 1px solid var(--color-table-border); box-shadow: none;">Удалить</button>
+                                    <button class="answer-btn-custom save-cp-note-btn" style="box-shadow: none;">Сохранить заметку</button>
+                                </div>
+                            </div>
+                            ` : ''}
+
+                            <div class="tab-content active" id="tab-edit">
+                                <input type="text" id="cp-subject" class="custom-pair-input-group" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}" style="width: 100%; box-sizing:border-box;">
+                                
+                                <div class="custom-pair-input-group">
+                                    <input type="time" id="cp-start" value="${defStart}" required title="Время начала">
+                                    <input type="time" id="cp-end" value="${defEnd}" required title="Время окончания">
+                                </div>
+
+                                <div class="custom-pair-input-group">
+                                    <select id="cp-type">
+                                        <option value="лек" ${existingPair && existingPair.type==='лек'?'selected':''}>Лекция</option>
+                                        <option value="практ" ${existingPair && existingPair.type==='практ'?'selected':''}>Практика</option>
+                                        <option value="лаб" ${existingPair && existingPair.type==='лаб'?'selected':''}>Лабораторная</option>
+                                    </select>
+                                    <select id="cp-recurrence">
+                                        <option value="every" ${existingPair && existingPair.recurrence==='every'?'selected':''}>Каждую неделю</option>
+                                        <option value="biweekly" ${existingPair && existingPair.recurrence==='biweekly'?'selected':''}>Раз в 2 недели</option>
+                                        <option value="once" ${existingPair && existingPair.recurrence==='once'?'selected':''}>Только на этой неделе</option>
+                                    </select>
+                                </div>
+
+                                <div class="custom-pair-input-group">
+                                    <input type="text" id="cp-aud" placeholder="Аудитория (например: 413, 8)" value="${existingPair ? existingPair.aud : ''}">
+                                    <input type="text" id="cp-teacher" placeholder="Преподаватель (Иванов И.И.)" value="${existingPair ? existingPair.teacher : ''}">
+                                </div>
+
+                                <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
+                                    <button class="answer-btn-custom save-cp-btn" style="box-shadow: none;">${existingPair ? 'Сохранить изменения' : 'Добавить'}</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+
+                    const closeModal = () => { overlay.classList.remove('active'); modal.classList.remove('active'); };
+                    overlay.onclick = closeModal;
+                    modal.querySelector('.close-modal').onclick = closeModal;
+
+                    // Авто-сдвиг времени на +1.5 часа
+                    const startInput = modal.querySelector('#cp-start');
+                    const endInput = modal.querySelector('#cp-end');
+                    startInput.addEventListener('change', (e) => {
+                        if (e.target.value) {
+                            let [hours, minutes] = e.target.value.split(':').map(Number);
+                            minutes += 90; // Прибавляем 1.5 часа
+                            hours += Math.floor(minutes / 60);
+                            minutes = minutes % 60;
+                            hours = hours % 24;
+                            endInput.value = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                        }
+                    });
+
+                    // Логика переключения вкладок (если редактируем)
+                    if (existingPair) {
+                        const tabs = modal.querySelectorAll('.modal-tab');
+                        const contents = modal.querySelectorAll('.tab-content');
+                        
+                        let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+                        const currentNote = notesData.specific[existingPair.pairNoteId] || '';
+                        modal.querySelector('#cp-notes-area').value = currentNote;
+
+                        tabs.forEach(tab => {
+                            tab.addEventListener('click', () => {
+                                tabs.forEach(t => t.classList.remove('active'));
+                                contents.forEach(c => c.classList.remove('active'));
+                                tab.classList.add('active');
+                                modal.querySelector(`#tab-${tab.getAttribute('data-tab')}`).classList.add('active');
+                            });
+                        });
+
+                        modal.querySelector('.save-cp-note-btn').onclick = () => {
+                            const val = modal.querySelector('#cp-notes-area').value.trim();
+                            if (!val) delete notesData.specific[existingPair.pairNoteId];
+                            else notesData.specific[existingPair.pairNoteId] = val;
+                            localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
+                            closeModal();
+                            renderNotes(); // Мгновенно обновляем карандашик
+                        };
+                        modal.querySelector('.clear-cp-note-btn').onclick = () => {
+                            modal.querySelector('#cp-notes-area').value = '';
+                            modal.querySelector('.save-cp-note-btn').click();
+                        };
+                    }
+
+                    // Сохранение самой пары
+                    modal.querySelector('.save-cp-btn').onclick = () => {
+                        const subject = document.getElementById('cp-subject').value.trim();
+                        if (!subject) return alert('Введите название предмета!');
+                        
+                        const currentWeekEl = document.querySelector('.week.current');
+                        const addedWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 1;
+
+                        // Умное форматирование аудитории
+                        let rawAud = document.getElementById('cp-aud').value.trim();
+                        let finalAud = rawAud;
+                        
+                        // Если ввели "413, 8" и нет слова "ауд"
+                        if (rawAud && rawAud.includes(',') && !rawAud.toLowerCase().includes('ауд')) {
+                            const parts = rawAud.split(',').map(s => s.trim());
+                            if (parts.length === 2) {
+                                const room = parts[0];
+                                const building = parts[1];
+                                // Этаж - это первая цифра аудитории
+                                const floorMatch = room.match(/\d/);
+                                const floor = floorMatch ? floorMatch[0] : '1';
+                                finalAud = `ауд. ${room}, к. ${building}, э. ${floor}`;
+                            }
+                        }
+
+                        const pair = {
+                            id: pairId,
+                            addedWeek: existingPair ? existingPair.addedWeek : addedWeek, 
+                            dayName: dayName,
+                            subject: subject,
+                            startTime: document.getElementById('cp-start').value,
+                            endTime: document.getElementById('cp-end').value, // Сохраняем конец (для сортировки и расчетов), но не выводим
+                            type: document.getElementById('cp-type').value,
+                            recurrence: document.getElementById('cp-recurrence').value,
+                            aud: finalAud,
+                            teacher: document.getElementById('cp-teacher').value.trim()
+                        };
+
+                        saveCustomPair(pair);
+                        closeModal();
+                        window.location.reload(); 
+                    };
+
+                    overlay.classList.add('active');
+                    modal.classList.add('active');
+                }
+
+                // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ) И КНОПКА "+" ---
                 const dayHeaders = span9.querySelectorAll('.day h3');
                 dayHeaders.forEach(header => {
                     const text = header.textContent.trim();
                     const parts = text.split(',');
                     
+                    let dayOfWeek = text;
+                    let datePart = '';
+
                     if (parts.length >= 2) {
-                        const dayOfWeek = parts[0].trim();
-                        const datePart = parts.slice(1).join(',').trim();
-                        
-                        header.innerHTML = `
-                            <span class="day-name">${dayOfWeek}</span>
-                            <span class="day-date">${datePart}</span>
-                        `;
-                    } else {
-                        // Резервный вариант, если запятой нет
-                        header.innerHTML = `<span class="day-name">${text}</span>`;
+                        dayOfWeek = parts[0].trim();
+                        datePart = parts.slice(1).join(',').trim();
                     }
+
+                    // Кнопка "+" теперь встроена прямо в flex-блок рядом с днем недели
+                    header.innerHTML = `
+                        <div style="display:flex; align-items:center; gap: 6px;">
+                            <span class="day-name">${dayOfWeek}</span>
+                            <span class="material-icons add-custom-pair-btn" title="Добавить свою пару">add</span>
+                        </div>
+                        <span class="day-date">${datePart}</span>
+                    `;
+
+                    header.querySelector('.add-custom-pair-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        openCustomPairModal(dayOfWeek);
+                    });
                 });
+
+                // Вставляем кастомные пары до пересчета расписания
+                injectCustomPairs();
 
                 // --- ПАРСИНГ И ИКОНКИ ДЛЯ АУДИТОРИЙ ---
                 span9.querySelectorAll('.pair_info .aud').forEach(aud => {
@@ -7497,7 +7905,20 @@ injectStyles(styles);
                         
                         noteBtn.addEventListener('click', (e) => {
                             e.preventDefault(); e.stopPropagation();
-                            openNoteModal(cleanSubjectName, pairId, index, allRowsArray, currentNote);
+                            
+                            // Если это кастомная пара, открываем специальное окно с вкладками
+                            if (row.classList.contains('custom-pair-row')) {
+                                const pairIdFromRow = row.getAttribute('data-custom-id');
+                                const pairData = customPairs.find(p => p.id === pairIdFromRow);
+                                if (pairData) {
+                                    pairData.pairNoteId = pairId; // Передаем ID для сохранения заметки
+                                    const dayNameEl = row.closest('.day').querySelector('.day-name');
+                                    openCustomPairModal(dayNameEl ? dayNameEl.textContent.trim() : 'День', pairData);
+                                }
+                            } else {
+                                // Иначе открываем обычное окно заметок ЕТИСа
+                                openNoteModal(cleanSubjectName, pairId, index, allRowsArray, currentNote);
+                            }
                         });
                         
                         targetContainer.appendChild(noteBtn);
@@ -7723,7 +8144,6 @@ injectStyles(styles);
                         const firstLi = msg.querySelector('li:first-child');
                         if (!firstLi) return;
 
-                        // Клонируем, чтобы безопасно вырезать лишнее
                         const cloneContent = firstLi.cloneNode(true);
 
                         const dateNode = cloneContent.querySelector('font[color="#808080"]');
@@ -7734,16 +8154,13 @@ injectStyles(styles);
                         const titleStr = titleNode ? titleNode.textContent.trim() : '';
                         if (titleNode) titleNode.remove();
 
-                        // Удаляем оставшиеся теги font от ЕТИСа
                         cloneContent.querySelectorAll('font').forEach(n => n.remove());
 
-                        // Собираем файлы
                         const attachments = [];
                         msg.querySelectorAll('a[href*="file_download"]').forEach(link => {
                             attachments.push({ name: link.textContent.trim(), href: link.href });
                         });
 
-                        // Выделяем автора
                         let rawHtml = cloneContent.innerHTML.replace(/^(<br\s*\/?>|\s)+/, '').replace(/(<br\s*\/?>|\s)+$/, '');
                         const parts = rawHtml.split(/<br\s*\/?>/i);
                         let authorStr = 'Администрация / Деканат';
@@ -7757,7 +8174,6 @@ injectStyles(styles);
                             }
                         }
 
-                        // Собираем чистый текст
                         let bodyHtml = parts.join('<br>').replace(/^(<br\s*\/?>|\s)+/, '');
                         while(bodyHtml.startsWith('<br>')) {
                             bodyHtml = bodyHtml.replace(/^<br\s*\/?>\s*/i, '');
@@ -7794,7 +8210,6 @@ injectStyles(styles);
 
                         const shareBtnWrap = card.querySelector('.share-msg-wrap');
                         if (shareBtnWrap) {
-                            // Убираем букву "в" и меняем двоеточие на тире для безопасности файловой системы
                             const safeDate = dateStr.replace(' в ', ' ').replace(/:/g, '-');
                             shareBtnWrap.addEventListener('click', () => shareMessageCard(card, `Объявление от ${safeDate}.png`));
                         }
@@ -7802,19 +8217,47 @@ injectStyles(styles);
                         container.appendChild(card);
                     });
 
-                    const h2 = span9.querySelector('h2') || document.createElement('h2');
-                    if (!h2.parentNode) h2.textContent = 'Объявления';
-                    h2.style.marginBottom = '2.4rem';
+                    // --- ПОИСК ---
+                    const searchWrapper = document.createElement('div');
+                    searchWrapper.className = 'teacher-search-wrapper';
+                    // Убираем верхний отступ у капсулы, так как заголовка больше нет
+                    searchWrapper.style.marginTop = '0';
+                    searchWrapper.innerHTML = `
+                        <div class="search-capsule" style="max-width: 600px;">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" class="search-input" id="ann-search" placeholder="Поиск">
+                        </div>
+                    `;
+
+                    const noResults = document.createElement('div');
+                    noResults.className = 'no-results-msg';
+                    noResults.textContent = 'Ничего не найдено';
+                    noResults.style.display = 'none';
+
+                    searchWrapper.querySelector('#ann-search').addEventListener('input', (e) => {
+                        const val = e.target.value.toLowerCase().trim();
+                        let count = 0;
+                        container.querySelectorAll('.msg-card').forEach(card => {
+                            if (val === '' || card.textContent.toLowerCase().includes(val)) {
+                                card.style.display = '';
+                                count++;
+                            } else {
+                                card.style.display = 'none';
+                            }
+                        });
+                        noResults.style.display = (count === 0 && val !== '') ? 'block' : 'none';
+                    });
                     
-                    // Очищаем DOM от старых элементов
+                    // Очищаем DOM от старых элементов (включая заголовки, если они были)
                     span9.innerHTML = '';
-                    span9.appendChild(h2);
+                    span9.appendChild(searchWrapper);
                     span9.appendChild(container);
+                    span9.appendChild(noResults);
                     break;
                 }
 
                 case 'stu.teacher_notes': {
-                    // Пагинация (находим блок со страницами)
+                    // Пагинация
                     const pagesContainer = span9.querySelector('.weeks');
                     if (pagesContainer) {
                         pagesContainer.classList.add('message-pages');
@@ -7830,37 +8273,31 @@ injectStyles(styles);
                         const mainLi = msg.querySelector('li');
                         if (!mainLi) return;
 
-                        // Клонируем для чистки
                         const cloneContent = mainLi.cloneNode(true);
 
-                        // 1. Имя преподавателя
                         const teacherNode = cloneContent.querySelector('b i');
                         const teacherName = teacherNode ? teacherNode.textContent.trim() : 'Преподаватель';
                         const bTag = cloneContent.querySelector('b');
                         if (bTag && bTag.contains(teacherNode)) bTag.remove();
 
-                        // 2. Дата
                         const dateNode = cloneContent.querySelector('font[color="#808080"]');
                         const dateStr = dateNode ? formatEtisDate(dateNode.textContent.trim()) : '';
                         if (dateNode) dateNode.remove();
 
-                        // 3. Темы (ЕТИС сует их в теги <font>)
                         const subjects = [];
                         cloneContent.querySelectorAll('font').forEach(fontNode => {
                             const text = fontNode.textContent.trim();
                             if (text) subjects.push(text);
-                            fontNode.remove(); // ВЫРЕЗАЕМ ИЗ ТЕКСТА
+                            fontNode.remove(); 
                         });
-                        const titleStr = subjects.join(' • '); // Если тем несколько (Дисциплина + Заголовок)
+                        const titleStr = subjects.join(' • '); 
 
-                        // 4. Собираем идеально чистый текст
                         let rawHtml = cloneContent.innerHTML.replace(/&nbsp;/g, ' ').replace(/^(<br\s*\/?>|\s)+/, '').replace(/(<br\s*\/?>|\s)+$/, '');
                         while(rawHtml.startsWith('<br>')) {
                             rawHtml = rawHtml.replace(/^<br\s*\/?>\s*/i, '');
                         }
                         const bodyHtml = rawHtml;
 
-                        // 5. Кнопки и файлы
                         const files = [];
                         msg.querySelectorAll('a[href*="file_download"]').forEach(link => {
                             files.push({ name: link.textContent.trim(), node: link });
@@ -7868,7 +8305,6 @@ injectStyles(styles);
                         const oldReplyBtn = msg.querySelector('input[type="button"]');
                         const replyFormDiv = msg.querySelector('div[id^="frm_"]');
 
-                        // 6. Строим карточку
                         const card = document.createElement('div');
                         card.className = 'msg-card';
 
@@ -7888,12 +8324,10 @@ injectStyles(styles);
 
                         const shareBtnWrap = card.querySelector('.share-msg-wrap');
                         if (shareBtnWrap) {
-                            // Делаем красивое название с именем и датой
                             const safeDate = dateStr.replace(' в ', ' ').replace(/:/g, '-');
                             shareBtnWrap.addEventListener('click', () => shareMessageCard(card, `Сообщение от ${teacherName} (${safeDate}).png`));
                         }
 
-                        // 7. Строим футер с файлами и кнопкой
                         if (files.length > 0 || oldReplyBtn) {
                             const footer = document.createElement('div');
                             footer.className = 'msg-footer';
@@ -7924,7 +8358,6 @@ injectStyles(styles);
                             card.appendChild(footer);
                         }
 
-                        // 8. Цепляем форму ответа
                         if (replyFormDiv) {
                             const txtArea = replyFormDiv.querySelector('textarea');
                             if (txtArea) txtArea.placeholder = "Напишите ваш ответ здесь...";
@@ -7939,20 +8372,46 @@ injectStyles(styles);
                     // Очищаем старые таблицы ЕТИСа
                     span9.querySelectorAll('ul.nav.msg').forEach(m => m.remove());
                     
-                    // ДОБАВЛЯЕМ ЗАГОЛОВОК СТРАНИЦЫ
-                    const h2 = span9.querySelector('h2') || document.createElement('h2');
-                    if (!h2.parentNode) {
-                        h2.textContent = 'Сообщения от преподавателей';
-                        span9.prepend(h2); // Вставляем в самый верх страницы
-                    }
-                    h2.style.marginBottom = '2.4rem';
+                    // Удаляем оригинальный заголовок, если он был
+                    const oldH2 = span9.querySelector('h2');
+                    if (oldH2) oldH2.remove();
+
+                    // --- ПОИСК ---
+                    const searchWrapper = document.createElement('div');
+                    searchWrapper.className = 'teacher-search-wrapper';
+                    searchWrapper.style.marginTop = '0';
+                    searchWrapper.innerHTML = `
+                        <div class="search-capsule" style="max-width: 600px;">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" class="search-input" id="msg-search" placeholder="Поиск">
+                        </div>
+                    `;
+
+                    const noResults = document.createElement('div');
+                    noResults.className = 'no-results-msg';
+                    noResults.textContent = 'Ничего не найдено';
+                    noResults.style.display = 'none';
+
+                    searchWrapper.querySelector('#msg-search').addEventListener('input', (e) => {
+                        const val = e.target.value.toLowerCase().trim();
+                        let count = 0;
+                        container.querySelectorAll('.msg-card').forEach(card => {
+                            if (val === '' || card.textContent.toLowerCase().includes(val)) {
+                                card.style.display = '';
+                                count++;
+                            } else {
+                                card.style.display = 'none';
+                            }
+                        });
+                        noResults.style.display = (count === 0 && val !== '') ? 'block' : 'none';
+                    });
                     
-                    // Вставляем карточки сообщений сразу под заголовком
-                    h2.after(container);
+                    span9.prepend(searchWrapper);
+                    searchWrapper.after(container);
+                    container.after(noResults);
                     
-                    // ПЕРЕНОСИМ ПАГИНАЦИЮ В САМЫЙ НИЗ (под карточки)
                     if (pagesContainer) {
-                        container.after(pagesContainer);
+                        noResults.after(pagesContainer);
                     }
                     
                     break;
