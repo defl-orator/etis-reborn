@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.702
+// @version      1.704
 // @changelog    Поиск и улучшенное отображение дат в объявлениях и сообщениях от преподавателей. Возможность добавлять свои пары в расписании
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -16,7 +16,7 @@
 // @connect      raw.githubusercontent.com
 // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
 // @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
-// ==/UserScript==
+// ==/UserScript== 
 
 (function() {
     'use strict';
@@ -797,18 +797,41 @@ a[href="stu.dis_stat"]:before {
 }
 .login:before, .login:after { display: none !important; }
 .psu-logo {
-    position: relative !important;
-    content: '' !important;
-    height: 20rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
     width: 100% !important;
-    background-image: url("https://raw.githubusercontent.com/ENAleksey/etis-extension/8bc57f7b991ba8b6a07dec05809ac8c218082db4/psu_logo.svg") !important;
-    opacity: .6 !important;
-    background-size: contain !important;
-    background-position: center !important;
-    background-repeat: no-repeat !important;
-    margin-bottom: 4.8rem !important;
+    margin-bottom: 1.5rem !important; 
+    opacity: 0.9 !important;
 }
-html[theme="light"] .psu-logo { filter: invert(1) !important; }
+
+.psu-logo::before {
+    content: '' !important;
+    display: block !important;
+    height: 13rem !important;
+    width: 100% !important;
+    background-image: url("https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/etis_logo_outline.png") !important;
+    background-size: contain !important;
+    background-position: center bottom !important;
+    background-repeat: no-repeat !important;
+    /* Отступ от медведя до букв */
+    margin-bottom: 1.2rem !important; 
+}
+
+.psu-logo::after {
+    content: 'Е Т И С' !important;
+    display: block !important;
+    width: 80% !important; 
+    text-align-last: justify !important;
+    font-size: 2.8rem !important;
+    font-weight: 800 !important;
+    color: var(--color-text-primary) !important;
+    line-height: 1 !important;
+}
+
+html[theme="dark"] .psu-logo::before {
+    filter: invert(1) !important;
+}
 .login > form > .choose { display: block !important; padding: 0 !important; border-bottom: none !important; background: none !important; margin-bottom: 2.4rem !important; font-size: 0 !important; }
 .login-actions { 
     display: flex !important; 
@@ -3112,8 +3135,15 @@ td.empty {
 
     /* Уточнение для логотипа на мобилке, чтобы не сплющивался */
     .psu-logo {
-        height: 16rem !important; 
-        margin-bottom: 2rem !important;
+        margin-bottom: 1.5rem !important;
+    }
+    .psu-logo::before {
+        height: 9rem !important; 
+        margin-bottom: 1rem !important;
+    }
+    .psu-logo::after {
+        font-size: 2.4rem !important;
+        width: 80% !important;
     }
 }
 
