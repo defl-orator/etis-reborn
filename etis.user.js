@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.701
 // @changelog    Поиск и улучшенное отображение дат в объявлениях и сообщениях от преподавателей. Возможность добавлять свои пары в расписании
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -5041,7 +5041,7 @@ button.search-capsule:hover {
 .add-custom-pair-btn {
     cursor: pointer;
     color: var(--color-text-secondary);
-    opacity: 0;
+    opacity: 0; /* Скрыто по умолчанию везде */
     transition: all 0.2s ease;
     border-radius: 50%;
     display: inline-flex;
@@ -5050,9 +5050,17 @@ button.search-capsule:hover {
     width: 28px;
     height: 28px;
 }
-.day h3:hover .add-custom-pair-btn { opacity: 1; }
-.add-custom-pair-btn:hover { color: var(--color-accent); background: var(--color-highlight); }
-@media (max-width: 960px) { .add-custom-pair-btn { opacity: 1; } }
+
+/* Показываем при наведении (ПК) или при тапе (Мобильные) */
+.day h3:hover .add-custom-pair-btn,
+.day h3:active .add-custom-pair-btn { 
+    opacity: 1; 
+}
+
+.add-custom-pair-btn:hover { 
+    color: var(--color-accent); 
+    background: var(--color-highlight); 
+}
 
 /* Строка пользовательской пары (Без синего фона и палок) */
 .custom-pair-row .pair_info .dis a {
@@ -5074,7 +5082,13 @@ button.search-capsule:hover {
     padding: 2px;
     vertical-align: middle;
 }
-.custom-pair-row:hover .delete-custom-pair-btn { opacity: 1; }
+
+/* Показываем крестик при наведении или тапе на строку */
+.custom-pair-row:hover .delete-custom-pair-btn,
+.custom-pair-row:active .delete-custom-pair-btn { 
+    opacity: 1; 
+}
+
 .delete-custom-pair-btn:hover { background: rgba(255, 59, 48, 0.1); }
 
 /* Инпуты в модалке */
