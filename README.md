@@ -4,13 +4,13 @@
   # ЕТИС REBORN
   **Сделай ЕТИС великим снова**
 
-  [![Version](https://img.shields.io/badge/Версия-1.67-blue.svg)](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)
+  [![Version](https://img.shields.io/badge/Версия-1.7-blue.svg)](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)
   [![Website](https://img.shields.io/badge/Сайт-etisreborn.ru-success.svg)](https://etisreborn.ru/)
   [![License](https://img.shields.io/badge/Лицензия-MIT-green.svg)](LICENSE)
 
   *Бесплатное браузерное расширение (userscript), которое полностью обновляет личный кабинет студента ПГНИУ. Современный дизайн, адаптация для смартфонов, тёмная тема и умная аналитика.*
 
-  [**🌐 Официальный сайт**](https://etisreborn.ru/) • [**🚀 Установить расширение**](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js) •[**🐛 Сообщить об ошибке**](https://etisreborn.ru/#bugreport)
+  [**🌐 Официальный сайт с установкой**](https://etisreborn.ru/) •[**🐛 Сообщить об ошибке**](https://etisreborn.ru/#bugreport)
 
   <br>
   <img src="img/schedule-pc-light-new.png" alt="Preview PC" width="800" style="border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
