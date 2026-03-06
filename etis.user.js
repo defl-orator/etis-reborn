@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.701
+// @version      1.702
 // @changelog    Поиск и улучшенное отображение дат в объявлениях и сообщениях от преподавателей. Возможность добавлять свои пары в расписании
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -5408,8 +5408,26 @@ injectStyles(styles);
             const content = modal.querySelector('.ui-dialog-content');
             if (content) {
                 content.innerHTML = getUpdateHTML();
+                
                 const btn = content.querySelector('#update-confirm');
-                if (btn) btn.onclick = () => window.location.href = UPDATE_URL;
+                if (btn) {
+                    btn.onclick = () => {
+                        // 1. Скрываем окно и фон немедленно
+                        modal.style.display = 'none';
+                        const overlay = document.getElementById('etis-update-overlay');
+                        if (overlay) overlay.style.display = 'none';
+
+                        // 2. Запускаем скачивание обновления
+                        window.location.href = UPDATE_URL;
+
+                        // 3. Перезагружаем страницу через 1.5 секунды, 
+                        // чтобы после установки скрипта пользователь сразу увидел новую версию
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    };
+                }
+
                 const retry = content.querySelector('#retry-update');
                 if (retry) retry.onclick = () => initAutoUpdateCheck(true);
             }
