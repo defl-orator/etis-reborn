@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.704
-// @changelog    Поиск и улучшенное отображение дат в объявлениях и сообщениях от преподавателей. Возможность добавлять свои пары в расписании
+// @version      1.71
+// @changelog    Добавлено отображение праздников в расписании. Унификация подвкладок и закруглений
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -296,55 +296,91 @@ font[color="green"], span[style*="color:green"] { color: var(--color-green) !imp
 font[color="red"], span[style*="color:red"] { color: var(--color-red) !important; font-weight: 600 !important; }
 font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !important; font-weight: 600 !important; }
 
-/* --- SUBMENU  --- */
+/* --- SUBMENU (УНИФИЦИРОВАННАЯ КАПСУЛА) --- */
 .submenu {
     display: flex !important;
+    flex-direction: row !important;
     flex-wrap: nowrap !important;
-    gap: 0.8rem !important;
-    margin-bottom: 2.4rem !important;
-    border-bottom: none !important;
-    align-items: center !important;
-    overflow-x: auto !important; 
-    padding-bottom: 0.8rem !important; 
+    align-items: stretch !important; 
+    position: relative !important;
+    
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
     scrollbar-width: none !important;
     -webkit-overflow-scrolling: touch !important;
-}
-.submenu::-webkit-scrollbar { 
-    display: none !important; /* Прячем скроллбар в Chrome/Safari */
-}
 
-.submenu a {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 0.8rem 1.6rem !important;
-    border-radius: 2rem !important;
-    background: var(--color-card) !important;
-    color: var(--color-text-secondary) !important;
-    text-decoration: none !important;
-    font-weight: 500 !important;
+    width: 100% !important;
+    border-radius: 50px !important; 
+    background-color: var(--color-card) !important;
     box-shadow: var(--shadow-main) !important;
-    transition: all 0.2s !important;
-    border: 1px solid transparent !important;
-    line-height: 1.2 !important;
+    
+    padding: 6px !important; 
+    gap: 8px !important;
+    margin-bottom: 2.4rem !important;
+    border-bottom: none !important;
+
+    /* Индикация скролла по бокам */
+    background-image: 
+        linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
+        linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
+    background-position: left center, right center !important;
+    background-repeat: no-repeat !important;
+    background-size: 40px 100% !important;
+    background-attachment: scroll !important;
 }
 
+[theme="dark"] .submenu {
+    background: 
+        linear-gradient(to right, var(--color-card) 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local,
+        linear-gradient(to left, var(--color-card) 30%, rgba(255,255,255,0)) right center / 40px 100% no-repeat local,
+        radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) left center / 15px 100% no-repeat scroll,
+        radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) right center / 15px 100% no-repeat scroll !important;
+    background-color: var(--color-card) !important;
+}
+
+.submenu::-webkit-scrollbar { 
+    display: none !important; 
+}
+
+/* Исключаем .answer-btn-custom, так как это кнопка "Оценить план" */
+.submenu a:not(.answer-btn-custom), 
 .submenu b {
+    flex: 1 0 auto !important; /* На ПК кнопки будут равномерно тянуться на всю ширину */
+    min-width: max-content !important; 
+    white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 0.8rem 1.6rem !important;
-    border-radius: 2rem !important;
+    border-radius: 50px !important; 
+    
+    height: 3.8rem !important;
+    padding: 0 16px !important; 
+    margin: 0 !important;
+    font-size: 1.3rem !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+    box-sizing: border-box !important;
+    text-decoration: none !important;
+}
+
+/* Обычная вкладка */
+.submenu a:not(.answer-btn-custom) {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-primary) !important;
+}
+
+/* Активная вкладка */
+.submenu b {
     background: var(--color-accent) !important;
     color: var(--color-text-primary-invert) !important;
     font-weight: 600 !important;
-    box-shadow: var(--shadow-main) !important;
-    line-height: 1.2 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
 }
 
-.submenu a:hover {
-    background: var(--color-highlight) !important;
-    color: var(--color-text-primary) !important;
+.submenu a:not(.answer-btn-custom):hover {
+    background: var(--color-highlight-light) !important;
     transform: translateY(-1px);
 }
 
@@ -457,7 +493,10 @@ form.que_form { margin-top: 1rem !important; }
 .ses_part { line-height: 1.5 !important; }
 
 /* Week Select (Капсула) */
-.week-select { margin: 0 auto 1.5rem !important; width: 100% !important; }
+.week-select { 
+    margin: 0 0 1.5rem 0 !important;
+    width: 100% !important; 
+}
 .week-select h3 { display: none !important; }
 
 /* Капсула для недель */
@@ -572,12 +611,12 @@ div.timetable-buttonbar { display: flex !important; flex-direction: row !importa
 div.consultations { display: flex !important; align-items: center !important; float: none !important; color: var(--color-text-primary) !important; }
 span.holiday { background-color: var(--color-green) !important; color: var(--color-text-primary-invert) !important; padding: 0.4rem 0.8rem !important; border-radius: 50rem !important; margin-top: 0.6rem !important; display: inline-block !important; }
 .day { 
-    border-radius: var(--radius-medium) !important; 
+    border-radius: var(--radius-large) !important; 
     background-color: var(--color-card) !important; 
     box-shadow: var(--shadow-main) !important; 
     overflow: hidden !important; 
     padding: 0 !important; 
-    margin-bottom: 2rem !important; 
+    margin-bottom: 1.5rem !important; 
 }
 .span9 .day h3 { 
     display: flex !important;
@@ -867,7 +906,7 @@ html[theme="dark"] .psu-logo::before {
     
     padding: 6px !important; 
     gap: 8px !important;
-    margin-bottom: 2rem !important;
+    margin-bottom: 1.5rem !important;
 
     /* Индикация скролла */
     background-image: 
@@ -988,6 +1027,52 @@ input[type="checkbox"].tumbler-checkbox:checked {
 input[type="checkbox"].tumbler-checkbox:checked:after {
     transform: translateX(1.6rem) !important;
     background: var(--color-white) !important;
+}
+
+/* --- CAPSULE SEARCH BAR (Поиск внутри тулбара) --- */
+.timetable-toolbar .capsule-search-item {
+    flex: 1 1 0 !important;
+    min-width: 150px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    background: var(--color-input) !important;
+    border-radius: 50px !important;
+    height: 3.8rem !important;
+    overflow: hidden !important;
+}
+
+.timetable-toolbar .capsule-search-item:hover {
+    background: var(--color-input) !important; /* Убираем ховер-эффект для поля */
+}
+
+.timetable-toolbar .capsule-search-item .material-icons {
+    margin-left: 16px !important;
+    color: var(--color-text-secondary) !important;
+}
+
+.timetable-toolbar .capsule-search-item input {
+    flex: 1 !important;
+    height: 100% !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 16px 0 8px !important;
+    margin: 0 !important;
+    font-size: 1.4rem !important;
+    color: var(--color-text-primary) !important;
+    outline: none !important;
+}
+
+.timetable-toolbar .capsule-search-item input:focus {
+    box-shadow: none !important;
+}
+
+@media (max-width: 960px) {
+    .timetable-toolbar .capsule-search-item {
+        flex: 1 1 auto !important; /* На мобильных разрешаем поиску тянуться */
+        min-width: 140px !important;
+    }
 }
 
 /* --- MOBILE ADAPTATION --- */
@@ -1205,26 +1290,17 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     }
     /* Горизонтальный скролл для подменю (вкладки триместров, сессий и т.д.) */
     .submenu {
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        overflow-y: hidden !important;
-        scrollbar-width: none !important;
-        -webkit-overflow-scrolling: touch !important;
-        justify-content: flex-start !important;
-        padding: 4px 0 8px 0 !important; /* Отступы для тени при клике */
-        
-        /* Вытягиваем за края экрана, чтобы скролл выглядел нативно */
-        margin-left: -1rem !important; 
-        margin-right: -1rem !important;
-        padding-left: 1rem !important;
-        padding-right: 1rem !important;
+        padding: 4px !important; 
+        gap: 6px !important;
+        margin-left: 0 !important; 
+        margin-right: 0 !important;
+        /* Убираем вытягивание за края, так как теперь это капсула с рамками */
     }
-    .submenu::-webkit-scrollbar { 
-        display: none !important; 
-    }
-    .submenu a, .submenu b {
-        flex: 0 0 auto !important; /* Запрещаем сжиматься */
-        white-space: nowrap !important; /* Запрещаем перенос текста внутри кнопок */
+    
+    .submenu a:not(.answer-btn-custom), 
+    .submenu b {
+        flex: 0 0 auto !important; /* На мобилке кнопки не тянутся во всю ширину, а скроллятся */
+        padding: 0 14px !important;
     }
     .wide-table-wrapper {
         width: 100% !important;
@@ -1447,7 +1523,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 /* --- DATE STYLING --- */
 .week-date-styled {
     display: table !important;
-    margin: 2.4rem auto 0 auto !important; 
+    margin: 0 auto !important;
     padding: 0.6rem 1.6rem !important;
     background: var(--color-card) !important;
     border-radius: 2rem !important;
@@ -4719,12 +4795,6 @@ button.search-capsule:hover {
 .stat-box-value.bad { color: var(--color-red); }
 .analytics-btn:hover { transform: scale(1.02); opacity: 0.9; }
 
-/* --- ФИКС ПЕРЕНОСА ТРИМЕСТРОВ НА ПК И МОБАЙЛ --- */
-.submenu a, .submenu b {
-    flex: 0 0 auto !important; /* Запрещаем сжимать кнопки */
-    white-space: nowrap !important; /* Запрещаем перенос текста на 2 строки */
-}
-
 /* --- LEADERBOARD (ТОП ПРЕДМЕТОВ) --- */
 .leaderboard-list { display: flex; flex-direction: column; gap: 1rem; }
 .leaderboard-item { 
@@ -5751,6 +5821,77 @@ injectStyles(styles);
         }
 
         loadReviews();
+    }
+
+    // --- HOLIDAY SYSTEM ---
+
+    // Актуальный список праздничных выходных дней на 2026 год
+    const holidays2026 = {
+        '31.12': 'Новогодние каникулы',
+        '01.01': 'Новогодние каникулы', '02.01': 'Новогодние каникулы', '03.01': 'Новогодние каникулы',
+        '04.01': 'Новогодние каникулы', '05.01': 'Новогодние каникулы', '06.01': 'Новогодние каникулы',
+        '07.01': 'Рождество Христово',  '08.01': 'Новогодние каникулы', '09.01': 'Новогодние каникулы',
+        '10.01': 'Новогодние каникулы', '11.01': 'Новогодние каникулы',
+        
+        '21.02': 'День защитника Отечества', '22.02': 'День защитника Отечества', '23.02': 'День защитника Отечества',
+        
+        '07.03': 'Международный женский день', '08.03': 'Международный женский день', '09.03': 'Международный женский день',
+        
+        '01.05': 'Праздник Весны и Труда', '02.05': 'Праздник Весны и Труда', '03.05': 'Праздник Весны и Труда',
+        
+        '09.05': 'День Победы', '10.05': 'День Победы', '11.05': 'День Победы',
+        
+        '12.06': 'День России', '13.06': 'День России', '14.06': 'День России',
+        
+        '04.11': 'День народного единства'
+    };
+
+    // Функция получения статуса дня (полностью локальная)
+    // Возвращает объект: { label: string, icon: string, isRed: boolean } или null
+    function getDayStatusFull(dateString) {
+        if (!dateString) return null;
+
+        const months = {
+            'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3, 'мая': 4, 'июня': 5,
+            'июля': 6, 'августа': 7, 'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11
+        };
+
+        // ищем число и месяц в любом месте строки
+        const match = dateString.match(/(\d{1,2})\s([а-я]+)/i);
+        if (!match) return null;
+
+        const day = parseInt(match[1], 10);
+        const month = months[match[2].toLowerCase()];
+        if (month === undefined) return null;
+
+        // Определяем год
+        let year = new Date().getFullYear();
+        const weekSelectYear = document.querySelector('.week-select')?.textContent.match(/\d{4}/);
+        if (weekSelectYear) year = parseInt(weekSelectYear[0]);
+
+        const dateObj = new Date(year, month, day);
+        const key = `${String(day).padStart(2,'0')}.${String(month+1).padStart(2,'0')}`;
+        
+        let name = holidays2026[key];
+        const dow = dateObj.getDay();
+        
+        // Считаем день выходным, если он есть в словаре ИЛИ если это Сб(6)/Вс(0)
+        let isDayOff = !!name || (dow === 0 || dow === 6);
+
+        if (!isDayOff) return null;
+
+        let icon = 'free_breakfast';
+        let isHolidayEvent = false;
+
+        if (name) {
+            isHolidayEvent = true;
+            // Особая иконка для Рождества, для остальных праздников - хлопушка
+            icon = (key === '07.01') ? 'auto_awesome' : 'celebration';
+        } else {
+            name = 'Выходной';
+        }
+
+        return { label: name, icon: icon, isRed: isHolidayEvent };
     }
 
     // Модификация стилей страниц
@@ -7303,31 +7444,57 @@ injectStyles(styles);
                     }
                 });
 
-                // 7. КРАСИВАЯ ДАТА 
-                // Ищем блок с текстом даты внутри week-select
+                // 7. КРАСИВАЯ ДАТА
                 const weekSelect = span9.querySelector('.week-select');
                 if (weekSelect) {
                     const dateDiv = weekSelect.querySelector('div[style*="text-align:center"]');
-                    if (dateDiv) {
-                        const dateSpan = dateDiv.querySelector('span');
-                        if (dateSpan) {
-                            // Заменяем текст
-                            let text = dateSpan.textContent.trim();
-                            // Удаляем "Неделя " в начале (регистронезависимо)
-                            text = text.replace(/^Неделя\s+/i, '');
-                            
-                            // Вырезаем точку и 4 цифры года (например, .2026)
-                            text = text.replace(/\.\d{4}/g, '');
-                            
-                            // Делаем первую букву заглавной ("с 23.02..." -> "С 23.02...")
-                            text = text.charAt(0).toUpperCase() + text.slice(1);
-                            
-                            dateSpan.textContent = text;
-                            
-                            // Добавляем класс стиля
-                            dateDiv.className = 'week-date-styled';
-                            // Убираем старый inline стиль, чтобы он не мешал
-                            dateDiv.removeAttribute('style');
+                    const weeksCapsule = weekSelect.querySelector('.weeks');
+
+                    if (dateDiv && weeksCapsule) {
+                        // Даем капсуле недель нижний отступ до даты периода
+                        weeksCapsule.style.marginBottom = '1.5rem';
+
+                        let infoText = '';
+                        const holidayNode = dateDiv.querySelector('.holiday') || dateDiv.querySelector('div'); 
+                        if (holidayNode) {
+                            infoText = holidayNode.textContent.trim();
+                            holidayNode.remove();
+                        }
+
+                        let mainDateText = dateDiv.textContent.replace(/\s+/g, ' ').trim();
+                        
+                        dateDiv.innerHTML = '';
+                        dateDiv.removeAttribute('style');
+                        
+                        // Контейнер для капсул под неделями
+                        dateDiv.style.display = 'flex';
+                        dateDiv.style.flexDirection = 'column';
+                        dateDiv.style.alignItems = 'center';
+                        dateDiv.style.gap = '8px';
+                        dateDiv.style.marginBottom = '1.5rem'; // Отступ от даты до Понедельника
+
+                        if (mainDateText) {
+                            mainDateText = mainDateText.replace(/^Неделя\s+/i, '').replace(/\.\d{4}/g, '');
+                            if (mainDateText.length > 0) {
+                                mainDateText = mainDateText.charAt(0).toUpperCase() + mainDateText.slice(1);
+                            }
+                            const dateBadge = document.createElement('div');
+                            dateBadge.className = 'week-date-styled';
+                            dateBadge.textContent = mainDateText;
+                            dateDiv.appendChild(dateBadge);
+                        }
+
+                        if (infoText) {
+                            const infoBadge = document.createElement('div');
+                            let bg = 'rgba(52, 199, 89, 0.15)', color = 'var(--color-green)', icon = 'beach_access';
+                            if (infoText.toLowerCase().includes('сессия')) {
+                                bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; icon = 'history_edu';
+                            } else if (infoText.toLowerCase().includes('практика')) {
+                                bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; icon = 'engineering';
+                            }
+                            infoBadge.style.cssText = `display: inline-flex; align-items: center; gap: 6px; padding: 0.5rem 1.2rem; background: ${bg}; color: ${color}; border-radius: 50px; font-size: 1.2rem; font-weight: 700; box-shadow: var(--shadow-main);`;
+                            infoBadge.innerHTML = `<span class="material-icons" style="font-size: 1.4rem;">${icon}</span> ${infoText.replace(/\.\d{4}/g, '')}`;
+                            dateDiv.appendChild(infoBadge);
                         }
                     }
                 }
@@ -7790,15 +7957,35 @@ injectStyles(styles);
                         if (firstRealIndex === -1) {
                             rows.forEach(r => r.style.display = 'none'); 
                             
+                            // --- ПРОВЕРКА ЧЕРЕЗ API + CACHE ---
+                            const dateEl = day.querySelector('.day-date');
+                            const dateText = dateEl ? dateEl.textContent : day.querySelector('h3').textContent;
+
+                            const status = getDayStatusFull(dateText);
+
+                            let labelText = 'Выходной';
+                            let iconName = 'free_breakfast';
+                            let styleColor = 'background: rgba(52, 199, 89, 0.12); color: var(--color-green);';
+
+                            if (status) {
+                                labelText = status.label;
+                                iconName = status.icon;
+                                if (status.isRed) {
+                                    styleColor = 'background: rgba(255, 59, 48, 0.12); color: var(--color-red);';
+                                } else {
+                                    styleColor = 'background: rgba(52, 199, 89, 0.12); color: var(--color-green);';
+                                }
+                            }
+
                             const tbody = table.querySelector('tbody') || table;
                             const tr = document.createElement('tr');
                             tr.className = 'custom-no-pairs';
                             tr.innerHTML = `
                                 <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
-                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
-                                        <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
-                                        Выходной
+                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; ${styleColor} padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
+                                        <span class="material-icons" style="font-size: 1.8rem;">${iconName}</span>
+                                        ${labelText}
                                     </div>
                                 </td>
                                 <td class="pair_teacher" style="border-bottom: none !important;"></td>
@@ -8799,19 +8986,15 @@ injectStyles(styles);
 
                         // --- ДОБАВЛЕНИЕ ПОИСКА И КНОПКИ "АНАЛИТИКА" ---
                         const searchContainer = document.createElement('div');
-                        searchContainer.className = 'teacher-search-wrapper';
-                        searchContainer.style.display = 'flex';
-                        searchContainer.style.gap = '1.2rem';
-                        searchContainer.style.maxWidth = '650px';
-                        searchContainer.style.margin = '0 auto 3rem auto';
+                        searchContainer.className = 'timetable-toolbar';
+                        searchContainer.style.marginBottom = '2.4rem';
                         
-                        // Обе капсулы имеют класс search-capsule и flex: 1 для равного размера
                         searchContainer.innerHTML = `
-                            <div class="search-capsule" style="flex: 1; min-width: 0;">
+                            <div class="capsule-search-item">
                                 <span class="material-icons">search</span>
                                 <input type="text" class="signs-local-input" placeholder="Поиск">
                             </div>
-                            <button class="search-capsule analytics-btn" style="flex: 1; min-width: 0;">
+                            <button class="toolbar-item analytics-btn" style="flex: 0 0 auto !important;">
                                 <span class="material-icons">insights</span>
                                 Аналитика
                             </button>
@@ -9299,18 +9482,15 @@ injectStyles(styles);
 
                         // --- ДОБАВЛЕНИЕ ПОИСКА И КНОПКИ "РЕЙТИНГ" ---
                         const searchContainer = document.createElement('div');
-                        searchContainer.className = 'teacher-search-wrapper term-search-wrapper';
-                        searchContainer.style.display = 'flex';
-                        searchContainer.style.gap = '1.2rem';
-                        searchContainer.style.maxWidth = '650px';
-                        searchContainer.style.margin = '1rem auto 3rem auto';
+                        searchContainer.className = 'timetable-toolbar term-search-wrapper';
+                        searchContainer.style.marginBottom = '2.4rem';
                         
                         searchContainer.innerHTML = `
-                            <div class="search-capsule" style="flex: 1; min-width: 0;">
+                            <div class="capsule-search-item">
                                 <span class="material-icons">search</span>
                                 <input type="text" class="term-local-input" placeholder="Поиск">
                             </div>
-                            <button class="search-capsule analytics-btn" style="flex: 1; min-width: 0;">
+                            <button class="toolbar-item analytics-btn" style="flex: 0 0 auto !important;">
                                 <span class="material-icons">emoji_events</span>
                                 Топ предметов
                             </button>
