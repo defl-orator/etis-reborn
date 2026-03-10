@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.705
-// @changelog    Унификация подвкладок
+// @version      1.706
+// @changelog    Унификация подвкладок. Добавление онлайн-корпуса и телемоста
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -314,7 +314,7 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
     background-color: var(--color-card) !important;
     box-shadow: var(--shadow-main) !important;
     
-    padding: 6px !important; 
+    padding: 4px !important; 
     gap: 8px !important;
     margin-bottom: 2.4rem !important;
     border-bottom: none !important;
@@ -342,10 +342,11 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
     display: none !important; 
 }
 
-/* Исключаем .answer-btn-custom, так как это кнопка "Оценить план" */
+/* Вкладки в подменю */
 .submenu a:not(.answer-btn-custom), 
+.submenu .answer-btn-custom, /* Добавили сюда */
 .submenu b {
-    flex: 1 0 auto !important; /* На ПК кнопки будут равномерно тянуться на всю ширину */
+    flex: 1 0 auto !important;
     min-width: max-content !important; 
     white-space: nowrap !important;
     display: inline-flex !important;
@@ -365,10 +366,16 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
     text-decoration: none !important;
 }
 
-/* Обычная вкладка */
-.submenu a:not(.answer-btn-custom) {
+/* Обычная вкладка и кнопка оценки */
+.submenu a:not(.answer-btn-custom),
+.submenu .answer-btn-custom {
     background: var(--color-highlight) !important;
     color: var(--color-text-primary) !important;
+}
+
+/* Иконка в кнопке оценки пусть будет синей для красоты */
+.submenu .answer-btn-custom .material-icons {
+    color: var(--color-accent) !important;
 }
 
 /* Активная вкладка */
@@ -376,10 +383,10 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
     background: var(--color-accent) !important;
     color: var(--color-text-primary-invert) !important;
     font-weight: 600 !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
 }
 
-.submenu a:not(.answer-btn-custom):hover {
+.submenu a:hover, 
+.submenu .answer-btn-custom:hover {
     background: var(--color-highlight-light) !important;
     transform: translateY(-1px);
 }
@@ -506,7 +513,7 @@ form.que_form { margin-top: 1rem !important; }
     margin: 0 !important;
     
     width: 100% !important;
-    padding: 6px !important; 
+    padding: 4px !important; 
     background-color: var(--color-card) !important; 
     box-shadow: var(--shadow-main) !important; 
     border-radius: 50px !important; 
@@ -901,7 +908,7 @@ html[theme="dark"] .psu-logo::before {
     background-color: var(--color-card) !important;
     box-shadow: var(--shadow-main) !important;
     
-    padding: 6px !important; 
+    padding: 4px !important; 
     gap: 8px !important;
     margin-bottom: 2rem !important;
 
@@ -1476,45 +1483,75 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     padding-right: 1rem !important;
 }
 
-/* --- ZOOM STYLING --- */
+/* --- VIDEO CALL STYLING (ZOOM, TELEMOST, GENERIC) --- */
 
-.pair_info .aud a[href*="zoom"] {
+.pair_info .aud a[href*="zoom"],
+.pair_info .aud a[href*="telemost"],
+.pair_info .aud a.btn-generic-online {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     gap: 0.6rem !important; 
-    
-    background: rgba(45, 140, 255, 0.12) !important;
-    color: #2D8CFF !important; 
-    
     padding: 0.5rem 1.4rem 0.5rem 1.5rem !important; 
     border-radius: 50px !important;
-    
     text-decoration: none !important;
-    font-weight: 600 !important;
+    font-weight: 700 !important;
     font-size: 1.2rem !important;
     line-height: 1 !important;
-    margin-top: 0.6rem !important;
-    border: 1px solid rgba(45, 140, 255, 0.2) !important; 
     transition: all 0.2s !important;
+    margin: 0 !important;
 }
 
+/* ZOOM (Синий) */
+.pair_info .aud a[href*="zoom"] {
+    background: rgba(45, 140, 255, 0.12) !important;
+    color: #2D8CFF !important; 
+    border: 1px solid rgba(45, 140, 255, 0.2) !important; 
+}
 .pair_info .aud a[href*="zoom"]:hover {
     background: rgba(45, 140, 255, 0.2) !important;
     transform: translateY(-1px);
 }
-
-.pair_info .aud a[href*="zoom"] img {
+.pair_info .aud a[href*="zoom"]:before {
+    content: 'videocam' !important;
+    font-family: 'Material Icons Outlined' !important;
+    font-size: 1.8rem !important;
     display: block !important;
-    width: 1.6rem !important;
-    height: 1.6rem !important;
-    margin: 0 !important;
-    border: none !important;
-    border-radius: 4px !important; 
+}
+.pair_info .aud a[href*="zoom"] img { display: none !important; }
+
+/* ЯНДЕКС ТЕЛЕМОСТ (Оранжевый) */
+.pair_info .aud a[href*="telemost"] {
+    background: rgba(255, 149, 0, 0.12) !important;
+    color: #FF9500 !important; 
+    border: 1px solid rgba(255, 149, 0, 0.2) !important; 
+}
+.pair_info .aud a[href*="telemost"]:hover {
+    background: rgba(255, 149, 0, 0.2) !important;
+    transform: translateY(-1px);
+}
+.pair_info .aud a[href*="telemost"]:before {
+    content: 'videocam' !important;
+    font-family: 'Material Icons Outlined' !important;
+    font-size: 1.8rem !important;
+    display: block !important;
 }
 
-.pair_info .aud > a[href*="zoom"]:before {
-    display: none !important;
+/* ДРУГИЕ ОНЛАЙН ССЫЛКИ (Фиолетовая капсула) */
+.pair_info .aud a.btn-generic-online {
+    background: rgba(175, 82, 222, 0.12) !important;
+    color: #AF52DE !important; 
+    border: 1px solid rgba(175, 82, 222, 0.2) !important; 
+}
+.pair_info .aud a.btn-generic-online:hover {
+    background: rgba(175, 82, 222, 0.2) !important;
+    transform: translateY(-1px);
+}
+.pair_info .aud a.btn-generic-online:before {
+    content: 'public' !important; /* Иконка планеты внутри капсулы */
+    font-family: 'Material Icons Outlined' !important;
+    font-size: 1.8rem !important;
+    display: block !important;
 }
 
 /* --- DATE STYLING --- */
@@ -6572,8 +6609,8 @@ injectStyles(styles);
                     const planEvalBtn = span9.querySelector('a[onclick*="cust.est_plan_form_stu"], a[href*="cust.est_plan_form_stu"]');
                     if (planEvalBtn) {
                         planEvalBtn.className = 'answer-btn-custom';
-                        planEvalBtn.style.cssText = `margin-left: auto; text-decoration: none !important; padding: 0.6rem 1.4rem !important; font-size: 1.2rem !important; height: fit-content; white-space: nowrap; display: inline-flex; align-items: center;`;
-                        planEvalBtn.innerHTML = '<span class="material-icons" style="font-size:1.6rem; margin-right:6px">auto_awesome</span> Оценить план';
+                        planEvalBtn.style.cssText = `margin-left: auto !important;`; 
+                        planEvalBtn.innerHTML = '<span class="material-icons" style="font-size:1.8rem; margin-right:6px">auto_awesome</span> Оценить план';
                         submenu.appendChild(planEvalBtn);
                     }
 
@@ -7765,28 +7802,58 @@ injectStyles(styles);
                 // --- ПАРСИНГ И ИКОНКИ ДЛЯ АУДИТОРИЙ ---
                 span9.querySelectorAll('.pair_info .aud').forEach(aud => {
                     let text = aud.innerHTML;
+                    const linkEl = aud.querySelector('a');
                     
-                    const match = text.match(/ауд\.\s*(.+)\s*\((.+?)\s*корпус,\s*(.*?)\s*этаж\)/i);
-                    
-                    if (match) {
-                        let roomNumber = match[1].trim(); 
-                        const building = match[2].trim(); 
-                        const floor = match[3].trim();   
-                        
-                        if (roomNumber.includes('/')) roomNumber = roomNumber.split('/')[0];
+                    const isOnlineText = /Дистанционно|on-line/i.test(text);
+                    const isZoom = linkEl && linkEl.href.includes('zoom');
+                    const isTelemost = linkEl && linkEl.href.includes('telemost');
 
-                        const newFormat = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>ауд. ${roomNumber}, к. ${building}, э. ${floor}</div>`;
+                    // Если это онлайн пара (есть ссылка ИЛИ текст "дистанционно")
+                    if (isOnlineText || linkEl) {
                         
-                        // Заменяем старый текст на новый блок
-                        aud.innerHTML = text.replace(match[0], newFormat);
+                        if (isZoom || isTelemost) {
+                            // 1. ZOOM или ТЕЛЕМОСТ
+                            let platformName = isZoom ? "Zoom" : "Телемост";
+                            aud.innerHTML = `
+                                <div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);">
+                                    <span class="material-icons" style="font-size: 1.5rem;">public</span>Онлайн в
+                                </div>
+                                <a href="${linkEl.href}" target="_blank">${platformName}</a>
+                            `;
+                        } else if (linkEl) {
+                            // 2. ДРУГАЯ ССЫЛКА (Фиолетовая капсула)
+                            aud.innerHTML = `
+                                <a href="${linkEl.href}" target="_blank" class="btn-generic-online">Онлайн</a>
+                            `;
+                        } else {
+                            // 3. ССЫЛКИ НЕТ, просто написано "Дистанционно"
+                            aud.innerHTML = `
+                                <div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);">
+                                    <span class="material-icons" style="font-size: 1.5rem;">public</span>Онлайн
+                                </div>
+                            `;
+                        }
+                    } 
+                    // Иначе это обычная физическая аудитория
+                    else {
+                        const matchPhysical = text.match(/ауд\.\s*(.+)\s*\((.+?)\s*корпус,\s*(.*?)\s*этаж\)/i);
+                        if (matchPhysical) {
+                            let roomNumber = matchPhysical[1].trim(); 
+                            const building = matchPhysical[2].trim(); 
+                            const floor = matchPhysical[3].trim();   
+                            if (roomNumber.includes('/')) roomNumber = roomNumber.split('/')[0];
+
+                            const newFormat = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>ауд. ${roomNumber}, к. ${building}, э. ${floor}</div>`;
+                            aud.innerHTML = text.replace(matchPhysical[0], newFormat);
+                        }
                     }
                     
-                    // Выстраиваем аудиторию и Zoom-кнопку в линию
+                    // Выстраиваем в одну линию (Текст + Капсула)
                     aud.style.display = 'flex';
                     aud.style.flexDirection = 'row';
                     aud.style.flexWrap = 'wrap';
                     aud.style.alignItems = 'center';
-                    aud.style.gap = '0.8rem';
+                    aud.style.gap = '0.6rem';
                     aud.style.marginTop = '0.6rem';
                 });
 
