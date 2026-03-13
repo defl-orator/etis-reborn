@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.710
+// @version      1.7101
 // @changelog    Недели, триместры и подвкладки стали как в Safari. Фикс капсулы меню на мобильных и ховер иконок
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -661,7 +661,17 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
 .pair_info .dis a { color: var(--color-text-primary) !important; text-decoration: none !important; font-size: 1.4rem !important; }
 .pair_teacher { width: 14rem !important; text-align: right !important; padding-right: 1.6rem !important; }
 .pair_teacher > a { color: var(--color-text-secondary) !important; text-decoration: none !important; }
-.pair_info .aud { color: var(--color-text-secondary) !important; font-size: 1.1rem !important; }
+.pair_info .aud {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-top: 4px !important;
+    flex-wrap: nowrap !important; 
+    width: max-content !important;
+    position: relative !important;
+    z-index: 0 !important; 
+}
 .pair_info .aud > a:before { margin-right: 0.6rem !important; font-family: 'Material Icons Outlined' !important; content: 'videocam' !important; font-size: 1.8rem !important; }
 .pair_info .aud > a > img { display: none !important; }
 
@@ -4120,22 +4130,24 @@ html[theme] .timetable-grid td.pair_num {
 
 /* 2. Колонка с предметом (Центральная) - забирает всё место */
 html[theme] .timetable-grid td.pair_info {
-    width: auto !important;
-    padding-left: 0 !important; /* УБИРАЕМ ОТСТУП, прижимаем текст и капсулы к краю */
-    padding-right: 1.6rem !important;
-    text-align: left !important;
+    overflow: visible !important;
+    vertical-align: middle !important;
 }
+
 
 /* 3. Колонка с преподавателем (Правая) */
 html[theme] .timetable-grid td.pair_teacher {
     width: 160px !important;
-    min-width: 150px !important;
+    min-width: 140px !important;
     text-align: right !important;
     padding-right: 2rem !important;
     color: var(--color-text-secondary) !important;
     position: relative !important;
-    vertical-align: middle !important;
+    vertical-align: middle !important; 
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
 }
+
 
 /* Убиваем скрытый перенос строки, который ломал центрирование */
 html[theme] .timetable-grid td.pair_teacher br {
@@ -4145,34 +4157,52 @@ html[theme] .timetable-grid td.pair_teacher br {
 /* Имя преподавателя: центрируется таблицей, при наведении плавно уезжает вверх */
 html[theme] .timetable-grid td.pair_teacher a:not(.eval) {
     display: inline-block !important;
-    transition: transform 0.2s ease !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     position: relative !important;
     z-index: 2 !important;
+    line-height: 1.2 !important;
 }
 
-html[theme] .timetable-grid tr:hover td.pair_teacher:has(.eval) a:not(.eval) {
-    transform: translateY(-8px) !important;
+html[theme] .timetable-grid tr.tr-needs-space:hover td.pair_teacher a:not(.eval) {
+    transform: translateY(-12px) !important;
 }
 
 /* Кнопка "Оценить занятие": висит невидимо в центре ячейки */
 html[theme] .timetable-grid td.pair_teacher .eval {
     position: absolute !important;
-    right: 2rem !important; /* Выравниваем по правому краю */
-    top: 50% !important; /* Центрируем по вертикали */
+    right: 2rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) scale(0.9) !important;
     opacity: 0 !important;
     visibility: hidden !important;
-    transform: translateY(0) !important;
-    transition: all 0.2s ease !important;
-    font-size: 1.1rem !important;
+    transition: all 0.3s ease !important;
+    font-size: 1.05rem !important;
     display: block !important;
-    z-index: 1 !important;
+    z-index: 10 !important;
+    color: var(--color-text-secondary) !important;
+    text-decoration: underline !important;
+}
+
+html[theme] .timetable-grid tr:not(.tr-needs-space):hover td.pair_teacher a:not(.eval) {
+    transform: translateY(-8px) !important;
+}
+html[theme] .timetable-grid tr:not(.tr-needs-space):hover td.pair_teacher .eval {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(6px) scale(1) !important;
+}
+
+html[theme] .timetable-grid tr.tr-needs-space:hover td.pair_teacher .eval {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(4px) scale(1) !important; 
 }
 
 /* При наведении кнопка появляется и отъезжает вниз, занимая место */
 html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
     opacity: 1 !important;
     visibility: visible !important;
-    transform: translateY(6px) !important;
+    transform: translateY(0) !important; 
 }
 
 /* Фикс разделительных линий (линия стартует ровно от текста предмета, без отступа) */
@@ -4282,21 +4312,10 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
     }
-
-    /* Правая колонка (Преподаватель) */
-    html[theme] .timetable-grid td.pair_teacher {
-        width: 95px !important;
-        min-width: 95px !important;
-        padding-right: 1.4rem !important;
-        padding-left: 0.5rem !important;
-        font-size: 1.1rem !important;
-        text-align: right !important;
-        word-wrap: break-word !important;
-    }
-
-    /* Выравниваем выезжающую по тапу кнопку под мобильный отступ */
+    
     html[theme] .timetable-grid td.pair_teacher .eval {
         right: 1.4rem !important;
+        top: 3.8rem !important;
     }
 
     /* Адаптируем разделительную линию под мобильную ширину 75px */
@@ -4903,8 +4922,7 @@ button.search-capsule:hover {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    
-    /* Скрываем визуально, но оставляем физически */
+    flex-shrink: 0 !important;
     opacity: 0 !important;
     visibility: hidden !important;
     transform: scale(0.8) !important;
@@ -5409,6 +5427,84 @@ button.analytics-btn {
 .weeks .week.holiday:not(.current),
 .weeks .week.holiday:not(.current) a {
     color: var(--color-green) !important;
+}
+
+@media (max-width: 960px) {
+
+    /* 1. Возвращаем карандашу скрытое состояние по умолчанию */
+    .subject-note-btn {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: scale(0.8) !important;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        pointer-events: none !important;
+    }
+
+    /* Показываем карандаш только при наведении на всю строку */
+    .timetable-grid tr:hover .subject-note-btn {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: scale(1) !important;
+        pointer-events: auto !important;
+    }
+
+    /* 2. Фикс "Онлайн в" (запрещаем перенос слов внутри текста) */
+    .pair_info .aud {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important; /* Разрешаем перенос кнопки, но не текста */
+        align-items: center !important;
+        gap: 6px !important;
+        max-width: none !important; /* Убираем лимит ширины */
+    }
+
+    /* Контейнер текста "Онлайн в" делаем неразрывным */
+    .pair_info .aud div {
+        white-space: nowrap !important;
+    }
+
+    /* 3. Фикс колонки преподавателя и оценки */
+    html[theme] .timetable-grid td.pair_teacher {
+        width: 100px !important;
+        min-width: 100px !important;
+        padding-right: 1.6rem !important;
+        vertical-align: middle !important;
+        position: relative !important;
+    }
+
+    /* Оборачиваем содержимое ячейки препода в Flex-стек */
+    /* Важно: в JS мы сейчас добавим обертку, чтобы это работало идеально */
+    html[theme] .timetable-grid td.pair_teacher {
+        display: table-cell !important; /* Оставляем поведение таблицы */
+    }
+
+    /* Убираем абсолютное позиционирование у оценки, чтобы она не наезжала на Zoom */
+    html[theme] .timetable-grid td.pair_teacher .eval {
+        position: static !important; /* Возвращаем в поток */
+        display: block !important;
+        width: auto !important;
+        text-align: right !important;
+        margin-top: 4px !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        height: 0 !important; /* Схлопываем, пока не ховер */
+        overflow: hidden !important;
+        transform: translateY(5px) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    /* Состояние ХОВЕРА для препода и оценки */
+    html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval) {
+        transform: translateY(0) !important; /* Препод остается на месте или чуть выше */
+        display: block !important;
+    }
+
+    html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
+        opacity: 1 !important;
+        visibility: visible !important;
+        height: auto !important; /* Разворачиваем оценку под преподом */
+        transform: translateY(0) !important;
+    }
 }
     `;
 
@@ -7961,6 +8057,32 @@ injectStyles(styles);
                 // Вставляем кастомные пары до пересчета расписания
                 injectCustomPairs();
 
+                // --- ЛОГИКА ОПРЕДЕЛЕНИЯ ДЛИННЫХ СТРОК (ДЛЯ СДВИГА ПРЕПОДАВАТЕЛЯ) ---
+                function markLongRows() {
+                    const isMobile = window.innerWidth <= 960;
+                    span9.querySelectorAll('.timetable-grid tr').forEach(row => {
+                        row.classList.remove('tr-needs-space'); // Сброс
+                        
+                        const aud = row.querySelector('.pair_info .aud');
+                        if (!aud) return;
+
+                        const isOnline = aud.querySelector('a') || aud.textContent.toLowerCase().includes('онлайн');
+                        const textLength = aud.textContent.trim().length;
+
+                        // Помечаем только реально "опасные" строки
+                        if (isOnline || textLength > 20) {
+                            row.classList.add('tr-needs-space');
+                        }
+                    });
+                }
+                markLongRows();
+                // Также вызываем это при рендере заметок, так как карандаш тоже удлиняет строку
+                const oldRenderNotes = renderNotes;
+                renderNotes = function() {
+                    oldRenderNotes();
+                    markLongRows();
+                };
+
                 // --- УМНЫЕ НАЗВАНИЯ НЕДЕЛЬ ---
                 const weeksItems = span9.querySelectorAll('.weeks .week');
                 weeksItems.forEach(w => {
@@ -8203,27 +8325,28 @@ injectStyles(styles);
                     });
                 }
 
-                // --- УМНЫЕ ЗАМЕТКИ (Логика привязки к конкретной паре) ---
+                // --- УМНЫЕ ЗАМЕТКИ ---
                 function renderNotes() {
                     let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
                     const seenSubjects = new Set();
                     const allRowsArray = Array.from(document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
-
+                    
                     const currentWeekEl = document.querySelector('.week.current');
                     const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 0;
-
+                    
                     allRowsArray.forEach((row, index) => {
                         const disContainer = row.querySelector('.pair_info .dis');
                         const numTd = row.querySelector('.pair_num');
+                        const audContainer = row.querySelector('.pair_info .aud');
                         if (!disContainer || !numTd) return;
-
+                        
                         const targetEl = disContainer.querySelector('a') || disContainer;
                         const cleanSubjectName = targetEl.textContent.trim();
-
+                        
                         const dayContainer = row.closest('.day');
                         const dayDateEl = dayContainer ? dayContainer.querySelector('.day-date') : null;
                         const dayDateStr = dayDateEl ? dayDateEl.textContent.trim() : 'UnknownDate';
-
+                        
                         let rawPairNum = "";
                         Array.from(numTd.childNodes).forEach(n => {
                             if (n.nodeType === Node.TEXT_NODE && /пара/i.test(n.nodeValue)) {
@@ -8231,10 +8354,9 @@ injectStyles(styles);
                             }
                         });
                         if (!rawPairNum) rawPairNum = numTd.textContent.trim().split(' ')[0] + ' пара';
-
+                        
                         const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
-
-                        // Перенос висящей заметки "К следующей паре"
+                        
                         if (notesData.next_unbound && notesData.next_unbound[cleanSubjectName] && !seenSubjects.has(cleanSubjectName)) {
                             const unbound = notesData.next_unbound[cleanSubjectName];
                             if (typeof unbound === 'string') {
@@ -8248,61 +8370,43 @@ injectStyles(styles);
                             }
                         }
                         seenSubjects.add(cleanSubjectName);
-
+                        
                         const currentNote = notesData.specific[pairId] || '';
-
-                        // ТОТАЛЬНАЯ ОЧИСТКА ВСЕХ СТАРЫХ КНОПОК В ЭТОЙ СТРОКЕ
+                        
+                        // Удаляем старые кнопки перед перерисовкой
+                        row.querySelectorAll('.note-btn-wrapper').forEach(w => w.remove());
                         row.querySelectorAll('.subject-note-btn').forEach(btn => btn.remove());
-
-                        // Определяем, куда вставлять кнопку (справа от аудитории или предмета)
-                        let audContainer = row.querySelector('.pair_info .aud');
-                        let targetContainer = audContainer;
-
-                        // Если аудитории нет или она пустая (как на консультациях) - цепляем прямо к названию
-                        if (!audContainer || (audContainer.textContent.trim() === '' && !audContainer.querySelector('a'))) {
-                            targetContainer = disContainer;
-                            targetContainer.style.display = 'inline-flex';
-                            targetContainer.style.alignItems = 'center';
-                            targetContainer.style.flexWrap = 'wrap';
-                        } else {
-                            // Иначе выстраиваем аудиторию и кнопку в линию
-                            targetContainer.style.display = 'flex';
-                            targetContainer.style.flexDirection = 'row';
-                            targetContainer.style.flexWrap = 'wrap';
-                            targetContainer.style.alignItems = 'center';
-                            targetContainer.style.gap = '0.8rem';
-                        }
-
+                        
+                        // Создаем саму кнопку
                         const noteBtn = document.createElement('button');
                         noteBtn.className = 'subject-note-btn';
-                        if (currentNote) {
-                            noteBtn.classList.add('has-note');
-                            noteBtn.innerHTML = '<span class="material-icons">assignment</span>';
-                            noteBtn.title = 'Посмотреть заметку / ДЗ';
-                        } else {
-                            noteBtn.innerHTML = '<span class="material-icons">edit</span>'; // Заменили edit_note на чистый edit
-                            noteBtn.title = 'Добавить заметку';
-                        }
-
+                        noteBtn.innerHTML = currentNote ? '<span class="material-icons">assignment</span>' : '<span class="material-icons">edit</span>';
+                        if (currentNote) noteBtn.classList.add('has-note');
+                        
                         noteBtn.addEventListener('click', (e) => {
                             e.preventDefault(); e.stopPropagation();
-
-                            // Если это кастомная пара, открываем специальное окно с вкладками
                             if (row.classList.contains('custom-pair-row')) {
                                 const pairIdFromRow = row.getAttribute('data-custom-id');
                                 const pairData = customPairs.find(p => p.id === pairIdFromRow);
                                 if (pairData) {
-                                    pairData.pairNoteId = pairId; // Передаем ID для сохранения заметки
+                                    pairData.pairNoteId = pairId;
                                     const dayNameEl = row.closest('.day').querySelector('.day-name');
                                     openCustomPairModal(dayNameEl ? dayNameEl.textContent.trim() : 'День', pairData);
                                 }
                             } else {
-                                // Иначе открываем обычное окно заметок ЕТИСа
                                 openNoteModal(cleanSubjectName, pairId, index, allRowsArray, currentNote);
                             }
                         });
 
-                        targetContainer.appendChild(noteBtn);
+                        // Оборачиваем кнопку, чтобы она не ломала Flex-строку аудитории
+                        const noteWrapper = document.createElement('span');
+                        noteWrapper.className = 'note-btn-wrapper';
+                        noteWrapper.style.display = 'inline-flex';
+                        noteWrapper.appendChild(noteBtn);
+                        
+                        // Выбираем контейнер (всегда в аудиторию, если она есть)
+                        let targetContainer = audContainer && audContainer.textContent.trim() !== '' ? audContainer : disContainer;
+                        targetContainer.appendChild(noteWrapper);
                     });
                 }
 
