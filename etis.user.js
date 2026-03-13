@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.706
-// @changelog    Унификация подвкладок. Добавление онлайн-корпуса и телемоста
+// @version      1.710
+// @changelog    Недели, триместры и подвкладки стали как в Safari. Фикс капсулы меню на мобильных и ховер иконок
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -16,7 +16,7 @@
 // @connect      raw.githubusercontent.com
 // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
 // @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
-// ==/UserScript== 
+// ==/UserScript==
 
 (function() {
     'use strict';
@@ -47,13 +47,13 @@
     /* Основные цвета */
 	--color-body: #F2F2F6; /* Светло-серый фон как в iOS */
 	--color-card: #FFFFFF;
-    
+
     /* Акцент: ГОЛУБОЙ */
-	--color-accent: #007AFF; 
+	--color-accent: #007AFF;
 	--color-accent-dark: #0056b3;
 	--color-accent-active: #E3F2FD; /* Фон активного элемента */
     --color-text-link: #007AFF;
-    
+
     /* Элементы */
 	--color-tooltip: #fff;
 	--color-highlight: #F2F2F7;
@@ -65,7 +65,7 @@
 	--color-table-border: rgba(0, 0, 0, 0.08); /* Очень легкая граница */
 	--color-table-header: #F9F9F9;
 	--color-table-highlight: #F5F5F5;
-	
+
     /* Статусы */
 	--color-red: #FF3B30;
 	--color-green: #34C759;
@@ -74,7 +74,7 @@
 	--color-warning: #FF9500;
 	--color-white: #fff;
 	--color-error: #FF3B30;
-	
+
     /* Текст */
 	--color-text-primary: #1C1C1E;
 	--color-text-secondary: #8E8E93;
@@ -89,15 +89,15 @@
 
 [theme="dark"] {
     /* Основные цвета  */
-	--color-body: #16181A; 
-	--color-card: #212325; 
-    
+	--color-body: #16181A;
+	--color-card: #212325;
+
     /* Акцент */
-	--color-accent: #4B89DC; 
+	--color-accent: #4B89DC;
 	--color-accent-dark: #3565A8;
 	--color-accent-active: rgba(75, 137, 220, 0.15);
-    --color-text-link: #60A5FA; 
-    
+    --color-text-link: #60A5FA;
+
     /* Элементы интерфейса */
 	--color-tooltip: #2A2C2F;
 	--color-highlight: #2A2C2F;
@@ -109,7 +109,7 @@
 	--color-table-border: rgba(255, 255, 255, 0.08);
     --color-table-header: #1A1C1E;
 	--color-table-highlight: #2A2C2F;
-	
+
     /* Статусы */
 	--color-red: #E06C65;
 	--color-green: #5BB974;
@@ -118,11 +118,11 @@
 	--color-warning: #E29953;
 	--color-white: #ffffff;
 	--color-error: #E06C65;
-	
+
     /* Текст */
-	--color-text-primary: #EAECEE; 
+	--color-text-primary: #EAECEE;
 	--color-text-secondary: #8E9499;
-	--color-text-primary-invert: #ffffff; 
+	--color-text-primary-invert: #ffffff;
     --color-text-accent: #60A5FA;
 	--shadow-main: 0 4px 12px rgba(0, 0, 0, 0.2);
 	--shadow-dialog: 0 10px 30px rgba(0, 0, 0, 0.5);
@@ -233,12 +233,12 @@ table {
 
 /* Фикс "подбородка" в расписании */
 .day table {
-    margin-bottom: 0 !important; 
+    margin-bottom: 0 !important;
 }
 
 /* Форсированно убираем инлайн-белые фоны от ЕТИСа на строках и ячейках */
-table tr, table td, 
-.common tr, .common td, 
+table tr, table td,
+.common tr, .common td,
 .slimtab_nice tr, .slimtab_nice td {
     background: transparent !important;
     background-color: transparent !important;
@@ -283,7 +283,7 @@ table tbody tr:hover td {
     background-color: var(--color-table-highlight) !important;
 }
 table tbody tr:hover th {
-    background-color: var(--color-table-header) !important; 
+    background-color: var(--color-table-header) !important;
 }
 table tbody tr:hover td[rowspan] {
     background-color: var(--color-card) !important; /* Игнорируем ховер у объединенных ячеек (напр. "ТЕМА") */
@@ -301,26 +301,26 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    align-items: stretch !important; 
+    align-items: stretch !important;
     position: relative !important;
-    
+
     overflow-x: auto !important;
     overflow-y: hidden !important;
     scrollbar-width: none !important;
     -webkit-overflow-scrolling: touch !important;
 
     width: 100% !important;
-    border-radius: 50px !important; 
+    border-radius: 50px !important;
     background-color: var(--color-card) !important;
     box-shadow: var(--shadow-main) !important;
-    
-    padding: 4px !important; 
+
+    padding: 4px !important;
     gap: 8px !important;
     margin-bottom: 2.4rem !important;
     border-bottom: none !important;
 
     /* Индикация скролла по бокам */
-    background-image: 
+    background-image:
         linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
         linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
     background-position: left center, right center !important;
@@ -330,7 +330,7 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
 }
 
 [theme="dark"] .submenu {
-    background: 
+    background:
         linear-gradient(to right, var(--color-card) 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local,
         linear-gradient(to left, var(--color-card) 30%, rgba(255,255,255,0)) right center / 40px 100% no-repeat local,
         radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) left center / 15px 100% no-repeat scroll,
@@ -338,24 +338,24 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
     background-color: var(--color-card) !important;
 }
 
-.submenu::-webkit-scrollbar { 
-    display: none !important; 
+.submenu::-webkit-scrollbar {
+    display: none !important;
 }
 
 /* Вкладки в подменю */
-.submenu a:not(.answer-btn-custom), 
+.submenu a:not(.answer-btn-custom),
 .submenu .answer-btn-custom, /* Добавили сюда */
 .submenu b {
     flex: 1 0 auto !important;
-    min-width: max-content !important; 
+    min-width: max-content !important;
     white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    border-radius: 50px !important; 
-    
+    border-radius: 50px !important;
+
     height: 3.8rem !important;
-    padding: 0 16px !important; 
+    padding: 0 16px !important;
     margin: 0 !important;
     font-size: 1.3rem !important;
     font-weight: 500 !important;
@@ -385,7 +385,7 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
     font-weight: 600 !important;
 }
 
-.submenu a:hover, 
+.submenu a:hover,
 .submenu .answer-btn-custom:hover {
     background: var(--color-highlight-light) !important;
     transform: translateY(-1px);
@@ -409,18 +409,18 @@ input, select, textarea, button { font-family: inherit !important; }
 textarea { width: 100% !important; }
 select, textarea { background: var(--color-input) !important; color: var(--color-text-primary) !important; padding: 0.4rem 0.8rem !important; border-radius: var(--radius-small) !important; border: var(--border-input) !important; }
 select:hover { background: var(--color-input-highlight) !important; }
-input[type="text"], input[type="password"], input[type="email"] { 
-    background: transparent !important; 
-    color: var(--color-text-primary) !important; 
-    border: none !important; 
-    box-shadow: inset 0 -1px 0 0 var(--color-text-secondary) !important; 
-    width: 100% !important; 
+input[type="text"], input[type="password"], input[type="email"] {
+    background: transparent !important;
+    color: var(--color-text-primary) !important;
+    border: none !important;
+    box-shadow: inset 0 -1px 0 0 var(--color-text-secondary) !important;
+    width: 100% !important;
     padding: 0.8rem 0 !important; /* Внутренний отступ сверху и снизу */
     margin-bottom: 1.6rem !important; /* Раздвигаем поля друг от друга */
 }
-input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus { 
-    box-shadow: inset 0 -2px 0 0 var(--color-accent) !important; 
-    outline: none !important; 
+input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus {
+    box-shadow: inset 0 -2px 0 0 var(--color-accent) !important;
+    outline: none !important;
 }
 input[type="checkbox"], input[type="radio"] { position: relative !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; margin-right: 1rem !important; }
 input[type="checkbox"]:before { width: 1.8rem !important; height: 1.8rem !important; background: var(--color-input) !important; content: '' !important; position: absolute !important; border-radius: 0.2rem !important; border: var(--border-input) !important; }
@@ -452,25 +452,25 @@ form.que_form { margin-top: 1rem !important; }
 .question_table .text, .question_table tr:first-child { background: var(--color-table-header) !important; }
 .cgrldatarow:hover { background: var(--color-table-highlight) !important; }
 
-.span3 > .nav.nav-tabs.nav-stacked { 
-    border-radius: var(--radius-medium) !important; 
+.span3 > .nav.nav-tabs.nav-stacked {
+    border-radius: var(--radius-medium) !important;
     background: transparent !important;
-    box-shadow: none !important; 
-    overflow: hidden !important; 
+    box-shadow: none !important;
+    overflow: hidden !important;
 }
 .span3 > .nav.nav-tabs.nav-stacked:last-child { margin-bottom: 4rem !important; }
 .span3 > .nav.nav-tabs.nav-stacked:last-child > li > a {
     justify-content: flex-start !important;
 }
-.span3 > .nav.nav-tabs.nav-stacked > li > a { 
-    display: flex !important; 
-    align-items: center !important; 
-    justify-content: flex-start !important; 
-    padding: 1.1rem 1.4rem !important; 
-    background: var(--color-card) !important; 
-    color: var(--color-text-primary) !important; 
-    border: none !important; 
-    gap: 12px !important; 
+.span3 > .nav.nav-tabs.nav-stacked > li > a {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 1.1rem 1.4rem !important;
+    background: var(--color-card) !important;
+    color: var(--color-text-primary) !important;
+    border: none !important;
+    gap: 12px !important;
     text-align: left !important;
 }
 .span3 > .nav.nav-tabs.nav-stacked > li > a:hover { background: var(--color-highlight) !important; }
@@ -504,27 +504,27 @@ form.que_form { margin-top: 1rem !important; }
 .week-select h3 { display: none !important; }
 
 /* Капсула для недель */
-.weeks { 
-    display: flex !important; 
-    flex-wrap: nowrap !important; 
-    justify-content: flex-start !important; 
+.weeks {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    justify-content: flex-start !important;
     align-items: center !important;
-    gap: 8px !important; 
+    gap: 8px !important;
     margin: 0 !important;
-    
+
     width: 100% !important;
-    padding: 4px !important; 
-    background-color: var(--color-card) !important; 
-    box-shadow: var(--shadow-main) !important; 
-    border-radius: 50px !important; 
-    
-    overflow-x: auto !important; 
+    padding: 4px !important;
+    background-color: var(--color-card) !important;
+    box-shadow: var(--shadow-main) !important;
+    border-radius: 50px !important;
+
+    overflow-x: auto !important;
     overflow-y: hidden !important;
     scrollbar-width: none !important;
     -webkit-overflow-scrolling: touch !important;
 
     /* Индикация скролла по бокам */
-    background-image: 
+    background-image:
         linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
         linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
     background-position: left center, right center !important;
@@ -536,7 +536,7 @@ form.que_form { margin-top: 1rem !important; }
 
 /* Темная тема для градиентов скролла */
 [theme="dark"] .weeks {
-    background: 
+    background:
         linear-gradient(to right, var(--color-card) 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local,
         linear-gradient(to left, var(--color-card) 30%, rgba(255,255,255,0)) right center / 40px 100% no-repeat local,
         radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) left center / 15px 100% no-repeat scroll,
@@ -545,34 +545,33 @@ form.que_form { margin-top: 1rem !important; }
 }
 
 /* Базовые стили для всех кружков (фон нейтральный) */
-.weeks .week { 
-    position: relative !important; 
-    display: flex !important; 
-    justify-content: center !important; 
-    align-items: center !important; 
-    flex: 0 0 auto !important; 
-    margin: 0 !important; 
-    padding: 0 !important; 
-    width: 3.8rem !important; 
-    height: 3.8rem !important; 
-    background-color: var(--color-highlight) !important; 
-    color: var(--color-text-primary) !important; 
-    border-radius: 50% !important; 
-    border: none !important; 
-    font-size: 1.3rem !important; 
+.weeks .week {
+    position: relative !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    flex: 0 0 auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 3.8rem !important;
+    height: 3.8rem !important;
+    background-color: var(--color-highlight) !important;
+    color: var(--color-text-primary) !important;
+    border: none !important;
+    font-size: 1.3rem !important;
     font-weight: 500 !important;
-    transition: background 0.2s, transform 0.2s !important; 
+    transition: background 0.2s, transform 0.2s !important;
     box-shadow: none !important;
 }
 
-.weeks > .week > a { 
-    display: flex !important; 
-    justify-content: center !important; 
-    align-items: center !important; 
-    width: 100% !important; 
-    height: 100% !important; 
-    color: inherit !important; 
-    text-decoration: none !important; 
+.weeks > .week > a {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    color: inherit !important;
+    text-decoration: none !important;
     border-radius: 50% !important;
 }
 
@@ -581,22 +580,18 @@ form.que_form { margin-top: 1rem !important; }
     background-color: var(--color-highlight-light) !important;
 }
 
-/* ВОЗВРАЩАЕМ ЦВЕТА ТЕКСТА ДЛЯ СЕССИИ И КАНИКУЛ (только для неактивных) */
-.weeks .week.session:not(.current) { color: var(--color-red) !important; }
-.weeks .week.holiday:not(.current) { color: var(--color-green) !important; }
-
 /* Практику делаем нейтральной, чтобы избежать нечитаемого желтого на сером фоне */
 .weeks .week.pract:not(.current) { color: var(--color-text-primary) !important; }
 
 /* АКТИВНАЯ НЕДЕЛЯ (перебивает всё: синий фон, белый текст) */
-.weeks .week.current { 
-    background-color: var(--color-accent) !important; 
+.weeks .week.current {
+    background-color: var(--color-accent) !important;
     color: var(--color-text-primary-invert) !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
 }
 
-.weeks .week.current > a { 
-    font-weight: 700 !important; 
+.weeks .week.current > a {
+    font-weight: 700 !important;
 }
 
 /* Выделение актуальной (календарной) недели, если мы сейчас смотрим другую */
@@ -614,25 +609,25 @@ div.timetable-buttonbar { display: flex !important; flex-direction: row !importa
 .timetable-btn { margin: 0 0 1.4rem 1.4rem !important; }
 div.consultations { display: flex !important; align-items: center !important; float: none !important; color: var(--color-text-primary) !important; }
 span.holiday { background-color: var(--color-green) !important; color: var(--color-text-primary-invert) !important; padding: 0.4rem 0.8rem !important; border-radius: 50rem !important; margin-top: 0.6rem !important; display: inline-block !important; }
-.day { 
-    border-radius: var(--radius-large) !important; 
-    background-color: var(--color-card) !important; 
-    box-shadow: var(--shadow-main) !important; 
-    overflow: hidden !important; 
-    padding: 0 !important; 
-    margin-bottom: 2rem !important; 
+.day {
+    border-radius: var(--radius-large) !important;
+    background-color: var(--color-card) !important;
+    box-shadow: var(--shadow-main) !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin-bottom: 2rem !important;
 }
-.span9 .day h3 { 
+.span9 .day h3 {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important; /* День СЛЕВА, Дата СПРАВА */
-    
-    padding: 1.6rem 2rem !important; 
+
+    padding: 1.6rem 2rem !important;
     background: var(--color-table-header) !important;
     border-bottom: 1px solid var(--color-table-border) !important;
-    
-    margin: 0 !important; 
-    font-size: 1.6rem !important; 
+
+    margin: 0 !important;
+    font-size: 1.6rem !important;
 }
 
 .span9 .day h3 .day-name {
@@ -647,13 +642,13 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
     font-weight: 500 !important;
     font-size: 1.5rem !important;
     color: var(--color-text-secondary) !important; /* Серый цвет, как у обычного текста */
-    
+
     /* СБРОС КАПСУЛЫ */
-    background: transparent !important; 
+    background: transparent !important;
     padding: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    
+
     /* Если нужно выравнивание текста по правому краю */
     text-align: right !important;
 }
@@ -822,19 +817,19 @@ a[href="stu.dis_stat"]:before {
 .certificates-info { color: var(--color-green) !important; font-size: 1.2rem !important; display: block !important; margin-bottom: 2rem !important; }
 
 /* Login */
-.login-container { 
-    display: flex !important; 
-    flex-direction: column !important; 
-    min-height: 100vh !important; 
+.login-container {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 100vh !important;
     width: 100% !important;
 }
 
-.login { 
-    margin: 0 !important; 
-    display: flex !important; 
-    align-items: center !important; 
-    justify-content: center !important; 
-    flex: 1 1 auto !important; 
+.login {
+    margin: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 1 1 auto !important;
     background: var(--color-body) !important;
     width: 100% !important;
 }
@@ -844,7 +839,7 @@ a[href="stu.dis_stat"]:before {
     flex-direction: column !important;
     align-items: center !important;
     width: 100% !important;
-    margin-bottom: 1.5rem !important; 
+    margin-bottom: 1.5rem !important;
     opacity: 0.9 !important;
 }
 
@@ -858,13 +853,13 @@ a[href="stu.dis_stat"]:before {
     background-position: center bottom !important;
     background-repeat: no-repeat !important;
     /* Отступ от медведя до букв */
-    margin-bottom: 1.2rem !important; 
+    margin-bottom: 1.2rem !important;
 }
 
 .psu-logo::after {
     content: 'Е Т И С' !important;
     display: block !important;
-    width: 80% !important; 
+    width: 80% !important;
     text-align-last: justify !important;
     font-size: 2.8rem !important;
     font-weight: 800 !important;
@@ -876,12 +871,12 @@ html[theme="dark"] .psu-logo::before {
     filter: invert(1) !important;
 }
 .login > form > .choose { display: block !important; padding: 0 !important; border-bottom: none !important; background: none !important; margin-bottom: 2.4rem !important; font-size: 0 !important; }
-.login-actions { 
-    display: flex !important; 
-    align-items: center !important; 
-    justify-content: space-between !important; 
-    font-size: 1.4rem !important; 
-    margin-top: 1.6rem !important; 
+.login-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    font-size: 1.4rem !important;
+    margin-top: 1.6rem !important;
 }
 .login form, .form { display: flex !important; flex-direction: column !important; padding: 3.2rem !important; box-shadow: var(--shadow-main) !important; background: var(--color-card) !important; border-radius: var(--radius-large) !important; width: 36rem !important; margin: 0 auto !important; }
 .footer { margin: 0 auto !important; max-width: var(--width-content) !important; padding: 2rem !important; color: var(--color-text-secondary) !important; font-size: 1.2rem !important; text-align: center !important; }
@@ -895,25 +890,25 @@ html[theme="dark"] .psu-logo::before {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
-    align-items: stretch !important; 
+    align-items: stretch !important;
     position: relative !important;
-    
+
     overflow-x: auto !important;
     overflow-y: hidden !important;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
 
     width: 100% !important;
-    border-radius: 50px !important; 
+    border-radius: 50px !important;
     background-color: var(--color-card) !important;
     box-shadow: var(--shadow-main) !important;
-    
-    padding: 4px !important; 
+
+    padding: 4px !important;
     gap: 8px !important;
     margin-bottom: 2rem !important;
 
     /* Индикация скролла */
-    background-image: 
+    background-image:
         linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
         linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
     background-position: left center, right center !important;
@@ -922,16 +917,16 @@ html[theme="dark"] .psu-logo::before {
     background-attachment: scroll !important;
 }
 .timetable-toolbar::-webkit-scrollbar { display: none; }
-.timetable-toolbar > * { 
-    flex: 1 0 auto !important; 
-    min-width: max-content !important; 
+.timetable-toolbar > * {
+    flex: 1 0 auto !important;
+    min-width: max-content !important;
     white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    border-radius: 50px !important; 
-    
-    padding: 8px 16px !important; 
+    border-radius: 50px !important;
+
+    padding: 8px 16px !important;
     margin: 0 !important;
     font-size: 1.3rem !important;
     font-weight: 500 !important;
@@ -972,16 +967,16 @@ html[theme="dark"] .psu-logo::before {
 /* Кнопки-капсулы внутри тулбара */
 .timetable-toolbar .toolbar-item,
 .timetable-toolbar .sync-btn,
-.timetable-toolbar label.toolbar-item { 
-    flex: 1 1 0 !important; 
-    min-width: max-content !important; 
+.timetable-toolbar label.toolbar-item {
+    flex: 1 1 0 !important;
+    min-width: max-content !important;
     white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
-    justify-content: center !important; 
-    border-radius: 50px !important; 
-    
-    padding: 8px 16px !important; 
+    justify-content: center !important;
+    border-radius: 50px !important;
+
+    padding: 8px 16px !important;
     margin: 0 !important;
     font-size: 1.3rem !important;
     font-weight: 500 !important;
@@ -1092,11 +1087,11 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 
     .span9 {
         margin-left: 0 !important;
-        margin-top: 2rem !important; 
+        margin-top: 2rem !important;
         padding: 0 1rem 15rem !important;
         width: 100% !important;
         max-width: 100vw !important;
-        overflow-x: hidden !important; 
+        overflow-x: hidden !important;
         float: none !important;
         box-sizing: border-box !important;
     }
@@ -1112,17 +1107,17 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     .span3 {
         display: block !important;
         position: fixed !important;
-        top: 0 !important; 
-        left: 0 !important; 
+        top: 0 !important;
+        left: 0 !important;
         bottom: 0 !important;
-        width: 280px !important; 
+        width: 280px !important;
         max-width: 85% !important;
-        height: 100vh !important; 
+        height: 100vh !important;
         margin: 0 !important;
-        padding-top: 60px !important; 
+        padding-top: 60px !important;
         padding-bottom: calc(env(safe-area-inset-bottom, 40px) + 100px) !important;
         background: var(--color-card) !important;
-        z-index: 1000000 !important; 
+        z-index: 1000000 !important;
         transform: translateX(-105%) !important;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         overflow-y: auto !important;
@@ -1135,13 +1130,13 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     .mobile-menu-btn {
         display: block !important;
         position: fixed !important;
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 20px) !important; 
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 20px) !important;
         left: 50% !important;
         transform: translateX(-50%) !important;
         z-index: 1000001 !important;
         width: 120px !important;
         height: 48px !important;
-        background: var(--color-accent) !important; 
+        background: var(--color-accent) !important;
         color: var(--color-text-primary-invert) !important;
         border-radius: 24px !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.3) !important;
@@ -1163,15 +1158,15 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         position: absolute !important;
         top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
         display: flex !important;
-        justify-content: center !important; 
-        align-items: center !important; 
+        justify-content: center !important;
+        align-items: center !important;
         gap: 8px !important;
         transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
-    
+
     .menu-closed { opacity: 1 !important; transform: scale(1) !important; }
     .menu-open { opacity: 0 !important; transform: scale(0.5) rotate(-90deg) !important; }
-    
+
     .mobile-menu-btn.open .menu-closed { opacity: 0 !important; transform: scale(0.5) !important; }
     .mobile-menu-btn.open .menu-open { opacity: 1 !important; transform: scale(1) rotate(0) !important; }
 
@@ -1179,14 +1174,14 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     .mobile-menu-btn.open .material-icons { font-size: 24px !important; }
 
     .mobile-overlay {
-        position: fixed !important; 
-        top: 0 !important; 
-        left: 0 !important; 
-        right: 0 !important; 
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
         bottom: 0 !important;
         background: rgba(0,0,0,0.6) !important;
         z-index: 999999 !important;
-        opacity: 0; 
+        opacity: 0;
         pointer-events: none;
         transition: opacity 0.3s ease;
         backdrop-filter: blur(4px) !important;
@@ -1239,20 +1234,20 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         justify-content: flex-start !important;
         flex-wrap: nowrap !important;
         align-items: center !important;
-        
+
         overflow-x: auto !important;
         overflow-y: hidden !important;
         scrollbar-width: none;
         -webkit-overflow-scrolling: touch;
 
         width: 100% !important;
-        border-radius: 50px !important; 
-        padding: 4px !important; 
+        border-radius: 50px !important;
+        padding: 4px !important;
         gap: 6px !important;
         margin-bottom: 1.5rem !important;
         background-color: var(--color-card) !important;
-        
-        background-image: 
+
+        background-image:
             linear-gradient(to right, var(--color-card) 10%, rgba(255,255,255,0) 100%),
             linear-gradient(to left, var(--color-card) 10%, rgba(255,255,255,0) 100%) !important;
         background-position: left center, right center !important;
@@ -1261,7 +1256,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         background-attachment: scroll !important;
     }
     [theme="dark"] .timetable-toolbar {
-        background: 
+        background:
             linear-gradient(to right, var(--color-card) 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local,
             linear-gradient(to left, var(--color-card) 30%, rgba(255,255,255,0)) right center / 40px 100% no-repeat local,
             radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) left center / 15px 100% no-repeat scroll,
@@ -1269,18 +1264,18 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         background-color: var(--color-card) !important;
     }
     .timetable-toolbar::-webkit-scrollbar { display: none; }
-    .timetable-toolbar > * { 
+    .timetable-toolbar > * {
         flex: 0 0 auto !important;
-        min-width: max-content !important; 
+        min-width: max-content !important;
         white-space: nowrap !important;
         display: inline-flex !important;
     }
     .timetable-toolbar .toolbar-item,
-    .timetable-toolbar .sync-btn { 
+    .timetable-toolbar .sync-btn {
         flex: 0 0 auto !important;
-        min-width: max-content !important; 
-        border-radius: 50px !important; 
-        padding: 8px 12px !important; 
+        min-width: max-content !important;
+        border-radius: 50px !important;
+        padding: 8px 12px !important;
         font-size: 13px !important;
     }
 
@@ -1294,14 +1289,14 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     }
     /* Горизонтальный скролл для подменю (капсула) */
     .submenu {
-        padding: 4px !important; 
+        padding: 4px !important;
         gap: 6px !important;
-        margin-left: 0 !important; 
+        margin-left: 0 !important;
         margin-right: 0 !important;
         /* Убираем вытягивание за края, так как теперь это капсула с рамками */
     }
-    
-    .submenu a:not(.answer-btn-custom), 
+
+    .submenu a:not(.answer-btn-custom),
     .submenu b {
         flex: 0 0 auto !important; /* На мобилке кнопки не тянутся во всю ширину, а скроллятся */
         padding: 0 14px !important;
@@ -1312,7 +1307,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         -webkit-overflow-scrolling: touch !important; /* Плавный скролл на iOS */
         margin-bottom: 2rem !important;
         /* Гарантируем, что обертка не шире экрана */
-        max-width: calc(100vw - 2rem) !important; 
+        max-width: calc(100vw - 2rem) !important;
         display: block !important;
     }
 
@@ -1333,8 +1328,8 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 @media (min-width: 961px) {
     .span3 {
         position: fixed !important;
-        top: 2rem !important;      
-        bottom: 2rem !important;  
+        top: 2rem !important;
+        bottom: 2rem !important;
         width: var(--width-aside) !important;
         margin: 0 !important;
         padding-top: 2rem !important;
@@ -1343,7 +1338,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         overflow-y: auto !important;
         float: none !important;
         background: var(--color-card) !important;
-        border-radius: var(--radius-large) !important; 
+        border-radius: var(--radius-large) !important;
         z-index: 100 !important;
     }
 }
@@ -1357,13 +1352,13 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 }
 
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a {
-    background-color: var(--color-accent) !important; 
-    color: var(--color-text-primary-invert) !important; 
+    background-color: var(--color-accent) !important;
+    color: var(--color-text-primary-invert) !important;
     font-weight: 600 !important;
     margin: 0 12px 4px 12px !important;
     border-radius: var(--radius-small) !important;
     width: auto !important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; 
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
 }
 
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
@@ -1401,14 +1396,14 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         border-radius: var(--radius-small) !important;
         width: auto !important;
     }
-    
+
     /* То же самое для обычных кнопок и контента, чтобы они не моргали под капсулой */
     .timetable-toolbar .toolbar-item:hover,
     .submenu a:hover,
     button:hover,
     .cgrldatarow:hover,
     table tbody tr:hover td {
-        background-color: var(--color-highlight) !important; 
+        background-color: var(--color-highlight) !important;
     }
 }
 
@@ -1478,7 +1473,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 }
 
 .timetable .pair_num {
-    width: 8.5rem !important; 
+    width: 8.5rem !important;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
 }
@@ -1491,8 +1486,8 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 0.6rem !important; 
-    padding: 0.5rem 1.4rem 0.5rem 1.5rem !important; 
+    gap: 0.6rem !important;
+    padding: 0.5rem 1.4rem 0.5rem 1.5rem !important;
     border-radius: 50px !important;
     text-decoration: none !important;
     font-weight: 700 !important;
@@ -1505,8 +1500,8 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 /* ZOOM (Синий) */
 .pair_info .aud a[href*="zoom"] {
     background: rgba(45, 140, 255, 0.12) !important;
-    color: #2D8CFF !important; 
-    border: 1px solid rgba(45, 140, 255, 0.2) !important; 
+    color: #2D8CFF !important;
+    border: 1px solid rgba(45, 140, 255, 0.2) !important;
 }
 .pair_info .aud a[href*="zoom"]:hover {
     background: rgba(45, 140, 255, 0.2) !important;
@@ -1523,8 +1518,8 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 /* ЯНДЕКС ТЕЛЕМОСТ (Оранжевый) */
 .pair_info .aud a[href*="telemost"] {
     background: rgba(255, 149, 0, 0.12) !important;
-    color: #FF9500 !important; 
-    border: 1px solid rgba(255, 149, 0, 0.2) !important; 
+    color: #FF9500 !important;
+    border: 1px solid rgba(255, 149, 0, 0.2) !important;
 }
 .pair_info .aud a[href*="telemost"]:hover {
     background: rgba(255, 149, 0, 0.2) !important;
@@ -1540,8 +1535,8 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 /* ДРУГИЕ ОНЛАЙН ССЫЛКИ (Фиолетовая капсула) */
 .pair_info .aud a.btn-generic-online {
     background: rgba(175, 82, 222, 0.12) !important;
-    color: #AF52DE !important; 
-    border: 1px solid rgba(175, 82, 222, 0.2) !important; 
+    color: #AF52DE !important;
+    border: 1px solid rgba(175, 82, 222, 0.2) !important;
 }
 .pair_info .aud a.btn-generic-online:hover {
     background: rgba(175, 82, 222, 0.2) !important;
@@ -1557,7 +1552,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 /* --- DATE STYLING --- */
 .week-date-styled {
     display: table !important;
-    margin: 2.4rem auto 0 auto !important; 
+    margin: 2.4rem auto 0 auto !important;
     padding: 0.6rem 1.6rem !important;
     background: var(--color-card) !important;
     border-radius: 2rem !important;
@@ -1639,7 +1634,7 @@ input::placeholder {
     font-size: 3.2rem !important;
     font-weight: 800 !important;
     color: var(--color-text-primary) !important;
-    padding: 0 2.6rem !important; 
+    padding: 0 2.6rem !important;
     margin-bottom: 2.4rem !important;
     letter-spacing: 0.5px !important;
     line-height: 1 !important;
@@ -1718,7 +1713,7 @@ input::placeholder {
     font-size: 1.2rem !important;
     border: 1px solid var(--color-table-border) !important;
     transition: all 0.2s !important;
-    max-width: 300px !important; 
+    max-width: 300px !important;
     overflow: hidden !important;
 }
 
@@ -1747,7 +1742,7 @@ input::placeholder {
     white-space: nowrap !important;
     display: inline-flex !important;
     align-items: center !important;
-    flex-shrink: 0 !important; 
+    flex-shrink: 0 !important;
 }
 .answer-btn-custom:hover {
     background: var(--color-accent-dark, #0056b3) !important;
@@ -1756,11 +1751,11 @@ input::placeholder {
 }
 .message-footer {
     display: flex !important;
-    flex-wrap: nowrap !important; 
+    flex-wrap: nowrap !important;
     align-items: center !important;
     gap: 10px !important;
     margin-top: 14px !important;
-    padding-top: 0 !important; 
+    padding-top: 0 !important;
     border-top: none !important;
 }
 
@@ -1888,8 +1883,8 @@ div[id^="frm_"] textarea:focus {
 }
 /* --- TIMETABLE WINDOWS --- */
 .timetable-gap-row td {
-    padding-top: 1rem !important; 
-    padding-bottom: 1rem !important; 
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
     border: none !important;
     vertical-align: middle !important;
 }
@@ -1898,10 +1893,10 @@ div[id^="frm_"] textarea:focus {
     display: inline-flex !important;
     align-items: center !important;
     gap: 0.6rem !important;
-    background: rgba(45, 140, 255, 0.1) !important; 
-    color: #2D8CFF !important; 
+    background: rgba(45, 140, 255, 0.1) !important;
+    color: #2D8CFF !important;
     padding: 0.5rem 1.2rem !important;
-    border-radius: 50px !important; 
+    border-radius: 50px !important;
     font-size: 1.1rem !important;
     font-weight: 600 !important;
     line-height: 1 !important;
@@ -1915,7 +1910,7 @@ div[id^="frm_"] textarea:focus {
     font-size: 1.1rem !important;
     color: var(--color-text-secondary) !important;
     line-height: 1.5 !important;
-    border-top: none !important; 
+    border-top: none !important;
     margin-top: auto !important;
 }
 
@@ -1970,7 +1965,7 @@ div[id^="frm_"] textarea:focus {
 }
 
 /* Стилизация логинов и паролей для удобства копирования */
-#resources td:nth-child(2), 
+#resources td:nth-child(2),
 #resources td:nth-child(3) {
     font-family: 'SF Mono', 'Cascadia Code', monospace !important;
     font-size: 1.2rem !important;
@@ -2013,8 +2008,8 @@ div[id^="frm_"] textarea:focus {
 }
 
 .day.resource-block h3 {
-    font-size: 1.6rem !important;        
-    font-weight: 700 !important;          
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
     color: var(--color-text-primary) !important;
     text-transform: uppercase !important;
     letter-spacing: 1px !important;
@@ -2070,7 +2065,7 @@ div[id^="frm_"] textarea:focus {
     flex-shrink: 0 !important;
 }
 .advice-card .material-icons::before {
-    content: none !important; 
+    content: none !important;
 }
 
 .cert-footer-block {
@@ -2117,7 +2112,7 @@ div[id^="frm_"] textarea:focus {
 }
 
 /* Убираем красный цвет, оставляем только жирность */
-.cert-footer-card-content b, 
+.cert-footer-card-content b,
 .cert-footer-card-content strong {
     color: var(--color-text-primary) !important;
     font-weight: 700 !important;
@@ -2269,7 +2264,7 @@ form.form {
 }
 
 /* Инпуты на этих страницах */
-form.form input[type="text"], 
+form.form input[type="text"],
 form.form input[type="password"] {
     display: block !important;
     width: 100% !important;
@@ -2338,9 +2333,9 @@ form.form input:focus {
     margin-top: 1rem !important;
 }
 
-.span9 ul, 
-.span9 li, 
-.electr-description ul, 
+.span9 ul,
+.span9 li,
+.electr-description ul,
 .electr-description li {
     list-style: none !important;
     list-style-type: none !important;
@@ -2536,7 +2531,7 @@ form.form input:focus {
 }
 
 /* УБИРАЕМ ПОДЛОЖКУ у раскрывающихся блоков */
-div[id="pub"], div[id="pis"], div[id="agr"], 
+div[id="pub"], div[id="pis"], div[id="agr"],
 div[id="ooo"], div[id="saw"], div[id="vkr"] {
     background: transparent !important;
     border: none !important;
@@ -2569,8 +2564,8 @@ div[id] table.common {
     transform: scale(1.2);
 }
 
-span[id$="_cnt"] { 
-    display: none !important; 
+span[id$="_cnt"] {
+    display: none !important;
 }
 
 /* --- UI DIALOG REBORN (MODAL WINDOW) --- */
@@ -2608,7 +2603,7 @@ span[id$="_cnt"] {
     right: 12px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
-    
+
     width: 30px !important;
     height: 30px !important;
     padding: 0 !important;
@@ -2617,7 +2612,7 @@ span[id$="_cnt"] {
     background: var(--color-highlight) !important;
     border-radius: 50% !important;
     cursor: pointer !important;
-    
+
     /* Убиваем текст и любые потоки внутри */
     font-size: 0 !important;
     color: transparent !important;
@@ -2638,13 +2633,13 @@ span[id$="_cnt"] {
     font-family: 'Material Icons Outlined' !important;
     font-size: 20px !important;
     color: var(--color-text-secondary) !important;
-    
+
     /* СБРОС И ЦЕНТРИРОВАНИЕ */
     position: absolute !important;
     top: 50% !important;
     left: 50% !important;
     transform: translate(-50%, -50%) !important; /* Центрируем точно по осям */
-    
+
     display: block !important;
     text-indent: 0 !important;
     visibility: visible !important;
@@ -3120,7 +3115,7 @@ nobr {
 }
 
 /* Настройка шапки для таблицы статистики */
-.wide-table-wrapper table th[colspan], 
+.wide-table-wrapper table th[colspan],
 .wide-table-wrapper table th[rowspan] {
     font-size: 1rem !important;
     text-transform: uppercase !important;
@@ -3230,7 +3225,7 @@ td.empty {
     .login form, .form {
         width: 90% !important;
         max-width: 360px !important;
-        margin: 0 auto !important; 
+        margin: 0 auto !important;
         padding: 3.2rem 2.4rem !important;
         box-sizing: border-box !important;
     }
@@ -3238,8 +3233,8 @@ td.empty {
     .login-container {
         width: 100% !important;
         display: flex !important;
-        align-items: center !important; 
-        justify-content: center !important; 
+        align-items: center !important;
+        justify-content: center !important;
         min-height: 100vh !important;
     }
 
@@ -3248,7 +3243,7 @@ td.empty {
         margin-bottom: 1.5rem !important;
     }
     .psu-logo::before {
-        height: 9rem !important; 
+        height: 9rem !important;
         margin-bottom: 1rem !important;
     }
     .psu-logo::after {
@@ -3714,7 +3709,7 @@ form.que_form select {
 }
 
 /* Красные оценки */
-#rating font[style*="color:#d00"], 
+#rating font[style*="color:#d00"],
 #rating font[color="#d00"] {
     color: var(--color-red) !important;
     font-weight: 800 !important;
@@ -3864,7 +3859,7 @@ form.que_form select {
 }
 
 /* --- ОБЩИЕ СТИЛИ ТАБЛИЦ --- */
-.wide-table-wrapper table td, 
+.wide-table-wrapper table td,
 .wide-table-wrapper table th,
 .span9 table.common td,
 .span9 table.common th {
@@ -3883,25 +3878,25 @@ form.que_form select {
     }
 
     .wide-table-wrapper {
-        overflow-x: auto !important; 
+        overflow-x: auto !important;
         border-radius: var(--radius-medium);
     }
 
     .wide-table-wrapper table,
     .span9 table.common {
         width: 100% !important;
-        border-collapse: separate !important; 
+        border-collapse: separate !important;
         border-spacing: 0 !important;
-        table-layout: auto !important; 
+        table-layout: auto !important;
     }
 
     /* ШАПКА ТАБЛИЦЫ */
     .wide-table-wrapper table th,
     .span9 table.common th {
-        white-space: normal !important; 
-        vertical-align: bottom !important; 
-        padding: 12px 16px !important; 
-        font-size: 1.1rem !important; 
+        white-space: normal !important;
+        vertical-align: bottom !important;
+        padding: 12px 16px !important;
+        font-size: 1.1rem !important;
         font-weight: 700 !important;
         text-transform: uppercase !important;
         color: var(--color-text-secondary) !important; /* Цвет заголовков (серый) */
@@ -3913,17 +3908,17 @@ form.que_form select {
     /* ЯЧЕЙКИ ТЕЛА */
     .wide-table-wrapper table td,
     .span9 table.common td {
-        padding: 14px 16px !important; 
-        font-size: 1.3rem !important; 
+        padding: 14px 16px !important;
+        font-size: 1.3rem !important;
         line-height: 1.4 !important;
         height: auto !important;
         color: var(--color-text-primary) !important;
     }
 
     /* === УМНЫЕ КОЛОНКИ (V7 - ISOLATED) === */
-    
+
     /* Общие отступы для всех таблиц .common */
-    .span9 table.common td, 
+    .span9 table.common td,
     .span9 table.common th {
         padding: 1.2rem 1.6rem !important;
         line-height: 1.4 !important;
@@ -3945,7 +3940,7 @@ form.que_form select {
     }
 
     /* Первая колонка в оценках (Предмет/Тема) */
-    .session-table-v6 td:first-child, 
+    .session-table-v6 td:first-child,
     .term-table-v6 td:first-child {
         width: auto !important;
         white-space: normal !important;
@@ -3996,40 +3991,40 @@ form.que_form select {
 /* Перебиваем глобальные настройки умных колонок */
 .span9 table.common.absence-table tr > th,
 .span9 table.common.absence-table tr > td {
-    white-space: normal !important; 
-    word-wrap: break-word !important; 
+    white-space: normal !important;
+    word-wrap: break-word !important;
     vertical-align: middle !important;
 }
 
 /* Развешиваем ширину колонок в процентах (в сумме 100%) */
 .span9 table.common.absence-table tr > th:nth-child(1),
-.span9 table.common.absence-table tr > td:nth-child(1) { 
-    width: 5% !important; 
-    text-align: center !important; 
+.span9 table.common.absence-table tr > td:nth-child(1) {
+    width: 5% !important;
+    text-align: center !important;
 }
 
 .span9 table.common.absence-table tr > th:nth-child(2),
-.span9 table.common.absence-table tr > td:nth-child(2) { 
-    width: 15% !important; 
-    text-align: center !important; 
+.span9 table.common.absence-table tr > td:nth-child(2) {
+    width: 15% !important;
+    text-align: center !important;
 }
 
 .span9 table.common.absence-table tr > th:nth-child(3),
-.span9 table.common.absence-table tr > td:nth-child(3) { 
-    width: 35% !important; 
-    text-align: left !important; 
+.span9 table.common.absence-table tr > td:nth-child(3) {
+    width: 35% !important;
+    text-align: left !important;
 }
 
 .span9 table.common.absence-table tr > th:nth-child(4),
-.span9 table.common.absence-table tr > td:nth-child(4) { 
-    width: 25% !important; 
-    text-align: left !important; 
+.span9 table.common.absence-table tr > td:nth-child(4) {
+    width: 25% !important;
+    text-align: left !important;
 }
 
 .span9 table.common.absence-table tr > th:nth-child(5),
-.span9 table.common.absence-table tr > td:nth-child(5) { 
-    width: 20% !important; 
-    text-align: left !important; 
+.span9 table.common.absence-table tr > td:nth-child(5) {
+    width: 20% !important;
+    text-align: left !important;
 }
 
 /* Фикс для заголовков в Библиотеке */
@@ -4060,10 +4055,10 @@ form.que_form select {
 }
 
 /* Сброс кривых стилей ЕТИСа */
-.width_setter { 
-    position: static !important; 
-    margin: 0 !important; 
-    flex: 1 !important; 
+.width_setter {
+    position: static !important;
+    margin: 0 !important;
+    flex: 1 !important;
 }
 
 .search-flex-container input[type="text"] {
@@ -4108,7 +4103,7 @@ html[theme] .span9 table.common.timetable-grid {
 
 /* Настройка колонок расписания */
 html[theme] .timetable-grid td {
-    padding: 1.2rem 0 !important; 
+    padding: 1.2rem 0 !important;
     white-space: normal !important;
     word-wrap: break-word !important;
 }
@@ -4166,7 +4161,7 @@ html[theme] .timetable-grid td.pair_teacher .eval {
     top: 50% !important; /* Центрируем по вертикали */
     opacity: 0 !important;
     visibility: hidden !important;
-    transform: translateY(0) !important; 
+    transform: translateY(0) !important;
     transition: all 0.2s ease !important;
     font-size: 1.1rem !important;
     display: block !important;
@@ -4177,15 +4172,15 @@ html[theme] .timetable-grid td.pair_teacher .eval {
 html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
     opacity: 1 !important;
     visibility: visible !important;
-    transform: translateY(6px) !important; 
+    transform: translateY(6px) !important;
 }
 
 /* Фикс разделительных линий (линия стартует ровно от текста предмета, без отступа) */
 html[theme] .timetable-grid tr:not(:last-child) {
-    background-image: linear-gradient(to right, 
-        transparent 90px, 
-        var(--color-table-border) 90px, 
-        var(--color-table-border) calc(100% - 1.6rem), 
+    background-image: linear-gradient(to right,
+        transparent 90px,
+        var(--color-table-border) 90px,
+        var(--color-table-border) calc(100% - 1.6rem),
         transparent calc(100% - 1.6rem)
     ) !important;
     background-position: bottom !important;
@@ -4248,7 +4243,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 
 /* --- РАСПИСАНИЕ ДЛЯ МОБИЛЬНЫХ --- */
 @media (max-width: 960px) {
-    
+
     /* 1. Спасаем шапку с датой от обрезания */
     .span9 .day h3 {
         padding: 1.2rem 1.4rem !important;
@@ -4268,7 +4263,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 
     /* 2. Жёсткая сетка для таблицы */
     html[theme] .timetable-grid {
-        table-layout: fixed !important; 
+        table-layout: fixed !important;
         width: 100% !important;
     }
 
@@ -4283,7 +4278,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 
     /* Центральная колонка (Предмет) - сохраняем удачный мобильный вид */
     html[theme] .timetable-grid td.pair_info {
-        width: auto !important; 
+        width: auto !important;
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
     }
@@ -4296,7 +4291,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
         padding-left: 0.5rem !important;
         font-size: 1.1rem !important;
         text-align: right !important;
-        word-wrap: break-word !important; 
+        word-wrap: break-word !important;
     }
 
     /* Выравниваем выезжающую по тапу кнопку под мобильный отступ */
@@ -4306,10 +4301,10 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 
     /* Адаптируем разделительную линию под мобильную ширину 75px */
     html[theme] .timetable-grid tr:not(:last-child) {
-        background-image: linear-gradient(to right, 
-            transparent calc(75px + 0.5rem), 
-            var(--color-table-border) calc(75px + 0.5rem), 
-            var(--color-table-border) calc(100% - 1rem), 
+        background-image: linear-gradient(to right,
+            transparent calc(75px + 0.5rem),
+            var(--color-table-border) calc(75px + 0.5rem),
+            var(--color-table-border) calc(100% - 1rem),
             transparent calc(100% - 1rem)
         ) !important;
     }
@@ -4369,9 +4364,9 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 
 /* --- АКЦЕНТНЫЙ (СИНИЙ) БЕЙДЖ --- */
 .badge.ctl {
-    background: var(--color-accent-active) !important; 
-    color: var(--color-accent) !important;            
-    border: 1px solid var(--color-accent) !important; 
+    background: var(--color-accent-active) !important;
+    color: var(--color-accent) !important;
+    border: 1px solid var(--color-accent) !important;
     padding: 0.2rem 0.8rem !important;
     border-radius: 50px !important;
     font-size: 1.1rem !important;
@@ -4429,9 +4424,9 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
     line-height: 1.5 !important;
     vertical-align: middle !important;
     color: var(--color-text-primary) !important;
-    
-    white-space: normal !important; 
-    word-wrap: break-word !important; 
+
+    white-space: normal !important;
+    word-wrap: break-word !important;
 }
 
 /* Убираем линию у последней строки */
@@ -4478,11 +4473,11 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 }
 
 button.search-capsule {
-    justify-content: flex-start !important; 
-    padding: 0 10px 0 34px !important;    
+    justify-content: flex-start !important;
+    padding: 0 10px 0 34px !important;
     color: var(--color-text-secondary) !important;
-    font-size: 1.4rem !important;          
-    font-weight: 400 !important;           
+    font-size: 1.4rem !important;
+    font-weight: 400 !important;
     font-family: inherit !important;
     cursor: pointer !important;
     transition: background 0.2s ease !important;
@@ -4614,13 +4609,13 @@ button.search-capsule:hover {
 }
 
 /* Фикс наслоения текста в библиотеке */
-.library-subject-block table, 
+.library-subject-block table,
 #record_list table {
     table-layout: auto !important; /* Разрешаем колонкам адаптироваться */
     width: 100% !important;
 }
 
-.library-subject-block td, 
+.library-subject-block td,
 #record_list td {
     white-space: normal !important; /* Принудительный перенос строк */
     word-wrap: break-word !important;
@@ -4633,7 +4628,7 @@ button.search-capsule:hover {
 .span9 .wide-table-wrapper table,
 .span9 table.resource-table,
 .span9 table.common {
-    table-layout: auto !important; 
+    table-layout: auto !important;
     width: 100% !important;
     border-collapse: collapse !important;
 }
@@ -4727,7 +4722,7 @@ button.search-capsule:hover {
     top: 50% !important;
     left: 42px !important; /* Чуть правее иконки бутерброда */
     transform: translateY(-160%) scale(0) !important; /* Смещаем чуть выше центра иконки */
-    
+
     width: 10px !important;
     height: 10px !important;
     background-color: #FF3B30 !important;
@@ -4831,25 +4826,25 @@ button.search-capsule:hover {
 
 /* --- LEADERBOARD (ТОП ПРЕДМЕТОВ) --- */
 .leaderboard-list { display: flex; flex-direction: column; gap: 1rem; }
-.leaderboard-item { 
-    display: flex; align-items: center; gap: 1.4rem; 
-    background: var(--color-highlight); padding: 1.2rem 1.6rem; 
+.leaderboard-item {
+    display: flex; align-items: center; gap: 1.4rem;
+    background: var(--color-highlight); padding: 1.2rem 1.6rem;
     border-radius: var(--radius-medium); transition: transform 0.2s;
 }
 .leaderboard-item:hover { transform: translateX(4px); }
-.leaderboard-rank { 
-    font-size: 1.6rem; font-weight: 800; width: 3.6rem; height: 3.6rem; 
-    display: flex; align-items: center; justify-content: center; 
-    border-radius: 50%; background: var(--color-card); color: var(--color-text-primary); 
-    flex-shrink: 0; box-shadow: var(--shadow-main); 
+.leaderboard-rank {
+    font-size: 1.6rem; font-weight: 800; width: 3.6rem; height: 3.6rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; background: var(--color-card); color: var(--color-text-primary);
+    flex-shrink: 0; box-shadow: var(--shadow-main);
 }
 .rank-1 { background: linear-gradient(135deg, #FFD700, #FDB931) !important; color: #fff !important; }
 .rank-2 { background: linear-gradient(135deg, #E0E0E0, #BDBDBD) !important; color: #fff !important; }
 .rank-3 { background: linear-gradient(135deg, #FFB870, #CD7F32) !important; color: #fff !important; }
 
 .leaderboard-info { flex-grow: 1; min-width: 0; }
-.leaderboard-name { 
-    font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary); 
+.leaderboard-name {
+    font-size: 1.3rem; font-weight: 700; color: var(--color-text-primary);
     white-space: normal; line-height: 1.3; margin-bottom: 0.4rem;
 }
 .leaderboard-meta { font-size: 1.2rem; color: var(--color-text-secondary); }
@@ -4896,24 +4891,40 @@ button.search-capsule:hover {
 
 /* --- ЗАМЕТКИ ДЛЯ ПРЕДМЕТОВ (To-Do) --- */
 .subject-note-btn {
-    display: none !important; /* Убираем из потока. Пока не навели/не тапнули — места не занимает вообще */
+    display: inline-flex !important; /* Всегда в потоке, чтобы не ломать высоту */
     align-items: center !important;
     justify-content: center !important;
     margin-left: 6px !important;
-    padding: 4px !important;
+    padding: 2px !important; 
+    width: 24px !important; /* Жестко фиксируем размер */
+    height: 24px !important;
     border-radius: 50% !important;
     cursor: pointer !important;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    transition: transform 0.2s ease, background 0.2s ease, color 0.2s ease !important;
+    
+    /* Скрываем визуально, но оставляем физически */
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transform: scale(0.8) !important;
+    pointer-events: none !important;
+    
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
-/* При наведении/тапе ИЛИ если есть заметка - кнопка встраивается в структуру и плавно появляется */
+.subject-note-btn .material-icons {
+    font-size: 1.6rem !important; /* Чуть уменьшили иконку под размер 24px */
+    margin: 0 !important;
+}
+
+/* При наведении ИЛИ если есть заметка - плавно проявляем */
 .timetable-grid tr:hover .subject-note-btn,
 .subject-note-btn.has-note {
-    display: inline-flex !important; 
-    animation: notePopIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: scale(1) !important;
+    pointer-events: auto !important;
 }
 
 /* Цвет для заполненной заметки */
@@ -4930,17 +4941,6 @@ button.search-capsule:hover {
     transform: scale(1.15) !important;
     color: var(--color-accent) !important;
     background: var(--color-highlight) !important;
-}
-
-.subject-note-btn .material-icons {
-    font-size: 1.8rem !important; 
-    margin: 0 !important;
-}
-
-/* Анимация появления из пустоты */
-@keyframes notePopIn {
-    from { opacity: 0; transform: scale(0.5); }
-    to { opacity: 1; transform: scale(1); }
 }
 
 /* Стили текстового поля в модалке */
@@ -5087,6 +5087,10 @@ button.search-capsule:hover {
 
 @media (max-width: 960px) {
     .push-container { top: 1.5rem; left: 1rem; right: 1rem; }
+    .submenu > *:not(:last-child):not(.answer-btn-custom)::after,
+    .weeks .week:not(:last-child)::after {
+        right: -3.5px !important;
+    }
 }
 
 .push-toast {
@@ -5094,18 +5098,18 @@ button.search-capsule:hover {
     /* Усиливаем эффект стекла: блюр + насыщенность */
     backdrop-filter: blur(18px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
-    
+
     /* Делаем фон более прозрачным (0.65 вместо 0.85) */
     background-color: rgba(var(--push-bg-rgb), 0.65) !important;
-    
+
     color: var(--color-text-primary);
     padding: 1.6rem;
     border-radius: 24px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-    
+
     /* Тонкая светящаяся граница для объема */
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    
+
     width: 100% !important;
     display: flex;
     align-items: center;
@@ -5166,8 +5170,8 @@ button.search-capsule:hover {
     opacity: 0.7;
 }
 
-.push-toast:hover { 
-    transform: translateY(-2px) scale(1.02); 
+.push-toast:hover {
+    transform: translateY(-2px) scale(1.02);
     background-color: rgba(var(--push-bg-rgb), 0.8) !important;
 }
 
@@ -5175,7 +5179,15 @@ button.search-capsule:hover {
 .add-custom-pair-btn {
     cursor: pointer;
     color: var(--color-text-secondary);
-    opacity: 0; /* Скрыто по умолчанию везде */
+    
+    /* Скрываем элемент */
+    opacity: 0;
+    visibility: hidden;
+    
+    /* ФИКС БАГА ЗАЛИПАНИЯ: Выносим кнопку на отдельный слой GPU */
+    transform: scale(0.8) translateZ(0);
+    will-change: opacity, visibility, transform;
+    
     transition: all 0.2s ease;
     border-radius: 50%;
     display: inline-flex;
@@ -5185,10 +5197,11 @@ button.search-capsule:hover {
     height: 28px;
 }
 
-/* Показываем при наведении (ПК) или при тапе (Мобильные) */
-.day h3:hover .add-custom-pair-btn,
-.day h3:active .add-custom-pair-btn { 
+/* Показываем при наведении на шапку дня */
+.span9 .day h3:hover .add-custom-pair-btn { 
     opacity: 1; 
+    visibility: visible;
+    transform: scale(1) translateZ(0); /* Возвращаем размер */
 }
 
 .add-custom-pair-btn:hover { 
@@ -5196,7 +5209,7 @@ button.search-capsule:hover {
     background: var(--color-highlight); 
 }
 
-/* Строка пользовательской пары (Без синего фона и палок) */
+/* Строка пользовательской пары */
 .custom-pair-row .pair_info .dis a {
     color: var(--color-accent) !important;
     font-weight: 700 !important;
@@ -5205,6 +5218,12 @@ button.search-capsule:hover {
 /* Кнопка удаления (крестик справа от названия предмета) */
 .delete-custom-pair-btn {
     opacity: 0;
+    visibility: hidden;
+    
+    /* Такой же фикс для крестика, чтобы и он не залипал */
+    transform: scale(0.8) translateZ(0);
+    will-change: opacity, visibility, transform;
+    
     cursor: pointer;
     color: var(--color-red);
     transition: all 0.2s ease;
@@ -5217,10 +5236,11 @@ button.search-capsule:hover {
     vertical-align: middle;
 }
 
-/* Показываем крестик при наведении или тапе на строку */
-.custom-pair-row:hover .delete-custom-pair-btn,
-.custom-pair-row:active .delete-custom-pair-btn { 
+/* Показываем крестик при наведении на строку */
+.custom-pair-row:hover .delete-custom-pair-btn { 
     opacity: 1; 
+    visibility: visible;
+    transform: scale(1) translateZ(0);
 }
 
 .delete-custom-pair-btn:hover { background: rgba(255, 59, 48, 0.1); }
@@ -5261,6 +5281,135 @@ button.search-capsule:hover {
 }
 .tab-content { display: none; }
 .tab-content.active { display: block; }
+
+/* --- SUBMENU (ПОДВКЛАДКИ) --- */
+.submenu {
+    /* Убираем боковые градиенты-тени */
+    background-image: none !important;
+}
+[theme="dark"] .submenu {
+    background: var(--color-card) !important;
+}
+
+/* Стили неактивных кнопок (убираем фон) */
+.submenu a:not(.answer-btn-custom) {
+    background: transparent !important;
+    color: var(--color-text-secondary) !important;
+}
+.submenu a:not(.answer-btn-custom):hover {
+    background: transparent !important;
+    color: var(--color-text-primary) !important;
+    transform: none !important;
+}
+
+/* Разделители между вкладками */
+.submenu > *:not(:last-child):not(.answer-btn-custom) {
+    position: relative !important;
+}
+.submenu > *:not(:last-child):not(.answer-btn-custom)::after {
+    content: '';
+    position: absolute !important;
+    right: -4.5px !important; /* Центрируем между gap: 8px */
+    top: 25% !important;
+    bottom: 25% !important;
+    width: 1px !important;
+    background-color: var(--color-table-border) !important;
+    pointer-events: none !important;
+}
+/* Скрываем разделитель рядом с активной кнопкой для красоты */
+.submenu > *:has(+ b)::after,
+.submenu > b::after {
+    display: none !important;
+}
+
+
+/* --- WEEKS (НЕДЕЛИ) --- */
+.weeks {
+    /* Убираем боковые градиенты-тени */
+    background-image: none !important;
+}
+[theme="dark"] .weeks {
+    background: var(--color-card) !important;
+}
+
+/* Базовые стили для кружков (убираем фон, делаем ширину авто для текста) */
+.weeks .week { 
+    background-color: transparent !important; 
+    color: var(--color-text-secondary) !important; 
+    border-radius: 50px !important;
+    width: auto !important; 
+    min-width: 3.8rem !important; 
+    padding: 0 14px !important; 
+}
+.weeks > .week > a { 
+    border-radius: 50px !important;
+    color: var(--color-text-secondary) !important;
+}
+
+/* Ховер на неактивные недели */
+.weeks .week:not(.current):hover {
+    background-color: transparent !important;
+}
+.weeks .week:not(.current):hover > a {
+    color: var(--color-text-primary) !important;
+}
+
+/* Разделители между неделями */
+.weeks .week:not(:last-child) {
+    position: relative !important;
+}
+.weeks .week:not(:last-child)::after {
+    content: '';
+    position: absolute !important;
+    right: -4.5px !important;
+    top: 25% !important;
+    bottom: 25% !important;
+    width: 1px !important;
+    background-color: var(--color-table-border) !important;
+    pointer-events: none !important;
+}
+/* Скрываем разделитель рядом с активной кнопкой */
+.weeks .week:has(+ .current)::after,
+.weeks .week.current::after {
+    display: none !important;
+}
+
+/* Убираем тень у кнопок внутри тулбара (Аналитика, Топ предметов и т.д.) */
+.timetable-toolbar button.toolbar-item,
+button.analytics-btn {
+    box-shadow: none !important;
+}
+
+/* Отключаем системную серую/синюю подсветку при тапе на мобильных */
+.mobile-menu-btn, 
+.submenu a, 
+.submenu b,
+.weeks .week a,
+.weeks .week {
+    -webkit-tap-highlight-color: transparent !important;
+}
+
+/* Активное состояние для кнопок в тулбаре (Синхронизация) */
+.timetable-toolbar .toolbar-item.is-active {
+    background: var(--color-accent) !important;
+    color: var(--color-text-primary-invert) !important;
+    font-weight: 600 !important;
+}
+
+/* Убираем тень при наведении на активную кнопку */
+.timetable-toolbar .toolbar-item.is-active:hover {
+    background: var(--color-accent-dark, var(--color-accent)) !important;
+}
+
+.weeks .week.session:not(.current),
+.weeks .week.session:not(.current) a {
+    color: var(--color-red) !important;
+}
+
+.weeks .week.holiday:not(.current),
+.weeks .week.holiday:not(.current) a {
+    color: var(--color-green) !important;
+}
     `;
 
     // Внедряем стили
@@ -5406,9 +5555,9 @@ injectStyles(styles);
     // ЛОГИКА ОБНОВЛЕНИЯ
     // ==========================================
     const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
-    
+
     let updateState = {
-        status: 'idle', 
+        status: 'idle',
         hasUpdate: false,
         remoteVer: '',
         remoteDate: '',
@@ -5454,7 +5603,7 @@ injectStyles(styles);
                     const text = res.responseText;
                     const verMatch = text.match(/@version\s+([\d\.]+)/);
                     if (!verMatch) throw new Error("Версия не найдена в файле");
-                    
+
                     const remoteVer = verMatch[1];
                     const currentVer = GM_info.script.version;
 
@@ -5503,36 +5652,36 @@ injectStyles(styles);
         const cur = GM_info.script.version;
         if (updateState.status === 'loading') return `<div style="padding:2rem;text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-accent);animation:spin 1s linear infinite;">sync</span><div style="margin-top:1rem;font-size:1.6rem;">Проверка...</div></div><style>@keyframes spin{100%{transform:rotate(360deg)}}</style>`;
         if (updateState.status === 'error') return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-red);">error_outline</span><div style="font-size:1.6rem;margin:1rem 0;">Ошибка: ${updateState.details}</div><button id="retry-update" class="answer-btn-custom" style="margin:0 auto;">Повторить</button></div>`;
-        
+
         if (updateState.hasUpdate) {
             return `
                 <div style="text-align:center;">
                     <span class="material-icons" style="font-size:48px;color:var(--color-green);margin-bottom:1rem;">system_update</span>
                     <div style="font-size:1.8rem;font-weight:800;margin-bottom:1.5rem;color:var(--color-text-primary);">Новая версия!</div>
-                    
+
                     <div style="background:var(--color-highlight);padding:1.6rem;border-radius:12px;text-align:left;margin-bottom:2rem;border:1px solid var(--color-table-border);">
                         <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Доступно:</div>
                         <div style="font-size:1.4rem;font-weight:700;margin-bottom:12px;color:var(--color-text-primary);">
                             ${updateState.remoteVer} от ${updateState.remoteDate}
                         </div>
-                        
+
                         ${updateState.remoteLog ? `
                             <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Что нового:</div>
                             <div style="font-size:1.4rem;line-height:1.4;margin-bottom:12px;color:var(--color-text-primary);">
                                 ${updateState.remoteLog}
                             </div>
                         ` : ''}
-                        
+
                         <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">У вас:</div>
                         <div style="font-size:1.4rem;font-weight:700;color:var(--color-text-primary);">
                             ${cur}
                         </div>
                     </div>
-                    
+
                     <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700;">Обновить</button>
                 </div>`;
         }
-        
+
         return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-accent);margin-bottom:1rem;">check_circle</span><div style="font-size:1.8rem;font-weight:700;">Версия актуальна</div><div style="color:var(--color-text-secondary);margin-top:0.5rem;">У вас установлена v${cur}</div><button id="retry-update" class="answer-btn-custom" style="margin:2rem auto 0;background:var(--color-highlight)!important;color:var(--color-text-primary)!important;">Проверить снова</button></div>`;
     }
 
@@ -5542,7 +5691,7 @@ injectStyles(styles);
             const content = modal.querySelector('.ui-dialog-content');
             if (content) {
                 content.innerHTML = getUpdateHTML();
-                
+
                 const btn = content.querySelector('#update-confirm');
                 if (btn) {
                     btn.onclick = () => {
@@ -5554,7 +5703,7 @@ injectStyles(styles);
                         // 2. Запускаем скачивание обновления
                         window.location.href = UPDATE_URL;
 
-                        // 3. Перезагружаем страницу через 1.5 секунды, 
+                        // 3. Перезагружаем страницу через 1.5 секунды,
                         // чтобы после установки скрипта пользователь сразу увидел новую версию
                         setTimeout(() => {
                             window.location.reload();
@@ -5591,7 +5740,7 @@ injectStyles(styles);
                 <div class="ui-dialog-content" style="padding:24px;"></div>
             `;
             document.body.appendChild(modal);
-            
+
             overlay.onclick = () => { overlay.style.display = 'none'; modal.style.display = 'none'; };
             modal.querySelector('#close-update').onclick = () => overlay.onclick();
         }
@@ -5613,7 +5762,7 @@ injectStyles(styles);
         menuBtn.innerHTML = `
             <div class="menu-btn-content menu-closed">
                 <span class="material-icons">menu</span>
-                <span class="mobile-notify-dot"></span> 
+                <span class="mobile-notify-dot"></span>
                 <span>Меню</span>
             </div>
             <div class="menu-btn-content menu-open">
@@ -5644,29 +5793,39 @@ injectStyles(styles);
             }
         }
 
-        // preventDefault() предотвращает "призрачные клики" и залипание ховера на элементах под кнопкой
-        menuBtn.addEventListener('click', (e) => {
-            e.preventDefault(); 
+        // Универсальный обработчик для кнопки меню (убивает фантомные нажатия и ховеры)
+        const toggleMenuHandler = (e) => {
+            // e.cancelable спасает от ошибок в консоли, если браузер не дает сбросить событие
+            if (e.cancelable) e.preventDefault(); 
             e.stopPropagation();
             const isOpen = sidebar.classList.contains('mobile-active');
             toggleMenu(!isOpen);
-        });
+        };
 
-        overlay.addEventListener('click', (e) => {
-            e.preventDefault(); // Тоже блокируем проваливание клика сквозь затемнение
+        // Ловим отпускание пальца (на смартфонах) и обычный клик (для мыши)
+        menuBtn.addEventListener('touchend', toggleMenuHandler, { passive: false });
+        menuBtn.addEventListener('click', toggleMenuHandler);
+
+        // То же самое для затемнения (оверлея), чтобы клик не пробивал насквозь
+        const closeMenuHandler = (e) => {
+            if (e.cancelable) e.preventDefault();
+            e.stopPropagation();
             toggleMenu(false);
-        });
+        };
+
+        overlay.addEventListener('touchend', closeMenuHandler, { passive: false });
+        overlay.addEventListener('click', closeMenuHandler);
 
         // Логика при клике на ссылку
         sidebar.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', () => {
-                sidebar.classList.remove('mobile-active'); 
-                overlay.classList.remove('active');       
-                menuBtn.classList.remove('open');         
-                menuBtn.classList.add('is-loading');  
+                sidebar.classList.remove('mobile-active');
+                overlay.classList.remove('active');
+                menuBtn.classList.remove('open');
+                menuBtn.classList.add('is-loading');
                 // Возвращаем скролл при переходе по ссылке
                 document.body.style.overflow = '';
-                document.documentElement.style.overflow = '';    
+                document.documentElement.style.overflow = '';
             });
         });
     }
@@ -5703,7 +5862,7 @@ injectStyles(styles);
                 const dayDot = document.createElement('span');
                 dayDot.className = 'live-dot active';
                 // Убираем пульсацию у точки дня, чтобы не отвлекала
-                dayDot.style.animation = 'none'; 
+                dayDot.style.animation = 'none';
                 dayHeader.appendChild(dayDot);
 
                 // 2. Ищем текущую или ближайшую пару
@@ -5713,7 +5872,7 @@ injectStyles(styles);
 
                     const timeEl = row.querySelector('.eval');
                     if (!timeEl) return;
-                    
+
                     // Дополнительная проверка на время выходного дня
                     if (timeEl.textContent.trim() === '00:00') return;
 
@@ -5746,7 +5905,7 @@ injectStyles(styles);
             if (target && !target.querySelector('.live-dot')) {
                 const dot = document.createElement('span');
                 dot.className = `live-dot ${type}`;
-                
+
                 // Добавим подсказку при наведении
                 let title = "";
                 if (type === 'active') title = "Пара идет";
@@ -5780,7 +5939,7 @@ injectStyles(styles);
                     <span class="material-icons close-btn" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
                 </div>
                 <div style="padding:24px; display:flex; flex-direction:column;">
-                    
+
                     <!-- Кнопка перехода на сайт вместо формы -->
                     <div id="review-redirect-block" style="text-align: center; margin-bottom: 20px;">
                         <p style="color: var(--color-text-secondary); margin-bottom: 15px; font-size: 1.3rem;">
@@ -5820,7 +5979,7 @@ injectStyles(styles);
             try {
                 const res = await fetch(FIREBASE_URL);
                 const data = await res.json();
-                
+
                 list.innerHTML = '';
                 if (!data) {
                     list.innerHTML = '<div style="text-align:center;color:var(--color-text-secondary);padding:20px;">Пока нет отзывов.</div>';
@@ -5833,7 +5992,7 @@ injectStyles(styles);
                     const dateObj = new Date(rev.date);
                     const dateStr = `${String(dateObj.getDate()).padStart(2,'0')}.${String(dateObj.getMonth()+1).padStart(2,'0')}.${dateObj.getFullYear()}`;
                     const starsHtml = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
-                    
+
                     const safeText = rev.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                     const safeAuthor = (rev.author || 'Аноним').replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -5874,7 +6033,7 @@ injectStyles(styles);
             if (page != 'stu_email_pkg.send_r_email') {
                 const chooseDiv = document.querySelector('div.choose');
                 if(chooseDiv) chooseDiv.remove();
-                
+
                 const psuLogo = document.createElement('div');
                 psuLogo.className = 'psu-logo';
                 loginForm.prepend(psuLogo);
@@ -5882,7 +6041,7 @@ injectStyles(styles);
 
             // 2. Сбор и скрытие "лишнего" текста
             let helpTextContent = "";
-            
+
             // Текст из футера (про студентов 1 курса и телефон)
             const oldFooter = document.querySelector('div.header_message');
             if (oldFooter) {
@@ -5914,11 +6073,11 @@ injectStyles(styles);
             if (helpTextContent) {
                 const helpContainer = document.createElement('div');
                 helpContainer.className = 'login-help-container';
-                
+
                 const helpIcon = document.createElement('div');
                 helpIcon.className = 'login-help-icon';
                 helpIcon.textContent = '?';
-                
+
                 const helpDropdown = document.createElement('div');
                 helpDropdown.className = 'login-help-dropdown';
                 helpDropdown.innerHTML = helpTextContent;
@@ -5937,7 +6096,7 @@ injectStyles(styles);
 
                 helpContainer.appendChild(helpIcon);
                 helpContainer.appendChild(helpDropdown);
-                
+
                 document.body.appendChild(helpContainer);
             }
 
@@ -6022,9 +6181,9 @@ injectStyles(styles);
                             const containerWidth = menu.offsetWidth;
                             const itemWidth = activeItem.offsetWidth;
                             const itemLeft = activeItem.offsetLeft;
-                            
+
                             const scrollTarget = itemLeft - (containerWidth / 2) + (itemWidth / 2);
-                            
+
                             menu.scrollTo({
                                 left: scrollTarget,
                                 behavior: 'smooth'
@@ -6087,7 +6246,7 @@ injectStyles(styles);
 
                 // 4. ПОДГОТОВКА ВСЕХ ЭЛЕМЕНТОВ
                 const allNavs = sidebar.querySelectorAll('ul.nav.nav-tabs.nav-stacked');
-                const mainNav = allNavs[0]; 
+                const mainNav = allNavs[0];
                 let allListItems = [];
                 let globalHasNotifications = false;
 
@@ -6106,7 +6265,7 @@ injectStyles(styles);
                 themeLi.className = 'theme-switcher-item';
                 const themeLink = document.createElement("a");
                 themeLink.style.cursor = 'pointer';
-                themeLink.href = "#theme-switch"; 
+                themeLink.href = "#theme-switch";
                 themeLink.appendChild(document.createTextNode('Тема: ' + ((theme == 'auto') ? 'Системная' : ((theme == 'dark') ? 'Темная' : 'Светлая'))));
                 themeLink.addEventListener('click', switchTheme, false);
                 themeLi.appendChild(themeLink);
@@ -6163,20 +6322,20 @@ injectStyles(styles);
                     if (href === '#reviews') return 'star_rate';
                     if (href === '#report-bug') return 'bug_report';
                     if (href.includes('teach_plan')) return 'school';
-                    if (href.includes('timetable')) return 'calendar_today'; 
+                    if (href.includes('timetable')) return 'calendar_today';
                     if (href.includes('signs')) return 'assignment_turned_in';
                     if (href.includes('absence')) return 'event_busy';
                     if (href.includes('orders')) return 'assignment';
                     if (href.includes('library')) return 'local_library';
                     if (href.includes('teachers')) return 'people';
                     if (href.includes('est_pkg.show_list')) return 'forum';
-                    if (href.includes('group_tt')) return 'playlist_add_check'; 
+                    if (href.includes('group_tt')) return 'playlist_add_check';
                     if (href.includes('announces')) return 'announcement';
                     if (href.includes('teacher_notes')) return 'mail';
                     if (href.includes('ses')) return 'account_balance';
                     if (href.includes('advice')) return 'lightbulb';
                     if (href.includes('electr')) return 'public';
-                    if (href.includes('cert_pkg')) return 'description'; 
+                    if (href.includes('cert_pkg')) return 'description';
                     if (href.includes('contract_list')) return 'receipt';
                     if (href.includes('blank_forms')) return 'insert_drive_file';
                     if (href.includes('portfolio')) return 'folder_shared';
@@ -6187,7 +6346,7 @@ injectStyles(styles);
                     if (href.includes('change_email')) return 'alternate_email';
                     if (href.includes('change_pr_page')) return 'account_box';
                     if (href.includes('logout')) return 'exit_to_app';
-                    return 'chevron_right'; 
+                    return 'chevron_right';
                 };
 
                 const allowedDotHrefs = ['stu_ann.announces', 'stu.teacher_notes', 'est_pkg.show_list'];
@@ -6215,12 +6374,12 @@ injectStyles(styles);
                     const etisBadge = a.querySelector('.badge');
                     if (etisBadge) {
                         if (etisBadge.textContent.trim() !== '0') itemHasNotification = true;
-                        etisBadge.remove(); 
+                        etisBadge.remove();
                     }
 
                     const iconName = getIconForHref(href);
                     const pureText = a.textContent.trim();
-                    a.innerHTML = ''; 
+                    a.innerHTML = '';
 
                     const iconSpan = document.createElement('span');
                     iconSpan.className = 'material-icons';
@@ -6252,12 +6411,12 @@ injectStyles(styles);
                 mainNav.innerHTML = '';
 
                 const groupsOrder = [
-                    ['teach_plan'], 
-                    ['timetable', 'signs', 'absence'], 
-                    ['announces', 'teacher_notes', 'teachers', 'est_pkg.show_list'], 
-                    ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'group_tt'], 
+                    ['teach_plan'],
+                    ['timetable', 'signs', 'absence'],
+                    ['announces', 'teacher_notes', 'teachers', 'est_pkg.show_list'],
+                    ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'group_tt'],
                     ['library', 'electr', 'advice', 'ses', 'about'],
-                    ['term_test', 'special_est_list', 'оцените дистанционное'], 
+                    ['term_test', 'special_est_list', 'оцените дистанционное'],
                     ['#version-check', '#reviews', '#theme-switch', 'change_pass', 'change_email', 'change_pr_page', 'logout']
                 ];
 
@@ -6327,7 +6486,7 @@ injectStyles(styles);
                 if (bestMatch) bestMatch.classList.add('active');
                 else {
                     const currentBase = currentFullUrl.split('?')[0].split('.').pop();
-                    
+
                     // --- ФИКС ПОДСВЕТКИ ДЛЯ СКРЫТЫХ ВКЛАДОК ---
                     if (currentBase === 'ebl_choice' || currentBase === 'fcl_choice' || currentBase === 'choose_dis') {
                         const tpLi = Array.from(mainNav.querySelectorAll('li')).find(li => li.querySelector('a')?.getAttribute('href')?.includes('teach_plan'));
@@ -6389,21 +6548,21 @@ injectStyles(styles);
             // Прошлые годы: "6 марта 2024" (без времени)
             const formatEtisDate = (rawStr) => {
                 if (!rawStr) return '';
-                
+
                 const match = rawStr.match(/(\d{2})\.(\d{2})\.(\d{4})\s(\d{2}:\d{2})/);
-                
+
                 if (match) {
                     const day = parseInt(match[1], 10);
                     const monthIndex = parseInt(match[2], 10) - 1; // Месяцы в JS от 0 до 11
                     const year = parseInt(match[3], 10);
                     const time = match[4];
-                    
+
                     const dateObj = new Date(year, monthIndex, day);
                     const now = new Date();
-                    
+
                     const months = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
                     const shortDays = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
-                    
+
                     const monthName = months[monthIndex];
 
                     // 1. Текущий год: День недели, Число Месяц Время
@@ -6411,7 +6570,7 @@ injectStyles(styles);
                         const dayName = shortDays[dateObj.getDay()];
                         return `${dayName}, ${day} ${monthName} ${time}`;
                     }
-                    
+
                     // 2. Прошлые годы: Число Месяц Год (время убираем)
                     return `${day} ${monthName} ${year}`;
                 }
@@ -6431,7 +6590,7 @@ injectStyles(styles);
             const shareMessageCard = (cardElement, defaultFileName) => {
                 const originalBtnContainer = cardElement.querySelector('.share-msg-wrap');
                 const originalSVG = originalBtnContainer ? originalBtnContainer.innerHTML : '';
-                
+
                 if (originalBtnContainer) {
                     originalBtnContainer.innerHTML = '<span class="material-icons" style="font-size: 17px; line-height: 1; color:var(--color-text-secondary);">hourglass_empty</span>';
                 }
@@ -6449,8 +6608,8 @@ injectStyles(styles);
                     }
 
                     const isMobile = window.innerWidth <= 960;
-                    const renderWidth = 540; 
-                    
+                    const renderWidth = 540;
+
                     const exportContainer = document.createElement('div');
                     exportContainer.style.position = 'fixed';
                     exportContainer.style.top = '100vh';
@@ -6470,14 +6629,14 @@ injectStyles(styles);
 
                     // Клонируем карточку
                     const clone = cardElement.cloneNode(true);
-                    
+
                     // Принудительно убиваем отступы снаружи карточки у клона
                     clone.style.setProperty('margin', '0', 'important');
-                    
+
                     // Удаляем обертку кнопки из клона
                     const cloneShareBtn = clone.querySelector('.share-msg-wrap');
                     if (cloneShareBtn) cloneShareBtn.remove();
-                    
+
                     clone.querySelectorAll('.answer-wrapper, .send-reply-btn, div[id^="frm_"], .msg-footer button').forEach(el => el.remove());
 
                     const cloneFooter = clone.querySelector('.msg-footer');
@@ -6496,7 +6655,7 @@ injectStyles(styles);
                         canvas.toBlob(blob => {
                             if (!blob) throw new Error('Blob creation failed');
                             const file = new File([blob], defaultFileName, { type: 'image/png' });
-                            
+
                             if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
                                 navigator.share({
                                     files: [file],
@@ -6552,7 +6711,7 @@ injectStyles(styles);
                     const params = new URLSearchParams(window.location.search);
                     const currentMode = params.get('p_mode');
                     let submenu = span9.querySelector('.submenu');
-                    
+
                     // 1. Создаем контейнер меню
                     if (!submenu) {
                         submenu = document.createElement('div');
@@ -6590,7 +6749,7 @@ injectStyles(styles);
                             else if (href.includes('p_mode=choose_dis') && currentMode === 'choose_dis') {
                                 isActive = true;
                             }
-                        } 
+                        }
                         else if ((page === 'stu.ebl_choice' || page === 'ebl_stu.ebl_choice') && href.includes('ebl_choice')) {
                             isActive = true;
                         }
@@ -6609,42 +6768,42 @@ injectStyles(styles);
                     const planEvalBtn = span9.querySelector('a[onclick*="cust.est_plan_form_stu"], a[href*="cust.est_plan_form_stu"]');
                     if (planEvalBtn) {
                         planEvalBtn.className = 'answer-btn-custom';
-                        planEvalBtn.style.cssText = `margin-left: auto !important;`; 
+                        planEvalBtn.style.cssText = `margin-left: auto !important;`;
                         planEvalBtn.innerHTML = '<span class="material-icons" style="font-size:1.8rem; margin-right:6px">auto_awesome</span> Оценить план';
                         submenu.appendChild(planEvalBtn);
                     }
 
                     // --- СТИЛИЗАЦИЯ КОНТЕНТА ---
                     if (page === 'stu.teach_plan') {
-                        const isAdvanced = currentMode === 'advanced'; 
+                        const isAdvanced = currentMode === 'advanced';
                         const isChooseDis = currentMode === 'choose_dis';
 
                         // Перенос номера плана (для дисциплин по выбору)
                         if (isChooseDis) {
-                            const tpInfo = Array.from(span9.querySelectorAll('div')).find(d => 
+                            const tpInfo = Array.from(span9.querySelectorAll('div')).find(d =>
                                 d.textContent.includes('Учебный план') && d.textContent.trim().length < 30 && d.parentNode === span9
                             );
                             const targetH3 = Array.from(span9.querySelectorAll('h3')).find(h => h.textContent.includes('Блоки дисциплин'));
-                            
+
                             if (tpInfo && targetH3) {
                                 const headerFlex = document.createElement('div');
                                 headerFlex.className = 'subject-header-flex';
                                 headerFlex.style.marginTop = '2rem';
-                                
+
                                 const capsule = document.createElement('div');
                                 capsule.className = 'subject-score-capsule';
                                 capsule.style.background = 'var(--color-highlight)';
                                 capsule.style.color = 'var(--color-text-secondary)';
                                 capsule.style.border = '1px solid var(--color-table-border)';
                                 capsule.style.boxShadow = 'none';
-                                
+
                                 const tpNumber = tpInfo.textContent.replace(/Учебный план/i, '').trim();
                                 capsule.innerHTML = `<span class="material-icons" style="font-size:1.4rem; vertical-align: middle; margin-right:4px; opacity:0.7">info</span> План №${tpNumber}`;
-                                
+
                                 targetH3.parentNode.insertBefore(headerFlex, targetH3);
                                 headerFlex.appendChild(targetH3);
                                 headerFlex.appendChild(capsule);
-                                tpInfo.remove(); 
+                                tpInfo.remove();
                             }
                         }
 
@@ -6693,11 +6852,11 @@ injectStyles(styles);
                                 wrapper.appendChild(table);
                             });
                         }
-                        
+
                         // КРАТКИЙ ВИД (Добавляем капсулы)
                         if (!isAdvanced && !isChooseDis) {
                             const shortTables = span9.querySelectorAll('table.teach_plan, table.common');
-                            
+
                             shortTables.forEach(table => {
                                 if (!table.parentNode.classList.contains('wide-table-wrapper')) {
                                     const wrapper = document.createElement('div');
@@ -6708,16 +6867,16 @@ injectStyles(styles);
 
                                 // --- ЛОГИКА КАПСУЛ ---
                                 table.querySelectorAll('td').forEach(cell => {
-                                    const text = cell.textContent.replace(/\s/g, '').toLowerCase(); 
+                                    const text = cell.textContent.replace(/\s/g, '').toLowerCase();
                                     let bg, color;
 
                                     if (text === 'экзамен') {
-                                        // СИНИЙ 
-                                        bg = 'rgba(0, 122, 255, 0.15)'; 
+                                        // СИНИЙ
+                                        bg = 'rgba(0, 122, 255, 0.15)';
                                         color = 'var(--color-blue)';
                                     } else if (text === 'зачет' || text === 'зачёт') {
                                         // ЗЕЛЕНЫЙ
-                                        bg = 'rgba(52, 199, 89, 0.15)'; 
+                                        bg = 'rgba(52, 199, 89, 0.15)';
                                         color = 'var(--color-green)';
                                     }
 
@@ -6747,9 +6906,9 @@ injectStyles(styles);
                             table.parentNode.insertBefore(wrapper, table);
                             wrapper.appendChild(table);
                         });
-                        
+
                         span9.querySelectorAll('br').forEach((br, i) => { if(i < 3) br.remove(); });
-                        
+
                         const headers = span9.querySelectorAll('h3');
                         headers.forEach(h => {
                             h.style.marginTop = '2rem';
@@ -6788,7 +6947,7 @@ injectStyles(styles);
                         estimateLink.className = 'icon-button icon-feedback';
                         estimateLink.style.display = 'inline-flex';
                         estimateLink.style.marginBottom = '3rem';
-                        estimateLink.innerHTML = 'Оставить отзыв'; 
+                        estimateLink.innerHTML = 'Оставить отзыв';
                     }
 
                     // 4. Оборачиваем таблицы в контейнер для скролла на мобильных
@@ -6799,7 +6958,7 @@ injectStyles(styles);
                         wrapper.style.boxShadow = 'none'; // Тень мы уже задали самой таблице в CSS
                         table.parentNode.insertBefore(wrapper, table);
                         wrapper.appendChild(table);
-                        
+
                         // Чистим старые инлайновые стили ячеек
                         table.querySelectorAll('td').forEach(td => td.removeAttribute('style'));
                     });
@@ -6849,7 +7008,7 @@ injectStyles(styles);
 
                         const card = document.createElement('div');
                         card.className = 'teacher-card';
-                        
+
                         // Формируем строку поиска: все в нижний регистр, убираем лишние пробелы
                         const searchString = `${nameText} ${chairText} ${subjectsText}`.toLowerCase().replace(/\s+/g, ' ');
                         card.setAttribute('data-search', searchString);
@@ -6886,7 +7045,7 @@ injectStyles(styles);
                     input.addEventListener('input', (e) => {
                         const term = e.target.value.toLowerCase().trim();
                         let foundCount = 0;
-                        
+
                         const allCards = listContainer.querySelectorAll('.teacher-card');
                         allCards.forEach(card => {
                             const content = card.getAttribute('data-search');
@@ -6908,14 +7067,14 @@ injectStyles(styles);
 
                 case 'stu.sc_portfolio':
                     const portfolioLinks = span9.querySelectorAll('h3 > a.dashed');
-                    
+
                     portfolioLinks.forEach(link => {
                         const h3 = link.parentElement;
                         const oldCounter = link.querySelector('span[id$="_cnt"]');
-                        
+
                         const headerCard = document.createElement('div');
                         headerCard.className = 'portfolio-header';
-                        
+
                         if (oldCounter) {
                             const countVal = oldCounter.textContent.replace(/[()]/g, '').trim();
                             if (countVal !== "") {
@@ -6946,20 +7105,20 @@ injectStyles(styles);
                     // --- СКРОЛЛ ТАБЛИЦ ---
                     // Находим все блоки контента (публикации, проекты и т.д.)
                     const contentDivs = span9.querySelectorAll('div[id="pub"], div[id="pis"], div[id="agr"], div[id="ooo"], div[id="saw"], div[id="vkr"]');
-                    
+
                     contentDivs.forEach(div => {
                         const table = div.querySelector('table');
                         if (table) {
                             // Создаем обертку для скролла
                             const wrapper = document.createElement('div');
                             wrapper.className = 'wide-table-wrapper';
-                            
+
                             // Вставляем обертку перед таблицей
                             table.parentNode.insertBefore(wrapper, table);
-                            
+
                             // Перемещаем таблицу внутрь
                             wrapper.appendChild(table);
-                            
+
                             // Сбрасываем ширину, чтобы таблица растягивалась
                             table.style.width = '100%';
                         }
@@ -6972,7 +7131,7 @@ injectStyles(styles);
                         icon.className = 'material-icons icon-load-doc-new';
                         icon.textContent = 'upload_file';
                         icon.style.cursor = 'pointer';
-                        
+
                         Array.from(img.attributes).forEach(attr => {
                             icon.setAttribute(attr.name, attr.value);
                         });
@@ -7008,7 +7167,7 @@ injectStyles(styles);
                 span9.querySelectorAll('.no_pairs').forEach(el => {
                     const table = document.createElement('table');
                     table.className = 'timetable-grid'; // Применяем сетку расписания
-                    
+
                     table.innerHTML = `
                         <tbody>
                             <tr>
@@ -7023,7 +7182,7 @@ injectStyles(styles);
                             </tr>
                         </tbody>
                     `;
-                    
+
                     // Заменяем скучный текст на полноценную таблицу
                     el.parentNode.replaceChild(table, el);
                 });
@@ -7059,24 +7218,24 @@ injectStyles(styles);
 
                         const isMobile = window.innerWidth <= 960;
                         const renderWidth = isMobile ? 540 : 1000;
-                        
+
                         const exportContainer = document.createElement('div');
                         // Скрываем контейнер внизу экрана
                         exportContainer.style.position = 'fixed';
                         exportContainer.style.top = '100vh';
                         exportContainer.style.left = '0';
-                        exportContainer.style.width = renderWidth + 'px'; 
+                        exportContainer.style.width = renderWidth + 'px';
                         exportContainer.style.padding = isMobile ? '24px' : '40px';
                         exportContainer.style.boxSizing = 'border-box';
                         exportContainer.style.background = getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6';
                         exportContainer.style.fontFamily = getComputedStyle(document.body).fontFamily;
                         exportContainer.style.zIndex = '-9999';
-                        
+
                         // Если мобилка, форсируем минимальную высоту для соотношения 9:16 (как сторис)
                         if (isMobile) {
                             exportContainer.style.minHeight = (renderWidth * 16 / 9) + 'px';
                         }
-                        
+
                         let fileName = 'Расписание.png';
 
                         // Формируем заголовок и название файла
@@ -7105,12 +7264,12 @@ injectStyles(styles);
 
                         // Клонируем всю таблицу расписания
                         const timetableClone = document.querySelector('.timetable').cloneNode(true);
-                        
+
                         // Удаляем кнопки "оценить занятие", скрытые пары и точки
                         timetableClone.querySelectorAll('.pair_teacher .eval').forEach(el => el.remove());
                         timetableClone.querySelectorAll('.hidden-by-filter').forEach(el => el.remove());
                         timetableClone.querySelectorAll('.live-dot').forEach(el => el.remove());
-                        
+
                         // Снимаем синие подчеркивания у ссылок
                         timetableClone.querySelectorAll('a').forEach(a => {
                             a.style.textDecoration = 'none';
@@ -7123,15 +7282,15 @@ injectStyles(styles);
 
                         span9Wrapper.appendChild(timetableClone);
                         exportContainer.appendChild(span9Wrapper);
-                        
+
                         // --- СКРЫТИЕ UI-ЭЛЕМЕНТОВ ДЛЯ СКРИНШОТА ---
                         const hideUIStyle = document.createElement('style');
                         hideUIStyle.innerHTML = `
-                            .live-dot, 
-                            .add-custom-pair-btn, 
-                            .delete-custom-pair-btn, 
-                            .subject-note-btn { 
-                                display: none !important; 
+                            .live-dot,
+                            .add-custom-pair-btn,
+                            .delete-custom-pair-btn,
+                            .subject-note-btn {
+                                display: none !important;
                                 opacity: 0 !important;
                                 visibility: hidden !important;
                             }
@@ -7141,8 +7300,8 @@ injectStyles(styles);
                         document.body.appendChild(exportContainer);
 
                         // Рендерим канвас
-                        h2c(exportContainer, { 
-                            scale: 2, 
+                        h2c(exportContainer, {
+                            scale: 2,
                             useCORS: true,
                             windowWidth: isMobile ? renderWidth : 1200, // Включает мобильные стили CSS при рендере
                             backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'
@@ -7150,7 +7309,7 @@ injectStyles(styles);
                             // Превращаем канвас в файл для нативного окна "Поделиться"
                             canvas.toBlob(blob => {
                                 if (!blob) throw new Error('Blob creation failed');
-                                
+
                                 const file = new File([blob], fileName, { type: 'image/png' });
 
                                 // Если мы с телефона и браузер поддерживает окно "Share"
@@ -7220,15 +7379,15 @@ injectStyles(styles);
                 if (consultDiv) {
                     const wrapper = document.createElement('label');
                     wrapper.className = 'toolbar-item';
-                    
+
                     const checkbox = document.createElement('input');
                     checkbox.type = 'checkbox';
-                    checkbox.className = 'tumbler-checkbox'; 
-                    
+                    checkbox.className = 'tumbler-checkbox';
+
                     // Читаем из памяти
                     const savedState = localStorage.getItem('etis_show_consultations');
                     checkbox.checked = savedState !== 'false';
-                    
+
                     wrapper.appendChild(checkbox);
                     wrapper.appendChild(document.createTextNode('Консультации'));
                     toolbar.appendChild(wrapper);
@@ -7238,16 +7397,16 @@ injectStyles(styles);
                         checkbox.addEventListener('change', () => {
                             const show = checkbox.checked;
                             localStorage.setItem('etis_show_consultations', show);
-                            
+
                             const tables = span9.querySelectorAll('.timetable-grid');
-                            
+
                             // 1. Плавно скрываем все таблицы с расписанием (уменьшаем и делаем прозрачными)
                             tables.forEach(t => {
                                 t.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
                                 t.style.opacity = '0';
                                 t.style.transform = 'translateY(-5px) scale(0.99)';
                             });
-                            
+
                             // 2. Ждем окончания затухания (150мс), пересчитываем структуру невидимой таблицы
                             setTimeout(() => {
                                 span9.querySelectorAll('.consultation-row').forEach(row => {
@@ -7259,11 +7418,11 @@ injectStyles(styles);
                                         row.style.display = 'none'; // Убираем строку
                                     }
                                 });
-                                
+
                                 // Пересчитываем окна и нумерацию пар (которую мы написали ранее)
                                 if (typeof recalculateTimetable === 'function') recalculateTimetable();
                                 renderNotes();
-                                
+
                                 // 3. Плавно проявляем обновленные таблицы обратно
                                 tables.forEach(t => {
                                     t.style.opacity = '1';
@@ -7283,7 +7442,7 @@ injectStyles(styles);
                 if (syncHeader) {
                     const resourcesDiv = document.getElementById('resources');
                     if (resourcesDiv) {
-                        resourcesDiv.className = 'sync-card'; 
+                        resourcesDiv.className = 'sync-card';
 
                         // 1. Удаляем заголовок "С помощью стандарта iCalendar"
                         const h3 = resourcesDiv.querySelector('h3');
@@ -7319,7 +7478,7 @@ injectStyles(styles);
                                         const origHtml = copyBtn.innerHTML;
                                         copyBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">check</span>Скопировано!';
                                         // Форсированно делаем зеленой через !important
-                                        copyBtn.style.setProperty('background', 'var(--color-green)', 'important'); 
+                                        copyBtn.style.setProperty('background', 'var(--color-green)', 'important');
                                         setTimeout(() => {
                                             copyBtn.innerHTML = origHtml;
                                             copyBtn.style.removeProperty('background'); // Возвращаем родной синий
@@ -7351,21 +7510,24 @@ injectStyles(styles);
                     
                     newBtn.addEventListener('click', () => {
                         if (resourcesDiv) {
-                            if (resourcesDiv.hasAttribute('hidden') || resourcesDiv.style.display === 'none') {
+                            // Проверяем, скрыта ли сейчас карточка
+                            const isHidden = resourcesDiv.hasAttribute('hidden') || resourcesDiv.style.display === 'none';
+                            
+                            if (isHidden) {
+                                // ОТКРЫВАЕМ
                                 resourcesDiv.removeAttribute('hidden');
                                 resourcesDiv.style.display = 'block';
-                                newBtn.style.background = 'var(--color-accent)';
-                                newBtn.style.color = 'var(--color-text-primary-invert)';
+                                newBtn.classList.add('is-active'); // Красим капсулу в синий
                             } else {
+                                // ЗАКРЫВАЕМ
                                 resourcesDiv.style.display = 'none';
-                                newBtn.style.background = 'var(--color-highlight)';
-                                newBtn.style.color = 'var(--color-text-primary)';
+                                newBtn.classList.remove('is-active'); // Возвращаем серый цвет
                             }
                         }
                     });
 
                     toolbar.appendChild(newBtn);
-                    syncHeader.remove(); 
+                    syncHeader.remove();
                 }
 
                 // --- 4. ПОДРОБНОЕ РАСПИСАНИЕ ---
@@ -7407,7 +7569,7 @@ injectStyles(styles);
                     }
                 });
 
-                // 7. КРАСИВАЯ ДАТА 
+                // 7. КРАСИВАЯ ДАТА
                 // Ищем блок с текстом даты внутри week-select
                 const weekSelect = span9.querySelector('.week-select');
                 if (weekSelect) {
@@ -7419,15 +7581,15 @@ injectStyles(styles);
                             let text = dateSpan.textContent.trim();
                             // Удаляем "Неделя " в начале (регистронезависимо)
                             text = text.replace(/^Неделя\s+/i, '');
-                            
+
                             // Вырезаем точку и 4 цифры года (например, .2026)
                             text = text.replace(/\.\d{4}/g, '');
-                            
+
                             // Делаем первую букву заглавной ("с 23.02..." -> "С 23.02...")
                             text = text.charAt(0).toUpperCase() + text.slice(1);
-                            
+
                             dateSpan.textContent = text;
-                            
+
                             // Добавляем класс стиля
                             dateDiv.className = 'week-date-styled';
                             // Убираем старый inline стиль, чтобы он не мешал
@@ -7450,7 +7612,7 @@ injectStyles(styles);
                             if (containerWidth === 0) return;
 
                             const scrollTarget = weekLeft - (containerWidth / 2) + (weekWidth / 2);
-                            
+
                             weeksContainer.scrollTo({
                                 left: scrollTarget,
                                 behavior: behavior
@@ -7515,7 +7677,7 @@ injectStyles(styles);
                     days.forEach(day => {
                         const dayNameEl = day.querySelector('.day-name');
                         if (!dayNameEl) return;
-                        
+
                         const currentDayName = dayNameEl.textContent.trim();
                         const table = day.querySelector('table');
                         if (!table) return;
@@ -7542,7 +7704,7 @@ injectStyles(styles);
                                 const tr = document.createElement('tr');
                                 tr.className = 'custom-pair-row';
                                 tr.setAttribute('data-custom-id', pair.id);
-                                
+
                                 tr.innerHTML = `
                                     <td class="pair_num">
                                         <span class="pair-type-badge ${typeClass}">${pair.type}</span>
@@ -7607,7 +7769,7 @@ injectStyles(styles);
 
                     const title = existingPair ? `Редактировать пару` : `Добавить пару (${dayName})`;
                     const pairId = existingPair ? existingPair.id : ('cp_' + Date.now());
-                    
+
                     // Если создаем новую, ставим текущее время + 1.5 часа, иначе берем из сохраненного
                     let defStart = "08:00";
                     let defEnd = "09:30";
@@ -7622,7 +7784,7 @@ injectStyles(styles);
                             <button class="close-modal" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
                         </div>
                         <div class="ui-dialog-content" style="padding: 2.4rem;">
-                            
+
                             ${existingPair ? `
                             <div class="modal-tabs">
                                 <button class="modal-tab" data-tab="notes">Заметки / ДЗ</button>
@@ -7639,7 +7801,7 @@ injectStyles(styles);
 
                             <div class="tab-content active" id="tab-edit">
                                 <input type="text" id="cp-subject" class="custom-pair-input-group" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}" style="width: 100%; box-sizing:border-box;">
-                                
+
                                 <div class="custom-pair-input-group">
                                     <input type="time" id="cp-start" value="${defStart}" required title="Время начала">
                                     <input type="time" id="cp-end" value="${defEnd}" required title="Время окончания">
@@ -7692,7 +7854,7 @@ injectStyles(styles);
                     if (existingPair) {
                         const tabs = modal.querySelectorAll('.modal-tab');
                         const contents = modal.querySelectorAll('.tab-content');
-                        
+
                         let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
                         const currentNote = notesData.specific[existingPair.pairNoteId] || '';
                         modal.querySelector('#cp-notes-area').value = currentNote;
@@ -7724,14 +7886,14 @@ injectStyles(styles);
                     modal.querySelector('.save-cp-btn').onclick = () => {
                         const subject = document.getElementById('cp-subject').value.trim();
                         if (!subject) return alert('Введите название предмета!');
-                        
+
                         const currentWeekEl = document.querySelector('.week.current');
                         const addedWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 1;
 
                         // Умное форматирование аудитории
                         let rawAud = document.getElementById('cp-aud').value.trim();
                         let finalAud = rawAud;
-                        
+
                         // Если ввели "413, 8" и нет слова "ауд"
                         if (rawAud && rawAud.includes(',') && !rawAud.toLowerCase().includes('ауд')) {
                             const parts = rawAud.split(',').map(s => s.trim());
@@ -7747,7 +7909,7 @@ injectStyles(styles);
 
                         const pair = {
                             id: pairId,
-                            addedWeek: existingPair ? existingPair.addedWeek : addedWeek, 
+                            addedWeek: existingPair ? existingPair.addedWeek : addedWeek,
                             dayName: dayName,
                             subject: subject,
                             startTime: document.getElementById('cp-start').value,
@@ -7760,7 +7922,7 @@ injectStyles(styles);
 
                         saveCustomPair(pair);
                         closeModal();
-                        window.location.reload(); 
+                        window.location.reload();
                     };
 
                     overlay.classList.add('active');
@@ -7772,7 +7934,7 @@ injectStyles(styles);
                 dayHeaders.forEach(header => {
                     const text = header.textContent.trim();
                     const parts = text.split(',');
-                    
+
                     let dayOfWeek = text;
                     let datePart = '';
 
@@ -7799,18 +7961,41 @@ injectStyles(styles);
                 // Вставляем кастомные пары до пересчета расписания
                 injectCustomPairs();
 
+                // --- УМНЫЕ НАЗВАНИЯ НЕДЕЛЬ ---
+                const weeksItems = span9.querySelectorAll('.weeks .week');
+                weeksItems.forEach(w => {
+                    const link = w.querySelector('a');
+                    if (w.classList.contains('current')) {
+                        // Активная неделя - пишем "Х Неделя"
+                        const text = w.textContent.trim();
+                        const numMatch = text.match(/\d+/);
+                        if (numMatch) {
+                            // Если внутри была ссылка, текст меняем внутри нее
+                            if (link) link.textContent = numMatch[0] + ' Неделя';
+                            else w.textContent = numMatch[0] + ' Неделя';
+                        }
+                    } else if (link) {
+                        // Неактивная неделя - оставляем только цифру
+                        const text = link.textContent.trim();
+                        const numMatch = text.match(/\d+/);
+                        if (numMatch) {
+                            link.textContent = numMatch[0];
+                        }
+                    }
+                });
+
                 // --- ПАРСИНГ И ИКОНКИ ДЛЯ АУДИТОРИЙ ---
                 span9.querySelectorAll('.pair_info .aud').forEach(aud => {
                     let text = aud.innerHTML;
                     const linkEl = aud.querySelector('a');
-                    
+
                     const isOnlineText = /Дистанционно|on-line/i.test(text);
                     const isZoom = linkEl && linkEl.href.includes('zoom');
                     const isTelemost = linkEl && linkEl.href.includes('telemost');
 
                     // Если это онлайн пара (есть ссылка ИЛИ текст "дистанционно")
                     if (isOnlineText || linkEl) {
-                        
+
                         if (isZoom || isTelemost) {
                             // 1. ZOOM или ТЕЛЕМОСТ
                             let platformName = isZoom ? "Zoom" : "Телемост";
@@ -7833,21 +8018,21 @@ injectStyles(styles);
                                 </div>
                             `;
                         }
-                    } 
+                    }
                     // Иначе это обычная физическая аудитория
                     else {
                         const matchPhysical = text.match(/ауд\.\s*(.+)\s*\((.+?)\s*корпус,\s*(.*?)\s*этаж\)/i);
                         if (matchPhysical) {
-                            let roomNumber = matchPhysical[1].trim(); 
-                            const building = matchPhysical[2].trim(); 
-                            const floor = matchPhysical[3].trim();   
+                            let roomNumber = matchPhysical[1].trim();
+                            const building = matchPhysical[2].trim();
+                            const floor = matchPhysical[3].trim();
                             if (roomNumber.includes('/')) roomNumber = roomNumber.split('/')[0];
 
                             const newFormat = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>ауд. ${roomNumber}, к. ${building}, э. ${floor}</div>`;
                             aud.innerHTML = text.replace(matchPhysical[0], newFormat);
                         }
                     }
-                    
+
                     // Выстраиваем в одну линию (Текст + Капсула)
                     aud.style.display = 'flex';
                     aud.style.flexDirection = 'row';
@@ -7861,33 +8046,33 @@ injectStyles(styles);
                 span9.querySelectorAll('.timetable-grid tr').forEach(row => {
                     const disContainer = row.querySelector('.pair_info .dis');
                     const numTd = row.querySelector('.pair_num');
-                    
+
                     if (disContainer && numTd) {
                         // Тип пары обычно приписан в конце ссылки или прямо в span
                         const targetEl = disContainer.querySelector('a') || disContainer;
                         const text = targetEl.textContent;
-                        
+
                         // Ищем (лек), (практ), (лаб), (зач), (экз) в самом конце строки
                         const match = text.match(/\s*\((лек|практ|лаб|зач|экз)\)\s*$/i);
-                        
+
                         if (match) {
                             const type = match[1].toLowerCase();
-                            
+
                             // Удаляем тип из оригинального названия предмета
                             targetEl.textContent = text.replace(match[0], '');
-                            
+
                             // Выбираем цвет в зависимости от типа
                             let typeClass = 'type-badge-lek';
                             if (type === 'лек') typeClass = 'type-badge-lek';
                             else if (type === 'практ') typeClass = 'type-badge-pract';
                             else if (type === 'лаб') typeClass = 'type-badge-lab';
                             else if (type === 'зач' || type === 'экз') typeClass = 'type-badge-exam';
-                            
+
                             // Создаем метку и вставляем её в колонку со временем (перед "1 пара")
                             const badge = document.createElement('span');
                             badge.className = `pair-type-badge ${typeClass}`;
                             badge.textContent = type;
-                            
+
                             numTd.prepend(badge);
                         }
                     }
@@ -7904,15 +8089,15 @@ injectStyles(styles);
                         table.querySelectorAll('.timetable-gap-row, .custom-no-pairs').forEach(r => r.remove());
 
                         const rows = Array.from(table.querySelectorAll('tr')).filter(r => !r.classList.contains('timetable-gap-row') && !r.classList.contains('custom-no-pairs'));
-                        
+
                         // Если это уже оригинальный пустой день - не трогаем
                         if (rows.length === 1 && rows[0].textContent.includes('0 пар')) return;
 
                         // Ищем реальные пары (есть текст И не скрыты тумблером консультаций)
                         const pairData = rows.map(row => {
                             const info = row.querySelector('.pair_info');
-                            const isOccupied = info && 
-                                               info.textContent.replace(/\u00a0/g, ' ').trim().length > 0 && 
+                            const isOccupied = info &&
+                                               info.textContent.replace(/\u00a0/g, ' ').trim().length > 0 &&
                                                !row.classList.contains('hidden-by-filter');
                             return { row, isOccupied };
                         });
@@ -7922,8 +8107,8 @@ injectStyles(styles);
 
                         // Если пар нет вообще (всё пусто или мы скрыли все консультации тумблером)
                         if (firstRealIndex === -1) {
-                            rows.forEach(r => r.style.display = 'none'); 
-                            
+                            rows.forEach(r => r.style.display = 'none');
+
                             const tbody = table.querySelector('tbody') || table;
                             const tr = document.createElement('tr');
                             tr.className = 'custom-no-pairs';
@@ -7947,7 +8132,7 @@ injectStyles(styles);
                             if (i < firstRealIndex || i > lastRealIndex) {
                                 rows[i].style.display = 'none';
                                 i++;
-                            } 
+                            }
                             else if (!pairData[i].isOccupied) {
                                 let gapCount = 0;
                                 let gapStart = i;
@@ -7961,7 +8146,7 @@ injectStyles(styles);
                                 if (gapCount > 0) {
                                     const gapRow = document.createElement('tr');
                                     gapRow.className = 'timetable-gap-row';
-                                    
+
                                     let pairWord = 'пар';
                                     if (gapCount === 1) pairWord = 'пара';
                                     else if (gapCount >= 2 && gapCount <= 4) pairWord = 'пары';
@@ -7987,9 +8172,9 @@ injectStyles(styles);
                         // --- ФИКС ЛИНИЙ (Скрываем линию у последней видимой строки) ---
                         // Сначала сбрасываем инлайновые стили у всех строк (если мы переключаем тумблер туда-сюда)
                         Array.from(table.querySelectorAll('tr')).forEach(r => r.style.removeProperty('background-image'));
-                        
+
                         // Выбираем все фактически видимые строки (учитывая окна и консультации)
-                        const visibleRows = Array.from(table.querySelectorAll('tr')).filter(r => 
+                        const visibleRows = Array.from(table.querySelectorAll('tr')).filter(r =>
                             r.style.display !== 'none' && !r.classList.contains('hidden-by-filter')
                         );
 
@@ -8005,7 +8190,7 @@ injectStyles(styles);
 
                             const numTd = row.querySelector('.pair_num');
                             if (numTd) {
-                                // Перебираем содержимое ячейки, чтобы изменить ТОЛЬКО текст номера пары, 
+                                // Перебираем содержимое ячейки, чтобы изменить ТОЛЬКО текст номера пары,
                                 // не сломав при этом время (<font>) и капсулы типа (ЛЕК/ПРАКТ)
                                 Array.from(numTd.childNodes).forEach(node => {
                                     if (node.nodeType === Node.TEXT_NODE && /пара/i.test(node.nodeValue)) {
@@ -8023,22 +8208,22 @@ injectStyles(styles);
                     let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
                     const seenSubjects = new Set();
                     const allRowsArray = Array.from(document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
-                    
+
                     const currentWeekEl = document.querySelector('.week.current');
                     const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 0;
-                    
+
                     allRowsArray.forEach((row, index) => {
                         const disContainer = row.querySelector('.pair_info .dis');
                         const numTd = row.querySelector('.pair_num');
                         if (!disContainer || !numTd) return;
-                        
+
                         const targetEl = disContainer.querySelector('a') || disContainer;
                         const cleanSubjectName = targetEl.textContent.trim();
-                        
+
                         const dayContainer = row.closest('.day');
                         const dayDateEl = dayContainer ? dayContainer.querySelector('.day-date') : null;
                         const dayDateStr = dayDateEl ? dayDateEl.textContent.trim() : 'UnknownDate';
-                        
+
                         let rawPairNum = "";
                         Array.from(numTd.childNodes).forEach(n => {
                             if (n.nodeType === Node.TEXT_NODE && /пара/i.test(n.nodeValue)) {
@@ -8046,9 +8231,9 @@ injectStyles(styles);
                             }
                         });
                         if (!rawPairNum) rawPairNum = numTd.textContent.trim().split(' ')[0] + ' пара';
-                        
+
                         const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
-                        
+
                         // Перенос висящей заметки "К следующей паре"
                         if (notesData.next_unbound && notesData.next_unbound[cleanSubjectName] && !seenSubjects.has(cleanSubjectName)) {
                             const unbound = notesData.next_unbound[cleanSubjectName];
@@ -8063,16 +8248,16 @@ injectStyles(styles);
                             }
                         }
                         seenSubjects.add(cleanSubjectName);
-                        
+
                         const currentNote = notesData.specific[pairId] || '';
-                        
+
                         // ТОТАЛЬНАЯ ОЧИСТКА ВСЕХ СТАРЫХ КНОПОК В ЭТОЙ СТРОКЕ
                         row.querySelectorAll('.subject-note-btn').forEach(btn => btn.remove());
-                        
+
                         // Определяем, куда вставлять кнопку (справа от аудитории или предмета)
                         let audContainer = row.querySelector('.pair_info .aud');
                         let targetContainer = audContainer;
-                        
+
                         // Если аудитории нет или она пустая (как на консультациях) - цепляем прямо к названию
                         if (!audContainer || (audContainer.textContent.trim() === '' && !audContainer.querySelector('a'))) {
                             targetContainer = disContainer;
@@ -8087,7 +8272,7 @@ injectStyles(styles);
                             targetContainer.style.alignItems = 'center';
                             targetContainer.style.gap = '0.8rem';
                         }
-                        
+
                         const noteBtn = document.createElement('button');
                         noteBtn.className = 'subject-note-btn';
                         if (currentNote) {
@@ -8098,10 +8283,10 @@ injectStyles(styles);
                             noteBtn.innerHTML = '<span class="material-icons">edit</span>'; // Заменили edit_note на чистый edit
                             noteBtn.title = 'Добавить заметку';
                         }
-                        
+
                         noteBtn.addEventListener('click', (e) => {
                             e.preventDefault(); e.stopPropagation();
-                            
+
                             // Если это кастомная пара, открываем специальное окно с вкладками
                             if (row.classList.contains('custom-pair-row')) {
                                 const pairIdFromRow = row.getAttribute('data-custom-id');
@@ -8116,7 +8301,7 @@ injectStyles(styles);
                                 openNoteModal(cleanSubjectName, pairId, index, allRowsArray, currentNote);
                             }
                         });
-                        
+
                         targetContainer.appendChild(noteBtn);
                     });
                 }
@@ -8143,7 +8328,7 @@ injectStyles(styles);
                         <div class="ui-dialog-content" style="padding: 2.4rem;">
                             <p style="margin-bottom: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Заметка / Домашнее задание:</p>
                             <textarea class="note-modal-textarea" placeholder="Что нужно сделать?">${existingNoteText}</textarea>
-                            
+
                             <div style="margin: 1.5rem 0 2rem 0;">
                                 <label style="display:inline-flex; align-items:center; cursor:pointer; font-size:1.3rem; color:var(--color-text-primary); user-select:none;">
                                     <input type="checkbox" id="note-next-class-cb" style="margin-right:10px; width:18px; height:18px; accent-color:var(--color-accent); cursor:pointer;">
@@ -8169,17 +8354,17 @@ injectStyles(styles);
                     modal.querySelector('.save-note-btn').onclick = () => {
                         const val = modal.querySelector('.note-modal-textarea').value.trim();
                         const isNext = modal.querySelector('#note-next-class-cb').checked;
-                        
+
                         let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
                         const currentWeekEl = document.querySelector('.week.current');
                         const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 0;
-                        
+
                         if (!val) {
                             delete notesData.specific[pairId];
                         } else {
                             // СОХРАНЯЕМ В ТЕКУЩУЮ ВСЕГДА
-                            notesData.specific[pairId] = val; 
-                            
+                            notesData.specific[pairId] = val;
+
                             if (isNext) {
                                 // Если стоит галочка - ищем следующую пару и копируем туда
                                 let nextPairId = null;
@@ -8187,7 +8372,7 @@ injectStyles(styles);
                                     const r = allRowsArray[i];
                                     const dCont = r.querySelector('.pair_info .dis');
                                     const tEl = dCont ? (dCont.querySelector('a') || dCont) : null;
-                                    
+
                                     if (tEl && tEl.textContent.trim() === subjectName) {
                                         const dD = r.closest('.day')?.querySelector('.day-date');
                                         const dStr = dD ? dD.textContent.trim() : 'UnknownDate';
@@ -8205,7 +8390,7 @@ injectStyles(styles);
                                         break;
                                     }
                                 }
-                                
+
                                 if (nextPairId) {
                                     notesData.specific[nextPairId] = val; // Дублируем на следующую на ЭТОЙ неделе
                                 } else {
@@ -8214,7 +8399,7 @@ injectStyles(styles);
                                 }
                             }
                         }
-                        
+
                         localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
                         closeModal();
                         renderNotes(); // Мгновенно обновляем интерфейс
@@ -8248,7 +8433,7 @@ injectStyles(styles);
                         if (passForm) {
                             // Чистим мусорные br
                             passForm.querySelectorAll('br').forEach(br => br.remove());
-                            
+
                             // Заголовок внутрь формы
                             if (passH3) {
                                 passH3.style.textAlign = 'center';
@@ -8263,14 +8448,14 @@ injectStyles(styles);
                                 if (input) {
                                     input.placeholder = label.textContent.trim();
                                     // Очищаем значение, чтобы плейсхолдер был виден (если это не сохраненный email)
-                                    if (input.type === 'password') input.value = ''; 
+                                    if (input.type === 'password') input.value = '';
                                     label.remove();
                                 }
                             });
 
                             const btn = passForm.querySelector('button');
                             if (btn) btn.style.width = '100%';
-                            
+
                             passForm.style.maxWidth = '400px';
                             passForm.style.margin = '40px auto';
                         }
@@ -8443,7 +8628,7 @@ injectStyles(styles);
                         });
                         noResults.style.display = (count === 0 && val !== '') ? 'block' : 'none';
                     });
-                    
+
                     // Очищаем DOM от старых элементов (включая заголовки, если они были)
                     span9.innerHTML = '';
                     span9.appendChild(searchWrapper);
@@ -8484,9 +8669,9 @@ injectStyles(styles);
                         cloneContent.querySelectorAll('font').forEach(fontNode => {
                             const text = fontNode.textContent.trim();
                             if (text) subjects.push(text);
-                            fontNode.remove(); 
+                            fontNode.remove();
                         });
-                        const titleStr = subjects.join(' • '); 
+                        const titleStr = subjects.join(' • ');
 
                         let rawHtml = cloneContent.innerHTML.replace(/&nbsp;/g, ' ').replace(/^(<br\s*\/?>|\s)+/, '').replace(/(<br\s*\/?>|\s)+$/, '');
                         while(rawHtml.startsWith('<br>')) {
@@ -8567,7 +8752,7 @@ injectStyles(styles);
 
                     // Очищаем старые таблицы ЕТИСа
                     span9.querySelectorAll('ul.nav.msg').forEach(m => m.remove());
-                    
+
                     // Удаляем оригинальный заголовок, если он был
                     const oldH2 = span9.querySelector('h2');
                     if (oldH2) oldH2.remove();
@@ -8601,15 +8786,15 @@ injectStyles(styles);
                         });
                         noResults.style.display = (count === 0 && val !== '') ? 'block' : 'none';
                     });
-                    
+
                     span9.prepend(searchWrapper);
                     searchWrapper.after(container);
                     container.after(noResults);
-                    
+
                     if (pagesContainer) {
                         noResults.after(pagesContainer);
                     }
-                    
+
                     break;
                 }
 
@@ -8631,7 +8816,7 @@ injectStyles(styles);
                         // 1. Сетка с карточками
                         const footerGrid = document.createElement('div');
                         footerGrid.className = 'cert-footer-grid';
-                        footerGrid.style.marginTop = '0'; 
+                        footerGrid.style.marginTop = '0';
 
                         const infoCard = document.createElement('div');
                         infoCard.className = 'cert-footer-card';
@@ -8643,7 +8828,7 @@ injectStyles(styles);
                                 <small>Важно: не путайте с отделом кадров сотрудников.</small>
                             </div>
                         `;
-                        
+
                         const contactCard = document.createElement('div');
                         contactCard.className = 'cert-footer-card';
                         contactCard.innerHTML = `
@@ -8664,12 +8849,12 @@ injectStyles(styles);
                         const alert = document.createElement('div');
                         alert.className = 'cert-alert-box';
                         alert.style.margin = '2rem 0 0 0';
-                        
+
                         const mainText = document.createElement('div');
                         mainText.style.display = 'flex';
                         mainText.style.alignItems = 'center';
                         mainText.style.gap = '1.2rem';
-                        mainText.innerHTML = `<span class="material-icons" style="font-size: 2.6rem; color: var(--color-green);">info</span>` + 
+                        mainText.innerHTML = `<span class="material-icons" style="font-size: 2.6rem; color: var(--color-green);">info</span>` +
                                              `<div>${greenText}</div>`;
                         alert.appendChild(mainText);
 
@@ -8684,7 +8869,7 @@ injectStyles(styles);
 
                     if (action === 'NEW' || action === 'VIEW') {
                         // --- СТРАНИЦА ЗАКАЗА ИЛИ ПРОСМОТРА КОНКРЕТНОЙ СПРАВКИ ---
-                        
+
                         // 1. Стилизация заголовка
                         const h3 = span9.querySelector('h3');
                         if (h3) {
@@ -8717,7 +8902,7 @@ injectStyles(styles);
                             questionBlock.style.borderRadius = 'var(--radius-medium)';
                             questionBlock.style.boxShadow = 'var(--shadow-main)';
                             questionBlock.style.marginTop = '2.4rem';
-                            questionBlock.style.border = 'none'; 
+                            questionBlock.style.border = 'none';
 
                             questionBlock.querySelectorAll('textarea').forEach(ta => {
                                 ta.style.width = '100%';
@@ -8744,13 +8929,13 @@ injectStyles(styles);
                             table.style.marginTop = '2.4rem';
                             table.style.width = '100%';
                             table.style.borderCollapse = 'collapse';
-                            
+
                             table.querySelectorAll('td').forEach(td => {
                                 td.style.padding = '1rem 1.6rem';
                                 td.style.fontSize = '1.3rem';
                                 td.style.borderBottom = '1px solid var(--color-table-border)';
                             });
-                            
+
                             const lastRowTds = table.querySelectorAll('tr:last-child td');
                             lastRowTds.forEach(td => td.style.borderBottom = 'none');
                         });
@@ -8783,10 +8968,10 @@ injectStyles(styles);
 
                     } else {
                         // --- ГЛАВНАЯ СТРАНИЦА "ЗАКАЗ СПРАВОК" ---
-                        
+
                         const allHeaders = Array.from(span9.querySelectorAll('h3'));
                         const allLists = Array.from(span9.querySelectorAll('ul.orders'));
-                        
+
                         // Чистим span9 перед перестройкой
                         span9.innerHTML = '';
 
@@ -8812,7 +8997,7 @@ injectStyles(styles);
                         // 2. Мои справки (УМНЫЕ КАРТОЧКИ)
                         const headHistory = allHeaders.find(h => h.textContent.includes('Мои справки'));
                         const historyList = allLists.length > 1 ? allLists[1] : (allLists[0] && !headNew ? allLists[0] : null);
-                        
+
                         if (headHistory && historyList) {
                             const h = document.createElement('h2');
                             h.textContent = headHistory.textContent;
@@ -8827,7 +9012,7 @@ injectStyles(styles);
 
                             historyList.querySelectorAll('a').forEach(link => {
                             const fullText = link.textContent.trim();
-                            
+
                             const match = fullText.match(/^(\d{2}\.\d{2}\.\d{4})\s+(.*?)\s+\(код запроса:\s*(.*?),\s*статус:\s*(.*?)\)$/i);
 
                             const card = document.createElement('a');
@@ -8842,20 +9027,20 @@ injectStyles(styles);
 
                                 let statusBg = 'var(--color-highlight)';
                                 let statusColor = 'var(--color-text-secondary)';
-                                let displayStatus = rawStatus; 
+                                let displayStatus = rawStatus;
 
                                 // Логика замены текста и цветов
                                 if (rawStatus.includes('готов')) {
                                     statusBg = 'rgba(52, 199, 89, 0.15)';
                                     statusColor = 'var(--color-green)';
-                                    displayStatus = 'ГОТОВО'; 
-                                } 
+                                    displayStatus = 'ГОТОВО';
+                                }
                                 // Добавляем условие для "в обработке"
                                 else if (rawStatus.includes('обработк') || rawStatus.includes('заявка')) {
                                     statusBg = 'rgba(255, 149, 0, 0.15)';
                                     statusColor = 'var(--color-warning)';
                                     displayStatus = 'ОБРАБОТКА';
-                                } 
+                                }
                                 else if (rawStatus.includes('отказ') || rawStatus.includes('отклон')) {
                                     statusBg = 'rgba(255, 59, 48, 0.15)';
                                     statusColor = 'var(--color-red)';
@@ -8866,7 +9051,7 @@ injectStyles(styles);
                                     <div class="order-icon-box">
                                         <span class="material-icons">history_edu</span>
                                     </div>
-                                    <div class="order-info" style="min-width: 0; flex: 1;"> 
+                                    <div class="order-info" style="min-width: 0; flex: 1;">
                                         <div class="order-meta">${date} • Запрос ${code}</div>
                                         <div class="order-title" style="white-space: normal; overflow: hidden; text-overflow: ellipsis;">${title}</div>
                                     </div>
@@ -8897,14 +9082,22 @@ injectStyles(styles);
 
                 case 'stu.signs': {
                     // 1. УНИФИКАЦИЯ ПОДМЕНЮ
-                    span9.querySelectorAll('.submenu .submenu-item').forEach(span => {
-                        const link = span.querySelector('a');
-                        if (link) span.replaceWith(link);
-                        else {
-                            const b = document.createElement('b');
-                            b.textContent = span.textContent.trim();
-                            span.replaceWith(b);
-                        }
+                    span9.querySelectorAll('.submenu').forEach(menu => {
+                        Array.from(menu.children).forEach(child => {
+                            if (child.tagName === 'A') {
+                                // У неактивных вкладок (ссылок) убираем "триместр", оставляем цифру
+                                const match = child.textContent.match(/(\d+)\s*триместр/i);
+                                if (match) {
+                                    child.textContent = match[1];
+                                }
+                            } else if (child.tagName === 'B') {
+                                // У активной вкладки (жирный текст) гарантируем наличие слова
+                                let text = child.textContent.trim();
+                                if (/^\d+$/.test(text)) {
+                                    child.textContent = text + ' триместр';
+                                }
+                            }
+                        });
                     });
 
                     // 2. ГЛОБАЛЬНАЯ ОЧИСТКА ТАБЛИЦ
@@ -8923,7 +9116,7 @@ injectStyles(styles);
                     // 3. ОБРАБОТКА "ОЦЕНКИ ЗА СЕССИИ"
                     if (pageMode === 'session' || !pageMode) {
                         const submenu = span9.querySelector('.submenu');
-                        
+
                         // Подгружаем библиотеку графиков Chart.js
                         if (typeof Chart === 'undefined' && !document.querySelector('script[src*="chart.js"]')) {
                             const script = document.createElement('script');
@@ -8935,7 +9128,7 @@ injectStyles(styles);
                         const searchContainer = document.createElement('div');
                         searchContainer.className = 'timetable-toolbar'; // Применяем стиль тулбара-капсулы
                         searchContainer.style.marginBottom = '2.4rem';
-                        
+
                         searchContainer.innerHTML = `
                             <div class="capsule-search-item">
                                 <span class="material-icons">search</span>
@@ -8949,13 +9142,13 @@ injectStyles(styles);
                         if (submenu) submenu.after(searchContainer);
 
                         const signsTables = span9.querySelectorAll('table.common');
-                        
+
                         // Шаг 1. Разделение таблиц по триместрам
                         signsTables.forEach(table => {
                             const rows = Array.from(table.querySelectorAll('tr'));
                             const isHeader = (r) => r.textContent.toLowerCase().includes('дисциплина') && r.textContent.toLowerCase().includes('оценка');
                             const headerRow = rows.find(isHeader);
-                            
+
                             let currentTbody = null;
                             let validSplit = false;
 
@@ -8963,7 +9156,7 @@ injectStyles(styles);
                                 const cells = row.children;
                                 if (cells.length === 1 && (cells[0].tagName === 'TH' || cells[0].classList.contains('subheader'))) {
                                     validSplit = true;
-                                    
+
                                     const title = document.createElement('h3');
                                     title.className = 'term-title';
                                     title.style.marginTop = '2rem';
@@ -8972,21 +9165,21 @@ injectStyles(styles);
 
                                     const wrapper = document.createElement('div');
                                     wrapper.className = 'wide-table-wrapper';
-                                    
+
                                     const newTable = document.createElement('table');
                                     newTable.className = 'common session-table-v6';
-                                    
+
                                     if (headerRow) {
                                         const thead = document.createElement('thead');
                                         thead.appendChild(headerRow.cloneNode(true));
                                         newTable.appendChild(thead);
                                     }
-                                    
+
                                     currentTbody = document.createElement('tbody');
                                     newTable.appendChild(currentTbody);
-                                    wrapper.appendChild(newTable); 
-                                    table.parentNode.insertBefore(wrapper, table); 
-                                } 
+                                    wrapper.appendChild(newTable);
+                                    table.parentNode.insertBefore(wrapper, table);
+                                }
                                 else if (currentTbody && !isHeader(row) && cells.length > 1) {
                                     currentTbody.appendChild(row);
                                 }
@@ -9010,7 +9203,7 @@ injectStyles(styles);
                                     if (gradeText && gradeText !== 'н') {
                                         hasAny = true;
                                         let num = parseInt(gradeText, 10);
-                                        
+
                                         if (gradeText.includes('незач') || gradeText === '2') {
                                             hasFail = true;
                                             sum += 2; // Считаем незачет как 2 для аналитики
@@ -9035,23 +9228,23 @@ injectStyles(styles);
                             wrapper.setAttribute('data-term-name', h3.textContent.trim());
 
                             const headerContainer = document.createElement('div');
-                            headerContainer.className = 'subject-header-flex session-term-header-group'; 
+                            headerContainer.className = 'subject-header-flex session-term-header-group';
                             h3.parentNode.insertBefore(headerContainer, h3);
                             headerContainer.appendChild(h3);
 
                             const capsule = document.createElement('div');
                             capsule.className = 'subject-score-capsule';
-                            
+
                             // Отображение капсулы
-                            if (!hasAny) { 
-                                capsule.textContent = 'Нет оценок'; 
-                                capsule.style.background = 'var(--color-highlight)'; 
-                                capsule.style.color = 'var(--color-text-secondary)'; 
+                            if (!hasAny) {
+                                capsule.textContent = 'Нет оценок';
+                                capsule.style.background = 'var(--color-highlight)';
+                                capsule.style.color = 'var(--color-text-secondary)';
                             }
-                            else if (hasFail) { 
-                                capsule.textContent = 'НЕЗАЧЕТ'; 
-                                capsule.style.background = 'var(--color-red)'; 
-                                capsule.style.color = '#fff'; 
+                            else if (hasFail) {
+                                capsule.textContent = 'НЕЗАЧЕТ';
+                                capsule.style.background = 'var(--color-red)';
+                                capsule.style.color = '#fff';
                             }
                             else if (count > 0) {
                                 capsule.textContent = `${avg} / 5`;
@@ -9061,23 +9254,23 @@ injectStyles(styles);
                                 else if (p < 81) capsule.style.background = '#8BC34A';
                                 else capsule.style.background = 'var(--color-green)';
                                 capsule.style.color = (p >= 41 && p < 61) ? '#000' : '#fff';
-                            } 
-                            else if (hasPass) { 
-                                capsule.textContent = 'ЗАЧЕТ'; 
-                                capsule.style.background = 'var(--color-green)'; 
-                                capsule.style.color = '#fff'; 
+                            }
+                            else if (hasPass) {
+                                capsule.textContent = 'ЗАЧЕТ';
+                                capsule.style.background = 'var(--color-green)';
+                                capsule.style.color = '#fff';
                             }
                             headerContainer.appendChild(capsule);
-                            
+
                             wrapper.classList.add('session-term-table-group');
                         });
 
                         // --- ШАГ 3. СОЗДАНИЕ И ЛОГИКА ОКНА АНАЛИТИКИ ---
-                        
+
                         const overlay = document.createElement('div');
                         overlay.className = 'analytics-overlay';
                         document.body.appendChild(overlay);
-                        
+
                         const modal = document.createElement('div');
                         modal.className = 'analytics-modal';
                         modal.innerHTML = `
@@ -9123,7 +9316,7 @@ injectStyles(styles);
 
                         searchContainer.querySelector('.analytics-btn').addEventListener('click', function() {
                             const btn = this;
-                            
+
                             // Хелпер для поиска библиотеки в разных контекстах (песочница vs реальная страница)
                             const getChartLib = () => {
                                 if (typeof Chart !== 'undefined') return Chart;
@@ -9144,55 +9337,55 @@ injectStyles(styles);
 
                                     const termsData =[];
                                     const subjectsData =[];
-                                    
+
                                     // Сбор данных
                                     document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
                                         const rawTermName = wrapper.getAttribute('data-term-name');
                                         const avgStr = wrapper.getAttribute('data-term-avg');
                                         const avg = parseFloat(avgStr);
-                                        
+
                                         if (rawTermName) {
                                             const numMatch = rawTermName.match(/(\d+)\s*трим/i);
                                             const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
                                             let cleanName = rawTermName.split(',')[0].replace(/\(.*\)/, '').replace(/триместр/i, 'трим.').trim();
-                                            
+
                                             if (avg > 0) {
                                                 termsData.push({ name: cleanName, avg: avg, num: termNum });
                                             }
                                         }
-                                        
+
                                         wrapper.querySelectorAll('tbody tr').forEach(row => {
                                             const cells = row.querySelectorAll('td');
                                             if (cells.length >= 2) {
                                                 const subj = cells[0].textContent.trim();
                                                 const gradeText = cells[1].textContent.trim().toLowerCase();
-                                                
+
                                                 let num = parseInt(gradeText, 10);
-                                                if (gradeText.includes('незач')) num = 2; 
-                                                else if (gradeText.includes('зач')) num = 5; 
-                                                
+                                                if (gradeText.includes('незач')) num = 2;
+                                                else if (gradeText.includes('зач')) num = 5;
+
                                                 if (!isNaN(num) && num >= 2 && num <= 5) {
                                                     subjectsData.push({ subj, grade: num });
                                                 }
                                             }
                                         });
                                     });
-                                    
+
                                     termsData.sort((a, b) => a.num - b.num);
-                                    
+
                                     if (termsData.length === 0) {
                                         document.getElementById('analytics-content').style.display = 'none';
                                         document.getElementById('analytics-empty').style.display = 'block';
                                     } else {
                                         document.getElementById('analytics-content').style.display = 'block';
                                         document.getElementById('analytics-empty').style.display = 'none';
-                                        
+
                                         const bestTerm = [...termsData].sort((a,b) => b.avg - a.avg)[0];
                                         const worstTerm = [...termsData].sort((a,b) => a.avg - b.avg)[0];
-                                        
+
                                         document.getElementById('stat-best-term').textContent = `${bestTerm.name} (${bestTerm.avg})`;
                                         document.getElementById('stat-worst-term').textContent = `${worstTerm.name} (${worstTerm.avg})`;
-                                        
+
                                         const count5 = subjectsData.filter(s => s.grade === 5).length;
                                         const count4 = subjectsData.filter(s => s.grade === 4).length;
                                         const count3 = subjectsData.filter(s => s.grade === 3).length;
@@ -9236,19 +9429,19 @@ injectStyles(styles);
                                         }
 
                                         document.getElementById('dynamic-stats-container').innerHTML = statsHtml;
-                                        
+
                                         const ctx = document.getElementById('gradesChart').getContext('2d');
-                                        if(window.etisChartInstance) window.etisChartInstance.destroy(); 
-                                        
+                                        if(window.etisChartInstance) window.etisChartInstance.destroy();
+
                                         const textColor = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
                                         const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#007AFF';
                                         const gridColor = getComputedStyle(document.body).getPropertyValue('--color-table-border').trim() || '#ddd';
-                                        
+
                                         // Создаем график через найденный конструктор
                                         window.etisChartInstance = new ChartConstructor(ctx, {
                                             type: 'line',
                                             data: {
-                                                labels: termsData.map(t => t.name), 
+                                                labels: termsData.map(t => t.name),
                                                 datasets:[{
                                                     label: ' Средний балл',
                                                     data: termsData.map(t => t.avg),
@@ -9262,7 +9455,7 @@ injectStyles(styles);
                                                     pointHoverRadius: 7,
                                                     fill: true,
                                                     tension: 0.4,
-                                                    clip: false 
+                                                    clip: false
                                                 }]
                                             },
                                             options: {
@@ -9273,21 +9466,21 @@ injectStyles(styles);
                                                 },
                                                 plugins: { legend: { display: false } },
                                                 scales: {
-                                                    y: { 
-                                                        min: 2.0, 
-                                                        max: 5.0, 
-                                                        ticks: { color: textColor, font: {size: 13} }, 
-                                                        grid: { color: gridColor } 
+                                                    y: {
+                                                        min: 2.0,
+                                                        max: 5.0,
+                                                        ticks: { color: textColor, font: {size: 13} },
+                                                        grid: { color: gridColor }
                                                     },
-                                                    x: { 
-                                                        ticks: { color: textColor, font: {size: 13} }, 
-                                                        grid: { display: false } 
+                                                    x: {
+                                                        ticks: { color: textColor, font: {size: 13} },
+                                                        grid: { display: false }
                                                     }
                                                 }
                                             }
                                         });
                                     }
-                                    
+
                                     overlay.classList.add('active');
                                     modal.classList.add('active');
                                 } catch (e) {
@@ -9306,7 +9499,7 @@ injectStyles(styles);
 
                                 const script = document.createElement('script');
                                 script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-                                
+
                                 script.onload = () => {
                                     btn.innerHTML = origHtml;
                                     btn.style.pointerEvents = 'auto';
@@ -9334,7 +9527,7 @@ injectStyles(styles);
                             headers.forEach((header, index) => {
                                 const wrapper = wrappers[index];
                                 if (!wrapper) return;
-                                
+
                                 const rows = Array.from(wrapper.querySelectorAll('tbody tr'));
                                 let visibleRowsCount = 0;
                                 let sum = 0, count = 0, hasFail = false, hasPass = false, hasAny = false;
@@ -9355,7 +9548,7 @@ injectStyles(styles);
                                             if (gradeText && gradeText !== 'н') {
                                                 hasAny = true;
                                                 let num = parseInt(gradeText, 10);
-                                                
+
                                                 if (gradeText.includes('незач') || gradeText === '2') {
                                                     hasFail = true;
                                                     sum += 2; // Считаем незачет как 2 для аналитики
@@ -9391,15 +9584,15 @@ injectStyles(styles);
                                         const avg = count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
                                         wrapper.setAttribute('data-term-avg', avg); // Записываем для обновления графиков
 
-                                        if (!hasAny) { 
-                                            capsule.textContent = 'Нет оценок'; 
-                                            capsule.style.background = 'var(--color-highlight)'; 
-                                            capsule.style.color = 'var(--color-text-secondary)'; 
+                                        if (!hasAny) {
+                                            capsule.textContent = 'Нет оценок';
+                                            capsule.style.background = 'var(--color-highlight)';
+                                            capsule.style.color = 'var(--color-text-secondary)';
                                         }
-                                        else if (hasFail) { 
-                                            capsule.textContent = 'НЕЗАЧЕТ'; 
-                                            capsule.style.background = 'var(--color-red)'; 
-                                            capsule.style.color = '#fff'; 
+                                        else if (hasFail) {
+                                            capsule.textContent = 'НЕЗАЧЕТ';
+                                            capsule.style.background = 'var(--color-red)';
+                                            capsule.style.color = '#fff';
                                         }
                                         else if (count > 0) {
                                             capsule.textContent = `${avg} / 5`;
@@ -9409,11 +9602,11 @@ injectStyles(styles);
                                             else if (p < 81) capsule.style.background = '#8BC34A';
                                             else capsule.style.background = 'var(--color-green)';
                                             capsule.style.color = (p >= 41 && p < 61) ? '#000' : '#fff';
-                                        } 
-                                        else if (hasPass) { 
-                                            capsule.textContent = 'ЗАЧЕТ'; 
-                                            capsule.style.background = 'var(--color-green)'; 
-                                            capsule.style.color = '#fff'; 
+                                        }
+                                        else if (hasPass) {
+                                            capsule.textContent = 'ЗАЧЕТ';
+                                            capsule.style.background = 'var(--color-green)';
+                                            capsule.style.color = '#fff';
                                         }
                                     }
                                 }
@@ -9423,7 +9616,7 @@ injectStyles(styles);
 
                     // 4. ОБРАБОТКА "ОЦЕНКИ В ТРИМЕСТРЕ"
                     if (pageMode === 'current' || (!pageMode && !span9.querySelector('.session-table-v6'))) {
-                        
+
                         const submenus = span9.querySelectorAll('.submenu');
                         const lastSubmenu = submenus[submenus.length - 1];
 
@@ -9431,7 +9624,7 @@ injectStyles(styles);
                         const searchContainer = document.createElement('div');
                         searchContainer.className = 'timetable-toolbar term-search-wrapper';
                         searchContainer.style.marginBottom = '2.4rem';
-                        
+
                         searchContainer.innerHTML = `
                             <div class="capsule-search-item">
                                 <span class="material-icons">search</span>
@@ -9453,21 +9646,21 @@ injectStyles(styles);
                                 table.parentNode.insertBefore(wrapper, table);
                                 wrapper.appendChild(table);
                             }
-                            
+
                             const wrapper = table.closest('.wide-table-wrapper');
                             const h3 = wrapper.previousElementSibling;
                             if (!h3 || h3.tagName !== 'H3') return;
-                            
+
                             const rows = Array.from(table.querySelectorAll('tr'));
                             const totalRow = rows.find(r => r.textContent.toLowerCase().includes('всего:'));
-                            
+
                             let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
-                            
+
                             rows.forEach(r => {
                                 if (r.querySelector('th') || r === totalRow) return;
-                                
+
                                 const cells = r.querySelectorAll('td');
-                                
+
                                 // 1. Красиво оформляем "Вид работы" (лек, практ, лаб, сам)
                                 if (cells.length > 1) {
                                     let typeText = cells[1].textContent.trim().toLowerCase();
@@ -9475,25 +9668,25 @@ injectStyles(styles);
                                         // Дефолтный стиль (серый)
                                         let bg = 'var(--color-highlight)';
                                         let color = 'var(--color-text-secondary)';
-                                        
+
                                         // Настройка цветов
-                                        if (typeText === 'лек') { 
-                                            bg = 'rgba(0, 122, 255, 0.1)'; 
-                                            color = 'var(--color-blue)'; 
+                                        if (typeText === 'лек') {
+                                            bg = 'rgba(0, 122, 255, 0.1)';
+                                            color = 'var(--color-blue)';
                                         }
-                                        else if (typeText === 'практ') { 
-                                            bg = 'rgba(52, 199, 89, 0.1)'; 
-                                            color = 'var(--color-green)'; 
+                                        else if (typeText === 'практ') {
+                                            bg = 'rgba(52, 199, 89, 0.1)';
+                                            color = 'var(--color-green)';
                                         }
-                                        else if (typeText === 'лаб') { 
-                                            bg = 'rgba(255, 149, 0, 0.1)'; 
-                                            color = 'var(--color-warning)'; 
+                                        else if (typeText === 'лаб') {
+                                            bg = 'rgba(255, 149, 0, 0.1)';
+                                            color = 'var(--color-warning)';
                                         }
-                                        else if (typeText === 'сам') { 
-                                            bg = 'rgba(175, 82, 222, 0.15)'; 
-                                            color = '#AF52DE'; 
+                                        else if (typeText === 'сам') {
+                                            bg = 'rgba(175, 82, 222, 0.15)';
+                                            color = '#AF52DE';
                                         }
-                                        
+
                                         cells[1].innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block;">${typeText}</span>`;
                                     }
                                 }
@@ -9533,11 +9726,11 @@ injectStyles(styles);
                             headerContainer.className = 'subject-header-flex term-header-group';
                             h3.parentNode.insertBefore(headerContainer, h3);
                             headerContainer.appendChild(h3);
-                            
+
                             const capsule = document.createElement('div');
                             capsule.className = 'subject-score-capsule';
                             capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? calculatedMax : 0}`;
-                            
+
                             if (!hasAnyGrades || calculatedMax === 0) {
                                 capsule.style.background = 'var(--color-highlight)';
                                 capsule.style.color = 'var(--color-text-secondary)';
@@ -9561,7 +9754,7 @@ injectStyles(styles);
                                 } else {
                                     tooltipText = `Отлично! 😎`;
                                 }
-                                
+
                                 const tooltip = document.createElement('div');
                                 tooltip.className = 'score-tooltip';
                                 tooltip.textContent = tooltipText;
@@ -9584,7 +9777,7 @@ injectStyles(styles);
                                 const h3 = header.querySelector('h3');
                                 const subjectName = h3 ? h3.textContent.toLowerCase() : header.textContent.toLowerCase();
                                 const isSubjectMatch = subjectName.includes(val);
-                                
+
                                 const rows = Array.from(wrapper.querySelectorAll('tr'));
                                 let visibleRowsCount = 0;
                                 let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
@@ -9633,7 +9826,7 @@ injectStyles(styles);
                                         wrapper.setAttribute('data-score-max', calculatedMax);
 
                                         capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? calculatedMax : 0}`;
-                                        
+
                                         if (!hasAnyGrades || calculatedMax === 0) {
                                             capsule.style.background = 'var(--color-highlight)';
                                             capsule.style.color = 'var(--color-text-secondary)';
@@ -9643,7 +9836,7 @@ injectStyles(styles);
                                             else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
                                             else if (p < 81) capsule.style.background = '#8BC34A';
                                             else capsule.style.background = 'var(--color-green)';
-                                            
+
                                             if (p < 41 || p >= 61) capsule.style.color = '#fff';
                                         }
 
@@ -9654,7 +9847,7 @@ injectStyles(styles);
                                             else if (calculatedCurrent < 61) tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
                                             else if (calculatedCurrent < 81) tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
                                             else tooltipText = `Отлично! 😎`;
-                                            
+
                                             const tooltip = document.createElement('div');
                                             tooltip.className = 'score-tooltip';
                                             tooltip.textContent = tooltipText;
@@ -9730,12 +9923,12 @@ injectStyles(styles);
 
                                 // Генерация HTML списка
                                 let leaderboardHtml = '<div class="leaderboard-list">';
-                                
+
                                 subjectsData.forEach((subj, index) => {
                                     // Определяем стили для мест
                                     let rankClass = '';
-                                    let rankContent = index + 1; 
-                                    
+                                    let rankContent = index + 1;
+
                                     if (index === 0) { rankClass = 'rank-1'; }
                                     else if (index === 1) { rankClass = 'rank-2'; }
                                     else if (index === 2) { rankClass = 'rank-3'; }
@@ -9842,7 +10035,7 @@ injectStyles(styles);
                                     <div class="push-detail">${body}</div>
                                 </div>
                             `;
-                            
+
                             toast.onclick = () => {
                                 toast.classList.remove('show');
                                 setTimeout(() => toast.remove(), 400);
@@ -9863,10 +10056,10 @@ injectStyles(styles);
 
                         // 2. Собираем текущее состояние оценок со страницы
                         const currentSnapshot = {};
-                        
+
                         // Собираем данные из оберток (wrapper)
                         const allWrappers = document.querySelectorAll('.term-subject-group, .session-term-table-group');
-                        
+
                         allWrappers.forEach(wrapper => {
                             let name = wrapper.getAttribute('data-subject-name') || wrapper.getAttribute('data-term-name');
                             if (!name) {
@@ -9877,16 +10070,16 @@ injectStyles(styles);
                                 }
                             }
                             if (!name) return;
-                            
+
                             // Чистим имя
-                            name = name.replace(/\[.*?\]/g, '').trim(); 
+                            name = name.replace(/\[.*?\]/g, '').trim();
 
                             const currentScore = parseInt(wrapper.getAttribute('data-score-current')) || 0;
                             const maxScore = parseInt(wrapper.getAttribute('data-score-max')) || 0;
-                            
+
                             // Пытаемся найти итоговую оценку (текстом)
                             let finalMark = null;
-                            
+
                             // Поиск текстовой оценки (Зачет/Экзамен) в таблице
                             const rows = wrapper.querySelectorAll('tr');
                             rows.forEach(row => {
@@ -9914,7 +10107,7 @@ injectStyles(styles);
                         // 3. Загружаем прошлое состояние
                         const storageKey = 'etis_reborn_grades_snapshot_v1';
                         const previousSnapshotJSON = localStorage.getItem(storageKey);
-                        
+
                         if (previousSnapshotJSON) {
                             const previousSnapshot = JSON.parse(previousSnapshotJSON);
                             let hasUpdates = false;
@@ -9959,7 +10152,7 @@ injectStyles(styles);
                                     hasUpdates = true;
                                 }
                             }
-                            
+
                             if (!hasUpdates) {
                                 console.log('ETIS Reborn: Новых оценок нет');
                             }
@@ -10005,7 +10198,7 @@ injectStyles(styles);
 
                     cell.style.cursor = 'pointer';
                     cell.classList.add('copy-pass');
-                    
+
                     cell.addEventListener('click', () => {
                         navigator.clipboard.writeText(text).then(() => {
                             const originalHTML = cell.innerHTML;
@@ -10035,7 +10228,7 @@ injectStyles(styles);
 
                         const block = document.createElement('div');
                         block.className = 'day resource-block';
-                        
+
                         const title = document.createElement('h3');
                         title.textContent = titleText;
                         block.appendChild(title);
@@ -10043,7 +10236,7 @@ injectStyles(styles);
                         currentTable = document.createElement('table');
                         currentTable.className = 'common resource-table';
                         block.appendChild(currentTable);
-                        
+
                         span9.insertBefore(block, introText);
                         row.remove();
                     } else if (currentTable) {
@@ -10060,14 +10253,14 @@ injectStyles(styles);
                         } else if (cells.length === 2) {
                             addCopyLogic(cells[1]); // Копирование единственного поля (как в BOOK.RU)
                         }
-                        
+
                         currentTable.appendChild(row);
                     }
                 });
 
                 resTable.remove();
                 break;
-            
+
                 case 'stu_plus.advice':
                     const adviceList = span9.querySelector('ul');
                     if (!adviceList) break;
@@ -10097,17 +10290,17 @@ injectStyles(styles);
 
                     // Заменяем старый список новым контейнером
                     adviceList.parentNode.replaceChild(container, adviceList);
-                    
+
                     // Чистим заголовок h2
                     const h2 = span9.querySelector('h2');
                     if (h2) h2.style.marginBottom = '0';
-                    
+
                     break;
 
                 case 'stu.ses':
                     // 1. Ищем данные ПЕРЕД очисткой
                     const allElements = Array.from(span9.childNodes);
-                    
+
                     // Ищем название направления (обычно это самый первый h2 или h3)
                     const majorHeader = span9.querySelector('h2') || span9.querySelector('h3');
                     const majorName = majorHeader ? majorHeader.textContent.trim() : "";
@@ -10126,7 +10319,7 @@ injectStyles(styles);
                         if (title.includes('компетенции') && title !== 'Компетенции выпускника') {
                             const card = document.createElement('div');
                             card.className = 'day resource-block';
-                            
+
                             const cardTitle = document.createElement('h3');
                             cardTitle.textContent = title;
                             card.appendChild(cardTitle);
@@ -10223,10 +10416,10 @@ injectStyles(styles);
                             const performSearch = () => {
                                 const val = input.value.trim();
                                 if (val.length < 2) return;
-                                
+
                                 const filter = encodeURIComponent(val);
                                 $(recordList).html(`<div style="padding:20px; text-align:center;"><img src="${loadGif}"> Загрузка...</div>`);
-                                
+
                                 $(recordList).load("lib_search.get_books?p_filter=" + filter, function() {
                                     const table = recordList.querySelector('table');
                                     if (table) {
@@ -10244,7 +10437,7 @@ injectStyles(styles);
                                 if (e.key === 'Enter') performSearch();
                             });
                         }
-                    } 
+                    }
                     // 3. РЕЖИМ РЕКОМЕНДАЦИЙ (Списки по предметам)
                     else if (pageMode === 'recommend' || (!pageMode && span9.querySelector('h3'))) {
                         const submenu = span9.querySelector('.submenu');
@@ -10266,13 +10459,13 @@ injectStyles(styles);
                                 const block = document.createElement('div');
                                 block.className = 'library-subject-block';
                                 h3.parentNode.insertBefore(block, h3);
-                                
+
                                 const wrapper = document.createElement('div');
                                 wrapper.className = 'wide-table-wrapper';
                                 block.appendChild(h3);
                                 block.appendChild(wrapper);
                                 wrapper.appendChild(table);
-                                table.classList.add('resource-table'); 
+                                table.classList.add('resource-table');
                                 table.style.minWidth = "800px";
                                 h3.style.margin = "30px 0 15px 10px";
                                 h3.style.fontSize = "1.5rem";
@@ -10291,7 +10484,7 @@ injectStyles(styles);
                                 let blockHasVisibleRows = false;
 
                                 rows.forEach(row => {
-                                    if (row.querySelector('th')) return; 
+                                    if (row.querySelector('th')) return;
                                     const rowText = row.textContent.toLowerCase();
                                     if (val === "" || rowText.includes(val) || h3Text.includes(val)) {
                                         row.style.display = "";
@@ -10318,7 +10511,7 @@ injectStyles(styles);
                             });
                         });
                     }
-                    
+
                     // 4. РЕЖИМ ВЫДАННЫХ КНИГ (HISTORY)
                     if (pageMode === 'history' || (!pageMode && span9.querySelector('th')?.textContent.includes('Книга'))) {
                         const historyTable = span9.querySelector('table.common');
@@ -10366,11 +10559,11 @@ injectStyles(styles);
 
                     // 3. Обработка самих опросов
                     const surveyBlocks = span9.querySelectorAll('.nav.answ, .nav.msg');
-                    
+
                     surveyBlocks.forEach(survey => {
                         // Убиваем старые классы ЕТИСа, из-за которых скрывались пройденные опросы
-                        survey.className = 'survey-card'; 
-                        
+                        survey.className = 'survey-card';
+
                         const headerLi = survey.querySelector('li:first-child');
                         const contentLi = survey.querySelector('li:nth-child(2)');
 
@@ -10388,10 +10581,10 @@ injectStyles(styles);
                             // Очищаем шапку от ссылок и шрифтов ЕТИСа
                             const headerLink = headerLi.querySelector('a');
                             if (headerLink) headerLi.innerHTML = headerLink.innerHTML;
-                            
+
                             const headerFont = headerLi.querySelector('font');
                             if (headerFont) headerLi.innerHTML = headerFont.innerHTML;
-                            
+
                             headerLi.style.fontSize = '1.4rem';
                             headerLi.style.lineHeight = '1.5';
                             headerLi.style.fontWeight = '600';
@@ -10407,7 +10600,7 @@ injectStyles(styles);
                             }
 
                             const rawHTML = contentLi.innerHTML;
-                            
+
                             // А) Если внутри есть форма (текст-бокс для ввода ответа)
                             if (rawHTML.includes('<form') || rawHTML.includes('<textarea')) {
                                 const shortBtn = contentLi.querySelector('div[id$="_short"]');
@@ -10425,7 +10618,7 @@ injectStyles(styles);
                                     formContainer.style.padding = '2rem';
                                     formContainer.style.boxShadow = 'none';
                                     formContainer.style.border = '1px solid var(--color-table-border)';
-                                    
+
                                     form.parentNode.insertBefore(formContainer, form);
                                     formContainer.appendChild(form);
 
@@ -10453,7 +10646,7 @@ injectStyles(styles);
 
                             // Б) Если это РЕЗУЛЬТАТЫ уже пройденного опроса
                             const cleanContent = document.createElement('div');
-                            
+
                             // Ищем дату
                             const dateMatch = rawHTML.match(/\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}:\d{2}/);
                             if (dateMatch) {
@@ -10469,20 +10662,20 @@ injectStyles(styles);
                             // Разбираем вопросы и ответы
                             const temp = document.createElement('div');
                             temp.innerHTML = rawHTML;
-                            
+
                             // Убираем спан с датой из парсинга
                             const dateSpan = temp.querySelector('span[style*="color:#808080"]');
                             if (dateSpan) dateSpan.remove();
 
                             const boldQuestions = temp.querySelectorAll('b');
                             let items = [];
-                            
+
                             if (boldQuestions.length > 0) {
                                 boldQuestions.forEach(b => {
                                     let q = b.textContent.replace(':', '').trim();
                                     let a = "";
                                     let next = b.nextSibling;
-                                    
+
                                     // Идем по соседним узлам, пока не встретим следующий вопрос <b>
                                     while(next && next.nodeName !== 'B') {
                                         if (next.nodeName === 'SPAN' || next.nodeName === 'I' || (next.nodeType === Node.TEXT_NODE && next.textContent.trim().length > 2)) {
@@ -10511,7 +10704,7 @@ injectStyles(styles);
                             }
                         }
                     });
-                    
+
                     span9.querySelectorAll('br').forEach(br => br.remove());
                     break;
                 }
@@ -10525,7 +10718,7 @@ injectStyles(styles);
                         // Создаем новую структуру карточки
                         const card = document.createElement('div');
                         card.className = 'review-card';
-                        
+
                         const newList = document.createElement('div');
                         newList.className = 'review-list';
 
@@ -10558,7 +10751,7 @@ injectStyles(styles);
                     if (emptySubmenu && !emptySubmenu.textContent.trim()) {
                         emptySubmenu.remove();
                     }
-                    
+
                     // Немного отступов для заголовков
                     const reviewH3 = reviewContainer.querySelector('h3');
                     if (reviewH3) {
@@ -10575,7 +10768,7 @@ injectStyles(styles);
                     if (aboutContainer) {
                         // Превращаем стандартный блок в карточку-статью
                         aboutContainer.className = 'about-card';
-                        
+
                         // Удаляем все инлайновые стили (font-size, margin и т.д.), которые мог вставить ЕТИС
                         aboutContainer.querySelectorAll('*').forEach(el => {
                             el.removeAttribute('style');
@@ -10610,7 +10803,7 @@ injectStyles(styles);
                     contractLinks.forEach(link => {
                         const text = link.textContent.trim();
                         const isInstruction = text.toLowerCase().includes('инструкция');
-                        
+
                         // 2. Обработка инструкции
                         if (isInstruction) {
                             const card = document.createElement('a');
@@ -10631,15 +10824,15 @@ injectStyles(styles);
                         const card = document.createElement('a');
                         card.href = link.href;
                         card.className = 'contract-card';
-                        
+
                         const statusMatch = text.match(/\[(.*?)\]/);
                         const statusText = statusMatch ? statusMatch[1] : '';
                         let cleanText = text.replace(/\[.*?\]/, '').trim();
-                        
+
                         const splitIndex = cleanText.indexOf('№');
                         let title = cleanText;
                         let meta = '';
-                        
+
                         if (splitIndex !== -1) {
                             title = cleanText.substring(0, splitIndex).trim();
                             meta = cleanText.substring(splitIndex).trim();
@@ -10681,7 +10874,7 @@ injectStyles(styles);
                     if (!ordersList) break;
 
                     const orders = Array.from(ordersList.querySelectorAll('li.ord'));
-                    
+
                     // Очищаем и ставим заголовок
                     const h2 = span9.querySelector('h2') || document.createElement('h2');
                     if (!h2.parentNode) h2.textContent = 'Приказы';
@@ -10696,11 +10889,11 @@ injectStyles(styles);
                         if (!link) return;
 
                         const fullText = link.textContent.trim();
-                        
+
                         // Ищет: №... от ДД.ММ.ГГГГ
                         // (?:[\.\s]*) - игнорирует точку и пробелы после даты перед описанием
                         const match = fullText.match(/(№.*?от\s+\d{2}\.\d{2}\.\d{4})(?:[\.\s]*)(.*)/);
-                        
+
                         // Если совпадение найдено, берем части, иначе выводим весь текст как заголовок
                         const meta = match ? match[1] : '';
                         const title = match ? match[2] : fullText;
@@ -10771,10 +10964,10 @@ injectStyles(styles);
                     data.forEach(item => {
                         // Добавляем заголовок категории
                         span9.appendChild(item.header);
-                        
+
                         const grid = document.createElement('div');
                         grid.className = 'forms-grid';
-                        
+
                         const items = item.list.querySelectorAll('li');
                         items.forEach(li => {
                             const links = Array.from(li.querySelectorAll('a'));
@@ -10783,7 +10976,7 @@ injectStyles(styles);
                             // Основная ссылка (обычно первая - Word или Excel)
                             const primaryLink = links[0];
                             const href = primaryLink.getAttribute('href').toLowerCase();
-                            
+
                             const card = document.createElement('a');
                             card.className = 'form-card';
                             card.href = primaryLink.href;
@@ -10812,10 +11005,10 @@ injectStyles(styles);
                                 <div class="form-name">${primaryLink.textContent.trim()}</div>
                                 <div class="form-badges">${badgesHtml}</div>
                             `;
-                            
+
                             grid.appendChild(card);
                         });
-                        
+
                         span9.appendChild(grid);
                     });
 
@@ -10852,7 +11045,7 @@ injectStyles(styles);
                         footerDiv.style.textAlign = 'left';
                         footerDiv.style.marginTop = '2rem';
                         footerDiv.innerHTML = footerText.replace(/<br>/g, '');
-                        
+
                         // Очищаем низ страницы и добавляем оформленный текст
                         const currentContent = span9.innerHTML.split('</table>')[0] + '</table>';
                         span9.innerHTML = currentContent;
@@ -10935,16 +11128,16 @@ injectStyles(styles);
                     if (h4) {
                         // Разбираем страшный текст заголовка
                         const lines = h4.innerHTML.split('<br>').map(l => l.trim()).filter(l => l);
-                        
+
                         const infoCard = document.createElement('div');
                         infoCard.className = 'jour-info-card';
-                        
+
                         if (lines.length >= 2) {
                             const group = lines[0];
                             const subject = lines[1];
                             const teacher = lines.length > 2 ? lines[2] : '';
                             const department = lines.length > 3 ? lines[3] : '';
-                            
+
                             infoCard.innerHTML = `
                                 <div class="jour-info-header">
                                     <div class="jour-info-group">${group}</div>
@@ -10963,7 +11156,7 @@ injectStyles(styles);
                             // Резервный вариант, если структура текста иная
                             infoCard.innerHTML = `<h3 style="margin:0">${h4.textContent}</h3>`;
                         }
-                        
+
                         h4.parentNode.replaceChild(infoCard, h4);
                     }
 
@@ -10974,7 +11167,7 @@ injectStyles(styles);
                         wrapper.className = 'wide-table-wrapper';
                         table.parentNode.insertBefore(wrapper, table);
                         wrapper.appendChild(table);
-                        
+
                         // Удаляем старые инлайновые стили дат и ширин, чтобы работал CSS
                         table.removeAttribute('style');
                         table.querySelectorAll('th, td').forEach(cell => {
@@ -10998,7 +11191,7 @@ injectStyles(styles);
                 case 'est_pkg.show_list': {
                     // 1. ОБРАБОТКА "МОИ КОММЕНТАРИИ"
                     const feedbackMsgs = span9.querySelectorAll('ul.nav.msg');
-                    
+
                     if (feedbackMsgs.length > 0) {
                         const container = document.createElement('div');
                         container.className = 'msg-container';
@@ -11034,7 +11227,7 @@ injectStyles(styles);
                             }
 
                             let bodyText = clone.innerHTML.replace(/^(<br\s*\/?>|\s)+/, '').replace(/(<br\s*\/?>|\s)+$/, '');
-                            if (!bodyText.replace(/<br>/g, '').trim()) bodyText = ''; 
+                            if (!bodyText.replace(/<br>/g, '').trim()) bodyText = '';
 
                             const card = document.createElement('div');
                             card.className = 'msg-card';
@@ -11052,7 +11245,7 @@ injectStyles(styles);
                         });
 
                         feedbackMsgs.forEach(m => m.remove());
-                        
+
                         const submenu = span9.querySelector('.submenu');
                         if (submenu) submenu.after(container);
                         else span9.appendChild(container);
@@ -11061,24 +11254,24 @@ injectStyles(styles);
                     // 2. ОБРАБОТКА ТАБЛИЦЫ РЕЙТИНГА
                     // Ищем именно таблицу с ID rating, так как в HTML она именно такая
                     const ratingTable = document.getElementById('rating');
-                    
+
                     if (ratingTable) {
                         // Создаем обертку
                         const wrapper = document.createElement('div');
                         wrapper.className = 'wide-table-wrapper';
-                        
+
                         // Вставляем обертку перед таблицей
                         ratingTable.parentNode.insertBefore(wrapper, ratingTable);
-                        
+
                         // Перемещаем таблицу внутрь
                         wrapper.appendChild(ratingTable);
-                        
+
                         // Чистим таблицу от мусора
                         ratingTable.removeAttribute('width');
-                        
+
                         // Добавляем классы для красоты
                         ratingTable.classList.add('common'); // Чтобы подхватились общие стили
-                        
+
                         // Убираем инлайновые цвета фона строк, чтобы работал CSS
                         ratingTable.querySelectorAll('tr').forEach(tr => {
                             tr.style.backgroundColor = '';
@@ -11092,8 +11285,8 @@ injectStyles(styles);
                     const table = span9.querySelector('table.slimtab_nice');
                     if (table) {
                         // 1. красивый дизайн (common) и добавляем класс-исключение (absence-table)
-                        table.className = 'common absence-table'; 
-                        
+                        table.className = 'common absence-table';
+
                         const wrapper = document.createElement('div');
                         wrapper.className = 'wide-table-wrapper';
                         table.parentNode.insertBefore(wrapper, table);
@@ -11126,11 +11319,11 @@ injectStyles(styles);
                                         const capsule = document.createElement('span');
                                         capsule.className = 'absence-capsule ' + (color === 'green' ? 'valid' : 'invalid');
                                         capsule.textContent = text;
-                                        if (title) capsule.title = title; 
+                                        if (title) capsule.title = title;
 
                                         dateContainer.appendChild(capsule);
                                     });
-                                    
+
                                     // Очищаем ячейку от старого мусора (<br>, шрифты) и вставляем контейнер
                                     td.innerHTML = '';
                                     td.appendChild(dateContainer);
@@ -11147,14 +11340,14 @@ injectStyles(styles);
                     Array.from(span9.childNodes).forEach(node => {
                         if (node.nodeType === Node.TEXT_NODE) {
                             const text = node.textContent;
-                            if (text.includes('Всего пропущено занятий:')) { 
-                                total = text.replace(/\D/g, ''); 
-                                foundStats = true; 
+                            if (text.includes('Всего пропущено занятий:')) {
+                                total = text.replace(/\D/g, '');
+                                foundStats = true;
                                 node.textContent = ''; // Скрываем оригинальный текст
                             }
-                            if (text.includes('Из них по уважительной причине:')) { 
-                                valid = text.replace(/\D/g, ''); 
-                                node.textContent = ''; 
+                            if (text.includes('Из них по уважительной причине:')) {
+                                valid = text.replace(/\D/g, '');
+                                node.textContent = '';
                             }
                         } else if (node.tagName === 'B' && node.textContent.includes('По неуважительной причине:')) {
                             invalid = node.textContent.replace(/\D/g, '');
@@ -11189,7 +11382,7 @@ injectStyles(styles);
                 }
                 }
             // --- ГЛОБАЛЬНЫЕ УЛУЧШЕНИЯ ДЛЯ ЛЮБЫХ СТРАНИЦ ---
-            
+
             // Формы отзывов и анкетирования (que_form)
             const queForm = document.querySelector('form.que_form');
             if (queForm) {
@@ -11200,7 +11393,7 @@ injectStyles(styles);
                     pageTitle.style.marginBottom = '2.4rem';
                     span9.insertBefore(pageTitle, queForm.closest('.review') || queForm);
                 }
-                
+
                 // Улучшаем кнопку отправки (добавляем иконку бумажного самолетика)
                 const sendBtn = document.getElementById('send_btn');
                 if (sendBtn && !sendBtn.querySelector('.material-icons')) {
@@ -11208,5 +11401,90 @@ injectStyles(styles);
                 }
             }
         }
+
+        // --- УМНЫЙ СКРОЛЛ ДЛЯ ПОДВКЛАДОК И НЕДЕЛЬ ---
+        function initSmartScroll() {
+                // Находим все контейнеры-капсулы
+                const containers = document.querySelectorAll('.submenu, .weeks, .timetable-toolbar');
+
+                containers.forEach(container => {
+                    // Ищем активный элемент (в подвкладках это <b>, в неделях это .current)
+                    const activeItem = container.querySelector('b, .current');
+
+                    const scrollToActive = (behavior = 'smooth') => {
+                        if (!activeItem) return;
+                        
+                        // Идеальное вычисление центра через абсолютные координаты экрана
+                        const containerRect = container.getBoundingClientRect();
+                        const itemRect = activeItem.getBoundingClientRect();
+                        
+                        const containerCenter = containerRect.left + (containerRect.width / 2);
+                        const itemCenter = itemRect.left + (itemRect.width / 2);
+                        
+                        // Высчитываем, на сколько пикселей нужно сдвинуть скролл
+                        const offset = itemCenter - containerCenter;
+                        const scrollTarget = container.scrollLeft + offset;
+
+                        // Допуск в 2 пикселя (защита от микро-подергиваний)
+                        if (Math.abs(offset) < 2) return; 
+
+                        container.scrollTo({
+                            left: scrollTarget,
+                            behavior: behavior
+                        });
+                    };
+
+                    let scrollTimeout;
+                    let wheelTimeout;
+                    let isInteracting = false;
+
+                    // Увеличенные задержки для более спокойного поведения (~4 секунды)
+                    const startSnapbackTimer = (delay = 4000) => {
+                        clearTimeout(scrollTimeout);
+                        if (!isInteracting) {
+                            scrollTimeout = setTimeout(() => scrollToActive('smooth'), delay);
+                        }
+                    };
+
+                    // 1. Скролл колесиком / трекпадом на ПК
+                    container.addEventListener('wheel', (e) => {
+                        isInteracting = true; // Блокируем возврат, пока крутим
+                        clearTimeout(wheelTimeout);
+                        
+                        // Ждем 500мс после остановки колесика, чтобы разрешить возврат
+                        wheelTimeout = setTimeout(() => {
+                            isInteracting = false;
+                            startSnapbackTimer(3500);
+                        }, 500);
+
+                        // Трансляция вертикального скролла в горизонтальный
+                        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+                            e.preventDefault(); 
+                            container.scrollLeft += e.deltaY > 0 ? 45 : -45; 
+                        }
+                    }, { passive: false });
+
+                    if (activeItem) {
+                        // 2. Взаимодействие мышкой (ПК)
+                        container.addEventListener('mouseenter', () => { isInteracting = true; clearTimeout(scrollTimeout); });
+                        container.addEventListener('mouseleave', () => { isInteracting = false; startSnapbackTimer(3500); });
+                        
+                        // 3. Взаимодействие пальцем (Мобильные)
+                        container.addEventListener('touchstart', () => { isInteracting = true; clearTimeout(scrollTimeout); }, { passive: true });
+                        container.addEventListener('touchend', () => { isInteracting = false; startSnapbackTimer(4000); }, { passive: true });
+
+                        // 4. Триггер при любом скролле (отрабатывает как защита)
+                        container.addEventListener('scroll', () => {
+                            if (!isInteracting) startSnapbackTimer(4000); 
+                        }, { passive: true });
+
+                        // При открытии страницы: центрируем мгновенно, затем плавно добиваем для надежности
+                        setTimeout(() => scrollToActive('auto'), 50);
+                        setTimeout(() => scrollToActive('smooth'), 400);
+                    }
+                });
+            }
+
+        initSmartScroll();
     }
 })();
