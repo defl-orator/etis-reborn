@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.7101
-// @changelog    Недели, триместры и подвкладки стали как в Safari. Фикс капсулы меню на мобильных и ховер иконок
+// @version      1.72
+// @changelog    Поддержка семестров
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
 // @match        https://student.psu.ru/*
@@ -6389,28 +6389,6 @@ injectStyles(styles);
                 verLi.appendChild(verLink);
                 allListItems.push(verLi);
 
-                // Вкладка "Оценить расширение"
-                const revLi = document.createElement("li");
-                revLi.className = 'theme-switcher-item';
-                const revLink = document.createElement("a");
-                revLink.style.cursor = 'pointer';
-                revLink.href = "#reviews";
-                revLink.textContent = 'Отзывы о REBORN';
-                revLink.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const side = document.querySelector('.span3');
-                    if (side && side.classList.contains('mobile-active')) {
-                        side.classList.remove('mobile-active');
-                        document.querySelector('.mobile-overlay')?.classList.remove('active');
-                        document.querySelector('.mobile-menu-btn')?.classList.remove('open');
-                        document.body.style.overflow = '';
-                        document.documentElement.style.overflow = '';
-                    }
-                    openReviewsModal();
-                });
-                revLi.appendChild(revLink);
-                allListItems.push(revLi);
-
                 // Функция иконок
                 const getIconForHref = (href) => {
                     if (href === '#theme-switch') return 'brightness_6';
@@ -6599,29 +6577,50 @@ injectStyles(styles);
                 if (!sidebar.querySelector('.sidebar-footer')) {
                     const footer = document.createElement('div');
                     footer.className = 'sidebar-footer';
+                    
+                    // flex-контейнер для ссылок, чтобы они красиво шли друг под другом
                     footer.innerHTML = `
-                        <div style="margin-bottom: 4px; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px;">
+                        <div style="margin-bottom: 10px; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px;">
                             <a href="https://etisreborn.ru" target="_blank" style="text-decoration: none; color: var(--color-text-primary); border-bottom: none;">
                                 ЕТИС REBORN
                             </a>
                         </div>
-                        <a href="#report-bug" id="footer-report-bug" style="cursor: pointer; text-decoration: none; color: var(--color-text-secondary); transition: color 0.2s;">Нашли ошибку?</a>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <a href="#reviews" id="footer-reviews" style="cursor: pointer; text-decoration: none; color: var(--color-text-secondary); transition: color 0.2s;">Отзывы о расширении</a>
+                            <a href="#report-bug" id="footer-report-bug" style="cursor: pointer; text-decoration: none; color: var(--color-text-secondary); transition: color 0.2s;">Нашли ошибку?</a>
+                        </div>
                     `;
                     sidebar.appendChild(footer);
 
+                    // Функция для закрытия мобильного меню
+                    const closeMobileMenu = () => {
+                        const side = document.querySelector('.span3');
+                        if (side && side.classList.contains('mobile-active')) {
+                            side.classList.remove('mobile-active');
+                            document.querySelector('.mobile-overlay')?.classList.remove('active');
+                            document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                            document.body.style.overflow = '';
+                            document.documentElement.style.overflow = '';
+                        }
+                    };
+
+                    // Обработчик: Нашли ошибку?
                     const bugLinkFooter = footer.querySelector('#footer-report-bug');
                     if (bugLinkFooter) {
                         bugLinkFooter.addEventListener('click', (e) => {
                             e.preventDefault();
-                            const side = document.querySelector('.span3');
-                            if (side && side.classList.contains('mobile-active')) {
-                                side.classList.remove('mobile-active');
-                                document.querySelector('.mobile-overlay')?.classList.remove('active');
-                                document.querySelector('.mobile-menu-btn')?.classList.remove('open');
-                                document.body.style.overflow = '';
-                                document.documentElement.style.overflow = '';
-                            }
+                            closeMobileMenu();
                             openUserscriptBugModal();
+                        });
+                    }
+
+                    // Обработчик: Отзывы о REBORN
+                    const reviewLinkFooter = footer.querySelector('#footer-reviews');
+                    if (reviewLinkFooter) {
+                        reviewLinkFooter.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            closeMobileMenu();
+                            openReviewsModal();
                         });
                     }
                 }
@@ -6909,7 +6908,10 @@ injectStyles(styles);
                         if (isAdvanced) {
                             const calendarGrid = document.createElement('div');
                             calendarGrid.className = 'calendar-grid';
-                            const headers = Array.from(span9.querySelectorAll('b')).filter(b => b.textContent.toLowerCase().includes('триместр'));
+                            const headers = Array.from(span9.querySelectorAll('b')).filter(b => {
+                                const text = b.textContent.toLowerCase();
+                                return text.includes('триместр') || text.includes('семестр');
+                            });
 
                             headers.forEach(header => {
                                 const card = document.createElement('div');
@@ -6919,8 +6921,10 @@ injectStyles(styles);
                                 card.appendChild(h4);
                                 let next = header.parentElement.tagName === 'P' ? header.parentElement : header;
                                 let current = next.nextSibling;
-                                const toRem = [header, header.parentElement];
-                                while (current && current.tagName !== 'TABLE' && !(current.querySelector && current.querySelector('b')?.textContent.toLowerCase().includes('триместр'))) {
+                                const toRem =[header, header.parentElement];
+                                
+                                // В условии цикла while проверяем оба варианта через regex
+                                while (current && current.tagName !== 'TABLE' && !(current.querySelector && current.querySelector('b')?.textContent.toLowerCase().match(/триместр|семестр/))) {
                                     let nxt = current.nextSibling;
                                     if (current.nodeType === 1 && (current.tagName === 'DIV' || current.tagName === 'P')) {
                                         const row = document.createElement('div');
@@ -9187,18 +9191,24 @@ injectStyles(styles);
                 case 'stu.signs': {
                     // 1. УНИФИКАЦИЯ ПОДМЕНЮ
                     span9.querySelectorAll('.submenu').forEach(menu => {
+                        // Определяем тип периода (семестр или триместр) на основе текста вкладок
+                        let termType = 'триместр'; 
+                        if (menu.textContent.toLowerCase().includes('семестр')) {
+                            termType = 'семестр';
+                        }
+
                         Array.from(menu.children).forEach(child => {
                             if (child.tagName === 'A') {
-                                // У неактивных вкладок (ссылок) убираем "триместр", оставляем цифру
-                                const match = child.textContent.match(/(\d+)\s*триместр/i);
+                                // Убираем слово, оставляем цифру (ищет и триместр, и семестр)
+                                const match = child.textContent.match(/(\d+)\s*(триместр|семестр)/i);
                                 if (match) {
                                     child.textContent = match[1];
                                 }
                             } else if (child.tagName === 'B') {
-                                // У активной вкладки (жирный текст) гарантируем наличие слова
+                                // У активной вкладки гарантируем наличие правильного слова
                                 let text = child.textContent.trim();
                                 if (/^\d+$/.test(text)) {
-                                    child.textContent = text + ' триместр';
+                                    child.textContent = text + ' ' + termType;
                                 }
                             }
                         });
@@ -9392,11 +9402,11 @@ injectStyles(styles);
                                     </div>
                                     <div class="analytics-stats" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.6rem;">
                                         <div class="stat-box">
-                                            <span class="stat-box-title">Лучший триместр</span>
+                                            <span class="stat-box-title">Лучший период</span>
                                             <span class="stat-box-value good" id="stat-best-term">-</span>
                                         </div>
                                         <div class="stat-box">
-                                            <span class="stat-box-title">Худший триместр</span>
+                                            <span class="stat-box-title">Худший период</span>
                                             <span class="stat-box-value bad" id="stat-worst-term">-</span>
                                         </div>
                                         <div class="stat-box" style="grid-column: 1 / -1;">
@@ -9449,9 +9459,16 @@ injectStyles(styles);
                                         const avg = parseFloat(avgStr);
 
                                         if (rawTermName) {
-                                            const numMatch = rawTermName.match(/(\d+)\s*трим/i);
+                                            // Ищем сокращения и трим., и сем.
+                                            const numMatch = rawTermName.match(/(\d+)\s*(трим|сем)/i);
                                             const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
-                                            let cleanName = rawTermName.split(',')[0].replace(/\(.*\)/, '').replace(/триместр/i, 'трим.').trim();
+                                            
+                                            // Заменяем полные слова на аккуратные сокращения
+                                            let cleanName = rawTermName.split(',')[0]
+                                                .replace(/\(.*\)/, '')
+                                                .replace(/триместр/i, 'трим.')
+                                                .replace(/семестр/i, 'сем.')
+                                                .trim();
 
                                             if (avg > 0) {
                                                 termsData.push({ name: cleanName, avg: avg, num: termNum });
