@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.72
+// @version      1.7200
 // @changelog    Поддержка семестров
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
