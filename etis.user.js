@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8001
+// @version      1.8002
 // @changelog    Крупное обновление дизайна. Добавлена сводка в расписании
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -3354,22 +3354,6 @@ td.empty {
         gap: 1.2rem !important;
     }
     .jour-badge { display: none !important; }
-    .teacher-meta-row {
-        flex-direction: column !important;
-        align-items: center !important;
-        text-align: center !important;
-        gap: 0.8rem !important;
-    }
-
-    .teacher-badges-box {
-        justify-content: center !important;
-        width: 100% !important;
-    }
-
-    .teacher-dept-link {
-        width: auto !important;
-        text-align: center !important;
-    }
 }
 
 /* --- LOGIN MOBILE --- */
@@ -5705,6 +5689,25 @@ button.analytics-btn {
     flex-wrap: wrap !important;
     gap: 6px !important;
     justify-content: flex-end !important;
+}
+
+@media (max-width: 600px) {
+    .teacher-meta-row {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 0.8rem !important;
+    }
+
+    .teacher-badges-box {
+        justify-content: center !important;
+        width: 100% !important;
+    }
+
+    .teacher-dept-link {
+        width: auto !important;
+        text-align: center !important;
+    }
 }
     `;
 
