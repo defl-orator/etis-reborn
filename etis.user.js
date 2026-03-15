@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8000
+// @version      1.8001
 // @changelog    Крупное обновление дизайна. Добавлена сводка в расписании
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -740,13 +740,12 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
 .teacher-dept-link {
     font-size: 1.3rem !important;
     color: var(--color-text-secondary) !important;
-    margin-bottom: 1.6rem !important;
-    padding-bottom: 1.6rem !important;
-    border-bottom: 1px solid var(--color-table-border) !important;
     cursor: pointer !important;
-    width: 100% !important;
     line-height: 1.4 !important;
     display: block !important;
+    border-bottom: none !important;
+    margin-bottom: 0 !important;
+    padding-bottom: 0 !important;
 }
 .teacher-dept-link:hover {
     color: var(--color-text-primary) !important;
@@ -3354,7 +3353,23 @@ td.empty {
         padding: 1.2rem 1.6rem !important;
         gap: 1.2rem !important;
     }
-    .jour-badge { display: none !important; } /* Скрываем бейдж на мобилках, если не влазит */
+    .jour-badge { display: none !important; }
+    .teacher-meta-row {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 0.8rem !important;
+    }
+
+    .teacher-badges-box {
+        justify-content: center !important;
+        width: 100% !important;
+    }
+
+    .teacher-dept-link {
+        width: auto !important;
+        text-align: center !important;
+    }
 }
 
 /* --- LOGIN MOBILE --- */
@@ -5566,7 +5581,7 @@ button.analytics-btn {
 
 @media (max-width: 960px) {
 
-    /* 1. Возвращаем карандашу скрытое состояние по умолчанию */
+    /* 1. скрытое состояние карандаша по умолчанию */
     .subject-note-btn {
         opacity: 0 !important;
         visibility: hidden !important;
@@ -5671,6 +5686,25 @@ button.analytics-btn {
         background: transparent !important;
         transform: none !important;
     }
+}
+
+.teacher-meta-row {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 1.2rem !important;
+    border-bottom: 1px solid var(--color-table-border) !important; 
+    padding-bottom: 1.2rem !important;
+    margin-bottom: 1.6rem !important;
+    width: 100% !important;
+}
+
+.teacher-badges-box {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-end !important;
 }
     `;
 
@@ -7465,9 +7499,9 @@ injectStyles(styles);
                             <div class="teacher-details">
                                 <div class="teacher-name-link" onclick="${nameClick}">${nameText.replace('Расписание преподавателя', '')}</div>
                                 
-                                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; border-bottom: 1px solid var(--color-table-border); padding-bottom: 1.2rem; margin-bottom: 1.4rem; gap: 1rem;">
-                                    <div class="teacher-dept-link" style="border-bottom: none !important; padding-bottom: 0 !important; margin-bottom: 0 !important; width: auto !important; flex-grow: 1;" onclick="${chairClick}">${chairText.replace('Расписание кафедры', '')}</div>
-                                    <div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; flex-shrink: 0;">${badgesHtml}</div>
+                                <div class="teacher-meta-row">
+                                    <div class="teacher-dept-link" onclick="${chairClick}">${chairText.replace('Расписание кафедры', '')}</div>
+                                    <div class="teacher-badges-box">${badgesHtml}</div>
                                 </div>
 
                                 <div class="teacher-subjects">${subjectsHtml}</div>
