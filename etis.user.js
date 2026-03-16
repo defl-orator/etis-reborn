@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8002
+// @version      1.8003
 // @changelog    Крупное обновление дизайна. Добавлена сводка в расписании
 // @description  Глобальный редизайн ЕТИСа
 // @author       ENAleksey & Nikolai Masalkin
@@ -9228,6 +9228,17 @@ injectStyles(styles);
                         container.appendChild(card);
                     });
 
+                    container.querySelectorAll('.msg-card').forEach(card => {
+                        const shareBtn = card.querySelector('.share-msg-btn');
+                        if (shareBtn) {
+                            shareBtn.style.cursor = 'pointer';
+                            shareBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                shareMessageCard(card, 'Объявление.png');
+                            };
+                        }
+                    });
+
                     // Логика фильтрации
                     searchWrapper.querySelector('#ann-search').addEventListener('input', (e) => {
                         const val = e.target.value.toLowerCase().trim();
@@ -9293,6 +9304,17 @@ injectStyles(styles);
                             <div class="msg-body">${cloneContent.innerHTML}</div>
                         `;
                         container.appendChild(card);
+                    });
+
+                    container.querySelectorAll('.msg-card').forEach(card => {
+                        const shareBtn = card.querySelector('.share-msg-btn');
+                        if (shareBtn) {
+                            shareBtn.style.cursor = 'pointer';
+                            shareBtn.onclick = (e) => {
+                                e.stopPropagation();
+                                shareMessageCard(card, 'Сообщение.png');
+                            };
+                        }
                     });
 
                     // Логика фильтрации
