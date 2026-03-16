@@ -552,6 +552,89 @@
             .avg-rating-stars { color: #FFD700; font-size: 1.8rem; margin: 10px 0; }
             .avg-rating-count { color: var(--text-secondary); font-size: 1rem; }
 
+            /* Анимация появления */
+            @keyframes revealUp {
+                from {
+                    opacity: 0;
+                    transform: translateY(30px);
+                    filter: blur(10px);
+                }
+                to {
+                    opacity: 1;
+                    transform: translateY(0);
+                    filter: blur(0);
+                }
+            }
+
+            .hero, 
+            .comparison-block, 
+            .reviews-section, 
+            .faq-section {
+                opacity: 0; 
+            }
+
+            .reveal-active {
+                animation: revealUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+            }
+
+            .hero.reveal-active { animation-delay: 0.1s; }
+            header { 
+                animation: revealUp 0.6s ease-out forwards; 
+            }
+
+            .features {
+                display: flex;
+                flex-direction: column;
+            }
+
+
+            #block-crossplatform {
+                order: 1;
+            }
+
+            .comparison-block {
+                order: 2;
+            }
+
+            #block-analytics {
+                order: 3;
+            }
+
+            .more-features {
+                order: 4; 
+            }
+
+            .reviews-section {
+                order: 5;
+            }
+
+            .faq-section {
+                order: 6;
+            }
+
+            @media (max-width: 768px) {
+                #block-crossplatform {
+                    order: 4; 
+                }
+
+                #block-analytics {
+                    order: 3;
+                }
+
+                .more-features {
+                    order: 2;
+                    order: 5; 
+                }
+
+                .reviews-section {
+                    order: 6;
+                }
+
+                .faq-section {
+                    order: 7; 
+                }
+            }
+
         </style>
     </head>
     <body>
@@ -949,14 +1032,16 @@
             if (localStorage.getItem('theme') === 'light') isDark = false;
 
             function applyTheme() {
+                const mainLogo = document.querySelector('.logo img');
+
                 if (isDark) {
                     document.body.classList.add('dark-mode');
-                    // Если сейчас тёмная тема, показываем кнопку "Включить светлую"
                     themeIcon.src = 'img/light_theme.png';
+                    if (mainLogo) mainLogo.src = 'img/logo_dark.png';
                 } else {
                     document.body.classList.remove('dark-mode');
-                    // Если сейчас светлая тема, показываем кнопку "Включить тёмную"
                     themeIcon.src = 'img/dark_theme.png';
+                    if (mainLogo) mainLogo.src = 'img/logo.png';
                 }
                 localStorage.setItem('theme', isDark ? 'dark' : 'light');
                 updateAllScreenshots();
@@ -1540,6 +1625,26 @@
                 }
             }
 
+            function initRevealAnimations() {
+                const observerOptions = {
+                    threshold: 0.1 // Элемент начнет появляться, когда 10% его высоты будет в кадре
+                };
+
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('reveal-active');
+                            observer.unobserve(entry.target); // Чтобы анимация сработала только один раз
+                        }
+                    });
+                }, observerOptions);
+
+                // Цели для анимации
+                const targets = document.querySelectorAll('.hero, .comparison-block, .reviews-section, .faq-section');
+                targets.forEach(target => observer.observe(target));
+            }
+
+
             /* --- АВТООТКРЫТИЕ ПО ССЫЛКЕ (ДЛЯ СКРИПТА) --- */
             window.addEventListener('load', () => {
                 const hash = window.location.hash;
@@ -1552,6 +1657,7 @@
 
             // вызовы функций
             window.addEventListener('DOMContentLoaded', () => {
+                initRevealAnimations();
                 fetchLatestVersion(); 
                 initInstallCounter(); 
                 loadLandingReviews();
