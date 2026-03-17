@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8004
-// @changelog    Крупное обновление дизайна. Добавлена сводка в расписании
+// @version      1.8005
+// @changelog    Крупное обновление дизайна. Добавлена сводка в расписании и улучшен 'светофор'
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @match        https://student.psu.ru/*
@@ -4908,7 +4908,7 @@ button.search-capsule:hover {
     text-decoration: none !important;
 }
 
-/* --- LIVE TIMETABLE INDICATORS (TRAFFIC LIGHT) --- */
+/* --- LIVE TIMETABLE INDICATORS --- */
 @keyframes pulse-live {
     0% { transform: scale(0.9); box-shadow: 0 0 0 0 var(--pulse-color); }
     70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); }
@@ -4919,37 +4919,48 @@ button.search-capsule:hover {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    display: inline-block;
-    margin-left: 10px;
-    vertical-align: middle;
-    position: relative;
     z-index: 10;
+    display: inline-block;
 }
 
-/* ЗЕЛЕНАЯ - Пара идет (безопасное время) */
-.live-dot.active {
-    --pulse-color: rgba(52, 199, 89, 0.4);
-    background-color: var(--color-green) !important;
-    animation: pulse-live 2s infinite;
+.pair_num .live-dot,
+.timetable-gap-capsule .live-dot {
+    position: absolute !important;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
-/* ЖЕЛТАЯ - Пара скоро начнется (приготовься) */
-.live-dot.soon {
-    --pulse-color: rgba(255, 204, 0, 0.4);
-    background-color: var(--color-yellow) !important;
-    animation: pulse-live 1.5s infinite;
+.pair_num .live-dot { right: 8px; }
+.timetable-gap-capsule .live-dot { right: -14px; }
+
+.pair_num {
+    position: relative;
+}
+.pair_num .live-dot {
+    right: 8px;
+    top: 50%;
+    margin-top: -4px;
 }
 
-/* КРАСНАЯ - Пара скоро закончится (завершение) */
-.live-dot.ending {
-    --pulse-color: rgba(255, 59, 48, 0.4);
-    background-color: var(--color-red) !important;
-    animation: pulse-live 1s infinite; /* Пульсирует быстрее */
+.timetable-gap-capsule {
+    position: relative;
 }
+.timetable-gap-capsule .live-dot {
+    right: -16px;
+    top: 50%;
+    margin-top: -4px;
+}
+
+.live-dot.active { --pulse-color: rgba(52, 199, 89, 0.4); background-color: var(--color-green) !important; animation: pulse-live 2s infinite; }
+.live-dot.soon { --pulse-color: rgba(255, 204, 0, 0.4); background-color: var(--color-yellow) !important; animation: pulse-live 1.5s infinite; }
+.live-dot.ending { --pulse-color: rgba(255, 59, 48, 0.4); background-color: var(--color-red) !important; animation: pulse-live 1s infinite; }
 
 /* Для заголовка дня подгоняем отступ */
 .day-name .live-dot {
-    margin-top: -3px;
+    position: static !important;
+    vertical-align: middle;
+    transform: none;
+    margin-left: 10px;
 }
 
 /* --- ANALYTICS MODAL --- */
@@ -6143,7 +6154,6 @@ injectStyles(styles);
     }
 
     function updateLiveTimetable() {
-        // Проверяем, на той ли мы неделе
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.has('p_week')) {
             const actualWeek = localStorage.getItem('etis_actual_week');
@@ -6151,83 +6161,69 @@ injectStyles(styles);
         }
 
         const now = new Date();
-        const currentDay = now.getDay(); // 0 - вс, 1 - пн...
+        const currentDay = now.getDay(); 
         const currentTime = now.getHours() * 60 + now.getMinutes();
 
         const daysMap = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
         const todayName = daysMap[currentDay];
 
-        // Настройки времени (в минутах)
-        const SOON_START_THRESHOLD = 20; // Желтый: за сколько минут до начала показывать
-        const SOON_END_THRESHOLD = 15;   // Красный: за сколько минут до конца показывать
-
-        // 1. Ищем сегодняшний день
         document.querySelectorAll('.day').forEach(dayBlock => {
-            const dayHeader = dayBlock.querySelector('.day-name');
-            if (!dayHeader) return;
+            const dayHeaderName = dayBlock.querySelector('.day-name');
+            if (!dayHeaderName) return;
 
-            // Очищаем старые точки
+            // Очищаем ВСЕ старые точки в этом дне
             dayBlock.querySelectorAll('.live-dot').forEach(dot => dot.remove());
 
-            if (dayHeader.textContent.trim() === todayName) {
-                // Добавляем точку в заголовок дня (просто индикатор "сегодня")
+            if (dayHeaderName.textContent.trim() === todayName) {
+                // 1. Возвращаем точку в заголовок дня
                 const dayDot = document.createElement('span');
                 dayDot.className = 'live-dot active';
-                // Убираем пульсацию у точки дня, чтобы не отвлекала
                 dayDot.style.animation = 'none';
-                dayHeader.appendChild(dayDot);
+                dayDot.title = "Сегодня";
+                dayHeaderName.appendChild(dayDot);
 
-                // 2. Ищем текущую или ближайшую пару
+                // 2. Ищем активные строки
                 dayBlock.querySelectorAll('.timetable-grid tr').forEach(row => {
-                    // Игнорируем строки-окна и выходные дни
-                    if (row.classList.contains('timetable-gap-row') || row.classList.contains('custom-no-pairs')) return;
+                    if (row.classList.contains('custom-no-pairs') || row.style.display === 'none') return;
 
-                    const timeEl = row.querySelector('.eval');
-                    if (!timeEl) return;
+                    let startTimeStr = "";
+                    let duration = 90;
 
-                    // Дополнительная проверка на время выходного дня
-                    if (timeEl.textContent.trim() === '00:00') return;
+                    if (row.classList.contains('timetable-gap-row')) {
+                        startTimeStr = row.getAttribute('data-gap-start');
+                        const count = parseInt(row.getAttribute('data-gap-count') || "1");
+                        duration = (count * 90) + ((count - 1) * 10);
+                    } else {
+                        const timeEl = row.querySelector('.eval');
+                        if (timeEl) startTimeStr = timeEl.textContent.trim();
+                    }
 
-                    const startTimeParts = timeEl.textContent.split(':');
-                    const startMins = parseInt(startTimeParts[0]) * 60 + parseInt(startTimeParts[1]);
-                    const endMins = startMins + 90; // Стандартная пара 1.5 часа
+                    if (!startTimeStr || startTimeStr === "00:00") return;
 
-                    const timeToStart = startMins - currentTime;
-                    const timeToEnd = endMins - currentTime;
+                    const parts = startTimeStr.split(':');
+                    const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                    const endMins = startMins + duration;
 
+                    let type = "";
                     if (currentTime >= startMins && currentTime <= endMins) {
-                        // Пара идет сейчас
-                        if (timeToEnd <= SOON_END_THRESHOLD) {
-                            // Осталось мало времени -> КРАСНЫЙ
-                            addDot(row, 'ending');
+                        type = (endMins - currentTime <= 15) ? 'ending' : 'active';
+                    } else if (startMins - currentTime <= 20 && startMins - currentTime > 0) {
+                        type = 'soon';
+                    }
+
+                    if (type) {
+                        const dot = document.createElement('span');
+                        dot.className = `live-dot ${type}`;
+                        
+                        if (row.classList.contains('timetable-gap-row')) {
+                            row.querySelector('.timetable-gap-capsule')?.appendChild(dot);
                         } else {
-                            // Времени еще много -> ЗЕЛЕНЫЙ
-                            addDot(row, 'active');
+                            row.querySelector('.pair_num')?.appendChild(dot);
                         }
-                    } else if (timeToStart <= SOON_START_THRESHOLD && timeToStart > 0) {
-                        // До пары осталось немного -> ЖЕЛТЫЙ
-                        addDot(row, 'soon');
                     }
                 });
             }
         });
-
-        function addDot(row, type) {
-            const target = row.querySelector('.pair_num');
-            if (target && !target.querySelector('.live-dot')) {
-                const dot = document.createElement('span');
-                dot.className = `live-dot ${type}`;
-
-                // Добавим подсказку при наведении
-                let title = "";
-                if (type === 'active') title = "Пара идет";
-                if (type === 'soon') title = "Скоро начнется";
-                if (type === 'ending') title = "Скоро закончится";
-                dot.title = title;
-
-                target.appendChild(dot);
-            }
-        }
     }
 
     // --- ФУНКЦИЯ ОКНА "СООБЩИТЬ ОБ ОШИБКЕ" ---
@@ -7843,6 +7839,197 @@ injectStyles(styles);
                     }
                 });
 
+                // --- КНОПКА "СВОДКА" (АНАЛИЗ НЕДЕЛИ) ---
+                const summaryBtn = document.createElement('div');
+                summaryBtn.className = 'toolbar-item';
+                summaryBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">pie_chart</span> Сводка';
+                toolbar.appendChild(summaryBtn);
+
+                // Функция автоматического сохранения количества пар в кэш
+                const saveWeekToHistory = () => {
+                    const currentWeekEl = span9.querySelector('.week.current');
+                    const weekNum = currentWeekEl ? currentWeekEl.textContent.replace(/\D/g, '').trim() : null;
+                    if (weekNum) {
+                        let totalCount = 0;
+                        span9.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
+                            if (row.style.display !== 'none' && !row.classList.contains('hidden-by-filter')) {
+                                totalCount++;
+                            }
+                        });
+                        const storageKey = 'etis_weekly_pairs_history_v1';
+                        let history = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                        history[weekNum] = totalCount;
+                        localStorage.setItem(storageKey, JSON.stringify(history));
+                    }
+                };
+
+                setTimeout(saveWeekToHistory, 500);
+
+                summaryBtn.addEventListener('click', () => {
+                    let lek = 0, pract = 0, lab = 0, cons = 0, exam = 0, total = 0;
+                    
+                    // Считаем текущие пары
+                    span9.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
+                        if (row.style.display === 'none' || row.classList.contains('hidden-by-filter')) return;
+                        
+                        total++;
+                        const typeBadge = row.querySelector('.pair-type-badge');
+                        const disName = row.querySelector('.dis') ? row.querySelector('.dis').textContent.toLowerCase() : '';
+
+                        if (typeBadge) {
+                            const t = typeBadge.textContent.toLowerCase();
+                            if (t.includes('лек')) lek++;
+                            else if (t.includes('практ')) pract++;
+                            else if (t.includes('лаб')) lab++;
+                            else if (t.includes('экз') || t.includes('зач')) exam++;
+                        } else {
+                            if (disName.includes('консультация')) cons++;
+                            else if (disName.includes('экзамен') || disName.includes('зачет') || disName.includes('зачёт')) exam++;
+                        }
+                    });
+
+                    const totalMins = total * 90;
+                    const hours = Math.floor(totalMins / 60);
+                    const mins = totalMins % 60;
+                    const timeStr = hours > 0 ? `${hours} ч ${mins > 0 ? mins + ' мин' : ''}` : '0 ч';
+
+                    // --- ЛОГИКА СРАВНЕНИЯ СО СРЕДНИМ ---
+                    const storageKey = 'etis_weekly_pairs_history_v1';
+                    const history = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                    const keys = Object.keys(history);
+                    
+                    let comparisonHtml = ''; 
+                    let avgHtml = '';
+
+                    // Вспомогательная функция для склонения слова "пара"
+                    const getPairsWord = (n) => {
+                        const absN = Math.abs(Math.round(n));
+                        if (absN % 10 === 1 && absN % 100 !== 11) return 'пару';
+                        if (absN % 10 >= 2 && absN % 10 <= 4 && (absN % 100 < 10 || absN % 100 >= 20)) return 'пары';
+                        return 'пар';
+                    };
+
+                    if (keys.length >= 5) {
+                        const sum = Object.values(history).reduce((a, b) => a + b, 0);
+                        const avgVal = sum / keys.length;
+                        const avgRounded = Math.round(avgVal * 10) / 10;
+                        
+                        // Разница
+                        const diff = Math.round((total - avgVal) * 10) / 10;
+                        const absDiff = Math.abs(diff);
+                        const word = getPairsWord(diff);
+                        
+                        if (diff > 0) {
+                            comparisonHtml = `<span style="color:var(--color-red); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">
+                                (нагрузка выше среднего на ${diff} ${word})
+                            </span>`;
+                        } else if (diff < 0) {
+                            comparisonHtml = `<span style="color:var(--color-green); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">
+                                (нагрузка ниже на ${absDiff} ${word})
+                            </span>`;
+                        } else {
+                            comparisonHtml = `<span style="color:var(--color-text-secondary); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem; opacity: 0.8;">
+                                (нагрузка в пределах нормы)
+                            </span>`;
+                        }
+
+                        const avgTotalMins = avgRounded * 90;
+                        const avgHours = Math.floor(avgTotalMins / 60);
+                        const avgMins = Math.round(avgTotalMins % 60);
+                        const avgTimeStr = avgHours > 0 ? `${avgHours} ч ${avgMins > 0 ? avgMins + ' мин' : ''}` : '0 ч';
+
+                        avgHtml = `
+                            <div style="margin-top: 2.4rem;">
+                                <div style="font-size: 1.2rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 1.2rem; letter-spacing: 0.5px;">
+                                    В среднем за неделю <span style="text-transform: none; font-weight: 500; font-size: 1.1rem;">(на основе ${keys.length} нед.)</span>
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.2rem;">
+                                    <div class="stat-box">
+                                        <span class="stat-box-title">Всего пар</span>
+                                        <span class="stat-box-value">${avgRounded}</span>
+                                    </div>
+                                    <div class="stat-box">
+                                        <span class="stat-box-title">Времени в вузе</span>
+                                        <span class="stat-box-value" style="color: var(--color-accent);">${avgTimeStr}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        avgHtml = `
+                            <div style="margin-top: 2.4rem;">
+                                <div style="font-size: 1.2rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 0.8rem; letter-spacing: 0.5px;">В среднем за неделю</div>
+                                <div style="font-size:1.3rem; color: var(--color-text-secondary); line-height: 1.5; background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium);">
+                                    Откройте еще <b>${5 - keys.length} нед.</b> расписания, чтобы система рассчитала среднюю нагрузку.
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    // Отрисовка модального окна
+                    let overlay = document.querySelector('.analytics-overlay');
+                    let modal = document.querySelector('.analytics-modal');
+
+                    if (!overlay || !modal) {
+                        overlay = document.createElement('div');
+                        overlay.className = 'analytics-overlay';
+                        document.body.appendChild(overlay);
+
+                        modal = document.createElement('div');
+                        modal.className = 'analytics-modal';
+                        document.body.appendChild(modal);
+                    }
+
+                    modal.innerHTML = `
+                        <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="ui-dialog-title">Сводка</span>
+                            <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                        </div>
+                        <div class="ui-dialog-content" style="padding: 2.4rem;">
+                            
+                            <div>
+                                <div style="display: flex; align-items: center; margin-bottom: 1.2rem;">
+                                    <span style="font-size: 1.2rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">За текущую неделю</span>
+                                    ${comparisonHtml}
+                                </div>
+                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.2rem;">
+                                    <div class="stat-box">
+                                        <span class="stat-box-title">Всего пар</span>
+                                        <span class="stat-box-value">${total}</span>
+                                    </div>
+                                    <div class="stat-box">
+                                        <span class="stat-box-title">Времени в вузе</span>
+                                        <span class="stat-box-value" style="color: var(--color-accent);">${timeStr}</span>
+                                    </div>
+                                </div>
+
+                                <div style="margin-top: 1.2rem;">
+                                    <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
+                                        ${lek > 0 ? `<div style="background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Лекции: ${lek}</div>` : ''}
+                                        ${pract > 0 ? `<div style="background: rgba(52, 199, 89, 0.1); color: var(--color-green); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Практики: ${pract}</div>` : ''}
+                                        ${lab > 0 ? `<div style="background: rgba(255, 149, 0, 0.1); color: var(--color-warning); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Лабы: ${lab}</div>` : ''}
+                                        ${exam > 0 ? `<div style="background: rgba(255, 59, 48, 0.1); color: var(--color-red); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Зачет/Экзамен: ${exam}</div>` : ''}
+                                        ${cons > 0 ? `<div style="background: var(--color-highlight); color: var(--color-text-primary); border: 1px solid var(--color-table-border); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Консультации: ${cons}</div>` : ''}
+                                        ${total === 0 ? `<div style="color: var(--color-text-secondary); font-size: 1.3rem;">На этой неделе пар нет. Выдыхаем! ☕</div>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+
+                            ${avgHtml}
+                        </div>
+                    `;
+
+                    const closeAnalytics = () => {
+                        overlay.classList.remove('active');
+                        modal.classList.remove('active');
+                    };
+                    overlay.onclick = closeAnalytics;
+                    modal.querySelector('.close-analytics').onclick = closeAnalytics;
+
+                    overlay.classList.add('active');
+                    modal.classList.add('active');
+                });
+
                 // --- 2. ТУМБЛЕР "КОНСУЛЬТАЦИИ" (Локальная фильтрация с памятью) ---
                 const consultDiv = Array.from(span9.querySelectorAll('div')).find(div =>
                     div.querySelector('input[type="checkbox"]') && div.textContent.includes('Консультации')
@@ -7903,6 +8090,8 @@ injectStyles(styles);
                                 if (typeof recalculateTimetable === 'function') recalculateTimetable();
                                 renderNotes();
 
+                                updateLiveTimetable(); 
+
                                 // 3. Плавно проявляем обновленные таблицы обратно
                                 tables.forEach(t => {
                                     t.style.opacity = '1';
@@ -7916,168 +8105,6 @@ injectStyles(styles);
                         span9.querySelectorAll('.consultation-row').forEach(row => row.classList.add('hidden-by-filter'));
                     }
                 }
-
-                // --- КНОПКА "СВОДКА" (АНАЛИЗ НЕДЕЛИ) ---
-                const summaryBtn = document.createElement('div');
-                summaryBtn.className = 'toolbar-item';
-                summaryBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">pie_chart</span> Сводка';
-                toolbar.appendChild(summaryBtn);
-
-                // Функция автоматического сохранения количества пар в кэш
-                const saveWeekToHistory = () => {
-                    const currentWeekEl = span9.querySelector('.week.current');
-                    const weekNum = currentWeekEl ? currentWeekEl.textContent.replace(/\D/g, '').trim() : null;
-                    if (weekNum) {
-                        let totalCount = 0;
-                        span9.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
-                            if (row.style.display !== 'none' && !row.classList.contains('hidden-by-filter')) {
-                                totalCount++;
-                            }
-                        });
-                        const storageKey = 'etis_weekly_pairs_history_v1';
-                        let history = JSON.parse(localStorage.getItem(storageKey) || '{}');
-                        history[weekNum] = totalCount;
-                        localStorage.setItem(storageKey, JSON.stringify(history));
-                    }
-                };
-
-                setTimeout(saveWeekToHistory, 500);
-
-                summaryBtn.addEventListener('click', () => {
-                    let lek = 0, pract = 0, lab = 0, cons = 0, exam = 0, total = 0;
-                    
-                    span9.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
-                        if (row.style.display === 'none' || row.classList.contains('hidden-by-filter')) return;
-                        
-                        total++;
-                        const typeBadge = row.querySelector('.pair-type-badge');
-                        const disName = row.querySelector('.dis') ? row.querySelector('.dis').textContent.toLowerCase() : '';
-
-                        if (typeBadge) {
-                            const t = typeBadge.textContent.toLowerCase();
-                            if (t.includes('лек')) lek++;
-                            else if (t.includes('практ')) pract++;
-                            else if (t.includes('лаб')) lab++;
-                            else if (t.includes('экз') || t.includes('зач')) exam++;
-                        } else {
-                            // Если бейджа нет, пытаемся понять по названию
-                            if (disName.includes('консультация')) cons++;
-                            else if (disName.includes('экзамен') || disName.includes('зачет') || disName.includes('зачёт')) exam++;
-                        }
-                    });
-
-                    // Подсчет времени за текущую неделю
-                    const totalMins = total * 90;
-                    const hours = Math.floor(totalMins / 60);
-                    const mins = totalMins % 60;
-                    const timeStr = hours > 0 ? `${hours} ч ${mins > 0 ? mins + ' мин' : ''}` : '0 ч';
-
-                    // Формирование блока среднего за неделю
-                    let avgHtml = '';
-                    const storageKey = 'etis_weekly_pairs_history_v1';
-                    const history = JSON.parse(localStorage.getItem(storageKey) || '{}');
-                    const keys = Object.keys(history);
-
-                    if (keys.length >= 5) {
-                        const sum = Object.values(history).reduce((a, b) => a + b, 0);
-                        const avg = Math.round((sum / keys.length) * 10) / 10;
-                        
-                        // Подсчет среднего времени
-                        const avgTotalMins = avg * 90;
-                        const avgHours = Math.floor(avgTotalMins / 60);
-                        const avgMins = Math.round(avgTotalMins % 60);
-                        const avgTimeStr = avgHours > 0 ? `${avgHours} ч ${avgMins > 0 ? avgMins + ' мин' : ''}` : '0 ч';
-
-                        avgHtml = `
-                            <div style="margin-top: 2.4rem;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.2rem;">
-                                    <div style="font-size: 1.2rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">
-                                        В среднем за неделю <span style="text-transform: none; font-weight: 500; font-size: 1.1rem;">(на основе ${keys.length} нед.)</span>
-                                    </div>
-                                </div>
-                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.2rem;">
-                                    <div class="stat-box">
-                                        <span class="stat-box-title">Всего пар</span>
-                                        <span class="stat-box-value">${avg}</span>
-                                    </div>
-                                    <div class="stat-box">
-                                        <span class="stat-box-title">Времени в вузе</span>
-                                        <span class="stat-box-value" style="color: var(--color-accent);">${avgTimeStr}</span>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    } else {
-                        avgHtml = `
-                            <div style="margin-top: 2.4rem;">
-                                <div style="font-size: 1.2rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 0.8rem; letter-spacing: 0.5px;">В среднем за неделю</div>
-                                <div style="font-size:1.3rem; color: var(--color-text-secondary); line-height: 1.5; background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium);">
-                                    Откройте еще <b>${5 - keys.length} нед.</b> расписания, чтобы система рассчитала вашу среднюю нагрузку.
-                                </div>
-                            </div>
-                        `;
-                    }
-
-                    // Отрисовка модального окна
-                    let overlay = document.querySelector('.analytics-overlay');
-                    let modal = document.querySelector('.analytics-modal');
-
-                    if (!overlay || !modal) {
-                        overlay = document.createElement('div');
-                        overlay.className = 'analytics-overlay';
-                        document.body.appendChild(overlay);
-
-                        modal = document.createElement('div');
-                        modal.className = 'analytics-modal';
-                        document.body.appendChild(modal);
-                    }
-
-                    modal.innerHTML = `
-                        <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="ui-dialog-title">Сводка</span>
-                            <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
-                        </div>
-                        <div class="ui-dialog-content" style="padding: 2.4rem;">
-                            
-                            <div>
-                                <div style="font-size: 1.2rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 1.2rem; letter-spacing: 0.5px;">За текущую неделю</div>
-                                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.2rem;">
-                                    <div class="stat-box">
-                                        <span class="stat-box-title">Всего пар</span>
-                                        <span class="stat-box-value">${total}</span>
-                                    </div>
-                                    <div class="stat-box">
-                                        <span class="stat-box-title">Времени в вузе</span>
-                                        <span class="stat-box-value" style="color: var(--color-accent);">${timeStr}</span>
-                                    </div>
-                                </div>
-
-                                <div style="margin-top: 1.2rem;">
-                                    <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
-                                        ${lek > 0 ? `<div style="background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Лекции: ${lek}</div>` : ''}
-                                        ${pract > 0 ? `<div style="background: rgba(52, 199, 89, 0.1); color: var(--color-green); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Практики: ${pract}</div>` : ''}
-                                        ${lab > 0 ? `<div style="background: rgba(255, 149, 0, 0.1); color: var(--color-warning); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Лабы: ${lab}</div>` : ''}
-                                        ${exam > 0 ? `<div style="background: rgba(255, 59, 48, 0.1); color: var(--color-red); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Зачет/Экзамен: ${exam}</div>` : ''}
-                                        ${cons > 0 ? `<div style="background: var(--color-highlight); color: var(--color-text-primary); border: 1px solid var(--color-table-border); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Консультации: ${cons}</div>` : ''}
-                                        ${total === 0 ? `<div style="color: var(--color-text-secondary); font-size: 1.3rem;">На этой неделе пар нет. Выдыхаем! ☕</div>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-
-                            ${avgHtml}
-                        </div>
-                    `;
-
-                    const closeAnalytics = () => {
-                        overlay.classList.remove('active');
-                        modal.classList.remove('active');
-                    };
-                    overlay.onclick = closeAnalytics;
-                    modal.querySelector('.close-analytics').onclick = closeAnalytics;
-
-                    overlay.classList.add('active');
-                    modal.classList.add('active');
-                });
 
                 // --- 3. КНОПКА "СИНХРОНИЗАЦИЯ" ---
                 const syncHeader = Array.from(document.querySelectorAll('h2')).find(h2 => h2.querySelector('#tb_show') || h2.textContent.includes('Синхронизация'));
@@ -8814,6 +8841,15 @@ injectStyles(styles);
                                 if (gapCount > 0) {
                                     const gapRow = document.createElement('tr');
                                     gapRow.className = 'timetable-gap-row';
+
+                                    // Собираем время начала первого скрытого ряда и время окончания последнего для "окна"
+                                    const firstHiddenRow = rows[gapStart];
+                                    const lastHiddenRow = rows[i-1];
+                                    const startTime = firstHiddenRow.querySelector('.eval')?.textContent || "00:00";
+                                    
+                                    // Записываем время в дата-атрибуты, чтобы функция светофора их видела
+                                    gapRow.setAttribute('data-gap-start', startTime);
+                                    gapRow.setAttribute('data-gap-count', gapCount);
 
                                     let pairWord = 'пар';
                                     if (gapCount === 1) pairWord = 'пара';
