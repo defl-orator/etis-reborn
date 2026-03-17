@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8003
+// @version      1.8004
 // @changelog    Крупное обновление дизайна. Добавлена сводка в расписании
 // @description  Глобальный редизайн ЕТИСа
-// @author       ENAleksey & Nikolai Masalkin
+// @author       dya_dya
 // @match        https://student.psu.ru/*
 // @run-at       document-start
 // @grant        GM_xmlhttpRequest
