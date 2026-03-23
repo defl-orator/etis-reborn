@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8005
-// @changelog    Крупное обновление дизайна. Добавлена сводка в расписании и улучшен 'светофор'
+// @version      1.8010
+// @changelog    Добавлена кастомизация и свайпы в расписании для телефонов: свайп влево по карточке дня открывает окно с добавлением пары, свайпы по конкретной паре открывают окно с заметкой/дз либо оценкой занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @match        https://student.psu.ru/*
@@ -656,7 +656,7 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
 .timetable { display: flex !important; flex-direction: column !important; width: 100% !important; }
 .timetable td { border: none !important; vertical-align: middle !important; padding-top: 0.2rem !important; padding-bottom: 0.2rem !important; font-size: 1.2rem !important; }
 .pair_num { width: 9.6rem !important; height: 5rem !important; border: none !important; font-size: 0 !important; padding-left: 1.6rem !important; }
-.pair_num .eval { font-size: 1.1rem !important; color: var(--color-text-secondary) !important; }
+.pair_num .eval { font-size: 1.1rem !important; color: var(--color-text-secondary) !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important;}
 .pair_info { padding-right: 1.4rem !important; }
 .pair_info .dis a { color: var(--color-text-primary) !important; text-decoration: none !important; font-size: 1.4rem !important; }
 .pair_teacher { width: 14rem !important; text-align: right !important; padding-right: 1.6rem !important; }
@@ -1608,7 +1608,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     transform: translateY(-1px);
 }
 .pair_info .aud a[href*="zoom"]:before {
-    content: 'videocam' !important;
+    content: 'public' !important;
     font-family: 'Material Icons Outlined' !important;
     font-size: 1.8rem !important;
     display: block !important;
@@ -1626,7 +1626,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     transform: translateY(-1px);
 }
 .pair_info .aud a[href*="telemost"]:before {
-    content: 'videocam' !important;
+    content: 'public' !important;
     font-family: 'Material Icons Outlined' !important;
     font-size: 1.8rem !important;
     display: block !important;
@@ -4604,7 +4604,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 /* --- ПОИСК ПРЕПОДАВАТЕЛЕЙ --- */
 /* Контейнер поиска */
 .teacher-search-wrapper {
-    margin: 1rem 0 3rem 0 !important;
+    margin: 0 0 2.4rem 0 !important;
     display: flex !important;
     justify-content: center !important;
     width: 100% !important;
@@ -4940,6 +4940,9 @@ button.search-capsule:hover {
     right: 8px;
     top: 50%;
     margin-top: -4px;
+    position: static !important;
+    transform: none !important;
+    margin: 0 !important;
 }
 
 .timetable-gap-capsule {
@@ -5720,6 +5723,109 @@ button.analytics-btn {
         text-align: center !important;
     }
 }
+
+/* Стили плавающего индикатора при свайпе */
+#swipe-action-bubble {
+    position: fixed;
+    width: 24px;
+    height: 24px;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: color 0.2s, opacity 0.1s, transform 0.2s;
+}
+
+#swipe-action-bubble .material-icons {
+    font-size: 28px !important;
+}
+
+#swipe-action-bubble.active-threshold {
+    transform: scale(1.15);
+}
+
+#swipe-action-bubble.active-threshold.action-add { color: var(--color-blue); }
+#swipe-action-bubble.active-threshold.action-note { color: var(--color-accent); }
+#swipe-action-bubble.active-threshold.action-eval { color: var(--color-yellow); }
+
+/* БЛОКИРОВКА ХОВЕРОВ НА СМАРТФОНАХ */
+@media (hover: none), (pointer: coarse) {
+    .timetable-grid tr, .day { touch-action: pan-y; }
+
+    html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval) { 
+        transform: none !important; 
+    }
+    
+    html[theme] .timetable-grid tr:hover td.pair_teacher .eval,
+    html[theme] .timetable-grid td.pair_teacher .eval { 
+        opacity: 0 !important; 
+        visibility: hidden !important; 
+        height: 0 !important; 
+        pointer-events: none !important;
+    }
+    
+    .add-custom-pair-btn { display: none !important; }
+    .delete-custom-pair-btn { 
+        opacity: 1 !important; visibility: visible !important; transform: scale(1) !important;
+        color: var(--color-text-secondary) !important; 
+    }
+
+    .timetable-grid tr:hover .subject-note-btn:not(.has-note) {
+        opacity: 0 !important; visibility: hidden !important; pointer-events: none !important;
+    }
+    .subject-note-btn.has-note {
+        opacity: 1 !important; visibility: visible !important; pointer-events: auto !important;
+    }
+}
+
+/* --- COLOR PICKER MODAL --- */
+.color-picker-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6rem;
+    margin-top: 2rem;
+    justify-content: center;
+}
+.color-picker-circle {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #fff;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    position: relative;
+}
+.color-picker-circle:hover {
+    transform: scale(1.1);
+}
+.color-picker-circle.selected {
+    box-shadow: 0 0 0 4px var(--color-card), 0 0 0 7px var(--color-text-primary);
+    transform: scale(1.1);
+}
+.color-picker-toggle-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.6rem;
+    background: var(--color-highlight);
+    border-radius: var(--radius-medium);
+    margin-bottom: 2rem;
+}
+.color-picker-toggle-wrap span {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
     `;
 
     // Внедряем стили
@@ -5745,6 +5851,119 @@ injectStyles(styles);
     // ==========================================
     // 2. ВНЕДРЕНИЕ JS ЛОГИКИ
     // ==========================================
+
+    // ==========================================
+    // ЛОГИКА КАСТОМИЗАЦИИ (ЦВЕТА И ГРАДИЕНТЫ)
+    // ==========================================
+    const ACCENT_COLORS = {
+        blue: '#007AFF',
+        green: '#34C759',
+        purple: '#AF52DE',
+        red: '#FF3B30',
+        orange: '#FF9500',
+        yellow: '#FFCC00'
+    };
+
+    function applyAccentColor() {
+        const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: false, colors: ['blue'] };
+        
+        let c1 = ACCENT_COLORS[config.colors[0]] || ACCENT_COLORS.blue;
+        let c2 = config.colors[1] ? ACCENT_COLORS[config.colors[1]] : c1;
+
+        let styleEl = document.getElementById('etis-custom-accent');
+        if (!styleEl) {
+            styleEl = document.createElement('style');
+            styleEl.id = 'etis-custom-accent';
+            document.head.appendChild(styleEl);
+        }
+
+        const hexToRgba = (hex, alpha) => {
+            let r = parseInt(hex.slice(1, 3), 16),
+                g = parseInt(hex.slice(3, 5), 16),
+                b = parseInt(hex.slice(5, 7), 16);
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        };
+
+        const bgAccent = config.isGradient ? `linear-gradient(135deg, ${c1}, ${c2})` : c1;
+
+        styleEl.innerHTML = `
+            :root, [theme="light"], [theme="dark"] {
+                --color-accent: ${c1} !important;
+                --color-text-link: ${c1} !important;
+                --color-accent-active: ${hexToRgba(c1, 0.15)} !important;
+                --bg-accent: ${bgAccent} !important;
+            }
+
+            /* --- 1. ФОНЫ (Кнопки, активные вкладки, плашки) --- */
+            .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
+            .weeks .week.current,
+            .submenu b,
+            .answer-btn-custom,
+            #sbmt,
+            .gpa-capsule,
+            .mobile-menu-btn,
+            .timetable-toolbar .toolbar-item.is-active,
+            form.que_form #send_btn,
+            #swipe-action-bubble.active-threshold.action-note,
+            .badge.ctl,
+            .jour-info-group {
+                background: var(--bg-accent) !important;
+                border: none !important;
+                color: #fff !important;
+            }
+            
+            .span3 > .nav.nav-tabs.nav-stacked > li.active > a {
+                box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+            }
+
+            /* --- 2. ТЕКСТ И ИКОНКИ (Лица, скрепки, ссылки) --- */
+            ${config.isGradient ? `
+            .msg-sender,
+            .msg-sender .material-icons,
+            .file-attachment-link .material-icons,
+            .teacher-name-link,
+            .review-dis-link,
+            .tpr_part > a,
+            .theme a,
+            .logo-say-hey,
+            .accent-stat {
+                background: var(--bg-accent) !important;
+                -webkit-background-clip: text !important;
+                -webkit-text-fill-color: transparent !important;
+                color: transparent !important;
+                display: inline-block;
+            }
+
+            .weeks .week.actual-week:not(.current) > a,
+            .stat-box-value,
+            .msg-sender {
+                display: inline-flex !important;
+            }
+
+            #swipe-action-bubble.active-threshold.action-note { 
+                -webkit-text-fill-color: #fff !important; 
+                color: #fff !important; 
+            }
+            ` : `
+            /* Если градиент ВЫКЛЮЧЕН — просто красим текст сплошным цветом */
+            .msg-sender,
+            .msg-sender .material-icons,
+            .file-attachment-link .material-icons,
+            .teacher-name-link,
+            .review-dis-link,
+            .tpr_part > a,
+            .theme a,
+            .logo-say-hey,
+            .accent-stat {
+                color: var(--color-accent) !important;
+            }
+            `}
+        `;
+    }
+
+    // Применяем сразу при загрузке
+    applyAccentColor();
+
     let theme = 'auto';
     let prefersColorSchemeMedia;
 
@@ -6116,37 +6335,50 @@ injectStyles(styles);
             }
         }
 
-        // Универсальный обработчик для кнопки меню (убивает фантомные нажатия и ховеры)
         const toggleMenuHandler = (e) => {
-            // e.cancelable спасает от ошибок в консоли, если браузер не дает сбросить событие
-            if (e.cancelable) e.preventDefault(); 
             e.stopPropagation();
             const isOpen = sidebar.classList.contains('mobile-active');
             toggleMenu(!isOpen);
         };
 
-        // Ловим отпускание пальца (на смартфонах) и обычный клик (для мыши)
-        menuBtn.addEventListener('touchend', toggleMenuHandler, { passive: false });
+        // Оставляем только 'click'. Современные мобильные браузеры 
+        // сами гасят случайные клики при скролле.
         menuBtn.addEventListener('click', toggleMenuHandler);
 
-        // То же самое для затемнения (оверлея), чтобы клик не пробивал насквозь
         const closeMenuHandler = (e) => {
-            if (e.cancelable) e.preventDefault();
             e.stopPropagation();
             toggleMenu(false);
         };
 
-        overlay.addEventListener('touchend', closeMenuHandler, { passive: false });
         overlay.addEventListener('click', closeMenuHandler);
+
+        // --- ЗАЩИТА ОТ СЛУЧАЙНЫХ КЛИКОВ ПРИ СКРОЛЛЕ САЙДБАРА ---
+        let isSidebarScrolling = false;
+        let sidebarScrollTimer;
+
+        sidebar.addEventListener('scroll', () => {
+            isSidebarScrolling = true;
+            clearTimeout(sidebarScrollTimer);
+            sidebarScrollTimer = setTimeout(() => {
+                isSidebarScrolling = false;
+            }, 150); // Ждем 150мс после остановки пальца, прежде чем снова разрешить клики
+        }, { passive: true });
 
         // Логика при клике на ссылку
         sidebar.querySelectorAll('a').forEach(link => {
-            link.addEventListener('click', () => {
+            link.addEventListener('click', (e) => {
+                // Если сайдбар прямо сейчас скроллится — блокируем переход и скрытие
+                if (isSidebarScrolling) {
+                    e.preventDefault();
+                    return;
+                }
+
                 sidebar.classList.remove('mobile-active');
                 overlay.classList.remove('active');
                 menuBtn.classList.remove('open');
                 menuBtn.classList.add('is-loading');
-                // Возвращаем скролл при переходе по ссылке
+                
+                // Возвращаем скролл основному окну при переходе
                 document.body.style.overflow = '';
                 document.documentElement.style.overflow = '';
             });
@@ -6218,7 +6450,14 @@ injectStyles(styles);
                         if (row.classList.contains('timetable-gap-row')) {
                             row.querySelector('.timetable-gap-capsule')?.appendChild(dot);
                         } else {
-                            row.querySelector('.pair_num')?.appendChild(dot);
+                            const timeEl = row.querySelector('.pair_num .eval');
+                            // Если находим элемент со временем, крепим точку прямо в него
+                            if (timeEl) {
+                                timeEl.appendChild(dot);
+                            } else {
+                                // Резервный вариант, если времени нет
+                                row.querySelector('.pair_num')?.appendChild(dot);
+                            }
                         }
                     }
                 });
@@ -6322,6 +6561,110 @@ injectStyles(styles);
         }
 
         loadReviews();
+    }
+
+    function openCustomizationModal() {
+        let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: false, colors: ['blue'] };
+        
+        let overlay = document.getElementById('etis-custom-overlay');
+        let modal = document.getElementById('etis-custom-modal');
+
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'etis-custom-overlay';
+            overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000000;display:none;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);';
+            document.body.appendChild(overlay);
+        }
+
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'etis-custom-modal';
+            modal.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:90%;max-width:400px;background:var(--color-card);border-radius:24px;z-index:2000001;display:none;box-shadow:var(--shadow-dialog);overflow:hidden;font-family:var(--font-family);';
+            document.body.appendChild(modal);
+        }
+
+        const renderModal = () => {
+            modal.innerHTML = `
+                <div class="ui-widget-header" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--color-table-border);background:var(--color-table-header);">
+                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Кастомизация</span>
+                    <span id="close-custom" class="material-icons" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
+                </div>
+                <div class="ui-dialog-content" style="padding:24px;">
+                    <div class="color-picker-toggle-wrap">
+                        <span>Градиентный акцент</span>
+                        <input type="checkbox" id="grad-toggle" class="tumbler-checkbox" ${config.isGradient ? 'checked' : ''}>
+                    </div>
+                    <div class="color-picker-grid" id="color-grid"></div>
+                </div>
+            `;
+
+            const grid = modal.querySelector('#color-grid');
+            
+            // Отрисовка кружков
+            Object.keys(ACCENT_COLORS).forEach(colorKey => {
+                const circle = document.createElement('div');
+                circle.className = 'color-picker-circle';
+                circle.style.backgroundColor = ACCENT_COLORS[colorKey];
+                
+                const selectedIndex = config.colors.indexOf(colorKey);
+                
+                if (selectedIndex !== -1) {
+                    circle.classList.add('selected');
+                    if (config.isGradient) {
+                        circle.textContent = (selectedIndex + 1).toString();
+                    } else {
+                        circle.innerHTML = '<span class="material-icons" style="font-size: 24px;">check</span>';
+                    }
+                }
+
+                circle.onclick = () => {
+                    if (config.isGradient) {
+                        if (config.colors.includes(colorKey)) {
+                            // Если нажали на выбранный цвет и их два — меняем местами
+                            if (config.colors.length === 2) {
+                                config.colors.reverse();
+                            }
+                        } else {
+                            // Если нажат новый цвет
+                            if (config.colors.length < 2) {
+                                config.colors.push(colorKey);
+                            } else {
+                                config.colors[1] = colorKey; // Заменяем второй
+                            }
+                        }
+                    } else {
+                        // Одиночный цвет
+                        config.colors = [colorKey];
+                    }
+                    
+                    localStorage.setItem('etis_accent_config', JSON.stringify(config));
+                    applyAccentColor();
+                    renderModal(); // Перерисовываем кружки
+                };
+                grid.appendChild(circle);
+            });
+
+            // Обработка тумблера
+            modal.querySelector('#grad-toggle').addEventListener('change', (e) => {
+                config.isGradient = e.target.checked;
+                // Если отключили градиент, оставляем только первый цвет
+                if (!config.isGradient && config.colors.length > 1) {
+                    config.colors = [config.colors[0]];
+                }
+                localStorage.setItem('etis_accent_config', JSON.stringify(config));
+                applyAccentColor();
+                renderModal();
+            });
+
+            // Закрытие
+            const closeAll = () => { overlay.style.display = 'none'; modal.style.display = 'none'; };
+            overlay.onclick = closeAll;
+            modal.querySelector('#close-custom').onclick = closeAll;
+        };
+
+        renderModal();
+        overlay.style.display = 'block';
+        modal.style.display = 'block';
     }
 
     // Модификация стилей страниц
@@ -6686,10 +7029,34 @@ injectStyles(styles);
                 verLi.appendChild(verLink);
                 allListItems.push(verLi);
 
+                // Вкладка "Кастомизация"
+                const custLi = document.createElement("li");
+                custLi.className = 'theme-switcher-item';
+                const custLink = document.createElement("a");
+                custLink.style.cursor = 'pointer';
+                custLink.href = "#customization";
+                custLink.textContent = 'Кастомизация';
+                custLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    // Закрываем мобильное меню при открытии модалки
+                    const side = document.querySelector('.span3');
+                    if (side && side.classList.contains('mobile-active')) {
+                        side.classList.remove('mobile-active');
+                        document.querySelector('.mobile-overlay')?.classList.remove('active');
+                        document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                        document.body.style.overflow = '';
+                        document.documentElement.style.overflow = '';
+                    }
+                    openCustomizationModal();
+                });
+                custLi.appendChild(custLink);
+                allListItems.push(custLi);
+
                 // Функция иконок
                 const getIconForHref = (href) => {
                     if (href === '#theme-switch') return 'brightness_6';
                     if (href === '#version-check') return 'system_update';
+                    if (href === '#customization') return 'palette';
                     if (href === '#reviews') return 'star_rate';
                     if (href === '#report-bug') return 'bug_report';
                     if (href.includes('teach_plan')) return 'school';
@@ -6788,7 +7155,7 @@ injectStyles(styles);
                     ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'group_tt'],
                     ['library', 'electr', 'advice', 'ses', 'about'],
                     ['term_test', 'special_est_list', 'оцените дистанционное'],
-                    ['#version-check', '#reviews', '#theme-switch', 'change_pass', 'change_email', 'change_pr_page', 'logout']
+                    ['#version-check', '#reviews', '#theme-switch', '#customization', 'change_pass', 'change_email', 'change_pr_page', 'logout']
                 ];
 
                 const usedItems = new Set();
@@ -7921,15 +8288,15 @@ injectStyles(styles);
                         
                         if (diff > 0) {
                             comparisonHtml = `<span style="color:var(--color-red); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">
-                                (нагрузка выше среднего на ${diff} ${word})
+                                (выше среднего на ${diff} ${word})
                             </span>`;
                         } else if (diff < 0) {
                             comparisonHtml = `<span style="color:var(--color-green); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">
-                                (нагрузка ниже на ${absDiff} ${word})
+                                (ниже на ${absDiff} ${word})
                             </span>`;
                         } else {
                             comparisonHtml = `<span style="color:var(--color-text-secondary); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem; opacity: 0.8;">
-                                (нагрузка в пределах нормы)
+                                (в пределах нормы)
                             </span>`;
                         }
 
@@ -7950,7 +8317,7 @@ injectStyles(styles);
                                     </div>
                                     <div class="stat-box">
                                         <span class="stat-box-title">Времени в вузе</span>
-                                        <span class="stat-box-value" style="color: var(--color-accent);">${avgTimeStr}</span>
+                                        <span class="stat-box-value accent-stat">${avgTimeStr}</span>
                                     </div>
                                 </div>
                             </div>
@@ -7998,8 +8365,8 @@ injectStyles(styles);
                                         <span class="stat-box-value">${total}</span>
                                     </div>
                                     <div class="stat-box">
-                                        <span class="stat-box-title">Времени в вузе</span>
-                                        <span class="stat-box-value" style="color: var(--color-accent);">${timeStr}</span>
+                                        <span class="stat-box-title">Времени на учёбе</span>
+                                        <span class="stat-box-value accent-stat">${timeStr}</span>
                                     </div>
                                 </div>
 
@@ -8665,9 +9032,8 @@ injectStyles(styles);
                         const text = w.textContent.trim();
                         const numMatch = text.match(/\d+/);
                         if (numMatch) {
-                            // Если внутри была ссылка, текст меняем внутри нее
-                            if (link) link.textContent = numMatch[0] + ' Неделя';
-                            else w.textContent = numMatch[0] + ' Неделя';
+                            if (link) link.innerHTML = '<span style="font-weight: 800;">' + numMatch[0] + '</span>&nbsp;<span style="font-weight: 800;">Неделя</span>';
+                            else w.innerHTML = '<span style="font-weight: 800;">' + numMatch[0] + '</span>&nbsp;<span style="font-weight: 800;">Неделя</span>';
                         }
                     } else if (link) {
                         // Неактивная неделя - оставляем только цифру
@@ -8692,12 +9058,9 @@ injectStyles(styles);
                     if (isOnlineText || linkEl) {
 
                         if (isZoom || isTelemost) {
-                            // 1. ZOOM или ТЕЛЕМОСТ
+                            // 1. ZOOM или ТЕЛЕМОСТ (оставляем только капсулу)
                             let platformName = isZoom ? "Zoom" : "Телемост";
                             aud.innerHTML = `
-                                <div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);">
-                                    <span class="material-icons" style="font-size: 1.5rem;">public</span>Онлайн в
-                                </div>
                                 <a href="${linkEl.href}" target="_blank">${platformName}</a>
                             `;
                         } else if (linkEl) {
@@ -8708,9 +9071,9 @@ injectStyles(styles);
                         } else {
                             // 3. ССЫЛКИ НЕТ, просто написано "Дистанционно"
                             aud.innerHTML = `
-                                <div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);">
-                                    <span class="material-icons" style="font-size: 1.5rem;">public</span>Онлайн
-                                </div>
+                                <span class="btn-generic-online" style="display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1.4rem 0.5rem 1.5rem; border-radius: 50px; font-weight: 700; font-size: 1.2rem; background: rgba(175, 82, 222, 0.12); color: #AF52DE; border: 1px solid rgba(175, 82, 222, 0.2);">
+                                    <span class="material-icons" style="font-size: 1.8rem;">public</span>Онлайн
+                                </span>
                             `;
                         }
                     }
@@ -9101,6 +9464,194 @@ injectStyles(styles);
                     setTimeout(() => modal.querySelector('.note-modal-textarea').focus(), 100);
                 }
 
+                // --- МОБИЛЬНЫЕ СВАЙПЫ РАСПИСАНИЯ ---
+                function initMobileSwipes() {
+                    // Создаем индикатор
+                    const bubble = document.createElement('div');
+                    bubble.id = 'swipe-action-bubble';
+                    bubble.innerHTML = '<span class="material-icons"></span>';
+                    document.body.appendChild(bubble);
+                    const iconEl = bubble.querySelector('.material-icons');
+
+                    let startX = 0, startY = 0;
+                    let currentTarget = null;
+                    let targetElements = [];
+                    let originalRect = null; // Будем хранить изначальные границы элемента
+                    let targetType = '';
+                    let isSwiping = false;
+                    let isScrollDetermined = false;
+                    let swipeDir = '';
+                    let hasEval = false;
+                    let evalLink = null;
+                    const THRESHOLD = 70; // Порог срабатывания
+
+                    const span9El = document.querySelector('.span9');
+                    if (!span9El) return;
+
+                    span9El.addEventListener('touchstart', (e) => {
+                        // Если экран широкий (ПК) — отключаем скрипт
+                        if (window.innerWidth > 960) return;
+
+                        const touch = e.touches[0];
+                        startX = touch.clientX;
+                        startY = touch.clientY;
+                        isSwiping = false;
+                        isScrollDetermined = false;
+                        swipeDir = '';
+                        currentTarget = null;
+                        targetElements = [];
+                        originalRect = null;
+
+                        const row = e.target.closest('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)');
+                        const dayHeader = e.target.closest('.day h3');
+
+                        // Захватываем цель
+                        if (row && !row.querySelector('th')) {
+                            currentTarget = row;
+                            targetElements = Array.from(row.querySelectorAll('td')); 
+                            targetType = 'row';
+                            evalLink = row.querySelector('.pair_teacher .eval');
+                            hasEval = !!evalLink;
+                        } else if (dayHeader) {
+                            currentTarget = dayHeader;
+                            targetElements = [dayHeader];
+                            targetType = 'day';
+                        }
+
+                        // Фиксируем физические границы элемента ДО начала сдвига
+                        if (currentTarget) {
+                            if (targetType === 'row') {
+                                const firstTd = targetElements[0].getBoundingClientRect();
+                                const lastTd = targetElements[targetElements.length - 1].getBoundingClientRect();
+                                originalRect = {
+                                    top: firstTd.top,
+                                    left: firstTd.left,
+                                    right: lastTd.right,
+                                    height: firstTd.height
+                                };
+                            } else {
+                                originalRect = currentTarget.getBoundingClientRect();
+                            }
+                            targetElements.forEach(el => el.style.transition = 'none');
+                        }
+                    }, { passive: true });
+
+                    span9El.addEventListener('touchmove', (e) => {
+                        if (!currentTarget || !originalRect) return;
+                        const touch = e.touches[0];
+                        const diffX = touch.clientX - startX;
+                        const diffY = touch.clientY - startY;
+
+                        // Мертвая зона для определения (свайп или скролл вниз)
+                        if (!isScrollDetermined) {
+                            if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) return; 
+                            isScrollDetermined = true;
+                            if (Math.abs(diffY) > Math.abs(diffX)) {
+                                currentTarget = null; 
+                                return;
+                            }
+                            isSwiping = true;
+                            bubble.className = ''; 
+                        }
+
+                        if (isSwiping) {
+                            if (diffX < 0) {
+                                swipeDir = 'left';
+                                iconEl.textContent = targetType === 'day' ? 'add' : 'edit';
+                            } else if (diffX > 0 && targetType === 'row' && hasEval) {
+                                swipeDir = 'right';
+                                iconEl.textContent = 'star_rate';
+                            } else {
+                                targetElements.forEach(el => el.style.transform = `translateX(0px)`);
+                                bubble.style.opacity = '0';
+                                return;
+                            }
+
+                            // Пружинистое сопротивление
+                            let moveX = diffX;
+                            if (Math.abs(moveX) > THRESHOLD) {
+                                moveX = (moveX > 0 ? 1 : -1) * (THRESHOLD + (Math.abs(moveX) - THRESHOLD) * 0.25);
+                            }
+
+                            // 1. Двигаем строку
+                            targetElements.forEach(el => el.style.transform = `translateX(${moveX}px)`);
+
+                            // 2. Иконка появляется ровно по центру образующейся пустоты
+                            bubble.style.top = `${originalRect.top + originalRect.height / 2 - 12}px`; // 12px = половина высоты иконки
+                            bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
+
+                            if (swipeDir === 'left') {
+                                // Пустота образуется СПРАВА (между оригинальным краем и уехавшей строкой)
+                                // Ставим иконку в центр этой пустоты (двигается в 2 раза медленнее свайпа)
+                                bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`; 
+                            } else {
+                                // Пустота образуется СЛЕВА
+                                bubble.style.left = `${originalRect.left + (moveX / 2) - 12}px`;
+                            }
+
+                            // 3. Индикация прохождения порога (смена цвета)
+                            if (Math.abs(diffX) >= THRESHOLD) {
+                                if (targetType === 'day') bubble.classList.add('active-threshold', 'action-add');
+                                else if (swipeDir === 'left') bubble.classList.add('active-threshold', 'action-note');
+                                else bubble.classList.add('active-threshold', 'action-eval');
+
+                                if (!bubble.dataset.vibrated && navigator.vibrate) {
+                                    navigator.vibrate(15); 
+                                    bubble.dataset.vibrated = 'true';
+                                }
+                            } else {
+                                bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval');
+                                bubble.dataset.vibrated = '';
+                            }
+                        }
+                    }, { passive: true });
+
+                    span9El.addEventListener('touchend', (e) => {
+                        if (!currentTarget || !isSwiping) return;
+
+                        const diffX = e.changedTouches[0].clientX - startX;
+                        const target = currentTarget;
+                        const tType = targetType;
+                        const dir = swipeDir;
+                        const el = evalLink;
+
+                        // Плавный возврат строки на место
+                        targetElements.forEach(elem => {
+                            elem.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                            elem.style.transform = 'translateX(0px)';
+                        });
+                        
+                        // Иконка плавно затухает
+                        bubble.style.opacity = '0';
+                        bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval');
+                        bubble.dataset.vibrated = '';
+
+                        // Выполнение действия
+                        if (Math.abs(diffX) >= THRESHOLD) {
+                            setTimeout(() => {
+                                if (tType === 'day' && dir === 'left') {
+                                    const dayNameEl = target.querySelector('.day-name');
+                                    if (dayNameEl) openCustomPairModal(dayNameEl.textContent.trim());
+                                } else if (tType === 'row') {
+                                    if (dir === 'left') {
+                                        const noteBtn = target.querySelector('.subject-note-btn');
+                                        if (noteBtn) noteBtn.click();
+                                    } else if (dir === 'right' && el) {
+                                        if (el.hasAttribute('href')) window.location.href = el.getAttribute('href');
+                                        else el.click();
+                                    }
+                                }
+                            }, 150); // Небольшая задержка, чтобы строка успела вернуться визуально
+                        }
+
+                        currentTarget = null;
+                        isSwiping = false;
+                    });
+                }
+
+                // Вызываем инициализацию свайпов
+                initMobileSwipes();
+
                 // Запускаем отрисовку заметок при загрузке страницы
                 renderNotes();
 
@@ -9201,6 +9752,7 @@ injectStyles(styles);
 
                 case 'stu_ann.announces':
                 case 'stu.announce': {
+                    span9.querySelectorAll('br, h2, h3').forEach((el, i) => { if(i < 2) el.remove(); });
                     const announceMessages = span9.querySelectorAll('ul.nav.msg');
                     if (!announceMessages.length) break;
 
@@ -9672,7 +10224,7 @@ injectStyles(styles);
                                 // У активной вкладки гарантируем наличие правильного слова
                                 let text = child.textContent.trim();
                                 if (/^\d+$/.test(text)) {
-                                    child.textContent = text + ' ' + termType;
+                                    child.innerHTML = text + '&nbsp;<span style="font-weight: 800;">' + termType + '</span>';
                                 }
                             }
                         });
@@ -10018,9 +10570,13 @@ injectStyles(styles);
                                         const ctx = document.getElementById('gradesChart').getContext('2d');
                                         if(window.etisChartInstance) window.etisChartInstance.destroy();
 
-                                        const textColor = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
-                                        const accentColor = getComputedStyle(document.body).getPropertyValue('--color-accent').trim() || '#007AFF';
-                                        const gridColor = getComputedStyle(document.body).getPropertyValue('--color-table-border').trim() || '#ddd';
+                                        const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim() || '#000';
+                                        const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--color-table-border').trim() || '#ddd';
+
+                                        // Получаем цвет напрямую из конфига, чтобы избежать проблем с CSS-переменными в Canvas
+                                        const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { colors: ['blue'] };
+                                        const accMap = { blue: '#007AFF', green: '#34C759', purple: '#AF52DE', red: '#FF3B30', orange: '#FF9500', yellow: '#FFCC00' };
+                                        const chartAccentColor = accMap[accConfig.colors[0]] || '#007AFF';
 
                                         // Создаем график через найденный конструктор
                                         window.etisChartInstance = new ChartConstructor(ctx, {
@@ -10030,10 +10586,10 @@ injectStyles(styles);
                                                 datasets:[{
                                                     label: ' Средний балл',
                                                     data: termsData.map(t => t.avg),
-                                                    borderColor: accentColor,
-                                                    backgroundColor: accentColor + '22',
+                                                    borderColor: chartAccentColor,
+                                                    backgroundColor: chartAccentColor + '22',
                                                     borderWidth: 3,
-                                                    pointBackgroundColor: accentColor,
+                                                    pointBackgroundColor: chartAccentColor,
                                                     pointBorderColor: '#fff',
                                                     pointBorderWidth: 2,
                                                     pointRadius: 5,
