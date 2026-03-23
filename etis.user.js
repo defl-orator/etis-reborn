@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8010
+// @version      1.8011
 // @changelog    Добавлена кастомизация и свайпы в расписании для телефонов: свайп влево по карточке дня открывает окно с добавлением пары, свайпы по конкретной паре открывают окно с заметкой/дз либо оценкой занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -5904,16 +5904,11 @@ injectStyles(styles);
             .mobile-menu-btn,
             .timetable-toolbar .toolbar-item.is-active,
             form.que_form #send_btn,
-            #swipe-action-bubble.active-threshold.action-note,
             .badge.ctl,
             .jour-info-group {
                 background: var(--bg-accent) !important;
                 border: none !important;
                 color: #fff !important;
-            }
-            
-            .span3 > .nav.nav-tabs.nav-stacked > li.active > a {
-                box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
             }
 
             /* --- 2. ТЕКСТ И ИКОНКИ (Лица, скрепки, ссылки) --- */
@@ -5926,7 +5921,9 @@ injectStyles(styles);
             .tpr_part > a,
             .theme a,
             .logo-say-hey,
-            .accent-stat {
+            .accent-stat,
+            #swipe-action-bubble.active-threshold.action-note,
+            #swipe-action-bubble.active-threshold.action-note .material-icons {
                 background: var(--bg-accent) !important;
                 -webkit-background-clip: text !important;
                 -webkit-text-fill-color: transparent !important;
@@ -5939,11 +5936,6 @@ injectStyles(styles);
             .msg-sender {
                 display: inline-flex !important;
             }
-
-            #swipe-action-bubble.active-threshold.action-note { 
-                -webkit-text-fill-color: #fff !important; 
-                color: #fff !important; 
-            }
             ` : `
             /* Если градиент ВЫКЛЮЧЕН — просто красим текст сплошным цветом */
             .msg-sender,
@@ -5954,7 +5946,9 @@ injectStyles(styles);
             .tpr_part > a,
             .theme a,
             .logo-say-hey,
-            .accent-stat {
+            .accent-stat,
+            #swipe-action-bubble.active-threshold.action-note,
+            #swipe-action-bubble.active-threshold.action-note .material-icons {
                 color: var(--color-accent) !important;
             }
             `}
