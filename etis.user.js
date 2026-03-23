@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8011
+// @version      1.8012
 // @changelog    Добавлена кастомизация и свайпы в расписании для телефонов: свайп влево по карточке дня открывает окно с добавлением пары, свайпы по конкретной паре открывают окно с заметкой/дз либо оценкой занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -4408,7 +4408,6 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 /* --- РАСПИСАНИЕ ДЛЯ МОБИЛЬНЫХ --- */
 @media (max-width: 960px) {
 
-    /* 1. Спасаем шапку с датой от обрезания */
     .span9 .day h3 {
         padding: 1.2rem 1.4rem !important;
         font-size: 1.4rem !important;
@@ -4425,13 +4424,11 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
         font-size: 1.3rem !important;
     }
 
-    /* 2. Жёсткая сетка для таблицы */
     html[theme] .timetable-grid {
         table-layout: fixed !important;
         width: 100% !important;
     }
 
-    /* Левая колонка (Время) - делаем компактной */
     html[theme] .timetable-grid td.pair_num {
         width: 75px !important;
         min-width: 75px !important;
@@ -4440,7 +4437,6 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
         font-size: 1.1rem !important;
     }
 
-    /* Центральная колонка (Предмет) - сохраняем удачный мобильный вид */
     html[theme] .timetable-grid td.pair_info {
         width: auto !important;
         padding-left: 0.5rem !important;
@@ -4452,13 +4448,12 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
         top: 3.8rem !important;
     }
 
-    /* Адаптируем разделительную линию под мобильную ширину 75px */
     html[theme] .timetable-grid tr:not(:last-child) {
         background-image: linear-gradient(to right,
             transparent calc(75px + 0.5rem),
             var(--color-table-border) calc(75px + 0.5rem),
-            var(--color-table-border) calc(100% - 1rem),
-            transparent calc(100% - 1rem)
+            var(--color-table-border) calc(100% - 1.6rem), 
+            transparent calc(100% - 1.6rem)               
         ) !important;
     }
 }
@@ -5784,47 +5779,83 @@ button.analytics-btn {
 
 /* --- COLOR PICKER MODAL --- */
 .color-picker-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 1.6rem;
-    margin-top: 2rem;
+    display: grid;
+    grid-template-columns: repeat(5, 42px);
+    gap: 1.2rem;
+    margin-top: 1rem;
     justify-content: center;
 }
+
 .color-picker-circle {
-    width: 48px;
-    height: 48px;
+    width: 42px;
+    height: 42px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
+    font-size: 1.6rem;
     font-weight: 800;
     color: #fff;
-    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    position: relative;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
-.color-picker-circle:hover {
-    transform: scale(1.1);
-}
+
+.color-picker-circle:hover { transform: scale(1.15); }
 .color-picker-circle.selected {
-    box-shadow: 0 0 0 4px var(--color-card), 0 0 0 7px var(--color-text-primary);
+    box-shadow: 0 0 0 3px var(--color-card), 0 0 0 6px var(--color-text-primary);
     transform: scale(1.1);
 }
+
+.color-picker-controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 2.4rem;
+}
+
 .color-picker-toggle-wrap {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    padding: 1.6rem;
-    background: var(--color-highlight);
-    border-radius: var(--radius-medium);
-    margin-bottom: 2rem;
+    gap: 12px;
+    padding: 0.8rem 1.6rem;
+    border-radius: 50px;
+    transition: background 0.4s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    height: 42px; /* Высота как у кнопок */
 }
+
 .color-picker-toggle-wrap span {
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: var(--color-text-primary);
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #fff !important;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+.color-picker-random-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-card);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-table-border);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: var(--shadow-main);
+}
+
+.color-picker-random-btn:hover {
+    color: var(--color-accent);
+    transform: rotate(30deg) scale(1.1);
+}
+
+.color-picker-random-btn .material-icons {
+    font-size: 22px !important;
 }
     `;
 
@@ -5856,16 +5887,27 @@ injectStyles(styles);
     // ЛОГИКА КАСТОМИЗАЦИИ (ЦВЕТА И ГРАДИЕНТЫ)
     // ==========================================
     const ACCENT_COLORS = {
+        // Тёмный ряд
         blue: '#007AFF',
         green: '#34C759',
         purple: '#AF52DE',
         red: '#FF3B30',
         orange: '#FF9500',
+        // Светлый ряд
+        lightblue: '#5AC8FA',
+        lightgreen: '#00C7BE', 
+        lightpurple: '#E58FFF',
+        pink: '#FF2D55',
         yellow: '#FFCC00'
     };
 
+    const COLOR_ORDER = [
+        'blue', 'green', 'purple', 'red', 'orange',
+        'lightblue', 'lightgreen', 'lightpurple', 'pink', 'yellow'
+    ];
+
     function applyAccentColor() {
-        const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: false, colors: ['blue'] };
+        const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
         
         let c1 = ACCENT_COLORS[config.colors[0]] || ACCENT_COLORS.blue;
         let c2 = config.colors[1] ? ACCENT_COLORS[config.colors[1]] : c1;
@@ -6558,8 +6600,11 @@ injectStyles(styles);
     }
 
     function openCustomizationModal() {
-        let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: false, colors: ['blue'] };
-        
+        let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
+        const getHex = (key) => ACCENT_COLORS[key] || ACCENT_COLORS.blue;
+
+        if (window._etisTargetIndex === undefined) window._etisTargetIndex = 0;
+
         let overlay = document.getElementById('etis-custom-overlay');
         let modal = document.getElementById('etis-custom-modal');
 
@@ -6578,79 +6623,106 @@ injectStyles(styles);
         }
 
         const renderModal = () => {
+            const c1 = getHex(config.colors[0]);
+            const c2 = config.colors[1] ? getHex(config.colors[1]) : c1;
+            const currentPreviewBg = config.isGradient ? `linear-gradient(135deg, ${c1}, ${c2})` : c1;
+
             modal.innerHTML = `
                 <div class="ui-widget-header" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--color-table-border);background:var(--color-table-header);">
                     <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Кастомизация</span>
                     <span id="close-custom" class="material-icons" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
                 </div>
                 <div class="ui-dialog-content" style="padding:24px;">
-                    <div class="color-picker-toggle-wrap">
-                        <span>Градиентный акцент</span>
-                        <input type="checkbox" id="grad-toggle" class="tumbler-checkbox" ${config.isGradient ? 'checked' : ''}>
+                    
+                    <!-- Ряд управления -->
+                    <div class="color-picker-controls-row">
+                        <!-- Капсула превью -->
+                        <div class="color-picker-toggle-wrap" style="background: ${currentPreviewBg}">
+                            <span>Градиент</span>
+                            <input type="checkbox" id="grad-toggle" class="tumbler-checkbox" ${config.isGradient ? 'checked' : ''}>
+                        </div>
+                        
+                        <!-- Кнопка случайно справа -->
+                        <button id="random-color-btn" class="color-picker-random-btn" title="Случайные цвета">
+                            <span class="material-icons">casino</span>
+                        </button>
                     </div>
+
                     <div class="color-picker-grid" id="color-grid"></div>
                 </div>
             `;
 
             const grid = modal.querySelector('#color-grid');
             
-            // Отрисовка кружков
-            Object.keys(ACCENT_COLORS).forEach(colorKey => {
+            COLOR_ORDER.forEach(colorKey => {
                 const circle = document.createElement('div');
                 circle.className = 'color-picker-circle';
                 circle.style.backgroundColor = ACCENT_COLORS[colorKey];
                 
                 const selectedIndex = config.colors.indexOf(colorKey);
-                
                 if (selectedIndex !== -1) {
                     circle.classList.add('selected');
                     if (config.isGradient) {
                         circle.textContent = (selectedIndex + 1).toString();
                     } else {
-                        circle.innerHTML = '<span class="material-icons" style="font-size: 24px;">check</span>';
+                        circle.innerHTML = '<span class="material-icons" style="font-size: 20px;">check</span>';
                     }
                 }
 
                 circle.onclick = () => {
                     if (config.isGradient) {
                         if (config.colors.includes(colorKey)) {
-                            // Если нажали на выбранный цвет и их два — меняем местами
-                            if (config.colors.length === 2) {
-                                config.colors.reverse();
-                            }
+                            config.colors.reverse();
                         } else {
-                            // Если нажат новый цвет
                             if (config.colors.length < 2) {
                                 config.colors.push(colorKey);
+                                window._etisTargetIndex = 0;
                             } else {
-                                config.colors[1] = colorKey; // Заменяем второй
+                                config.colors[window._etisTargetIndex] = colorKey;
+                                window._etisTargetIndex = (window._etisTargetIndex === 0) ? 1 : 0;
                             }
                         }
                     } else {
-                        // Одиночный цвет
                         config.colors = [colorKey];
+                        window._etisTargetIndex = 0;
                     }
-                    
                     localStorage.setItem('etis_accent_config', JSON.stringify(config));
                     applyAccentColor();
-                    renderModal(); // Перерисовываем кружки
+                    renderModal(); 
                 };
                 grid.appendChild(circle);
             });
 
-            // Обработка тумблера
-            modal.querySelector('#grad-toggle').addEventListener('change', (e) => {
+            // Логика кнопки "Случайно"
+            modal.querySelector('#random-color-btn').onclick = () => {
+                const keys = COLOR_ORDER;
+                const r1 = keys[Math.floor(Math.random() * keys.length)];
+                let r2 = keys[Math.floor(Math.random() * keys.length)];
+                
+                while (config.isGradient && r2 === r1) {
+                    r2 = keys[Math.floor(Math.random() * keys.length)];
+                }
+
+                config.colors = config.isGradient ? [r1, r2] : [r1];
+                localStorage.setItem('etis_accent_config', JSON.stringify(config));
+                applyAccentColor();
+                renderModal();
+            };
+
+            // Логика тумблера
+            modal.querySelector('#grad-toggle').onchange = (e) => {
                 config.isGradient = e.target.checked;
-                // Если отключили градиент, оставляем только первый цвет
                 if (!config.isGradient && config.colors.length > 1) {
                     config.colors = [config.colors[0]];
+                }
+                if (config.isGradient && config.colors.length < 2) {
+                    config.colors.push('lightblue');
                 }
                 localStorage.setItem('etis_accent_config', JSON.stringify(config));
                 applyAccentColor();
                 renderModal();
-            });
+            };
 
-            // Закрытие
             const closeAll = () => { overlay.style.display = 'none'; modal.style.display = 'none'; };
             overlay.onclick = closeAll;
             modal.querySelector('#close-custom').onclick = closeAll;
@@ -10568,9 +10640,8 @@ injectStyles(styles);
                                         const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--color-table-border').trim() || '#ddd';
 
                                         // Получаем цвет напрямую из конфига, чтобы избежать проблем с CSS-переменными в Canvas
-                                        const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { colors: ['blue'] };
-                                        const accMap = { blue: '#007AFF', green: '#34C759', purple: '#AF52DE', red: '#FF3B30', orange: '#FF9500', yellow: '#FFCC00' };
-                                        const chartAccentColor = accMap[accConfig.colors[0]] || '#007AFF';
+                                        const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
+                                        const chartAccentColor = ACCENT_COLORS[accConfig.colors[0]] || '#007AFF';
 
                                         // Создаем график через найденный конструктор
                                         window.etisChartInstance = new ChartConstructor(ctx, {
