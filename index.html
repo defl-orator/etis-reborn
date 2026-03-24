@@ -98,7 +98,7 @@
                 color: var(--text-color);
                 line-height: 1.6;
                 overflow-x: hidden;
-                padding-top: 100px; 
+                padding-top: 160px; 
                 transition: background 0.3s, color 0.3s;
             }
 
@@ -109,7 +109,7 @@
             .btn {
                 display: inline-flex; align-items: center; justify-content: center;
                 background-color: var(--primary); color: #fff !important;
-                padding: 14px 40px; border-radius: 12px; font-weight: 600; font-size: 1.1rem;
+                padding: 14px 40px; border-radius: 50px; font-weight: 600; font-size: 1.1rem;
                 transition: all 0.2s ease; border: none; cursor: pointer;
                 box-shadow: 0 4px 15px rgba(41, 121, 255, 0.3);
             }
@@ -117,31 +117,115 @@
 
             /* --- ШАПКА --- */
             header {
-                position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;
-                padding: 15px 0 100px 0; 
-                background: linear-gradient(180deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 30%, var(--bg-gradient-end) 100%);
-                pointer-events: none; 
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                z-index: 1000;
+                height: 160px; 
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                background: var(--bg-color);
+                pointer-events: auto;
+            }
+
+            body.is-scrolled header {
+                height: 70px;
+                background: linear-gradient(180deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 60%, var(--bg-gradient-end) 100%);
             }
 
             .header-content {
-                display: flex; align-items: center; justify-content: center;
-                gap: 20px; pointer-events: auto;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 0;
+                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                width: 100%;
+                max-width: 1100px;
+                padding: 0 20px;
             }
 
-            .logo { display: flex; align-items: center; gap: 12px; }
+            body.is-scrolled .header-content {
+                gap: 20px; 
+            }
+
+            .logo {
+                display: flex;
+                align-items: center;
+                flex-direction: row;
+                gap: 0;
+                transform: scale(3.5);
+                transform-origin: center center;
+                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            body.is-scrolled .logo {
+                transform: scale(1);
+                gap: 12px;
+            }
+            
             .logo img { height: 36px; width: auto; display: block; }
-            .logo span { font-size: 1.5rem; font-weight: 800; color: var(--text-color); }
+
+            .logo span {
+                font-size: 1.5rem;
+                font-weight: 900;
+                letter-spacing: 1px;
+                white-space: nowrap;
+                
+                max-width: 0;
+                opacity: 0;
+                overflow: hidden;
+                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+
+            body.is-scrolled .logo span {
+                max-width: 250px;
+                opacity: 1;
+            }
 
             .theme-toggle {
-                background: none; border: none; cursor: pointer;
-                padding: 0; display: flex; align-items: center; justify-content: center;
-                transition: transform 0.2s;
+                background: transparent;
+                border: none;
+                padding: 0;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                
+                width: 0;
+                opacity: 0;
+                visibility: hidden;
+                transform: scale(0.5);
+                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
             }
+
+            body.is-scrolled .theme-toggle {
+                width: 32px; 
+                opacity: 1;
+                visibility: visible;
+                transform: scale(1);
+            }
+            
             .theme-toggle:hover { transform: scale(1.1); }
             .theme-toggle img { width: 32px; height: 32px; display: block; }
 
+            /* Адаптив шапки для мобилок */
+            @media (max-width: 768px) {
+                .logo {
+                    transform: scale(2.8);
+                }
+                body.is-scrolled .logo {
+                    transform: scale(0.9); 
+                }
+                .logo span {
+                    font-size: 1.3rem;
+                }
+            }
+
             /* --- HERO --- */
-            .hero { text-align: center; padding: 40px 0 60px; }
+            .hero { text-align: center; padding: 20px 0 60px; }
             .hero h1 { font-size: 3.5rem; margin-bottom: 20px; line-height: 1.1; letter-spacing: -1px; font-weight: 800; }
             .hero h1 span {
                 background: linear-gradient(135deg, var(--primary) 0%, #60a5fa 100%);
@@ -315,8 +399,8 @@
             }
             .modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); }
             .modal-title { font-size: 1.8rem; margin-bottom: 20px; text-align: center; }
-            .os-switcher { display: flex; background: rgba(128,128,128,0.1); padding: 4px; border-radius: 12px; margin-bottom: 25px; }
-            .os-btn { flex: 1; border: none; background: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text-secondary); transition: 0.2s; }
+            .os-switcher { display: flex; background: rgba(128,128,128,0.1); padding: 4px; border-radius: 50px; margin-bottom: 25px; }
+            .os-btn { flex: 1; border: none; background: none; padding: 10px; border-radius: 50px; cursor: pointer; font-weight: 600; color: var(--text-secondary); transition: 0.2s; }
             .os-btn.active { background: var(--bg-color); color: var(--text-color); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
             .instruction-content { display: none; }
             .instruction-content.active { display: block; }
@@ -325,7 +409,7 @@
             .text-link { color: var(--primary); text-decoration: underline; font-weight: 700; }
             
             .action-buttons { display: flex; gap: 12px; margin-top: 25px; align-items: center; }
-            .download-btn, .video-btn { display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 12px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s ease; text-decoration: none; border: 2px solid transparent; }
+            .download-btn, .video-btn { display: flex; align-items: center; justify-content: center; height: 52px; border-radius: 50px; font-weight: 600; font-size: 1rem; cursor: pointer; transition: all 0.2s ease; text-decoration: none; border: 2px solid transparent; }
             .download-btn { flex: 2; background-color: var(--primary); color: white !important; }
             .download-btn:hover { background-color: var(--primary-hover); transform: translateY(-2px); }
             .video-btn { flex: 1; background: transparent; color: var(--primary); border-color: var(--primary); }
@@ -950,15 +1034,19 @@
                 <!-- Контент для Safari -->
                 <div id="tab-macos" class="instruction-content">
                     <div class="text-view" id="text-macos">
-                        <p style="margin-bottom: 15px;">Для Safari рекомендую расширение <a href="https://apps.apple.com/ru/app/stay-for-safari/id1591620171" target="_blank" class="text-link">Stay</a>:</p>
+                        <p style="margin-bottom: 15px;">Для Safari рекомендую приложение <a href="https://apps.apple.com/ru/app/stay-for-safari/id1591620171" target="_blank" class="text-link">Stay</a>:</p>
                         <ol class="step-list">
-                            <li>Установите и настройте расширение <b>Stay</b> из App Store.</li>
-                            <li>Нажмите кнопку ниже — откроется вкладка со скриптом.</li>
-                            <li>Нажмите "Install" в нижнем правом углу.</li>
+                            <li>Установите и настройте <b>Stay</b> из App Store.</li>
+                            <li>Нажмите кнопку ниже, чтобы скопировать ссылку на скрипт.</li>
+                            <li>В приложении нажмите <b>«+»</b>, выберите <b>«Link»</b> и вставьте скопированную ссылку.</li>
                         </ol>
                         <div class="action-buttons">
-                            <a href="https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js" target="_blank" class="download-btn install-btn">Установить</a>
+                            <!-- Кнопка копирования -->
+                            <button onclick="copyScriptUrl(this)" class="download-btn" style="width: 100%; border: none; cursor: pointer;">
+                                Скопировать ссылку
+                            </button>
                         </div>
+                        <p class="mobile-warning" style="margin-top: 20px;">Инструкция актуальна для iPhone, iPad и Mac</p>
                     </div>
                 </div>
                 <div class="modal-version" id="script-version-info">Загрузка информации о версии...</div>
@@ -1261,7 +1349,24 @@
 
             document.addEventListener("DOMContentLoaded", initComparisons);
 
-            // --- МОДАЛКА И ВИДЕО ---
+            // --- МОДАЛКА ---
+            function copyScriptUrl(btn) {
+                const SCRIPT_URL = "https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js";
+                
+                navigator.clipboard.writeText(SCRIPT_URL).then(() => {
+                    const originalText = btn.innerText;
+                    btn.innerText = 'Скопировано! ✓';
+                    btn.style.backgroundColor = '#22c55e'; // Зеленый цвет для успеха
+                    
+                    setTimeout(() => {
+                        btn.innerText = originalText;
+                        btn.style.backgroundColor = ''; 
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Ошибка при копировании:', err);
+                    btn.innerText = 'Ошибка :( Попробуйте еще раз';
+                });
+            }
             const modal = document.getElementById('installModal');
             function openModal() { 
                 // Проверяем, использует ли человек Mac, iPhone или iPad
@@ -1648,6 +1753,19 @@
                 const targets = document.querySelectorAll('.hero, .comparison-block, .reviews-section, .faq-section');
                 targets.forEach(target => observer.observe(target));
             }
+
+            // Логика сжатия шапки при скролле
+            function handleScroll() {
+                if (window.scrollY > 50) {
+                    document.body.classList.add('is-scrolled');
+                } else {
+                    document.body.classList.remove('is-scrolled');
+                }
+            }
+
+            window.addEventListener('scroll', handleScroll);
+
+            handleScroll();
 
 
             /* --- АВТООТКРЫТИЕ ПО ССЫЛКЕ (ДЛЯ СКРИПТА) --- */
