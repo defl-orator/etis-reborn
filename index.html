@@ -127,43 +127,77 @@
                 align-items: center;
                 justify-content: center;
                 transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-                background: var(--bg-color);
-                pointer-events: auto;
+                background: transparent;
+                pointer-events: none; 
             }
 
             body.is-scrolled header {
-                height: 70px;
-                background: linear-gradient(180deg, var(--bg-gradient-start) 0%, var(--bg-gradient-mid) 60%, var(--bg-gradient-end) 100%);
+                height: 90px;
+                background: transparent;
             }
 
             .header-content {
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                gap: 0;
                 transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
                 width: 100%;
-                max-width: 1100px;
-                padding: 0 20px;
-            }
-
-            body.is-scrolled .header-content {
-                gap: 20px; 
+                pointer-events: auto;
             }
 
             .logo {
                 display: flex;
                 align-items: center;
                 flex-direction: row;
-                gap: 0;
-                transform: scale(3.5);
+                gap: 0; 
+                transform: scale(3.5); 
                 transform-origin: center center;
                 transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                
+                padding: 0;
+                border-radius: 50px;
+                background: transparent;
+                border: 1px solid transparent;
+                cursor: pointer;
+                will-change: transform, background-color;
+                -webkit-font-smoothing: antialiased;
             }
 
             body.is-scrolled .logo {
-                transform: scale(1);
+                transform: scale(1) translateZ(0);
                 gap: 12px;
+                padding: 10px 24px;
+                
+                background: rgba(255, 255, 255, 0.7);
+                backdrop-filter: blur(15px) saturate(180%);
+                -webkit-backdrop-filter: blur(15px) saturate(180%);
+                
+                border: 1px solid rgba(255, 255, 255, 0.4);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+                
+                z-index: 10;
+            }
+
+            body.dark-mode.is-scrolled .logo {
+                background: rgba(31, 33, 36, 0.7);
+                backdrop-filter: blur(15px) saturate(180%);
+                -webkit-backdrop-filter: blur(15px) saturate(180%);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+            }
+
+            .modal-footer-stats {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                flex-wrap: wrap;
+                gap: 12px;
+                font-size: 0.8rem;
+                color: var(--text-secondary);
+                margin-top: 25px;
+                opacity: 0.7;
+            }
+            .stats-divider {
+                opacity: 0.5;
             }
             
             .logo img { height: 36px; width: auto; display: block; }
@@ -172,7 +206,7 @@
                 font-size: 1.5rem;
                 font-weight: 900;
                 letter-spacing: 1px;
-                white-space: nowrap;
+                white-space: nowrap; 
                 
                 max-width: 0;
                 opacity: 0;
@@ -185,43 +219,10 @@
                 opacity: 1;
             }
 
-            .theme-toggle {
-                background: transparent;
-                border: none;
-                padding: 0;
-                cursor: pointer;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                
-                width: 0;
-                opacity: 0;
-                visibility: hidden;
-                transform: scale(0.5);
-                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-
-            body.is-scrolled .theme-toggle {
-                width: 32px; 
-                opacity: 1;
-                visibility: visible;
-                transform: scale(1);
-            }
-            
-            .theme-toggle:hover { transform: scale(1.1); }
-            .theme-toggle img { width: 32px; height: 32px; display: block; }
-
-            /* Адаптив шапки для мобилок */
             @media (max-width: 768px) {
-                .logo {
-                    transform: scale(2.8);
-                }
-                body.is-scrolled .logo {
-                    transform: scale(0.9); 
-                }
-                .logo span {
-                    font-size: 1.3rem;
-                }
+                .logo { transform: scale(2.8); }
+                body.is-scrolled .logo { transform: scale(0.9); padding: 8px 20px;}
+                .logo span { font-size: 1.3rem; }
             }
 
             /* --- HERO --- */
@@ -425,17 +426,6 @@
                 -webkit-mask-image: -webkit-radial-gradient(white, black); 
             }
 
-            /* Предупреждение в модальном окне */
-            .mobile-warning {
-                color: var(--text-secondary);
-                font-size: 0.85rem;
-                margin-top: 15px;
-                padding: 8px;
-                text-align: center;
-                border-top: 1px solid var(--border-color);
-                opacity: 0.8;
-            }
-
             /* Стиль для версии внизу модального окна */
             .modal-version {
                 text-align: center;
@@ -524,8 +514,8 @@
             footer {
                 padding: 60px 0 40px;
                 text-align: center;
-                border-top: 1px solid var(--border-color);
-                background: var(--card-bg);
+                border-top: none; 
+                background: transparent; 
             }
 
             .footer-content {
@@ -725,16 +715,12 @@
 
         <header>
             <div class="container header-content">
-                <div class="logo">
+                <a class="logo" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;">
                     <img src="img/logo.png" alt="ETIS Reborn Logo">
                     <span>ЕТИС REBORN</span>
-                </div>
-                <button class="theme-toggle" id="themeBtn" aria-label="Переключить тему">
-                    <img id="theme-icon" src="img/dark_theme.png" alt="Theme Toggle">
-                </button>
+                </a>
             </div>
         </header>
-
         <div class="container">
             <section class="hero">
                 <h1><span>Сделай ЕТИС великим снова</span></h1>
@@ -972,26 +958,11 @@
                 
                 <!-- Инфо-строка -->
                 <div class="footer-info-row">
-                    <!-- Копирайт -->
                     <span>&copy; 2026 ЕТИС REBORN</span>
-
-                    <!-- GitHub проекта -->
-                    <a href="https://github.com/defl-orator/etis-reborn" target="_blank">
-                        GitHub
-                    </a>
-
-                    <!-- Сайт ВУЗа -->
-                    <a href="https://student.psu.ru" target="_blank">
-                        Официальный сайт ЕТИС
-                    </a>
-
-                    <!-- ЕТИС 2.0 -->
-                    <span>
-                        Основано на <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a>
-                    </span>
-
-                    <span>Установок: <b id="install-counter">...</b></span>
-
+                    <a href="https://github.com/defl-orator/etis-reborn" target="_blank">GitHub</a>
+                    <a href="https://student.psu.ru" target="_blank">Официальный сайт ЕТИС</a>
+                    <span>Основано на <a href="https://vk.com/etis20" target="_blank">ETIS 2.0</a></span>
+                    <a href="#" id="themeBtn">Тёмная тема</a>
                     <a href="#" class="footer-link" onclick="openBugModal(event)">Сообщить об ошибке</a>
                 </div>
             </div>
@@ -1004,52 +975,65 @@
                 <h3 class="modal-title">Установка</h3>
                 
                 <div class="os-switcher">
-                    <button class="os-btn active" onclick="switchTab('other')">Chrome, Firefox, Яндекс</button>
-                    <button class="os-btn" onclick="switchTab('macos')">Safari</button>
+                    <button class="os-btn active" onclick="switchTab('android')">Android</button>
+                    <button class="os-btn" onclick="switchTab('pc')">PC</button>
+                    <button class="os-btn" onclick="switchTab('macos')">iOS / macOS</button>
                 </div>
 
-                <!-- Контент для Chrome -->
-                <div id="tab-other" class="instruction-content active">
-                    <div class="text-view" id="text-other">
-                        <p style="margin-bottom: 15px;">
-                            Рекомендуется использовать расширение 
-                            <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" class="text-link">Tampermonkey</a> 
-                            или 
-                            <a href="https://violentmonkey.github.io" target="_blank" class="text-link">Violentmonkey</a>:
-                        </p>
-                        <ol class="step-list">
-                            <li>Установите расширение для вашего браузера.</li>
-                            <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
-                            <li>Нажмите "Подтвердить установку" (или "Install").</li>
-                        </ol>
-                        
-                        <p class="mobile-warning">⚠ Мобильная версия Chrome не поддерживает расширения</p>
-
-                        <div class="action-buttons">
-                            <a href="https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js" target="_blank" class="download-btn install-btn">Установить</a>
-                        </div>
+                <!-- Вкладка Android -->
+                <div id="tab-android" class="instruction-content active">
+                    <p style="margin-bottom: 15px;">
+                        Рекомендуется использовать браузер <b>Firefox</b> с расширением 
+                        <a href="https://addons.mozilla.org/en-US/android/addon/tampermonkey/" target="_blank" class="text-link">Tampermonkey</a>:
+                    </p>
+                    <ol class="step-list">
+                        <li>Установите и настройте расширение по ссылке выше.</li>
+                        <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
+                        <li>Нажмите "Установить" ("Install").</li>
+                    </ol>
+                    <div class="action-buttons">
+                        <a href="https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js" target="_blank" class="download-btn install-btn">Установить</a>
                     </div>
                 </div>
 
-                <!-- Контент для Safari -->
+                <!-- Вкладка PC -->
+                <div id="tab-pc" class="instruction-content">
+                    <p style="margin-bottom: 15px;">
+                        Установите расширение 
+                        <a href="https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo" target="_blank" class="text-link">Tampermonkey</a> 
+                        или 
+                        <a href="https://violentmonkey.github.io" target="_blank" class="text-link">Violentmonkey</a>:
+                    </p>
+                    <ol class="step-list">
+                        <li>Установите расширение для вашего браузера.</li>
+                        <li>Нажмите кнопку ниже — скрипт откроется автоматически.</li>
+                        <li>Нажмите "Установить" ("Install").</li>
+                    </ol>
+                    <div class="action-buttons">
+                        <a href="https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js" target="_blank" class="download-btn install-btn">Установить</a>
+                    </div>
+                </div>
+
+                <!-- Вкладка iOS / macOS -->
                 <div id="tab-macos" class="instruction-content">
-                    <div class="text-view" id="text-macos">
-                        <p style="margin-bottom: 15px;">Для Safari рекомендую приложение <a href="https://apps.apple.com/ru/app/stay-for-safari/id1591620171" target="_blank" class="text-link">Stay</a>:</p>
-                        <ol class="step-list">
-                            <li>Установите и настройте <b>Stay</b> из App Store.</li>
-                            <li>Нажмите кнопку ниже, чтобы скопировать ссылку на скрипт.</li>
-                            <li>В приложении нажмите <b>«+»</b>, выберите <b>«Link»</b> и вставьте скопированную ссылку.</li>
-                        </ol>
-                        <div class="action-buttons">
-                            <!-- Кнопка копирования -->
-                            <button onclick="copyScriptUrl(this)" class="download-btn" style="width: 100%; border: none; cursor: pointer;">
-                                Скопировать ссылку
-                            </button>
-                        </div>
-                        <p class="mobile-warning" style="margin-top: 20px;">Инструкция актуальна для iPhone, iPad и Mac</p>
+                    <p style="margin-bottom: 15px;">Для Safari рекомендую приложение <a href="https://apps.apple.com/ru/app/stay-for-safari/id1591620171" target="_blank" class="text-link">Stay</a>:</p>
+                    <ol class="step-list">
+                        <li>Установите и настройте <b>Stay</b> из App Store.</li>
+                        <li>Нажмите кнопку ниже, чтобы скопировать ссылку на скрипт.</li>
+                        <li>В приложении нажмите <b>«+»</b>, выберите <b>«Link»</b> и вставьте скопированную ссылку.</li>
+                    </ol>
+                    <div class="action-buttons">
+                        <button onclick="copyScriptUrl(this)" class="download-btn" style="width: 100%; border: none; cursor: pointer;">
+                            Скопировать ссылку
+                        </button>
                     </div>
                 </div>
-                <div class="modal-version" id="script-version-info">Загрузка информации о версии...</div>
+                
+                <div class="modal-footer-stats">
+                    <span id="script-version-info">Загрузка версии...</span>
+                    <span class="stats-divider">•</span>
+                    <span>Установок: <b id="install-counter">...</b></span>
+                </div>
             </div>
         </div>
 
@@ -1118,7 +1102,6 @@
 
             // --- УПРАВЛЕНИЕ ТЕМОЙ ---
             const themeBtn = document.getElementById('themeBtn');
-            const themeIcon = document.getElementById('theme-icon');
             
             let isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             if (localStorage.getItem('theme') === 'dark') isDark = true;
@@ -1129,18 +1112,24 @@
 
                 if (isDark) {
                     document.body.classList.add('dark-mode');
-                    themeIcon.src = 'img/light_theme.png';
+                    if (themeBtn) themeBtn.textContent = 'Светлая тема';
                     if (mainLogo) mainLogo.src = 'img/logo_dark.png';
                 } else {
                     document.body.classList.remove('dark-mode');
-                    themeIcon.src = 'img/dark_theme.png';
+                    if (themeBtn) themeBtn.textContent = 'Тёмная тема';
                     if (mainLogo) mainLogo.src = 'img/logo.png';
                 }
                 localStorage.setItem('theme', isDark ? 'dark' : 'light');
                 updateAllScreenshots();
             }
 
-            themeBtn.addEventListener('click', () => { isDark = !isDark; applyTheme(); });
+            if (themeBtn) {
+                themeBtn.addEventListener('click', (e) => { 
+                    e.preventDefault(); 
+                    isDark = !isDark; 
+                    applyTheme(); 
+                });
+            }
 
             // --- ГЛАВНАЯ ЛОГИКА ---
             function updateAllScreenshots() {
@@ -1369,34 +1358,47 @@
             }
             const modal = document.getElementById('installModal');
             function openModal() { 
-                // Проверяем, использует ли человек Mac, iPhone или iPad
-                const isApple = /Macintosh|Mac OS X|iPad|iPhone|iPod/i.test(navigator.userAgent);
+                const ua = navigator.userAgent;
+                const isApple = /Macintosh|Mac OS X|iPad|iPhone|iPod/i.test(ua);
+                const isAndroid = /Android/i.test(ua);
                 
-                // Переключаем вкладку до того, как окно станет видимым
-                switchTab(isApple ? 'macos' : 'other');
+                // Автоопределение вкладки при открытии
+                if (isApple) {
+                    switchTab('macos');
+                } else if (isAndroid) {
+                    switchTab('android');
+                } else {
+                    switchTab('pc');
+                }
 
-                // Открываем само модальное окно
                 modal.style.display = 'flex'; 
                 setTimeout(() => modal.classList.add('active'), 10); 
             }
-            function closeModal() { modal.classList.remove('active'); setTimeout(() => modal.style.display = 'none', 300); }
-            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
-            // Функции showVideo и hideVideo удалены за ненадобностью
+            function closeModal() {
+                const modal = document.getElementById('installModal');
+                modal.classList.remove('active');
+                setTimeout(() => {
+                    modal.style.display = 'none';
+                }, 300);
+            }
 
             function switchTab(os) {
                 document.querySelectorAll('.os-btn').forEach(btn => btn.classList.remove('active'));
                 document.querySelectorAll('.instruction-content').forEach(c => c.classList.remove('active'));
                 
-                if (os === 'macos') {
-                    document.querySelector('.os-btn:nth-child(2)').classList.add('active');
-                    document.getElementById('tab-macos').classList.add('active');
-                } else {
+                if (os === 'android') {
                     document.querySelector('.os-btn:nth-child(1)').classList.add('active');
-                    document.getElementById('tab-other').classList.add('active');
-                    // Убрали вызов hideVideo('macos'), который вызывал краш скрипта
+                    document.getElementById('tab-android').classList.add('active');
+                } else if (os === 'pc') {
+                    document.querySelector('.os-btn:nth-child(2)').classList.add('active');
+                    document.getElementById('tab-pc').classList.add('active');
+                } else if (os === 'macos') {
+                    document.querySelector('.os-btn:nth-child(3)').classList.add('active');
+                    document.getElementById('tab-macos').classList.add('active');
                 }
             }
+
             // --- АККОРДЕОН FAQ ---
             const details = document.querySelectorAll("details");
 
@@ -1406,12 +1408,10 @@
                 question.addEventListener('click', () => {
                     const isActive = item.classList.contains('active');
 
-                    // Закрываем все остальные (эффект аккордеона)
                     document.querySelectorAll('.faq-item').forEach(otherItem => {
                         otherItem.classList.remove('active');
                     });
 
-                    // Если текущий не был активен — открываем его
                     if (!isActive) {
                         item.classList.add('active');
                     }
