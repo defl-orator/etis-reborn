@@ -9403,13 +9403,12 @@ injectStyles(styles);
 
                         const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
 
+                        // Если для этого предмета есть отложенная заметка (на след. неделю)
                         if (notesData.next_unbound && notesData.next_unbound[cleanSubjectName] && !seenSubjects.has(cleanSubjectName)) {
                             const unbound = notesData.next_unbound[cleanSubjectName];
-                            if (typeof unbound === 'string') {
-                                notesData.specific[pairId] = unbound;
-                                delete notesData.next_unbound[cleanSubjectName];
-                                localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
-                            } else if (currentWeek > unbound.week) {
+                            
+                            // Проверяем: если мы уже на следующей (или более поздней) неделе, привязываем заметку
+                            if (currentWeek > unbound.week) {
                                 notesData.specific[pairId] = unbound.text;
                                 delete notesData.next_unbound[cleanSubjectName];
                                 localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
@@ -9479,10 +9478,13 @@ injectStyles(styles);
                             <p style="margin-bottom: 0.8rem; color: var(--color-text-secondary); font-weight: 500;">Заметка / Домашнее задание:</p>
                             <textarea class="note-modal-textarea" placeholder="Что нужно сделать?">${existingNoteText}</textarea>
 
-                            <div style="margin: 1.5rem 0 2rem 0;">
-                                <label style="display:inline-flex; align-items:center; cursor:pointer; font-size:1.3rem; color:var(--color-text-primary); user-select:none;">
-                                    <input type="checkbox" id="note-next-class-cb" style="margin-right:10px; width:18px; height:18px; accent-color:var(--color-accent); cursor:pointer;">
-                                    На следующую пару
+                            <div style="margin: 2rem 0;">
+                                <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition);">
+                                    <div style="display:flex; flex-direction:column; gap:2px;">
+                                        <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">На следующую пару</span>
+                                        <span style="font-size:1.1rem; color:var(--color-text-secondary);">Заметка перенесется и исчезнет здесь</span>
+                                    </div>
+                                    <input type="checkbox" id="note-next-class-cb" class="tumbler-checkbox">
                                 </label>
                             </div>
 
@@ -9509,15 +9511,16 @@ injectStyles(styles);
                         const currentWeekEl = document.querySelector('.week.current');
                         const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 0;
 
-                        if (!val) {
+                        // Очищаем текущую заметку в любом случае, если нажато "На следующую пару" или если поле пустое
+                        if (!val || isNext) {
                             delete notesData.specific[pairId];
-                        } else {
-                            // СОХРАНЯЕМ В ТЕКУЩУЮ ВСЕГДА
-                            notesData.specific[pairId] = val;
+                        }
 
+                        if (val) {
                             if (isNext) {
-                                // Если стоит галочка - ищем следующую пару и копируем туда
+                                // ЛОГИКА ПЕРЕНОСА
                                 let nextPairId = null;
+                                // Ищем следующую такую же пару в оставшейся части текущей недели
                                 for (let i = currentIndex + 1; i < allRowsArray.length; i++) {
                                     const r = allRowsArray[i];
                                     const dCont = r.querySelector('.pair_info .dis');
@@ -9534,7 +9537,6 @@ injectStyles(styles);
                                                     rNum = n.nodeValue.trim();
                                                 }
                                             });
-                                            if (!rNum) rNum = nTd.textContent.trim().split(' ')[0] + ' пара';
                                         }
                                         nextPairId = `${dStr}_${rNum}_${subjectName}`;
                                         break;
@@ -9542,17 +9544,22 @@ injectStyles(styles);
                                 }
 
                                 if (nextPairId) {
-                                    notesData.specific[nextPairId] = val; // Дублируем на следующую на ЭТОЙ неделе
+                                    // Нашли на этой неделе
+                                    notesData.specific[nextPairId] = val;
                                 } else {
+                                    // Не нашли — отправляем в "непривязанные" на следующую неделю
                                     if (!notesData.next_unbound) notesData.next_unbound = {};
-                                    notesData.next_unbound[subjectName] = { text: val, week: currentWeek }; // На следующую неделю
+                                    notesData.next_unbound[subjectName] = { text: val, week: currentWeek };
                                 }
+                            } else {
+                                // ОБЫЧНОЕ СОХРАНЕНИЕ (без переноса)
+                                notesData.specific[pairId] = val;
                             }
                         }
 
                         localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
                         closeModal();
-                        renderNotes(); // Мгновенно обновляем интерфейс
+                        renderNotes(); 
                     };
 
                     modal.querySelector('.clear-note-btn').onclick = () => {
@@ -9753,11 +9760,12 @@ injectStyles(styles);
                 // Вызываем инициализацию свайпов
                 initMobileSwipes();
 
+                // Вызываем перерасчет сразу при загрузке расписания
+                recalculateTimetable();
+
                 // Запускаем отрисовку заметок при загрузке страницы
                 renderNotes();
 
-                // Вызываем перерасчет сразу при загрузке расписания
-                recalculateTimetable();
                 updateLiveTimetable();
                 setInterval(updateLiveTimetable, 60000);
                 break;
