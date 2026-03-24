@@ -4,7 +4,7 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         
-        <!-- Базовое SEO -->
+        <!-- SEO -->
         <title>ЕТИС REBORN — Современный интерфейс для ПГНИУ</title>
         <meta name="description" content="ЕТИС REBORN — бесплатное расширение для браузера, которое полностью обновляет личный кабинет ЕТИС ПГНИУ. Добавляет мобильную версию, тёмную тему, удобное расписание и оценки.">
         <meta name="keywords" content="ЕТИС, ПГНИУ, Пермский университет, расписание ПГНИУ, расширение ЕТИС, ЕТИС REBORN, темная тема ЕТИС, оценки ПГНИУ">
@@ -15,17 +15,17 @@
         <link rel="canonical" href="https://etisreborn.ru/">
         <link rel="icon" href="img/logo.png" type="image/png">
 
-        <!-- Open Graph (VK, Telegram, WhatsApp) -->
+        <!-- Open Graph -->
         <meta property="og:type" content="website">
         <meta property="og:site_name" content="ЕТИС REBORN">
-        <meta property="og:title" content="ЕТИС REBORN — Современный интерфейс для ПГНИУ">
+        <meta property="og:title" content="ЕТИС REBORN — Современный интерфейс для студентов ПГНИУ">
         <meta property="og:description" content="Полностью обновленный личный кабинет ЕТИС ПГНИУ: современный дизайн, тёмная тема, адаптация для смартфонов.">
         <meta property="og:url" content="https://etisreborn.ru/">
         <meta property="og:image" content="https://etisreborn.ru/img/og-image.jpg">
 
         <!-- Twitter Cards -->
         <meta name="twitter:card" content="summary_large_image">
-        <meta name="twitter:title" content="ЕТИС REBORN — Современный интерфейс для ПГНИУ">
+        <meta name="twitter:title" content="ЕТИС REBORN — Современный интерфейс для студентов ПГНИУ">
         <meta name="twitter:description" content="Полностью обновленный личный кабинет ЕТИС ПГНИУ: современный дизайн, тёмная тема, адаптация для смартфонов.">
         <meta name="twitter:image" content="https://etisreborn.ru/img/og-image.jpg">
 
@@ -53,7 +53,6 @@
         </script>
 
         <style>
-            /* --- ЦВЕТА (СВЕТЛАЯ ТЕМА) --- */
             :root {
                 --primary: #2979ff; 
                 --primary-hover: #2264d1;
@@ -70,7 +69,6 @@
                 --bg-gradient-end: rgba(255, 255, 255, 0);
             }
 
-            /* --- ТЁМНАЯ ТЕМА --- */
             body.dark-mode {
                 --bg-color: #16181A;
                 --text-color: #f5f5f7;
@@ -85,7 +83,6 @@
                 --bg-gradient-end: rgba(22, 24, 26, 0);
             }
 
-            /* Делаем иконку белой в тёмной теме */
             body.dark-mode .theme-toggle img {
                 filter: invert(1);
             }
@@ -129,6 +126,8 @@
                 transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
                 background: transparent;
                 pointer-events: none; 
+                -webkit-perspective: 1000;
+                perspective: 1000;
             }
 
             body.is-scrolled header {
@@ -161,21 +160,26 @@
                 cursor: pointer;
                 will-change: transform, background-color;
                 -webkit-font-smoothing: antialiased;
+
+                -webkit-backface-visibility: hidden;
+                backface-visibility: hidden;
+                -webkit-transform-style: preserve-3d;
+                transform-style: preserve-3d;
             }
 
             body.is-scrolled .logo {
-                transform: scale(1) translateZ(0);
-                gap: 12px;
-                padding: 10px 24px;
-                
-                background: rgba(255, 255, 255, 0.7);
-                backdrop-filter: blur(15px) saturate(180%);
+                transform: scale(1);
+                -webkit-transform: scale(1) translateZ(0); 
                 -webkit-backdrop-filter: blur(15px) saturate(180%);
+                backdrop-filter: blur(15px) saturate(180%);
                 
-                border: 1px solid rgba(255, 255, 255, 0.4);
+                gap: 12px; 
+                padding: 10px 24px; 
+                background: rgba(255, 255, 255, 0.7); 
+                border: 1px solid rgba(255, 255, 255, 0.4); 
                 box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
                 
-                z-index: 10;
+                isolation: isolate; 
             }
 
             body.dark-mode.is-scrolled .logo {
@@ -244,12 +248,10 @@
                 border-radius: 20px; box-shadow: 0 20px 60px var(--shadow);
                 border: 1px solid var(--border-color); background: var(--card-bg);
                 user-select: none; min-height: 200px; 
-                /* Важно: предотвращает выделение при перетаскивании */
                 -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none;
             }
 
             .img-comp-img { width: 100%; display: block; line-height: 0; }
-            /* pointer-events: none ВАЖНО для отсутствия багов при драге */
             .img-comp-img img { display: block; width: 100%; height: auto; pointer-events: none; }
             
             .img-result {
@@ -275,7 +277,7 @@
             .label-new { left: 15px; background: var(--primary); color: white; }
             .label-old { right: 15px; background: rgba(0, 0, 0, 0.7); color: #fff; }
 
-            /* --- БЛОК CROSS-PLATFORM (Стили для "Телефоны рядом") --- */
+            /* --- БЛОК CROSS-PLATFORM --- */
             .mobile-side-by-side { display: flex; justify-content: center; gap: 60px; align-items: flex-start; }
             .phone-card { width: 300px; text-align: center; }
             .phone-frame {
@@ -313,7 +315,7 @@
                 border: 1px solid var(--border-color);
                 background: var(--card-bg);
                 transition: transform 0.3s ease;
-                line-height: 0; /* Убирает отступ под картинкой */
+                line-height: 0;
             }
             .analytics-frame:hover {
                 transform: translateY(-10px);
@@ -364,7 +366,6 @@
             }
             .credits a:hover { opacity: 0.7; }
 
-            /* Ссылка на официальный ЕТИС */
             .official-link {
                 margin-top: 15px;
                 display: inline-block;
@@ -379,7 +380,6 @@
                 text-decoration: underline;
             }
 
-            /* Копирайт */
             .copyright {
                 margin-top: 25px;
                 font-size: 0.8rem;
@@ -420,13 +420,11 @@
             .tutorial-video { width: 100%; max-height: 400px; border-radius: 12px; margin-top: 15px; background: #000; }
             .back-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 0.95rem; cursor: pointer; display: flex; align-items: center; margin-bottom: 15px; padding: 5px 0; }
             .back-btn:hover { color: var(--primary); }
-            /* Закругление для мобильных скриншотов */
             .mobile-rounded {
                 border-radius: 40px !important;
                 -webkit-mask-image: -webkit-radial-gradient(white, black); 
             }
 
-            /* Стиль для версии внизу модального окна */
             .modal-version {
                 text-align: center;
                 font-size: 0.75rem;
@@ -434,7 +432,7 @@
                 margin-top: 20px;
                 opacity: 0.6;
             }
-            /* --- FAQ SECTION (xFetishHub Style) --- */
+
             .faq-section {
                 margin-bottom: 120px;
             }
@@ -451,7 +449,6 @@
                 margin-bottom: 15px;
                 overflow: hidden;
                 transition: all 0.3s ease;
-                /* Плавное появление сетки */
                 display: grid;
                 grid-template-rows: auto 0fr;
             }
@@ -461,7 +458,6 @@
                 box-shadow: 0 10px 20px var(--shadow);
             }
 
-            /* Когда открыто — меняем размер строки */
             .faq-item.active {
                 grid-template-rows: auto 1fr;
             }
@@ -478,7 +474,6 @@
                 list-style: none;
             }
 
-            /* Убираем стандартную стрелку */
             .faq-question::-webkit-details-marker { display: none; }
 
             .faq-question::after {
@@ -510,7 +505,6 @@
                 margin-top: 10px;
             }
 
-            /* --- FOOTER & MODAL --- */
             footer {
                 padding: 60px 0 40px;
                 text-align: center;
@@ -525,7 +519,6 @@
                 gap: 35px;
             }
 
-            /* Контейнер для информационной строки */
             .footer-info-row {
                 display: flex;
                 flex-wrap: wrap;
@@ -534,7 +527,6 @@
                 gap: 15px 40px;
             }
 
-            /* Сбрасываем уникальные цвета и оформления, делаем всё приглушенным */
             .footer-info-row, 
             .footer-info-row span, 
             .footer-info-row a {
@@ -542,7 +534,7 @@
                 font-size: 0.85rem !important;
                 font-weight: 400 !important;
                 text-decoration: none !important;
-                opacity: 0.7; /* Приглушаем еще сильнее */
+                opacity: 0.7;
                 transition: opacity 0.2s;
                 border: none !important;
                 margin: 0 !important;
@@ -559,7 +551,6 @@
                 }
             }
 
-            /* --- ЛАЙТБОКС (УВЕЛИЧЕНИЕ КАРТИНОК) --- */
             .lightbox-img {
                 max-width: 90%;
                 max-height: 90vh;
@@ -588,7 +579,6 @@
                 transform: scale(1.1);
             }
 
-            /* Курсор-лупа для кликабельных картинок только на ПК */
             @media (min-width: 769px) {
                 .analytics-frame img,
                 .phone-frame img,
@@ -597,7 +587,6 @@
                 }
             }
 
-            /* --- ЛЕНДИНГ ОТЗЫВЫ --- */
             .landing-reviews-container {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -626,7 +615,6 @@
             .avg-rating-stars { color: #FFD700; font-size: 1.8rem; margin: 10px 0; }
             .avg-rating-count { color: var(--text-secondary); font-size: 1rem; }
 
-            /* Анимация появления */
             @keyframes revealUp {
                 from {
                     opacity: 0;
@@ -1016,7 +1004,7 @@
 
                 <!-- Вкладка iOS / macOS -->
                 <div id="tab-macos" class="instruction-content">
-                    <p style="margin-bottom: 15px;">Для Safari рекомендую приложение <a href="https://apps.apple.com/ru/app/stay-for-safari/id1591620171" target="_blank" class="text-link">Stay</a>:</p>
+                    <p style="margin-bottom: 15px;">Рекомендую приложение <a href="https://apps.apple.com/ru/app/stay-for-safari/id1591620171" target="_blank" class="text-link">Stay</a>:</p>
                     <ol class="step-list">
                         <li>Установите и настройте <b>Stay</b> из App Store.</li>
                         <li>Нажмите кнопку ниже, чтобы скопировать ссылку на скрипт.</li>
@@ -1149,19 +1137,16 @@
                 const crossSliderContainer = document.getElementById('cross-slider-container');
 
                 if (isMobile) {
-                    // Мобила -> показываем ПК в слайдере (НЕ ЗАКРУГЛЯЕМ)
                     crossTitle.textContent = "Версия для ПК";
                     crossSideView.style.display = 'none';
                     crossSliderView.style.display = 'block';
                     crossSliderContainer.classList.remove('mobile-limit');
                     
-                    // Убираем закругление, так как тут скриншоты ПК
                     crossSliderContainer.classList.remove('mobile-rounded');
 
                     sliderNew.src = `img/schedule-pc-${currentTheme}-new.png`;
                     sliderOld.src = `img/schedule-pc-${currentTheme}-old.png`;
                 } else {
-                    // ПК -> показываем Мобилу рядом (телефоны уже имеют свои стили рамок)
                     crossTitle.textContent = "Мобильная версия";
                     crossSideView.style.display = 'flex';
                     crossSliderView.style.display = 'none';
@@ -1174,7 +1159,6 @@
                 const analyticsSessions = document.getElementById('img-analytics-sessions');
                 const analyticsTop = document.getElementById('img-analytics-top');
                 if (analyticsSessions && analyticsTop) {
-                    // Формируем пути по логике (без -new/-old, так как это просто скриншоты)
                     analyticsSessions.src = `img/analytics-sessions-${deviceType}-${currentTheme}.png`;
                     analyticsTop.src = `img/analytics-top-${deviceType}-${currentTheme}.png`;
                     
@@ -1191,7 +1175,6 @@
                     const type = container.dataset.type;
                     const imgs = container.querySelectorAll('.dynamic-img');
                     
-                    // !!! НОВОЕ: Если мы на мобильном, добавляем класс закругления 40px !!!
                     if (isMobile) {
                         container.classList.add('mobile-rounded');
                     } else {
@@ -1211,7 +1194,6 @@
                         const ver = img.dataset.ver;
                         img.src = `img/${filePrefix}-${deviceType}-${themeForBlock}-${ver}.png`;
                         img.onerror = function() {
-                            // Заглушка, если картинки нет
                             this.src = `https://via.placeholder.com/800x500/ccc/333?text=${filePrefix}`;
                         };
                     });
@@ -1219,13 +1201,11 @@
             }
 
             function preloadImages() {
-                // Список всех возможных вариаций
                 const prefixes = ['schedule', 'grades', 'teachers', 'spravka'];
                 const devices = ['pc', 'mobile'];
                 const themes = ['light', 'dark'];
                 const versions = ['new', 'old'];
                 
-                // Создаем скрытый div, чтобы не мусорить в DOM, или просто создаем объекты Image в памяти
                 const imageUrls = [];
 
                 prefixes.forEach(prefix => {
@@ -1238,7 +1218,6 @@
                     });
                 });
 
-                // Начинаем загрузку
                 imageUrls.forEach(url => {
                     const img = new Image();
                     img.src = url;
@@ -1246,13 +1225,12 @@
                 console.log(`Запущена предзагрузка ${imageUrls.length} изображений.`);
             }
 
-            // Запускаем предзагрузку сразу после загрузки страницы
             window.addEventListener('load', preloadImages);
 
             applyTheme(); 
             window.addEventListener('resize', updateAllScreenshots);
 
-            // --- СЛАЙДЕРЫ (ПОЛНОСТЬЮ ОБНОВЛЕНО) ---
+            // --- СЛАЙДЕРЫ ---
             function initComparisons() {
                 document.querySelectorAll(".img-comp-container").forEach(setupSlider);
             }
@@ -1262,19 +1240,17 @@
 
                 let slider, w, h;
                 let clicked = false;
-                let currentPercent = 0.5; // Запоминаем позицию в процентах (по умолчанию 50%)
+                let currentPercent = 0.5;
                 
                 const imgWrapper = container.querySelector('.img-result');
                 const imgInside = imgWrapper.querySelector('img');
                 const labelNew = container.querySelector('.label-new');
                 const labelOld = container.querySelector('.label-old');
 
-                // Создаем ползунок
                 slider = document.createElement("DIV");
                 slider.className = "img-comp-slider";
                 container.appendChild(slider);
 
-                // Функция обновления размеров
                 function updateDimensions() {
                     w = container.offsetWidth;
                     h = container.offsetHeight;
@@ -1284,7 +1260,6 @@
                     imgInside.style.width = w + "px"; 
                     slider.style.top = (h / 2) + "px";
                     
-                    // Применяем сохраненный процент, чтобы ползунок оставался там, где его оставили
                     slide(w * currentPercent);
                 }
                 
@@ -1314,16 +1289,14 @@
                 }
 
                 function slide(x) {
-                    if (w > 0) currentPercent = x / w; // Обновляем процент сдвига
+                    if (w > 0) currentPercent = x / w;
                     imgWrapper.style.width = x + "px";
                     slider.style.left = x + "px";
                     
-                    // Прозрачность меток
                     labelNew.style.opacity = x < 60 ? '0' : '1';
                     labelOld.style.opacity = x > w - 60 ? '0' : '1';
                 }
 
-                // Обработчики (passive: false нужно для телефонов, чтобы preventDefault сработал)
                 slider.addEventListener("mousedown", slideStart);
                 slider.addEventListener("touchstart", slideStart, {passive: false});
 
@@ -1332,7 +1305,6 @@
                 window.addEventListener("mousemove", slideMove);
                 window.addEventListener("touchmove", slideMove, {passive: false});
                 
-                // Первичная инициализация
                 updateDimensions();
             }
 
@@ -1345,7 +1317,7 @@
                 navigator.clipboard.writeText(SCRIPT_URL).then(() => {
                     const originalText = btn.innerText;
                     btn.innerText = 'Скопировано! ✓';
-                    btn.style.backgroundColor = '#22c55e'; // Зеленый цвет для успеха
+                    btn.style.backgroundColor = '#22c55e';
                     
                     setTimeout(() => {
                         btn.innerText = originalText;
@@ -1362,7 +1334,6 @@
                 const isApple = /Macintosh|Mac OS X|iPad|iPhone|iPod/i.test(ua);
                 const isAndroid = /Android/i.test(ua);
                 
-                // Автоопределение вкладки при открытии
                 if (isApple) {
                     switchTab('macos');
                 } else if (isAndroid) {
@@ -1422,7 +1393,7 @@
             const lightboxImg = document.getElementById('lightboxImg');
 
             function openLightbox(src) {
-                if (window.innerWidth <= 768) return; // Игнорируем на мобильных
+                if (window.innerWidth <= 768) return;
                 
                 lightboxImg.src = src;
                 lightbox.style.display = 'flex';
@@ -1434,26 +1405,21 @@
                 setTimeout(() => lightbox.style.display = 'none', 300);
             }
 
-            // Закрытие по клику на тёмный фон вокруг картинки
             lightbox.addEventListener('click', (e) => {
                 if (e.target === lightbox) closeLightbox();
             });
 
-            // Закрытие по клавише Escape
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && lightbox.classList.contains('active')) {
                     closeLightbox();
                 }
             });
 
-            // Отслеживаем клики по картинкам
             document.addEventListener('click', (e) => {
-                // Ищем, был ли клик по картинке внутри нужных нам блоков
                 const targetImg = e.target.closest('.analytics-frame img') || 
                                 e.target.closest('.phone-frame img') ||
                                 e.target.closest('.img-comp-img img');
                                 
-                // Игнорируем клики по самому ползунку слайдера (чтобы не мешать перетаскиванию)
                 if (e.target.closest('.img-comp-slider')) return;
 
                 if (targetImg) {
@@ -1462,16 +1428,14 @@
             });
         // --- АВТООПРЕДЕЛЕНИЕ АКТУАЛЬНОЙ ВЕРСИИ СКРИПТА ---
             async function fetchLatestVersion() {
-                // URL самого файла для парсинга версии
                 const RAW_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js';
-                // URL API GitHub для получения даты изменения файла
+
                 const API_URL = 'https://api.github.com/repos/defl-orator/etis-reborn/commits?path=etis.user.js&page=1&per_page=1';
                 
                 const versionEl = document.getElementById('script-version-info');
                 if (!versionEl) return;
 
                 try {
-                    // 1. Получаем версию из текста файла
                     const rawResponse = await fetch(RAW_URL + '?t=' + Date.now());
                     if (!rawResponse.ok) throw new Error('Ошибка скачивания файла');
                     const text = await rawResponse.text();
@@ -1479,17 +1443,14 @@
                     const verMatch = text.match(/@version\s+([\d\.]+)/);
                     const version = verMatch ? verMatch[1] : '1.0';
                     
-                    // 2. Получаем точную дату обновления через API GitHub
                     let dateStr = "н/д";
                     try {
                         const apiResponse = await fetch(API_URL);
                         if (apiResponse.ok) {
                             const data = await apiResponse.json();
                             if (data && data.length > 0) {
-                                // Берем дату коммита
                                 const dateIso = data[0].commit.committer.date;
                                 const d = new Date(dateIso);
-                                // Форматируем в ДД.ММ.ГГ
                                 dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
                             }
                         }
@@ -1497,7 +1458,6 @@
                         console.warn('Не удалось получить дату из API GitHub', e);
                     }
                     
-                    // 3. Выводим на экран
                     versionEl.textContent = `Версия ${version} от ${dateStr}`;
                 } catch (error) {
                     console.error('Не удалось получить версию скрипта:', error);
@@ -1505,7 +1465,6 @@
                 }
             }
 
-            // Логика модального окна багов
             const bugModal = document.getElementById('bugModal');
             
             function openBugModal(e) {
@@ -1519,7 +1478,6 @@
                 setTimeout(() => bugModal.style.display = 'none', 300);
             }
 
-            // Отправка формы без перезагрузки
             function sendBugReport(e) {
                 e.preventDefault();
                 const form = e.target;
@@ -1568,7 +1526,6 @@
 
                     const reviewsArr = Object.values(data).sort((a,b) => new Date(b.date) - new Date(a.date));
                     
-                    // Подсчет среднего рейтинга
                     const totalStars = reviewsArr.reduce((sum, rev) => sum + rev.rating, 0);
                     const avg = (totalStars / reviewsArr.length).toFixed(1);
                     
@@ -1577,7 +1534,6 @@
                     document.getElementById('landing-avg-count').textContent = `На основе ${reviewsArr.length} отзывов`;
                     avgBlock.style.display = 'block';
 
-                    // Берем последние 6 отзывов для лендинга
                     const topReviews = reviewsArr.slice(0, 6);
 
                     topReviews.forEach(rev => {
@@ -1585,7 +1541,6 @@
                         const dateStr = `${String(dateObj.getDate()).padStart(2,'0')}.${String(dateObj.getMonth()+1).padStart(2,'0')}.${dateObj.getFullYear()}`;
                         const starsHtml = '★'.repeat(rev.rating) + '☆'.repeat(5 - rev.rating);
 
-                        // Защита от XSS
                         const safeText = rev.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
                         const safeAuthor = (rev.author || 'Аноним').replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
@@ -1615,7 +1570,6 @@
 
                 let currentCount = 12;
 
-                // 1. Показываем счетчик при загрузке страницы
                 try {
                     const response = await fetch(FIREBASE_URL, { cache: 'no-store' });
                     if (response.ok) {
@@ -1630,7 +1584,6 @@
                     counterEl.innerText = currentCount + '+'; 
                 }
 
-                // 2. Логика клика
                 const installButtons = document.querySelectorAll('.download-btn, .install-btn');
                 installButtons.forEach(btn => {
                     btn.addEventListener('click', async () => {
@@ -1641,8 +1594,6 @@
                         }
 
                         try {
-                            // Запрашиваем самое свежее число прямо перед кликом 
-                            // (на случай, если пока мы сидели на сайте, кто-то другой уже скачал)
                             const res = await fetch(FIREBASE_URL, { cache: 'no-store' });
                             let latestCount = 12;
                             if (res.ok) {
@@ -1650,13 +1601,11 @@
                                 latestCount = data !== null ? parseInt(data) : 12;
                             }
                             
-                            latestCount++; // Увеличиваем на 1
+                            latestCount++;
                             
-                            // Сразу обновляем интерфейс, чтобы юзер не ждал
                             counterEl.innerText = latestCount;
-                            localStorage.setItem('etis_installed', 'true'); // Блокируем дальнейшие клики
+                            localStorage.setItem('etis_installed', 'true');
 
-                            // Отправляем в Firebase
                             await fetch(FIREBASE_URL, {
                                 method: 'PUT',
                                 headers: { 'Content-Type': 'application/json' },
@@ -1685,7 +1634,6 @@
                 setTimeout(() => reviewModal.style.display = 'none', 300);
             }
 
-            // Логика звезд
             document.querySelectorAll('#modal-stars span').forEach(star => {
                 star.addEventListener('click', function() {
                     currentRating = parseInt(this.dataset.val);
@@ -1712,7 +1660,7 @@
                     text: text,
                     author: author,
                     date: new Date().toISOString(),
-                    source: 'landing' // Пометка, что отзыв с лендинга
+                    source: 'landing'
                 };
 
                 try {
@@ -1725,7 +1673,6 @@
                     document.getElementById('review-form-content').style.display = 'none';
                     document.getElementById('review-success').style.display = 'block';
                     
-                    // Обновляем список отзывов на странице
                     setTimeout(() => {
                         closeReviewModal();
                         loadLandingReviews(); 
@@ -1737,24 +1684,22 @@
 
             function initRevealAnimations() {
                 const observerOptions = {
-                    threshold: 0.1 // Элемент начнет появляться, когда 10% его высоты будет в кадре
+                    threshold: 0.1
                 };
 
                 const observer = new IntersectionObserver((entries) => {
                     entries.forEach(entry => {
                         if (entry.isIntersecting) {
                             entry.target.classList.add('reveal-active');
-                            observer.unobserve(entry.target); // Чтобы анимация сработала только один раз
+                            observer.unobserve(entry.target);
                         }
                     });
                 }, observerOptions);
 
-                // Цели для анимации
                 const targets = document.querySelectorAll('.hero, .comparison-block, .reviews-section, .faq-section');
                 targets.forEach(target => observer.observe(target));
             }
 
-            // Логика сжатия шапки при скролле
             function handleScroll() {
                 if (window.scrollY > 50) {
                     document.body.classList.add('is-scrolled');
