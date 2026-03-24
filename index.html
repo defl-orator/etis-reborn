@@ -1126,7 +1126,6 @@
             function updateAllScreenshots() {
                 const isMobile = window.innerWidth <= 768;
                 const currentTheme = isDark ? 'dark' : 'light';
-                const inverseTheme = isDark ? 'light' : 'dark';
                 const deviceType = isMobile ? 'mobile' : 'pc';
 
                 // 1. БЛОК CROSS PLATFORM
@@ -1143,28 +1142,40 @@
                     crossTitle.textContent = "Версия для ПК";
                     crossSideView.style.display = 'none';
                     crossSliderView.style.display = 'block';
+                    crossSliderContainer.classList.remove('mobile-limit');
                     
+                    crossSliderContainer.classList.add('mobile-rounded');
+
                     sliderNew.src = `img/schedule-pc-${currentTheme}-new.png`;
-                    sliderOld.src = `img/schedule-pc-light-old.png`; 
+                    sliderOld.src = `img/schedule-pc-light-old.png`;
                 } else {
                     crossTitle.textContent = "Мобильная версия";
                     crossSideView.style.display = 'flex';
                     crossSliderView.style.display = 'none';
+                    
+                    crossSliderContainer.classList.remove('mobile-rounded');
 
                     sideNew.src = `img/schedule-mobile-${currentTheme}-new.png`;
                     sideOld.src = `img/schedule-mobile-light-old.png`;
                 }
 
                 // 2. ОСТАЛЬНЫЕ БЛОКИ (Расписание, Оценки и т.д.)
-                document.querySelectorAll('.img-comp-container[data-type]').forEach(container => {
+                document.querySelectorAll('.img-comp-container').forEach(container => {
+                    if (isMobile) {
+                        container.classList.add('mobile-rounded');
+                    } else {
+                        container.classList.remove('mobile-rounded');
+                    }
+
                     const type = container.dataset.type;
+                    if (!type) return;
+
                     const imgs = container.querySelectorAll('.dynamic-img');
-                    
                     let themeForBlock = currentTheme;
                     let filePrefix = type;
 
                     if (type === 'theme-feature') {
-                        themeForBlock = inverseTheme;
+                        themeForBlock = isDark ? 'light' : 'dark';
                         filePrefix = 'schedule';
                         document.getElementById('title-theme').textContent = isDark ? 'Светлая тема' : 'Тёмная тема';
                     }
@@ -1172,11 +1183,11 @@
                     imgs.forEach(img => {
                         const ver = img.dataset.ver;
                         const finalTheme = (ver === 'old') ? 'light' : themeForBlock;
-                        
                         img.src = `img/${filePrefix}-${deviceType}-${finalTheme}-${ver}.png`;
                     });
                 });
 
+                // 3. БЛОК АНАЛИТИКИ
                 const analyticsSessions = document.getElementById('img-analytics-sessions');
                 const analyticsTop = document.getElementById('img-analytics-top');
                 if (analyticsSessions && analyticsTop) {
@@ -1184,6 +1195,7 @@
                     analyticsTop.src = `img/analytics-top-${deviceType}-${currentTheme}.png`;
                 }
             }
+
 
             function preloadImages() {
                 const prefixes = ['schedule', 'grades', 'teachers', 'spravka'];
