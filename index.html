@@ -1143,46 +1143,22 @@
                     crossTitle.textContent = "Версия для ПК";
                     crossSideView.style.display = 'none';
                     crossSliderView.style.display = 'block';
-                    crossSliderContainer.classList.remove('mobile-limit');
                     
-                    crossSliderContainer.classList.remove('mobile-rounded');
-
                     sliderNew.src = `img/schedule-pc-${currentTheme}-new.png`;
-                    sliderOld.src = `img/schedule-pc-${currentTheme}-old.png`;
+                    sliderOld.src = `img/schedule-pc-light-old.png`; 
                 } else {
                     crossTitle.textContent = "Мобильная версия";
                     crossSideView.style.display = 'flex';
                     crossSliderView.style.display = 'none';
 
                     sideNew.src = `img/schedule-mobile-${currentTheme}-new.png`;
-                    sideOld.src = `img/schedule-mobile-${currentTheme}-old.png`;
-                }
-
-                // --- БЛОК АНАЛИТИКИ ---
-                const analyticsSessions = document.getElementById('img-analytics-sessions');
-                const analyticsTop = document.getElementById('img-analytics-top');
-                if (analyticsSessions && analyticsTop) {
-                    analyticsSessions.src = `img/analytics-sessions-${deviceType}-${currentTheme}.png`;
-                    analyticsTop.src = `img/analytics-top-${deviceType}-${currentTheme}.png`;
-                    
-                    analyticsSessions.onerror = function() { 
-                        this.src = `https://via.placeholder.com/800x500/ccc/333?text=Analytics+Sessions`; 
-                    };
-                    analyticsTop.onerror = function() { 
-                        this.src = `https://via.placeholder.com/800x500/ccc/333?text=Analytics+Top`; 
-                    };
+                    sideOld.src = `img/schedule-mobile-light-old.png`;
                 }
 
                 // 2. ОСТАЛЬНЫЕ БЛОКИ (Расписание, Оценки и т.д.)
                 document.querySelectorAll('.img-comp-container[data-type]').forEach(container => {
                     const type = container.dataset.type;
                     const imgs = container.querySelectorAll('.dynamic-img');
-                    
-                    if (isMobile) {
-                        container.classList.add('mobile-rounded');
-                    } else {
-                        container.classList.remove('mobile-rounded');
-                    }
                     
                     let themeForBlock = currentTheme;
                     let filePrefix = type;
@@ -1195,12 +1171,18 @@
 
                     imgs.forEach(img => {
                         const ver = img.dataset.ver;
-                        img.src = `img/${filePrefix}-${deviceType}-${themeForBlock}-${ver}.png`;
-                        img.onerror = function() {
-                            this.src = `https://via.placeholder.com/800x500/ccc/333?text=${filePrefix}`;
-                        };
+                        const finalTheme = (ver === 'old') ? 'light' : themeForBlock;
+                        
+                        img.src = `img/${filePrefix}-${deviceType}-${finalTheme}-${ver}.png`;
                     });
                 });
+
+                const analyticsSessions = document.getElementById('img-analytics-sessions');
+                const analyticsTop = document.getElementById('img-analytics-top');
+                if (analyticsSessions && analyticsTop) {
+                    analyticsSessions.src = `img/analytics-sessions-${deviceType}-${currentTheme}.png`;
+                    analyticsTop.src = `img/analytics-top-${deviceType}-${currentTheme}.png`;
+                }
             }
 
             function preloadImages() {
@@ -1209,23 +1191,18 @@
                 const themes = ['light', 'dark'];
                 const versions = ['new', 'old'];
                 
-                const imageUrls = [];
-
                 prefixes.forEach(prefix => {
                     devices.forEach(device => {
                         themes.forEach(theme => {
                             versions.forEach(ver => {
-                                imageUrls.push(`img/${prefix}-${device}-${theme}-${ver}.png`);
+                                if (ver === 'old' && theme === 'dark') return; 
+                                
+                                const img = new Image();
+                                img.src = `img/${prefix}-${device}-${theme}-${ver}.png`;
                             });
                         });
                     });
                 });
-
-                imageUrls.forEach(url => {
-                    const img = new Image();
-                    img.src = url;
-                });
-                console.log(`Запущена предзагрузка ${imageUrls.length} изображений.`);
             }
 
             window.addEventListener('load', preloadImages);
