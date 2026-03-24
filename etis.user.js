@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8013
-// @changelog    Добавлена кастомизация и свайпы в расписании для телефонов: свайп влево по карточке дня открывает окно с добавлением пары, свайпы по конкретной паре открывают окно с заметкой/дз либо оценкой занятия.
+// @version      1.8014
+// @changelog    Добавлена кастомизация и свайпы в расписании для телефонов: свайп влево по шапке дня открывает окно с добавлением пары, свайпы по конкретной паре открывают окно с заметкой/дз либо оценкой занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @match        https://student.psu.ru/*
@@ -500,8 +500,13 @@ form.que_form { margin-top: 1rem !important; }
 .ses_part { line-height: 1.5 !important; }
 
 /* Week Select (Капсула) */
-.week-select { margin: 0 auto 1.5rem !important; width: 100% !important; }
+.week-select { margin: 0 auto 1.5rem !important; margin-top: 0 !important; margin-bottom: 1.5rem !important; width: 100% !important; clear: both !important; }
 .week-select h3 { display: none !important; }
+
+.timetable-toolbar + br, 
+.span9 > br {
+    display: none !important;
+}
 
 /* Капсула для недель */
 .weeks {
@@ -511,6 +516,8 @@ form.que_form { margin-top: 1rem !important; }
     align-items: center !important;
     gap: 8px !important;
     margin: 0 !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
 
     width: 100% !important;
     padding: 4px !important;
@@ -1005,7 +1012,7 @@ html[theme="dark"] .psu-logo::before {
 
     padding: 4px !important;
     gap: 8px !important;
-    margin-bottom: 1rem !important;
+    margin-bottom: 1.5rem !important;
 
     /* Индикация скролла */
     background-image:
@@ -1344,7 +1351,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         border-radius: 50px !important;
         padding: 4px !important;
         gap: 6px !important;
-        margin-bottom: 1rem !important;
+        margin-bottom: 1.5rem !important;
         background-color: var(--color-card) !important;
 
         background-image:
