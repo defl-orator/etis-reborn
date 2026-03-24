@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8012
+// @version      1.8013
 // @changelog    Добавлена кастомизация и свайпы в расписании для телефонов: свайп влево по карточке дня открывает окно с добавлением пары, свайпы по конкретной паре открывают окно с заметкой/дз либо оценкой занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -667,10 +667,10 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
     align-items: center !important;
     gap: 6px !important;
     margin-top: 4px !important;
-    flex-wrap: nowrap !important; 
+    flex-wrap: nowrap !important;
     width: max-content !important;
     position: relative !important;
-    z-index: 0 !important; 
+    z-index: 0 !important;
 }
 .pair_info .aud > a:before { margin-right: 0.6rem !important; font-family: 'Material Icons Outlined' !important; content: 'videocam' !important; font-size: 1.8rem !important; }
 .pair_info .aud > a > img { display: none !important; }
@@ -916,7 +916,7 @@ html[theme="dark"] .psu-logo::before {
         display: flex !important;
         flex-direction: column !important;
         align-items: flex-start !important;
-        justify-content: center !important; 
+        justify-content: center !important;
         padding-right: 20px !important;
     }
 
@@ -1734,7 +1734,7 @@ input::placeholder {
     display: flex !important;
     align-items: center !important;
     padding: 2.6rem 2.6rem 0.5rem 2.6rem !important;
-    gap: 10px !important; 
+    gap: 10px !important;
     margin-bottom: 2.4rem !important;
     position: relative !important;
     transition: transform 0.5s cubic-bezier(0.68, -0.6, 0.32, 1.6) !important;
@@ -1743,7 +1743,7 @@ input::placeholder {
 }
 
 .sidebar-logo img {
-    height: 3.2rem !important; 
+    height: 3.2rem !important;
     width: auto !important;
     flex-shrink: 0 !important;
 }
@@ -2036,14 +2036,14 @@ div[id^="frm_"] textarea:focus {
     display: inline-flex !important;
     align-items: center !important;
     gap: 0.6rem !important;
-    background: rgba(45, 140, 255, 0.1) !important;
-    color: #2D8CFF !important;
+    background: var(--color-accent-active) !important;
+    color: var(--color-accent) !important;
     padding: 0.5rem 1.2rem !important;
     border-radius: 50px !important;
     font-size: 1.1rem !important;
     font-weight: 600 !important;
     line-height: 1 !important;
-    border: 1px solid rgba(45, 140, 255, 0.15) !important;
+    border: 1px solid var(--color-accent-active) !important;
 }
 
 /* Блок с информацией о пользователе в сайдбаре */
@@ -4276,7 +4276,7 @@ html[theme] .timetable-grid td.pair_teacher {
     padding-right: 2rem !important;
     color: var(--color-text-secondary) !important;
     position: relative !important;
-    vertical-align: middle !important; 
+    vertical-align: middle !important;
     padding-top: 1rem !important;
     padding-bottom: 1rem !important;
 }
@@ -4329,14 +4329,14 @@ html[theme] .timetable-grid tr:not(.tr-needs-space):hover td.pair_teacher .eval 
 html[theme] .timetable-grid tr.tr-needs-space:hover td.pair_teacher .eval {
     opacity: 1 !important;
     visibility: visible !important;
-    transform: translateY(4px) scale(1) !important; 
+    transform: translateY(4px) scale(1) !important;
 }
 
 /* При наведении кнопка появляется и отъезжает вниз, занимая место */
 html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
     opacity: 1 !important;
     visibility: visible !important;
-    transform: translateY(0) !important; 
+    transform: translateY(0) !important;
 }
 
 /* Фикс разделительных линий (линия стартует ровно от текста предмета, без отступа) */
@@ -4442,7 +4442,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
         padding-left: 0.5rem !important;
         padding-right: 0.5rem !important;
     }
-    
+
     html[theme] .timetable-grid td.pair_teacher .eval {
         right: 1.4rem !important;
         top: 3.8rem !important;
@@ -4452,8 +4452,8 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
         background-image: linear-gradient(to right,
             transparent calc(75px + 0.5rem),
             var(--color-table-border) calc(75px + 0.5rem),
-            var(--color-table-border) calc(100% - 1.6rem), 
-            transparent calc(100% - 1.6rem)               
+            var(--color-table-border) calc(100% - 1.6rem),
+            transparent calc(100% - 1.6rem)
         ) !important;
     }
 }
@@ -5057,7 +5057,7 @@ button.search-capsule:hover {
     align-items: center !important;
     justify-content: center !important;
     margin-left: 6px !important;
-    padding: 2px !important; 
+    padding: 2px !important;
     width: 24px !important; /* Жестко фиксируем размер */
     height: 24px !important;
     border-radius: 50% !important;
@@ -5070,7 +5070,7 @@ button.search-capsule:hover {
     visibility: hidden !important;
     transform: scale(0.8) !important;
     pointer-events: none !important;
-    
+
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
@@ -5340,15 +5340,15 @@ button.search-capsule:hover {
 .add-custom-pair-btn {
     cursor: pointer;
     color: var(--color-text-secondary);
-    
+
     /* Скрываем элемент */
     opacity: 0;
     visibility: hidden;
-    
+
     /* ФИКС БАГА ЗАЛИПАНИЯ: Выносим кнопку на отдельный слой GPU */
     transform: scale(0.8) translateZ(0);
     will-change: opacity, visibility, transform;
-    
+
     transition: all 0.2s ease;
     border-radius: 50%;
     display: inline-flex;
@@ -5359,15 +5359,15 @@ button.search-capsule:hover {
 }
 
 /* Показываем при наведении на шапку дня */
-.span9 .day h3:hover .add-custom-pair-btn { 
-    opacity: 1; 
+.span9 .day h3:hover .add-custom-pair-btn {
+    opacity: 1;
     visibility: visible;
     transform: scale(1) translateZ(0); /* Возвращаем размер */
 }
 
-.add-custom-pair-btn:hover { 
-    color: var(--color-accent); 
-    background: var(--color-highlight); 
+.add-custom-pair-btn:hover {
+    color: var(--color-accent);
+    background: var(--color-highlight);
 }
 
 /* Строка пользовательской пары */
@@ -5380,11 +5380,11 @@ button.search-capsule:hover {
 .delete-custom-pair-btn {
     opacity: 0;
     visibility: hidden;
-    
+
     /* Такой же фикс для крестика, чтобы и он не залипал */
     transform: scale(0.8) translateZ(0);
     will-change: opacity, visibility, transform;
-    
+
     cursor: pointer;
     color: var(--color-red);
     transition: all 0.2s ease;
@@ -5398,8 +5398,8 @@ button.search-capsule:hover {
 }
 
 /* Показываем крестик при наведении на строку */
-.custom-pair-row:hover .delete-custom-pair-btn { 
-    opacity: 1; 
+.custom-pair-row:hover .delete-custom-pair-btn {
+    opacity: 1;
     visibility: visible;
     transform: scale(1) translateZ(0);
 }
@@ -5494,15 +5494,15 @@ button.search-capsule:hover {
 }
 
 /* Базовые стили для кружков (убираем фон, делаем ширину авто для текста) */
-.weeks .week { 
-    background-color: transparent !important; 
-    color: var(--color-text-secondary) !important; 
+.weeks .week {
+    background-color: transparent !important;
+    color: var(--color-text-secondary) !important;
     border-radius: 50px !important;
-    width: auto !important; 
-    min-width: 3.8rem !important; 
-    padding: 0 14px !important; 
+    width: auto !important;
+    min-width: 3.8rem !important;
+    padding: 0 14px !important;
 }
-.weeks > .week > a { 
+.weeks > .week > a {
     border-radius: 50px !important;
     color: var(--color-text-secondary) !important;
 }
@@ -5542,8 +5542,8 @@ button.analytics-btn {
 }
 
 /* Отключаем системную серую/синюю подсветку при тапе на мобильных */
-.mobile-menu-btn, 
-.submenu a, 
+.mobile-menu-btn,
+.submenu a,
 .submenu b,
 .weeks .week a,
 .weeks .week {
@@ -5649,7 +5649,7 @@ button.analytics-btn {
         transform: translateY(0) !important;
     }
     /* УДАЛЕНИЕ ВЕРХНИХ ГРАНИЦ У ТАБЛИЦ */
-    .span9 table.common, 
+    .span9 table.common,
     .span9 table.teach_plan,
     .wide-table-wrapper table {
         border-top: none !important;
@@ -5687,7 +5687,7 @@ button.analytics-btn {
     justify-content: space-between !important;
     align-items: center !important;
     gap: 1.2rem !important;
-    border-bottom: 1px solid var(--color-table-border) !important; 
+    border-bottom: 1px solid var(--color-table-border) !important;
     padding-bottom: 1.2rem !important;
     margin-bottom: 1.6rem !important;
     width: 100% !important;
@@ -5743,7 +5743,7 @@ button.analytics-btn {
     transform: scale(1.15);
 }
 
-#swipe-action-bubble.active-threshold.action-add { color: var(--color-blue); }
+#swipe-action-bubble.active-threshold.action-add { color: var(--color-accent) !important; }
 #swipe-action-bubble.active-threshold.action-note { color: var(--color-accent); }
 #swipe-action-bubble.active-threshold.action-eval { color: var(--color-yellow); }
 
@@ -5751,22 +5751,22 @@ button.analytics-btn {
 @media (hover: none), (pointer: coarse) {
     .timetable-grid tr, .day { touch-action: pan-y; }
 
-    html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval) { 
-        transform: none !important; 
+    html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval) {
+        transform: none !important;
     }
-    
+
     html[theme] .timetable-grid tr:hover td.pair_teacher .eval,
-    html[theme] .timetable-grid td.pair_teacher .eval { 
-        opacity: 0 !important; 
-        visibility: hidden !important; 
-        height: 0 !important; 
+    html[theme] .timetable-grid td.pair_teacher .eval {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        height: 0 !important;
         pointer-events: none !important;
     }
-    
+
     .add-custom-pair-btn { display: none !important; }
-    .delete-custom-pair-btn { 
+    .delete-custom-pair-btn {
         opacity: 1 !important; visibility: visible !important; transform: scale(1) !important;
-        color: var(--color-text-secondary) !important; 
+        color: var(--color-text-secondary) !important;
     }
 
     .timetable-grid tr:hover .subject-note-btn:not(.has-note) {
@@ -5895,7 +5895,7 @@ injectStyles(styles);
         orange: '#FF9500',
         // Светлый ряд
         lightblue: '#5AC8FA',
-        lightgreen: '#00C7BE', 
+        lightgreen: '#00C7BE',
         lightpurple: '#E58FFF',
         pink: '#FF2D55',
         yellow: '#FFCC00'
@@ -5908,7 +5908,7 @@ injectStyles(styles);
 
     function applyAccentColor() {
         const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
-        
+
         let c1 = ACCENT_COLORS[config.colors[0]] || ACCENT_COLORS.blue;
         let c2 = config.colors[1] ? ACCENT_COLORS[config.colors[1]] : c1;
 
@@ -5965,7 +5965,9 @@ injectStyles(styles);
             .logo-say-hey,
             .accent-stat,
             #swipe-action-bubble.active-threshold.action-note,
-            #swipe-action-bubble.active-threshold.action-note .material-icons {
+            #swipe-action-bubble.active-threshold.action-note .material-icons,
+            #swipe-action-bubble.active-threshold.action-add,
+            #swipe-action-bubble.active-threshold.action-add .material-icons
                 background: var(--bg-accent) !important;
                 -webkit-background-clip: text !important;
                 -webkit-text-fill-color: transparent !important;
@@ -5990,6 +5992,7 @@ injectStyles(styles);
             .logo-say-hey,
             .accent-stat,
             #swipe-action-bubble.active-threshold.action-note,
+            #swipe-action-bubble.active-threshold.action-add,
             #swipe-action-bubble.active-threshold.action-note .material-icons {
                 color: var(--color-accent) !important;
             }
@@ -6134,20 +6137,20 @@ injectStyles(styles);
         if (!v1 || !v2) return 0;
         const p1 = v1.split('.');
         const p2 = v2.split('.');
-        
+
         for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
             let s1 = p1[i] || "0";
             let s2 = p2[i] || "0";
-            
+
             if (s1.length !== s2.length) {
                 const maxLen = Math.max(s1.length, s2.length);
                 s1 = s1.padEnd(maxLen, '0');
                 s2 = s2.padEnd(maxLen, '0');
             }
-            
+
             const n1 = parseInt(s1, 10);
             const n2 = parseInt(s2, 10);
-            
+
             if (n1 > n2) return 1;
             if (n1 < n2) return -1;
         }
@@ -6377,7 +6380,7 @@ injectStyles(styles);
             toggleMenu(!isOpen);
         };
 
-        // Оставляем только 'click'. Современные мобильные браузеры 
+        // Оставляем только 'click'. Современные мобильные браузеры
         // сами гасят случайные клики при скролле.
         menuBtn.addEventListener('click', toggleMenuHandler);
 
@@ -6413,7 +6416,7 @@ injectStyles(styles);
                 overlay.classList.remove('active');
                 menuBtn.classList.remove('open');
                 menuBtn.classList.add('is-loading');
-                
+
                 // Возвращаем скролл основному окну при переходе
                 document.body.style.overflow = '';
                 document.documentElement.style.overflow = '';
@@ -6429,7 +6432,7 @@ injectStyles(styles);
         }
 
         const now = new Date();
-        const currentDay = now.getDay(); 
+        const currentDay = now.getDay();
         const currentTime = now.getHours() * 60 + now.getMinutes();
 
         const daysMap = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
@@ -6482,7 +6485,7 @@ injectStyles(styles);
                     if (type) {
                         const dot = document.createElement('span');
                         dot.className = `live-dot ${type}`;
-                        
+
                         if (row.classList.contains('timetable-gap-row')) {
                             row.querySelector('.timetable-gap-capsule')?.appendChild(dot);
                         } else {
@@ -6633,7 +6636,7 @@ injectStyles(styles);
                     <span id="close-custom" class="material-icons" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
                 </div>
                 <div class="ui-dialog-content" style="padding:24px;">
-                    
+
                     <!-- Ряд управления -->
                     <div class="color-picker-controls-row">
                         <!-- Капсула превью -->
@@ -6641,7 +6644,7 @@ injectStyles(styles);
                             <span>Градиент</span>
                             <input type="checkbox" id="grad-toggle" class="tumbler-checkbox" ${config.isGradient ? 'checked' : ''}>
                         </div>
-                        
+
                         <!-- Кнопка случайно справа -->
                         <button id="random-color-btn" class="color-picker-random-btn" title="Случайные цвета">
                             <span class="material-icons">casino</span>
@@ -6653,12 +6656,12 @@ injectStyles(styles);
             `;
 
             const grid = modal.querySelector('#color-grid');
-            
+
             COLOR_ORDER.forEach(colorKey => {
                 const circle = document.createElement('div');
                 circle.className = 'color-picker-circle';
                 circle.style.backgroundColor = ACCENT_COLORS[colorKey];
-                
+
                 const selectedIndex = config.colors.indexOf(colorKey);
                 if (selectedIndex !== -1) {
                     circle.classList.add('selected');
@@ -6688,7 +6691,7 @@ injectStyles(styles);
                     }
                     localStorage.setItem('etis_accent_config', JSON.stringify(config));
                     applyAccentColor();
-                    renderModal(); 
+                    renderModal();
                 };
                 grid.appendChild(circle);
             });
@@ -6698,7 +6701,7 @@ injectStyles(styles);
                 const keys = COLOR_ORDER;
                 const r1 = keys[Math.floor(Math.random() * keys.length)];
                 let r2 = keys[Math.floor(Math.random() * keys.length)];
-                
+
                 while (config.isGradient && r2 === r1) {
                     r2 = keys[Math.floor(Math.random() * keys.length)];
                 }
@@ -6995,7 +6998,7 @@ injectStyles(styles);
                         // 1. Поворот
                         const angle = isRotateLeft ? -25 : 25;
                         logoImg.style.transform = `rotate(${angle}deg)`;
-                        
+
                         setTimeout(() => {
                             logoImg.style.transform = 'rotate(0deg)';
                         }, 400);
@@ -7004,18 +7007,18 @@ injectStyles(styles);
 
                         // 2. Счётчик кликов
                         clickCounter++;
-                        
+
                         // Сбрасываем всё, если не мучать медведя 3 секунды
                         clearTimeout(resetTimer);
-                        resetTimer = setTimeout(() => { 
-                            clickCounter = 0; 
+                        resetTimer = setTimeout(() => {
+                            clickCounter = 0;
                             heyLabel.classList.remove('active');
                         }, 3000);
 
                         // 3. Проверка порогов (каждые 10 кликов)
                         if (clickCounter % 10 === 0 && clickCounter > 0) {
                             const phraseIndex = (clickCounter / 10) - 1;
-                            
+
                             if (phraseIndex < phrases.length) {
                                 heyLabel.textContent = phrases[phraseIndex];
                                 heyLabel.classList.add('active');
@@ -7307,7 +7310,7 @@ injectStyles(styles);
                 if (!sidebar.querySelector('.sidebar-footer')) {
                     const footer = document.createElement('div');
                     footer.className = 'sidebar-footer';
-                    
+
                     // flex-контейнер для ссылок, чтобы они красиво шли друг под другом
                     footer.innerHTML = `
                         <div style="margin-bottom: 10px; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px;">
@@ -7455,6 +7458,24 @@ injectStyles(styles);
                     // Клонируем карточку
                     const clone = cardElement.cloneNode(true);
 
+                    // Получаем текущий цвет из конфига, чтобы скриншот был в цвет темы
+                    const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { colors: ['blue'] };
+                    const fallbackColor = '#007AFF'; // дефолтный синий
+                    const currentAccentHex = ACCENT_COLORS[accConfig.colors[0]] || fallbackColor;
+
+                    // Находим все элементы, которые могут иметь градиентный текст
+                    const gradientSelectors = '.msg-sender, .msg-sender *, .teacher-name-link, .review-dis-link, .accent-stat, .file-attachment-link .material-icons';
+                    clone.querySelectorAll(gradientSelectors).forEach(el => {
+                        // Полностью вычищаем свойства градиента
+                        el.style.setProperty('background', 'none', 'important');
+                        el.style.setProperty('background-image', 'none', 'important');
+                        el.style.setProperty('-webkit-background-clip', 'unset', 'important');
+                        el.style.setProperty('background-clip', 'unset', 'important');
+                        el.style.setProperty('-webkit-text-fill-color', currentAccentHex, 'important');
+                        el.style.setProperty('color', currentAccentHex, 'important');
+                        el.style.setProperty('display', 'inline-block', 'important');
+                    });
+
                     // Принудительно убиваем отступы снаружи карточки у клона
                     clone.style.setProperty('margin', '0', 'important');
 
@@ -7593,9 +7614,9 @@ injectStyles(styles);
                     const planEvalBtn = span9.querySelector('a[onclick*="cust.est_plan_form_stu"], a[href*="cust.est_plan_form_stu"]');
                     if (planEvalBtn) {
                         // Сбрасываем всё лишнее
-                        planEvalBtn.className = 'eval-plan-link'; 
+                        planEvalBtn.className = 'eval-plan-link';
                         planEvalBtn.innerHTML = 'Оценить учебный план';
-                        
+
                         // Добавляем в конец сабменю
                         if (submenu) {
                             submenu.appendChild(planEvalBtn);
@@ -7662,7 +7683,7 @@ injectStyles(styles);
                                 let next = header.parentElement.tagName === 'P' ? header.parentElement : header;
                                 let current = next.nextSibling;
                                 const toRem =[header, header.parentElement];
-                                
+
                                 // В условии цикла while проверяем оба варианта через regex
                                 while (current && current.tagName !== 'TABLE' && !(current.querySelector && current.querySelector('b')?.textContent.toLowerCase().match(/триместр|семестр/))) {
                                     let nxt = current.nextSibling;
@@ -7844,7 +7865,7 @@ injectStyles(styles);
 
                         // --- ПАРСИНГ ПРЕДМЕТОВ И ВЫДЕЛЕНИЕ МЕТОК ---
                         let subjectsHtml = '';
-                        let rawSubjectsText = ''; 
+                        let rawSubjectsText = '';
                         let uniqueTypes = new Set();
 
                         if (disDiv) {
@@ -7871,7 +7892,7 @@ injectStyles(styles);
                         let badgesHtml = '';
                         const orderedTypes = ['экзамен', 'зачет', 'зачёт', 'лек', 'практ', 'лаб'];
                         const foundTypes = Array.from(uniqueTypes);
-                        
+
                         foundTypes.sort((a, b) => {
                             let ia = orderedTypes.indexOf(a);
                             let ib = orderedTypes.indexOf(b);
@@ -7881,34 +7902,34 @@ injectStyles(styles);
                         foundTypes.forEach(t => {
                             let bg = 'var(--color-highlight)';
                             let color = 'var(--color-text-secondary)';
-                            
-                            if (t === 'лек') { 
-                                bg = 'rgba(0, 122, 255, 0.12)'; 
-                                color = 'var(--color-blue)'; 
-                            } else if (t === 'практ') { 
-                                bg = 'rgba(52, 199, 89, 0.12)'; 
-                                color = 'var(--color-green)'; 
-                            } else if (t === 'лаб') { 
-                                bg = 'rgba(255, 149, 0, 0.12)'; 
-                                color = 'var(--color-warning)'; 
-                            } else if (t === 'зачет' || t === 'зачёт') { 
-                                bg = 'rgba(85, 197, 209, 0.15)'; 
-                                color = '#008B8B'; 
-                            } else if (t === 'экзамен') { 
-                                bg = 'rgba(175, 82, 222, 0.15)'; 
-                                color = '#AF52DE'; 
+
+                            if (t === 'лек') {
+                                bg = 'rgba(0, 122, 255, 0.12)';
+                                color = 'var(--color-blue)';
+                            } else if (t === 'практ') {
+                                bg = 'rgba(52, 199, 89, 0.12)';
+                                color = 'var(--color-green)';
+                            } else if (t === 'лаб') {
+                                bg = 'rgba(255, 149, 0, 0.12)';
+                                color = 'var(--color-warning)';
+                            } else if (t === 'зачет' || t === 'зачёт') {
+                                bg = 'rgba(85, 197, 209, 0.15)';
+                                color = '#008B8B';
+                            } else if (t === 'экзамен') {
+                                bg = 'rgba(175, 82, 222, 0.15)';
+                                color = '#AF52DE';
                             }
-                            
+
                             badgesHtml += `
                                 <span style="
-                                    background: ${bg}; 
-                                    color: ${color}; 
-                                    padding: 0 1rem; 
-                                    border-radius: 50px; 
-                                    font-size: 1.05rem; 
-                                    font-weight: 800; 
-                                    text-transform: uppercase; 
-                                    letter-spacing: 0.6px; 
+                                    background: ${bg};
+                                    color: ${color};
+                                    padding: 0 1rem;
+                                    border-radius: 50px;
+                                    font-size: 1.05rem;
+                                    font-weight: 800;
+                                    text-transform: uppercase;
+                                    letter-spacing: 0.6px;
                                     white-space: nowrap;
                                     display: inline-flex;
                                     align-items: center;
@@ -7930,7 +7951,7 @@ injectStyles(styles);
                             </div>
                             <div class="teacher-details">
                                 <div class="teacher-name-link" onclick="${nameClick}">${nameText.replace('Расписание преподавателя', '')}</div>
-                                
+
                                 <div class="teacher-meta-row">
                                     <div class="teacher-dept-link" onclick="${chairClick}">${chairText.replace('Расписание кафедры', '')}</div>
                                     <div class="teacher-badges-box">${badgesHtml}</div>
@@ -8203,6 +8224,20 @@ injectStyles(styles);
                                 opacity: 0 !important;
                                 visibility: hidden !important;
                             }
+
+                            .msg-sender,
+                            .msg-sender .material-icons,
+                            .teacher-name-link,
+                            .review-dis-link,
+                            .tpr_part > a,
+                            .theme a,
+                            .logo-say-hey,
+                            .accent-stat {
+                                background: none !important;
+                                -webkit-background-clip: initial !important;
+                                -webkit-text-fill-color: initial !important;
+                                color: var(--color-accent) !important;
+                            }
                         `;
                         exportContainer.appendChild(hideUIStyle);
 
@@ -8300,11 +8335,11 @@ injectStyles(styles);
 
                 summaryBtn.addEventListener('click', () => {
                     let lek = 0, pract = 0, lab = 0, cons = 0, exam = 0, total = 0;
-                    
+
                     // Считаем текущие пары
                     span9.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
                         if (row.style.display === 'none' || row.classList.contains('hidden-by-filter')) return;
-                        
+
                         total++;
                         const typeBadge = row.querySelector('.pair-type-badge');
                         const disName = row.querySelector('.dis') ? row.querySelector('.dis').textContent.toLowerCase() : '';
@@ -8330,8 +8365,8 @@ injectStyles(styles);
                     const storageKey = 'etis_weekly_pairs_history_v1';
                     const history = JSON.parse(localStorage.getItem(storageKey) || '{}');
                     const keys = Object.keys(history);
-                    
-                    let comparisonHtml = ''; 
+
+                    let comparisonHtml = '';
                     let avgHtml = '';
 
                     // Вспомогательная функция для склонения слова "пара"
@@ -8346,12 +8381,12 @@ injectStyles(styles);
                         const sum = Object.values(history).reduce((a, b) => a + b, 0);
                         const avgVal = sum / keys.length;
                         const avgRounded = Math.round(avgVal * 10) / 10;
-                        
+
                         // Разница
                         const diff = Math.round((total - avgVal) * 10) / 10;
                         const absDiff = Math.abs(diff);
                         const word = getPairsWord(diff);
-                        
+
                         if (diff > 0) {
                             comparisonHtml = `<span style="color:var(--color-red); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">
                                 (выше среднего на ${diff} ${word})
@@ -8419,7 +8454,7 @@ injectStyles(styles);
                             <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
                         </div>
                         <div class="ui-dialog-content" style="padding: 2.4rem;">
-                            
+
                             <div>
                                 <div style="display: flex; align-items: center; margin-bottom: 1.2rem;">
                                     <span style="font-size: 1.2rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">За текущую неделю</span>
@@ -8523,7 +8558,7 @@ injectStyles(styles);
                                 if (typeof recalculateTimetable === 'function') recalculateTimetable();
                                 renderNotes();
 
-                                updateLiveTimetable(); 
+                                updateLiveTimetable();
 
                                 // 3. Плавно проявляем обновленные таблицы обратно
                                 tables.forEach(t => {
@@ -8609,12 +8644,12 @@ injectStyles(styles);
                     const newBtn = document.createElement('div');
                     newBtn.className = 'toolbar-item';
                     newBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">sync</span> Синхронизация';
-                    
+
                     newBtn.addEventListener('click', () => {
                         if (resourcesDiv) {
                             // Проверяем, скрыта ли сейчас карточка
                             const isHidden = resourcesDiv.hasAttribute('hidden') || resourcesDiv.style.display === 'none';
-                            
+
                             if (isHidden) {
                                 // ОТКРЫВАЕМ
                                 resourcesDiv.removeAttribute('hidden');
@@ -9068,7 +9103,7 @@ injectStyles(styles);
                     const isMobile = window.innerWidth <= 960;
                     span9.querySelectorAll('.timetable-grid tr').forEach(row => {
                         row.classList.remove('tr-needs-space'); // Сброс
-                        
+
                         const aud = row.querySelector('.pair_info .aud');
                         if (!aud) return;
 
@@ -9275,7 +9310,7 @@ injectStyles(styles);
                                     const firstHiddenRow = rows[gapStart];
                                     const lastHiddenRow = rows[i-1];
                                     const startTime = firstHiddenRow.querySelector('.eval')?.textContent || "00:00";
-                                    
+
                                     // Записываем время в дата-атрибуты, чтобы функция светофора их видела
                                     gapRow.setAttribute('data-gap-start', startTime);
                                     gapRow.setAttribute('data-gap-count', gapCount);
@@ -9341,23 +9376,23 @@ injectStyles(styles);
                     let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
                     const seenSubjects = new Set();
                     const allRowsArray = Array.from(document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
-                    
+
                     const currentWeekEl = document.querySelector('.week.current');
                     const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 0;
-                    
+
                     allRowsArray.forEach((row, index) => {
                         const disContainer = row.querySelector('.pair_info .dis');
                         const numTd = row.querySelector('.pair_num');
                         const audContainer = row.querySelector('.pair_info .aud');
                         if (!disContainer || !numTd) return;
-                        
+
                         const targetEl = disContainer.querySelector('a') || disContainer;
                         const cleanSubjectName = targetEl.textContent.trim();
-                        
+
                         const dayContainer = row.closest('.day');
                         const dayDateEl = dayContainer ? dayContainer.querySelector('.day-date') : null;
                         const dayDateStr = dayDateEl ? dayDateEl.textContent.trim() : 'UnknownDate';
-                        
+
                         let rawPairNum = "";
                         Array.from(numTd.childNodes).forEach(n => {
                             if (n.nodeType === Node.TEXT_NODE && /пара/i.test(n.nodeValue)) {
@@ -9365,9 +9400,9 @@ injectStyles(styles);
                             }
                         });
                         if (!rawPairNum) rawPairNum = numTd.textContent.trim().split(' ')[0] + ' пара';
-                        
+
                         const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
-                        
+
                         if (notesData.next_unbound && notesData.next_unbound[cleanSubjectName] && !seenSubjects.has(cleanSubjectName)) {
                             const unbound = notesData.next_unbound[cleanSubjectName];
                             if (typeof unbound === 'string') {
@@ -9381,19 +9416,19 @@ injectStyles(styles);
                             }
                         }
                         seenSubjects.add(cleanSubjectName);
-                        
+
                         const currentNote = notesData.specific[pairId] || '';
-                        
+
                         // Удаляем старые кнопки перед перерисовкой
                         row.querySelectorAll('.note-btn-wrapper').forEach(w => w.remove());
                         row.querySelectorAll('.subject-note-btn').forEach(btn => btn.remove());
-                        
+
                         // Создаем саму кнопку
                         const noteBtn = document.createElement('button');
                         noteBtn.className = 'subject-note-btn';
                         noteBtn.innerHTML = currentNote ? '<span class="material-icons">assignment</span>' : '<span class="material-icons">edit</span>';
                         if (currentNote) noteBtn.classList.add('has-note');
-                        
+
                         noteBtn.addEventListener('click', (e) => {
                             e.preventDefault(); e.stopPropagation();
                             if (row.classList.contains('custom-pair-row')) {
@@ -9414,7 +9449,7 @@ injectStyles(styles);
                         noteWrapper.className = 'note-btn-wrapper';
                         noteWrapper.style.display = 'inline-flex';
                         noteWrapper.appendChild(noteBtn);
-                        
+
                         // Выбираем контейнер (всегда в аудиторию, если она есть)
                         let targetContainer = audContainer && audContainer.textContent.trim() !== '' ? audContainer : disContainer;
                         targetContainer.appendChild(noteWrapper);
@@ -9574,7 +9609,7 @@ injectStyles(styles);
                         // Захватываем цель
                         if (row && !row.querySelector('th')) {
                             currentTarget = row;
-                            targetElements = Array.from(row.querySelectorAll('td')); 
+                            targetElements = Array.from(row.querySelectorAll('td'));
                             targetType = 'row';
                             evalLink = row.querySelector('.pair_teacher .eval');
                             hasEval = !!evalLink;
@@ -9610,14 +9645,14 @@ injectStyles(styles);
 
                         // Мертвая зона для определения (свайп или скролл вниз)
                         if (!isScrollDetermined) {
-                            if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) return; 
+                            if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) return;
                             isScrollDetermined = true;
                             if (Math.abs(diffY) > Math.abs(diffX)) {
-                                currentTarget = null; 
+                                currentTarget = null;
                                 return;
                             }
                             isSwiping = true;
-                            bubble.className = ''; 
+                            bubble.className = '';
                         }
 
                         if (isSwiping) {
@@ -9649,7 +9684,7 @@ injectStyles(styles);
                             if (swipeDir === 'left') {
                                 // Пустота образуется СПРАВА (между оригинальным краем и уехавшей строкой)
                                 // Ставим иконку в центр этой пустоты (двигается в 2 раза медленнее свайпа)
-                                bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`; 
+                                bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
                             } else {
                                 // Пустота образуется СЛЕВА
                                 bubble.style.left = `${originalRect.left + (moveX / 2) - 12}px`;
@@ -9662,7 +9697,7 @@ injectStyles(styles);
                                 else bubble.classList.add('active-threshold', 'action-eval');
 
                                 if (!bubble.dataset.vibrated && navigator.vibrate) {
-                                    navigator.vibrate(15); 
+                                    navigator.vibrate(15);
                                     bubble.dataset.vibrated = 'true';
                                 }
                             } else {
@@ -9686,7 +9721,7 @@ injectStyles(styles);
                             elem.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                             elem.style.transform = 'translateX(0px)';
                         });
-                        
+
                         // Иконка плавно затухает
                         bubble.style.opacity = '0';
                         bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval');
@@ -9943,7 +9978,7 @@ injectStyles(styles);
                         if (dateNode) dateNode.remove();
                         const subjects = [];
                         cloneContent.querySelectorAll('font').forEach(f => { subjects.push(f.textContent.trim()); f.remove(); });
-                        
+
                         const card = document.createElement('div');
                         card.className = 'msg-card';
                         card.innerHTML = `
@@ -10274,7 +10309,7 @@ injectStyles(styles);
                     // 1. УНИФИКАЦИЯ ПОДМЕНЮ
                     span9.querySelectorAll('.submenu').forEach(menu => {
                         // Определяем тип периода (семестр или триместр) на основе текста вкладок
-                        let termType = 'триместр'; 
+                        let termType = 'триместр';
                         if (menu.textContent.toLowerCase().includes('семестр')) {
                             termType = 'семестр';
                         }
@@ -10544,7 +10579,7 @@ injectStyles(styles);
                                             // Ищем сокращения и трим., и сем.
                                             const numMatch = rawTermName.match(/(\d+)\s*(трим|сем)/i);
                                             const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
-                                            
+
                                             // Заменяем полные слова на аккуратные сокращения
                                             let cleanName = rawTermName.split(',')[0]
                                                 .replace(/\(.*\)/, '')
@@ -12597,20 +12632,20 @@ injectStyles(styles);
 
                     const scrollToActive = (behavior = 'smooth') => {
                         if (!activeItem) return;
-                        
+
                         // Идеальное вычисление центра через абсолютные координаты экрана
                         const containerRect = container.getBoundingClientRect();
                         const itemRect = activeItem.getBoundingClientRect();
-                        
+
                         const containerCenter = containerRect.left + (containerRect.width / 2);
                         const itemCenter = itemRect.left + (itemRect.width / 2);
-                        
+
                         // Высчитываем, на сколько пикселей нужно сдвинуть скролл
                         const offset = itemCenter - containerCenter;
                         const scrollTarget = container.scrollLeft + offset;
 
                         // Допуск в 2 пикселя (защита от микро-подергиваний)
-                        if (Math.abs(offset) < 2) return; 
+                        if (Math.abs(offset) < 2) return;
 
                         container.scrollTo({
                             left: scrollTarget,
@@ -12634,7 +12669,7 @@ injectStyles(styles);
                     container.addEventListener('wheel', (e) => {
                         isInteracting = true; // Блокируем возврат, пока крутим
                         clearTimeout(wheelTimeout);
-                        
+
                         // Ждем 500мс после остановки колесика, чтобы разрешить возврат
                         wheelTimeout = setTimeout(() => {
                             isInteracting = false;
@@ -12643,8 +12678,8 @@ injectStyles(styles);
 
                         // Трансляция вертикального скролла в горизонтальный
                         if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-                            e.preventDefault(); 
-                            container.scrollLeft += e.deltaY > 0 ? 45 : -45; 
+                            e.preventDefault();
+                            container.scrollLeft += e.deltaY > 0 ? 45 : -45;
                         }
                     }, { passive: false });
 
@@ -12652,14 +12687,14 @@ injectStyles(styles);
                         // 2. Взаимодействие мышкой (ПК)
                         container.addEventListener('mouseenter', () => { isInteracting = true; clearTimeout(scrollTimeout); });
                         container.addEventListener('mouseleave', () => { isInteracting = false; startSnapbackTimer(3500); });
-                        
+
                         // 3. Взаимодействие пальцем (Мобильные)
                         container.addEventListener('touchstart', () => { isInteracting = true; clearTimeout(scrollTimeout); }, { passive: true });
                         container.addEventListener('touchend', () => { isInteracting = false; startSnapbackTimer(4000); }, { passive: true });
 
                         // 4. Триггер при любом скролле (отрабатывает как защита)
                         container.addEventListener('scroll', () => {
-                            if (!isInteracting) startSnapbackTimer(4000); 
+                            if (!isInteracting) startSnapbackTimer(4000);
                         }, { passive: true });
 
                         // При открытии страницы: центрируем мгновенно, затем плавно добиваем для надежности
