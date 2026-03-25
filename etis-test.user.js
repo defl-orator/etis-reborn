@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8109
+// @version      1.8110
 // @changelog    Настройка внешнего вида. Удобная установка для пользователей iOS
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -6240,28 +6240,30 @@ injectStyles(styles);
         if (updateState.hasUpdate) {
             const testLabel = IS_TEST_MODE ? '<div style="color:var(--color-red); font-weight:800; font-size:1rem; margin-bottom:5px;">TEST MODE</div>' : '';
 
-            // Генерируем разные кнопки в зависимости от платформы (iOS или остальные)
+            // Кнопки теперь являются реальными <a> ссылками. Это 100% обходит блокировщики всплывающих окон.
             let actionButtons = '';
             if (isIOS) {
+                const encodedUrl = encodeURIComponent(UPDATE_URL);
+                const stayDeepLink = `stay://x-callback-url/open-install?url=${encodedUrl}`;
                 actionButtons = `
                     <div style="display:flex; flex-direction:column; gap:10px;">
-                        <button id="update-stay" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-accent)!important;color:#fff!important;font-weight:700; gap:8px;">
+                        <a href="${stayDeepLink}" id="update-stay" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-accent)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
                             <span class="material-icons">open_in_new</span>
                             Обновить через Stay
-                        </button>
-                        <button id="update-browser" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px;">
+                        </a>
+                        <a href="${UPDATE_URL}" target="_blank" id="update-browser" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
                             <span class="material-icons">public</span>
                             В браузере
-                        </button>
+                        </a>
                     </div>
                     <div style="font-size:1.1rem; color:var(--color-text-secondary); margin-top:12px;">Выберите ваш менеджер скриптов</div>
                 `;
             } else {
                 actionButtons = `
-                    <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px;">
+                    <a href="${UPDATE_URL}" target="_blank" id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
                         <span class="material-icons">system_update_alt</span>
                         Обновить сейчас
-                    </button>
+                    </a>
                 `;
             }
 
@@ -6304,65 +6306,45 @@ injectStyles(styles);
             if (content) {
                 content.innerHTML = getUpdateHTML();
 
-                const closeModalAndOverlay = () => {
-                    modal.style.display = 'none';
-                    const overlay = document.getElementById('etis-update-overlay');
-                    if (overlay) overlay.style.display = 'none';
-                };
+                const setupAutoReload = () => {
+                    // Прячем модалку с микро-задержкой, чтобы браузер успел обработать клик по ссылке
+                    setTimeout(() => {
+                        modal.style.display = 'none';
+                        const overlay = document.getElementById('etis-update-overlay');
+                        if (overlay) overlay.style.display = 'none';
+                    }, 50);
 
-                // Универсальная логика: открываем ссылку, ждем возвращения фокуса на вкладку, перезагружаем
-                const handleUpdateClick = (url, isDeepLink = false) => {
-                    closeModalAndOverlay();
-                    
-                    // Устанавливаем флаг, что начат процесс обновления
+                    // Сохраняем флаг, что мы ждем обновления
                     sessionStorage.setItem('etis_update_pending', 'true');
 
-                    // Как только вкладка снова станет видимой (юзер вернулся с установки) — перезагружаем её
                     const onFocusOrVisible = () => {
-                        if (document.visibilityState === 'visible' || document.hasFocus()) {
-                            if (sessionStorage.getItem('etis_update_pending')) {
-                                sessionStorage.removeItem('etis_update_pending'); // Чистим флаг
-                                window.location.reload();
+                        setTimeout(() => {
+                            if (document.visibilityState === 'visible' && document.hasFocus()) {
+                                if (sessionStorage.getItem('etis_update_pending')) {
+                                    sessionStorage.removeItem('etis_update_pending');
+                                    window.location.reload(); // Перезагружаем вкладку, когда юзер вернулся!
+                                }
                             }
-                        }
+                        }, 200);
                     };
 
-                    // Небольшая задержка, чтобы процесс открытия вкладки не вызвал ложное "возвращение"
+                    // Ждем 1.5 секунды (пока открывается новая вкладка), чтобы не словить ложное "возвращение"
                     setTimeout(() => {
                         document.addEventListener('visibilitychange', onFocusOrVisible);
                         window.addEventListener('focus', onFocusOrVisible);
-                    }, 500);
-
-                    // Если это глубокая ссылка приложения Stay — переходим по ней напрямую (вызовется системный промпт)
-                    // Если это ссылка на скрипт (браузер) — открываем строго в новой вкладке
-                    if (isDeepLink) {
-                        window.location.href = url;
-                    } else {
-                        window.open(url, '_blank');
-                    }
+                    }, 1500);
                 };
 
-                // Привязка действий к кнопкам в зависимости от платформы
-                if (isIOS) {
-                    const btnStay = content.querySelector('#update-stay');
-                    if (btnStay) {
-                        btnStay.onclick = () => {
-                            const encodedUrl = encodeURIComponent(UPDATE_URL);
-                            const stayDeepLink = `stay://x-callback-url/open-install?url=${encodedUrl}`;
-                            handleUpdateClick(stayDeepLink, true);
-                        };
-                    }
+                // Мы навешиваем листенер, но НЕ делаем e.preventDefault().
+                // Благодаря этому браузер сам открывает ссылку (href), а мы лишь вешаем обработчик возврата.
+                const btnStay = content.querySelector('#update-stay');
+                if (btnStay) btnStay.addEventListener('click', setupAutoReload);
 
-                    const btnBrowser = content.querySelector('#update-browser');
-                    if (btnBrowser) {
-                        btnBrowser.onclick = () => handleUpdateClick(UPDATE_URL, false);
-                    }
-                } else {
-                    const btn = content.querySelector('#update-confirm');
-                    if (btn) {
-                        btn.onclick = () => handleUpdateClick(UPDATE_URL, false);
-                    }
-                }
+                const btnBrowser = content.querySelector('#update-browser');
+                if (btnBrowser) btnBrowser.addEventListener('click', setupAutoReload);
+
+                const btnConfirm = content.querySelector('#update-confirm');
+                if (btnConfirm) btnConfirm.addEventListener('click', setupAutoReload);
 
                 const retry = content.querySelector('#retry-update');
                 if (retry) retry.onclick = () => initAutoUpdateCheck(true);
