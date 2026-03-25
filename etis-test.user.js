@@ -2,7 +2,7 @@
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
 // @version      1.8103
-// @changelog    Настройка внешнего вида, свайпы, пасхалка.
+// @changelog    Настройка внешнего вида. Удобная установка для пользователей iOS
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @match        https://student.psu.ru/*
@@ -24,7 +24,7 @@
     // ==========================================
     // НАСТРОЙКИ ОБНОВЛЕНИЯ И ТЕСТИРОВАНИЯ
     // ==========================================
-    const IS_TEST_MODE = false;
+    const IS_TEST_MODE = true;
     
     const BASE_REPO_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/';
     const UPDATE_URL = IS_TEST_MODE ? BASE_REPO_URL + 'etis-test.user.js' : BASE_REPO_URL + 'etis.user.js';
