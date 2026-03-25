@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8107
+// @version      1.8109
 // @changelog    Настройка внешнего вида. Удобная установка для пользователей iOS
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -6310,14 +6310,14 @@ injectStyles(styles);
                     if (overlay) overlay.style.display = 'none';
                 };
 
-                // Универсальная логика: ждем возвращения фокуса на вкладку для перезагрузки
-                const handleUpdateClick = (url) => {
+                // Универсальная логика: открываем ссылку, ждем возвращения фокуса на вкладку, перезагружаем
+                const handleUpdateClick = (url, isDeepLink = false) => {
                     closeModalAndOverlay();
                     
                     // Устанавливаем флаг, что начат процесс обновления
                     sessionStorage.setItem('etis_update_pending', 'true');
 
-                    // Как только вкладка снова станет видимой (юзер вернулся) — перезагружаем
+                    // Как только вкладка снова станет видимой (юзер вернулся с установки) — перезагружаем её
                     const onFocusOrVisible = () => {
                         if (document.visibilityState === 'visible' || document.hasFocus()) {
                             if (sessionStorage.getItem('etis_update_pending')) {
@@ -6327,32 +6327,40 @@ injectStyles(styles);
                         }
                     };
 
-                    document.addEventListener('visibilitychange', onFocusOrVisible);
-                    window.addEventListener('focus', onFocusOrVisible);
+                    // Небольшая задержка, чтобы процесс открытия вкладки не вызвал ложное "возвращение"
+                    setTimeout(() => {
+                        document.addEventListener('visibilitychange', onFocusOrVisible);
+                        window.addEventListener('focus', onFocusOrVisible);
+                    }, 500);
 
-                    // Перекидываем пользователя по ссылке обновления
-                    window.location.href = url;
+                    // Если это глубокая ссылка приложения Stay — переходим по ней напрямую (вызовется системный промпт)
+                    // Если это ссылка на скрипт (браузер) — открываем строго в новой вкладке
+                    if (isDeepLink) {
+                        window.location.href = url;
+                    } else {
+                        window.open(url, '_blank');
+                    }
                 };
 
-                // Привязка действий к кнопкам в зависимости от ОС
+                // Привязка действий к кнопкам в зависимости от платформы
                 if (isIOS) {
                     const btnStay = content.querySelector('#update-stay');
                     if (btnStay) {
                         btnStay.onclick = () => {
                             const encodedUrl = encodeURIComponent(UPDATE_URL);
                             const stayDeepLink = `stay://x-callback-url/open-install?url=${encodedUrl}`;
-                            handleUpdateClick(stayDeepLink);
+                            handleUpdateClick(stayDeepLink, true);
                         };
                     }
 
                     const btnBrowser = content.querySelector('#update-browser');
                     if (btnBrowser) {
-                        btnBrowser.onclick = () => handleUpdateClick(UPDATE_URL);
+                        btnBrowser.onclick = () => handleUpdateClick(UPDATE_URL, false);
                     }
                 } else {
                     const btn = content.querySelector('#update-confirm');
                     if (btn) {
-                        btn.onclick = () => handleUpdateClick(UPDATE_URL);
+                        btn.onclick = () => handleUpdateClick(UPDATE_URL, false);
                     }
                 }
 
