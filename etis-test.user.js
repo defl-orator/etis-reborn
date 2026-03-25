@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8105
+// @version      1.8106
 // @changelog    Настройка внешнего вида. Удобная установка для пользователей iOS
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
