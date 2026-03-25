@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8102
+// @version      1.8103
 // @changelog    Настройка внешнего вида, свайпы, пасхалка.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
