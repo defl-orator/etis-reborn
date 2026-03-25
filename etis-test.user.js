@@ -22,6 +22,17 @@
     'use strict';
 
     // ==========================================
+    // НАСТРОЙКИ ОБНОВЛЕНИЯ И ТЕСТИРОВАНИЯ
+    // ==========================================
+    const IS_TEST_MODE = false;
+    
+    const BASE_REPO_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/';
+    const UPDATE_URL = IS_TEST_MODE ? BASE_REPO_URL + 'etis-test.user.js' : BASE_REPO_URL + 'etis.user.js';
+
+    // Детектор iOS устройств
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // ==========================================
     // 1. ВНЕДРЕНИЕ CSS СТИЛЕЙ
     // ==========================================
     const styles = `
@@ -6003,7 +6014,6 @@ injectStyles(styles);
 
     let theme = 'auto';
     let prefersColorSchemeMedia;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
     if (window.matchMedia) {
         prefersColorSchemeMedia = window.matchMedia('(prefers-color-scheme: dark)');
@@ -6121,7 +6131,6 @@ injectStyles(styles);
     // ==========================================
     // ЛОГИКА ОБНОВЛЕНИЯ
     // ==========================================
-    const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
 
     let updateState = {
         status: 'idle',
@@ -6234,10 +6243,15 @@ injectStyles(styles);
         if (updateState.status === 'error') return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-red);">error_outline</span><div style="font-size:1.6rem;margin:1rem 0;">Ошибка: ${updateState.details}</div><button id="retry-update" class="answer-btn-custom" style="margin:0 auto;">Повторить</button></div>`;
 
         if (updateState.hasUpdate) {
+            // Текст кнопки меняется для iOS
+            const buttonText = isIOS ? 'Обновить в Stay / Userscripts' : 'Обновить сейчас';
+            const testLabel = IS_TEST_MODE ? '<div style="color:var(--color-red); font-weight:800; font-size:1rem; margin-bottom:5px;">TEST MODE</div>' : '';
+
             return `
                 <div style="text-align:center;">
+                    ${testLabel}
                     <span class="material-icons" style="font-size:48px;color:var(--color-green);margin-bottom:1rem;">system_update</span>
-                    <div style="font-size:1.8rem;font-weight:800;margin-bottom:1.5rem;color:var(--color-text-primary);">Новая версия!</div>
+                    <div style="font-size:1.8rem;font-weight:800;margin-bottom:1.5rem;color:var(--color-text-primary);">Новая версия! ${IS_TEST_MODE ? '(TEST)' : ''}</div>
 
                     <div style="background:var(--color-highlight);padding:1.6rem;border-radius:12px;text-align:left;margin-bottom:2rem;border:1px solid var(--color-table-border);">
                         <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Доступно:</div>
@@ -6252,15 +6266,17 @@ injectStyles(styles);
                             </div>
                         ` : ''}
 
-                        <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">У вас:</div>
+                        <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Текущая:</div>
                         <div style="font-size:1.4rem;font-weight:700;color:var(--color-text-primary);">
                             ${cur}
                         </div>
                     </div>
 
-                        <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700;">
-                            ${isIOS ? 'Обновить в Stay' : 'Обновить'}
-                        </button>
+                    <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px;">
+                        ${isIOS ? '<span class="material-icons">open_in_new</span>' : ''}
+                        ${buttonText}
+                    </button>
+                    ${isIOS ? '<div style="font-size:1.1rem; color:var(--color-text-secondary); margin-top:10px;">После клика Stay предложит импортировать скрипт</div>' : ''}
                 </div>`;
         }
 
@@ -6277,25 +6293,25 @@ injectStyles(styles);
                 const btn = content.querySelector('#update-confirm');
                 if (btn) {
                     btn.onclick = () => {
-                        // Скрываем окно
-                        modal.style.display = 'none';
-                        const overlay = document.getElementById('etis-update-overlay');
-                        if (overlay) overlay.style.display = 'none';
-
                         if (isIOS) {
-                            const stayUrl = UPDATE_URL.replace('https://', 'stay://import?url=https://');
+                            setTimeout(() => {
+                                modal.style.display = 'none';
+                                const overlay = document.getElementById('etis-update-overlay');
+                                if (overlay) overlay.style.display = 'none';
+                            }, 500);
                             
-                            const a = document.createElement('a');
-                            a.href = UPDATE_URL; 
-                            a.click();
-                        } else {
-                            // Стандартное поведение для ПК
                             window.location.href = UPDATE_URL;
-                        }
+                        } else {
+                            modal.style.display = 'none';
+                            const overlay = document.getElementById('etis-update-overlay');
+                            if (overlay) overlay.style.display = 'none';
 
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
+                            window.location.href = UPDATE_URL;
+
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1500);
+                        }
                     };
                 }
 
