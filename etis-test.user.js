@@ -6240,7 +6240,7 @@ injectStyles(styles);
         if (updateState.hasUpdate) {
             const testLabel = IS_TEST_MODE ? '<div style="color:var(--color-red); font-weight:800; font-size:1rem; margin-bottom:5px;">TEST MODE</div>' : '';
 
-            // Генерируем разные кнопки в зависимости от платформы
+            // Генерируем разные кнопки в зависимости от платформы (iOS или остальные)
             let actionButtons = '';
             if (isIOS) {
                 actionButtons = `
@@ -6251,7 +6251,7 @@ injectStyles(styles);
                         </button>
                         <button id="update-browser" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px;">
                             <span class="material-icons">public</span>
-                            Обновить в браузере (Userscripts)
+                            В браузере
                         </button>
                     </div>
                     <div style="font-size:1.1rem; color:var(--color-text-secondary); margin-top:12px;">Выберите ваш менеджер скриптов</div>
@@ -6259,6 +6259,7 @@ injectStyles(styles);
             } else {
                 actionButtons = `
                     <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px;">
+                        <span class="material-icons">system_update_alt</span>
                         Обновить сейчас
                     </button>
                 `;
@@ -6303,43 +6304,55 @@ injectStyles(styles);
             if (content) {
                 content.innerHTML = getUpdateHTML();
 
-                // Вспомогательная функция для закрытия окна
                 const closeModalAndOverlay = () => {
                     modal.style.display = 'none';
                     const overlay = document.getElementById('etis-update-overlay');
                     if (overlay) overlay.style.display = 'none';
                 };
 
+                // Универсальная логика: ждем возвращения фокуса на вкладку для перезагрузки
+                const handleUpdateClick = (url) => {
+                    closeModalAndOverlay();
+                    
+                    // Устанавливаем флаг, что начат процесс обновления
+                    sessionStorage.setItem('etis_update_pending', 'true');
+
+                    // Как только вкладка снова станет видимой (юзер вернулся) — перезагружаем
+                    const onFocusOrVisible = () => {
+                        if (document.visibilityState === 'visible' || document.hasFocus()) {
+                            if (sessionStorage.getItem('etis_update_pending')) {
+                                sessionStorage.removeItem('etis_update_pending'); // Чистим флаг
+                                window.location.reload();
+                            }
+                        }
+                    };
+
+                    document.addEventListener('visibilitychange', onFocusOrVisible);
+                    window.addEventListener('focus', onFocusOrVisible);
+
+                    // Перекидываем пользователя по ссылке обновления
+                    window.location.href = url;
+                };
+
+                // Привязка действий к кнопкам в зависимости от ОС
                 if (isIOS) {
-                    // Логика для кнопки Stay (Глубокая ссылка)
                     const btnStay = content.querySelector('#update-stay');
                     if (btnStay) {
                         btnStay.onclick = () => {
                             const encodedUrl = encodeURIComponent(UPDATE_URL);
                             const stayDeepLink = `stay://x-callback-url/open-install?url=${encodedUrl}`;
-                            closeModalAndOverlay();
-                            window.location.href = stayDeepLink;
+                            handleUpdateClick(stayDeepLink);
                         };
                     }
 
-                    // Логика для кнопки браузера (Обычный переход)
                     const btnBrowser = content.querySelector('#update-browser');
                     if (btnBrowser) {
-                        btnBrowser.onclick = () => {
-                            closeModalAndOverlay();
-                            window.location.href = UPDATE_URL;
-                            setTimeout(() => window.location.reload(), 1500);
-                        };
+                        btnBrowser.onclick = () => handleUpdateClick(UPDATE_URL);
                     }
                 } else {
-                    // Стандартная логика для ПК (Tampermonkey и др.)
                     const btn = content.querySelector('#update-confirm');
                     if (btn) {
-                        btn.onclick = () => {
-                            closeModalAndOverlay();
-                            window.location.href = UPDATE_URL;
-                            setTimeout(() => window.location.reload(), 1500);
-                        };
+                        btn.onclick = () => handleUpdateClick(UPDATE_URL);
                     }
                 }
 
