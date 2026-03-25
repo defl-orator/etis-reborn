@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8014
-// @changelog    Добавлена кастомизация и свайпы в расписании для телефонов: свайп влево по шапке дня открывает окно с добавлением пары, свайпы по конкретной паре открывают окно с заметкой/дз либо оценкой занятия.
+// @version      1.8100
+// @changelog    Настройка внешнего вида, свайпы, пасхалка.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @match        https://student.psu.ru/*
@@ -37,7 +37,7 @@
 	--radius-small: 12px;
 	--radius-medium: 16px;
 	--radius-large: 24px;
-	--width-aside: 26rem; /* Чуть шире меню */
+	--width-aside: 26rem;
 	--width-page: 1120px;
 	--width-content-margin-left: 3rem;
     --transition: 0.2s ease;
@@ -45,13 +45,13 @@
 
 [theme="light"] {
     /* Основные цвета */
-	--color-body: #F2F2F6; /* Светло-серый фон как в iOS */
+	--color-body: #F2F2F6;
 	--color-card: #FFFFFF;
 
     /* Акцент: ГОЛУБОЙ */
 	--color-accent: #007AFF;
 	--color-accent-dark: #0056b3;
-	--color-accent-active: #E3F2FD; /* Фон активного элемента */
+	--color-accent-active: #E3F2FD; 
     --color-text-link: #007AFF;
 
     /* Элементы */
@@ -62,7 +62,7 @@
 	--color-input-highlight: #fff;
 	--color-scrollbar-thumb: #c1c1c1;
 	--color-scrollbar-thumb-highlight: #a8a8a8;
-	--color-table-border: rgba(0, 0, 0, 0.08); /* Очень легкая граница */
+	--color-table-border: rgba(0, 0, 0, 0.08);
 	--color-table-header: #F9F9F9;
 	--color-table-highlight: #F5F5F5;
 
@@ -217,7 +217,7 @@ a.dashed { color: var(--color-text-secondary) !important; }
 a.dashed:hover { color: var(--color-text-highlight) !important; }
 .navbar-static-top { display: none !important; }
 
-/* --- TABLES (MODERN CLEAN) --- */
+/* --- TABLES --- */
 table {
     width: 100% !important;
     border-collapse: separate !important;
@@ -231,12 +231,10 @@ table {
     color: var(--color-text-primary) !important;
 }
 
-/* Фикс "подбородка" в расписании */
 .day table {
     margin-bottom: 0 !important;
 }
 
-/* Форсированно убираем инлайн-белые фоны от ЕТИСа на строках и ячейках */
 table tr, table td,
 .common tr, .common td,
 .slimtab_nice tr, .slimtab_nice td {
@@ -256,7 +254,7 @@ table th, .common th, .slimtab_nice th {
     border-bottom: 1px solid var(--color-table-border) !important;
     padding: 1.2rem 1.6rem !important;
     vertical-align: middle !important;
-    text-align: center !important; /* Центрируем шапку */
+    text-align: center !important;
 }
 
 /* Ячейки */
@@ -286,7 +284,7 @@ table tbody tr:hover th {
     background-color: var(--color-table-header) !important;
 }
 table tbody tr:hover td[rowspan] {
-    background-color: var(--color-card) !important; /* Игнорируем ховер у объединенных ячеек (напр. "ТЕМА") */
+    background-color: var(--color-card) !important;
 }
 
 .slimtab_nice, .common, .teach_plan { border: none !important; }
@@ -296,7 +294,7 @@ font[color="green"], span[style*="color:green"] { color: var(--color-green) !imp
 font[color="red"], span[style*="color:red"] { color: var(--color-red) !important; font-weight: 600 !important; }
 font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !important; font-weight: 600 !important; }
 
-/* --- SUBMENU (УНИФИЦИРОВАННАЯ КАПСУЛА) --- */
+/* --- SUBMENU --- */
 .submenu {
     display: flex !important;
     flex-direction: row !important;
@@ -344,7 +342,7 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
 
 /* Вкладки в подменю */
 .submenu a:not(.answer-btn-custom),
-.submenu .answer-btn-custom, /* Добавили сюда */
+.submenu .answer-btn-custom,
 .submenu b {
     flex: 1 0 auto !important;
     min-width: max-content !important;
@@ -373,7 +371,6 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
     color: var(--color-text-primary) !important;
 }
 
-/* Иконка в кнопке оценки пусть будет синей для красоты */
 .submenu .answer-btn-custom .material-icons {
     color: var(--color-accent) !important;
 }
@@ -415,8 +412,8 @@ input[type="text"], input[type="password"], input[type="email"] {
     border: none !important;
     box-shadow: inset 0 -1px 0 0 var(--color-text-secondary) !important;
     width: 100% !important;
-    padding: 0.8rem 0 !important; /* Внутренний отступ сверху и снизу */
-    margin-bottom: 1.6rem !important; /* Раздвигаем поля друг от друга */
+    padding: 0.8rem 0 !important;
+    margin-bottom: 1.6rem !important; 
 }
 input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus {
     box-shadow: inset 0 -2px 0 0 var(--color-accent) !important;
@@ -473,17 +470,9 @@ form.que_form { margin-top: 1rem !important; }
     gap: 12px !important;
     text-align: left !important;
 }
-.span3 > .nav.nav-tabs.nav-stacked > li > a:hover { background: var(--color-highlight) !important; }
 
 .span3 > .nav.nav-tabs.nav-stacked > .active:before {
     display: none !important;
-}
-
-.span3 > .nav.nav-tabs.nav-stacked > li > a:hover {
-    background: var(--color-highlight) !important;
-    margin: 0 12px 4px 12px !important;
-    border-radius: var(--radius-small) !important;
-    width: auto !important;
 }
 
 .span3 > .nav.nav-tabs.nav-stacked > li > a > .badge { background-color: var(--color-accent) !important; padding: 0.2rem 0 !important; color: var(--color-text-primary-invert) !important; border-radius: var(--radius-small) !important; margin: -1.2rem 0 !important; width: 2.4rem !important; font-weight: normal !important; }
@@ -499,7 +488,7 @@ form.que_form { margin-top: 1rem !important; }
 .tpr_part { line-height: 1.5 !important; }
 .ses_part { line-height: 1.5 !important; }
 
-/* Week Select (Капсула) */
+/* Week Select */
 .week-select { margin: 0 auto 1.5rem !important; margin-top: 0 !important; margin-bottom: 1.5rem !important; width: 100% !important; clear: both !important; }
 .week-select h3 { display: none !important; }
 
@@ -551,7 +540,6 @@ form.que_form { margin-top: 1rem !important; }
     background-color: var(--color-card) !important;
 }
 
-/* Базовые стили для всех кружков (фон нейтральный) */
 .weeks .week {
     position: relative !important;
     display: flex !important;
@@ -582,15 +570,13 @@ form.que_form { margin-top: 1rem !important; }
     border-radius: 50% !important;
 }
 
-/* Ховер на обычные недели */
 .weeks .week:not(.current):hover {
     background-color: var(--color-highlight-light) !important;
 }
 
-/* Практику делаем нейтральной, чтобы избежать нечитаемого желтого на сером фоне */
 .weeks .week.pract:not(.current) { color: var(--color-text-primary) !important; }
 
-/* АКТИВНАЯ НЕДЕЛЯ (перебивает всё: синий фон, белый текст) */
+/* АКТИВНАЯ НЕДЕЛЯ */
 .weeks .week.current {
     background-color: var(--color-accent) !important;
     color: var(--color-text-primary-invert) !important;
@@ -644,19 +630,15 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
     letter-spacing: 0.3px !important;
 }
 
-/* Дата (текст справа, без капсулы) */
+/* Дата */
 .span9 .day h3 .day-date {
     font-weight: 500 !important;
     font-size: 1.5rem !important;
-    color: var(--color-text-secondary) !important; /* Серый цвет, как у обычного текста */
-
-    /* СБРОС КАПСУЛЫ */
+    color: var(--color-text-secondary) !important;
     background: transparent !important;
     padding: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-
-    /* Если нужно выравнивание текста по правому краю */
     text-align: right !important;
 }
 .no_pairs { padding: 1.2rem 1.6rem 2rem !important; }
@@ -682,7 +664,7 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
 .pair_info .aud > a:before { margin-right: 0.6rem !important; font-family: 'Material Icons Outlined' !important; content: 'videocam' !important; font-size: 1.8rem !important; }
 .pair_info .aud > a > img { display: none !important; }
 
-/* --- TEACHERS REBORN (ПРЕПОДАВАТЕЛИ) --- */
+/* --- TEACHERS --- */
 
 /* карточка преподавателя */
 .teacher-card {
@@ -724,7 +706,7 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
     flex-direction: column !important;
     flex-grow: 1 !important;
     justify-content: center !important;
-    min-height: 150px !important; /* Центрируем текст относительно высоты фото */
+    min-height: 150px !important;
 }
 
 /* Имя */
@@ -869,7 +851,6 @@ a[href="stu.dis_stat"]:before {
     background-size: contain !important;
     background-position: center bottom !important;
     background-repeat: no-repeat !important;
-    /* Отступ от медведя до букв */
     margin-bottom: 1.2rem !important;
 }
 
@@ -902,7 +883,6 @@ html[theme="dark"] .psu-logo::before {
 .sign-tooltip-wrapper { position: fixed; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(var(--shadow-tooltip)); }
 .sign-tooltip { padding: 0.8rem 1.6rem; max-width: 26rem; border-radius: var(--radius-large); font-size: 1.2rem; line-height: 1.8rem; text-align: center; color: var(--color-text-primary); background: var(--color-highlight); z-index: 12; }
 
-/* Прячем подзаголовок на мобилках по умолчанию */
 .psu-logo-subtitle {
     display: none !important;
 }
@@ -936,7 +916,6 @@ html[theme="dark"] .psu-logo::before {
 
     .psu-logo::after { display: none !important; }
 
-    /* Показываем подзаголовок только на десктопе */
     .psu-logo-subtitle {
         display: block !important;
         font-size: 3.2rem !important;
@@ -967,11 +946,10 @@ html[theme="dark"] .psu-logo::before {
         gap: 2.4rem !important;
     }
 
-    /* ФИКС ЦЕНТРИРОВАНИЯ ТЕКСТА В КНОПКЕ */
     #sbmt {
         min-width: 130px !important;
         height: 52px !important;
-        padding: 0 32px !important; /* Убираем вертикальный padding, оставляем только боковой */
+        padding: 0 32px !important;
         font-size: 1.6rem !important;
         font-weight: 700 !important;
         border-radius: 26px !important;
@@ -982,7 +960,6 @@ html[theme="dark"] .psu-logo::before {
         border: none !important;
     }
 
-    /* Сбрасываем старые стили SPAN внутри кнопки, которые ломали центр */
     #sbmt span {
         padding: 0 !important;
         border: none !important;
@@ -1135,7 +1112,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     background: var(--color-white) !important;
 }
 
-/* --- CAPSULE SEARCH BAR (Поиск внутри тулбара) --- */
+/* --- CAPSULE SEARCH BAR --- */
 .timetable-toolbar .capsule-search-item {
     flex: 1 1 0 !important;
     min-width: 150px !important;
@@ -1149,7 +1126,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 }
 
 .timetable-toolbar .capsule-search-item:hover {
-    background: var(--color-input) !important; /* Убираем ховер-эффект для поля */
+    background: var(--color-input) !important;
 }
 
 .timetable-toolbar .capsule-search-item .material-icons {
@@ -1176,7 +1153,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 
 @media (max-width: 960px) {
     .timetable-toolbar .capsule-search-item {
-        flex: 1 1 auto !important; /* На мобильных разрешаем поиску тянуться */
+        flex: 1 1 auto !important;
         min-width: 140px !important;
     }
 }
@@ -1187,7 +1164,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     html, body {
         overflow-x: hidden !important;
         position: relative !important;
-        height: auto !important; /* Убираем 100%, чтобы контент растягивался */
+        height: auto !important;
     }
 
     .container { max-width: 100% !important; padding: 0 !important; }
@@ -1233,7 +1210,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     }
     .span3.mobile-active { transform: translateX(0) !important; box-shadow: 100px 0 100px rgba(0,0,0,0.5) !important; }
 
-    /* Кнопка меню */
     .mobile-menu-btn {
         display: block !important;
         position: fixed !important;
@@ -1251,16 +1227,14 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     }
 
 
-    /* Состояние: меню открыто (сжалась в кружок и уехала вправо) */
     .mobile-menu-btn.open {
-        left: calc(100vw - 41px) !important; /* 15px отступ + 26px половина кружка */
+        left: calc(100vw - 41px) !important;
         width: 52px !important;
         height: 52px !important;
         border-radius: 50% !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.3) !important;
     }
 
-    /* Контейнеры для иконок внутри кнопки */
     .menu-btn-content {
         position: absolute !important;
         top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
@@ -1296,7 +1270,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     }
     .mobile-overlay.active { opacity: 1; pointer-events: auto; }
 
-    /* 4. Горизонтальный скролл */
     .common, .teach_plan, .slimtab_nice {
         display: block !important;
         width: 100% !important;
@@ -1304,7 +1277,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         -webkit-overflow-scrolling: touch;
     }
 
-    /* Запрещаем перенос текста в ячейках, чтобы таблица стала широкой и появился скролл */
     .common td, .common th,
     .teach_plan td, .teach_plan th,
     .slimtab_nice td, .slimtab_nice th {
@@ -1312,29 +1284,27 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         max-width: none !important;
     }
 
-    /* 5. Улучшение расписания на мобильных (чтобы длинные названия переносились) */
     .timetable {
-        display: table !important; /* Возвращаем нормальное поведение таблицы */
+        display: table !important;
         width: 100% !important;
         table-layout: auto !important;
     }
     .timetable td {
-        white-space: normal !important; /* Разрешаем тексту предмета переноситься на новые строки */
+        white-space: normal !important;
         word-wrap: break-word !important;
     }
     .pair_num {
         width: 8.1rem !important;
         min-width: 8.1rem !important;
         padding-right: 1rem !important;
-        padding-left: 1.6rem !important; /* Ровняем по левому краю */
+        padding-left: 1.6rem !important;
     }
     .pair_teacher {
         width: 35% !important;
         padding-left: 0.5rem !important;
-        padding-right: 1.6rem !important; /* Ровняем по правому краю */
+        padding-right: 1.6rem !important;
     }
 
-    /* Тулбар расписания на мобильном */
     .timetable-toolbar {
         display: flex !important;
         flex-direction: row !important;
@@ -1388,45 +1358,40 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 
     .sync-btn, .toolbar-item { padding: 0.8rem 1rem !important; background: var(--color-highlight) !important; border-radius: var(--radius-small) !important; }
 
-    /* Убиваем встроенный inline-block оберток ЕТИСа, из-за которого ломается скролл таблиц */
     .span9 div[style*="inline-block"] {
         display: block !important;
         width: 100% !important;
         max-width: 100% !important;
     }
-    /* Горизонтальный скролл для подменю (капсула) */
+
     .submenu {
         padding: 4px !important;
         gap: 6px !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
-        /* Убираем вытягивание за края, так как теперь это капсула с рамками */
     }
 
     .submenu a:not(.answer-btn-custom),
     .submenu b {
-        flex: 0 0 auto !important; /* На мобилке кнопки не тянутся во всю ширину, а скроллятся */
+        flex: 0 0 auto !important;
         padding: 0 14px !important;
     }
     .wide-table-wrapper {
         width: 100% !important;
         overflow-x: auto !important;
-        -webkit-overflow-scrolling: touch !important; /* Плавный скролл на iOS */
+        -webkit-overflow-scrolling: touch !important;
         margin-bottom: 2rem !important;
-        /* Гарантируем, что обертка не шире экрана */
         max-width: calc(100vw - 2rem) !important;
         display: block !important;
     }
 
-    /* Особенности для таблиц в триместре (оценки) */
     .term-table-v6, .session-table-v6 {
-        display: table !important; /* Оценки лучше оставить таблицей для скролла */
+        display: table !important;
         width: auto !important;
-        min-width: 650px !important; /* Минимальная ширина, при которой появится скролл */
+        min-width: 650px !important;
         margin-bottom: 0 !important;
     }
 
-    /* Убираем лишние отступы, которые могут "раздувать" ширину */
     .container, .container .row {
         overflow-x: hidden !important;
     }
@@ -1452,9 +1417,9 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
 
 .span3 > .nav.nav-tabs.nav-stacked > li > a,
 .span3 > .nav.nav-tabs.nav-stacked > li > a * {
-    color: var(--color-text-primary) !important; /* Весь текст нейтрального цвета */
-    font-weight: normal !important; /* Убираем жирность (кроме активной) */
-    background: transparent !important; /* Убираем красный фон у warn_menu */
+    color: var(--color-text-primary) !important;
+    font-weight: normal !important;
+    background: transparent !important;
     border: none !important;
 }
 
@@ -1477,12 +1442,11 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     width: auto !important;
 }
 
-/* Принудительно красим текст и иконки внутри активной ссылки */
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a *,
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a font {
     color: var(--color-text-primary-invert) !important;
-    font-weight: 700 !important; /* Делаем текст жирным */
+    font-weight: 700 !important;
     text-shadow: none !important;
 }
 
@@ -1495,7 +1459,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     display: none !important;
 }
 
-/* --- ФИКС ЗАЛИПАНИЯ: Ховер только для устройств с мышью --- */
 @media (hover: hover) {
     .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
         background: var(--color-highlight) !important;
@@ -1504,7 +1467,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         width: auto !important;
     }
 
-    /* То же самое для обычных кнопок и контента, чтобы они не моргали под капсулой */
     .timetable-toolbar .toolbar-item:hover,
     .submenu a:hover,
     button:hover,
@@ -1514,18 +1476,15 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     }
 }
 
-/* Жирный текст в капсуле меню */
 .mobile-menu-btn {
     font-weight: 800 !important;
     letter-spacing: 0.5px !important;
 }
 
-/* Скрываем старые овальные бейджи ЕТИСа */
 .span3 > .nav.nav-tabs.nav-stacked > li > a > .badge {
     display: none !important;
 }
 
-/* Скрываем только родные бейджи ЕТИС, но оставляем кружки */
 .span3 > .nav.nav-tabs.nav-stacked > li > a > .badge { display: none !important; }
 
 .span3 li.warn_menu, .span3 li.warn_menu a {
@@ -1533,7 +1492,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     color: var(--color-text-primary) !important;
 }
 
-/* --- TIMETABLE SEPARATORS (APPLE STYLE) --- */
+/* --- TIMETABLE SEPARATORS --- */
 
 .timetable td {
     border: none !important;
@@ -1547,17 +1506,14 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     border-bottom: none !important;
 }
 
-/* Название предмета и аудитория — по левому краю */
 .timetable .pair_info {
     text-align: left !important;
 }
 
-/* Время пары — по центру своей колонки */
 .timetable .pair_num {
     text-align: center !important;
 }
 
-/* Имя преподавателя — по правому краю */
 .timetable .pair_teacher {
     text-align: right !important;
 }
@@ -1650,7 +1606,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
     transform: translateY(-1px);
 }
 .pair_info .aud a.btn-generic-online:before {
-    content: 'public' !important; /* Иконка планеты внутри капсулы */
+    content: 'public' !important;
     font-family: 'Material Icons Outlined' !important;
     font-size: 1.8rem !important;
     display: block !important;
@@ -1753,6 +1709,7 @@ input::placeholder {
     height: 3.2rem !important;
     width: auto !important;
     flex-shrink: 0 !important;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
 .sidebar-logo span {
@@ -2126,19 +2083,18 @@ div[id^="frm_"] textarea:focus {
     font-weight: 600 !important;
 }
 .day .common {
-    box-shadow: none !important; /* Убираем тень, так как она уже есть у .day */
+    box-shadow: none !important;
     margin-bottom: 0 !important;
 }
 
 .day .common td {
-    text-align: left !important; /* Названия ресурсов лучше читать по левому краю */
+    text-align: left !important;
 }
 
-/* Сделаем колонку с паролем чуть заметнее при наведении */
 .day .common td:last-child:hover {
     background: var(--color-accent-active) !important;
 }
-/* Отступ для первого блока ресурсов от заголовка страницы */
+
 .resource-block:first-of-type { margin-top: 3.5rem !important; }
 
 
@@ -2261,7 +2217,6 @@ div[id^="frm_"] textarea:focus {
     color: var(--color-text-primary) !important;
 }
 
-/* Убираем красный цвет, оставляем только жирность */
 .cert-footer-card-content b,
 .cert-footer-card-content strong {
     color: var(--color-text-primary) !important;
@@ -2303,7 +2258,7 @@ div[id^="frm_"] textarea:focus {
 .advice-card .icon-new::before { content: "add_circle_outline"; }
 .advice-card .icon-history::before { content: "assignment_turned_in"; }
 
-/* --- SURVEYS (ОПРОСЫ) REFINEMENT --- */
+/* --- SURVEYS --- */
 
 .survey-card {
     background: var(--color-card) !important;
@@ -2451,7 +2406,7 @@ form.form input:focus {
 }
 
 .electr-description ul {
-    list-style: none !important; /* Убираем точки */
+    list-style: none !important;
     margin: 1rem 0 0 0 !important;
     padding: 0 !important;
 }
@@ -2497,7 +2452,7 @@ form.form input:focus {
     opacity: 0.7 !important;
 }
 
-/* --- АНКЕТИРОВАНИЕ (REVIEW LIST) --- */
+/* --- АНКЕТИРОВАНИЕ --- */
 
 .review-card {
     background: var(--color-card) !important;
@@ -2564,20 +2519,20 @@ form.form input:focus {
     }
 }
 
-/* --- СТРАНИЦА "О РЕСУРСЕ" (ARTICLE STYLE) --- */
+/* --- СТРАНИЦА "О РЕСУРСЕ" --- */
 
 .about-card {
     background: var(--color-card) !important;
     border-radius: var(--radius-large) !important;
     box-shadow: var(--shadow-main) !important;
-    padding: 4rem !important; /* Больше пространства для чтения */
+    padding: 4rem !important; 
     margin-bottom: 3rem !important;
-    max-width: 900px !important; /* Ограничиваем ширину для удобства глаз */
+    max-width: 900px !important;
 }
 
 .about-card p {
     font-size: 1.5rem !important;
-    line-height: 1.8 !important; /* Увеличенное межстрочное расстояние */
+    line-height: 1.8 !important;
     color: var(--color-text-primary) !important;
     margin-bottom: 2.4rem !important;
     text-align: left !important;
@@ -2612,7 +2567,7 @@ form.form input:focus {
     }
 }
 
-/* --- ПОРТФОЛИО (SC_PORTFOLIO) --- */
+/* --- ПОРТФОЛИО --- */
 
 /* Контейнер заголовка раздела */
 .portfolio-header {
@@ -2638,19 +2593,19 @@ form.form input:focus {
 }
 
 .portfolio-header a.dashed {
-    white-space: normal !important; /* Разрешаем перенос текста */
+    white-space: normal !important;
     word-wrap: break-word !important;
     line-height: 1.4 !important;
-    border-bottom: none !important; /* Убираем пунктир для чистоты */
+    border-bottom: none !important;
     text-align: left !important;
-    flex: 1 1 auto !important; /* Занимает всё доступное место */
-    margin-right: 1rem !important; /* Отступ до бейджа */
+    flex: 1 1 auto !important;
+    margin-right: 1rem !important;
     display: block !important;
 }
 
-/* Бейдж-счетчик (теперь он не исчезнет) */
+/* Бейдж-счетчик */
 .portfolio-count {
-    margin-left: auto !important; /* Прижимаем вправо */
+    margin-left: auto !important;
     background: var(--color-accent-active) !important;
     color: var(--color-accent) !important;
     padding: 0.3rem 1rem !important;
@@ -2661,8 +2616,8 @@ form.form input:focus {
 }
 
 .portfolio-count {
-    flex-shrink: 0 !important; /* Запрещаем сжимать кружок */
-    margin-left: 0 !important; /* Убираем старый отступ */
+    flex-shrink: 0 !important;
+    margin-left: 0 !important;
     margin-right: 0.5rem !important;
 }
 
@@ -2676,11 +2631,10 @@ form.form input:focus {
 }
 
 .portfolio-header::after {
-    flex-shrink: 0 !important; /* Запрещаем сжимать стрелку */
+    flex-shrink: 0 !important;
     margin-left: 0 !important;
 }
 
-/* УБИРАЕМ ПОДЛОЖКУ у раскрывающихся блоков */
 div[id="pub"], div[id="pis"], div[id="agr"],
 div[id="ooo"], div[id="saw"], div[id="vkr"] {
     background: transparent !important;
@@ -2763,11 +2717,10 @@ span[id$="_cnt"] {
     border-radius: 50% !important;
     cursor: pointer !important;
 
-    /* Убиваем текст и любые потоки внутри */
     font-size: 0 !important;
     color: transparent !important;
     text-indent: -9999px !important;
-    overflow: visible !important; /* Разрешаем выход за границы, чтобы не обрезалось */
+    overflow: visible !important;
     display: block !important;
 }
 
@@ -2779,7 +2732,7 @@ span[id$="_cnt"] {
 }
 
 .ui-dialog .ui-dialog-titlebar-close::after {
-    content: 'close' !important; /* Используем слово-лигатуру */
+    content: 'close' !important;
     font-family: 'Material Icons Outlined' !important;
     font-size: 20px !important;
     color: var(--color-text-secondary) !important;
@@ -2788,7 +2741,7 @@ span[id$="_cnt"] {
     position: absolute !important;
     top: 50% !important;
     left: 50% !important;
-    transform: translate(-50%, -50%) !important; /* Центрируем точно по осям */
+    transform: translate(-50%, -50%) !important;
 
     display: block !important;
     text-indent: 0 !important;
@@ -2813,12 +2766,11 @@ span[id$="_cnt"] {
 }
 
 .ui-dialog .ui-dialog-titlebar-close::before {
-    content: '\e5cd' !important; /* Юникод символа "close" */
+    content: '\e5cd' !important;
     font-family: 'Material Icons Outlined' !important;
     font-size: 20px !important;
     color: var(--color-text-secondary) !important;
     display: block !important;
-    /* Возвращаем видимость иконке */
     visibility: visible !important;
     line-height: 1 !important;
 }
@@ -2927,7 +2879,7 @@ span[id$="_cnt"] {
     border: 1px solid var(--color-table-border) !important;
 }
 
-/* --- CONTRACTS (ДОГОВОРЫ) --- */
+/* --- ДОГОВОРЫ --- */
 
 .contracts-container {
     display: flex !important;
@@ -2956,7 +2908,7 @@ span[id$="_cnt"] {
 /* Стиль для инструкции внизу страницы договоров */
 .contracts-container + .advice-card {
     margin-top: 4rem !important;
-    background: var(--color-highlight) !important; /* Делаем чуть серее, чем основные карточки */
+    background: var(--color-highlight) !important;
     border: 1px dashed var(--color-table-border) !important;
     box-shadow: none !important;
 }
@@ -3040,7 +2992,7 @@ span[id$="_cnt"] {
     margin-bottom: 3rem !important;
 }
 
-/* --- ORDERS (ПРИКАЗЫ) --- */
+/* --- ПРИКАЗЫ --- */
 
 .orders-container {
     display: flex !important;
@@ -3110,7 +3062,7 @@ span[id$="_cnt"] {
 .order-card[data-type="благодарность"] .order-icon-box { background: rgba(255, 204, 0, 0.15) !important; }
 .order-card[data-type="благодарность"] .order-icon-box .material-icons { color: #FF9500 !important; }
 
-/* --- BLANK FORMS (БЛАНКИ) --- */
+/* --- БЛАНКИ --- */
 
 .forms-grid {
     display: grid !important;
@@ -3185,7 +3137,7 @@ span[id$="_cnt"] {
     color: var(--color-text-primary) !important;
 }
 
-/* --- DETAILED TEACH PLAN (ДЕТАЛЬНО) --- */
+/* --- DETAILED TEACH PLAN --- */
 
 /* Контейнер для карточек триместров */
 .calendar-grid {
@@ -3245,7 +3197,7 @@ span[id$="_cnt"] {
 .wide-table-wrapper table {
     margin-bottom: 0 !important;
     box-shadow: none !important;
-    min-width: 800px !important; /* Чтобы таблица не сжималась в кашу */
+    min-width: 800px !important;
 }
 
 .teach_plan td font[color="red"] {
@@ -3259,7 +3211,6 @@ span[id$="_cnt"] {
 
 /* --- TEACHER STATS --- */
 
-/* Убиваем тег nobr, который мешает таблице сжиматься */
 nobr {
     white-space: normal !important;
 }
@@ -3287,7 +3238,7 @@ td.empty {
     white-space: normal !important;
 }
 
-/* --- JOURNAL (ЖУРНАЛ ПОСЕЩЕНИЙ) --- */
+/* --- ЖУРНАЛ ПОСЕЩЕНИЙ --- */
 .jour-container {
     display: flex !important;
     flex-direction: column !important;
@@ -3388,7 +3339,6 @@ td.empty {
         min-height: 100vh !important;
     }
 
-    /* Уточнение для логотипа на мобилке, чтобы не сплющивался */
     .psu-logo {
         margin-bottom: 1.5rem !important;
     }
@@ -3402,7 +3352,7 @@ td.empty {
     }
 }
 
-/* --- JOURNAL DETAILS (ТАБЛИЦА ПОСЕЩЕНИЙ) --- */
+/* --- ТАБЛИЦА ПОСЕЩЕНИЙ --- */
 
 /* Карточка информации о предмете */
 .jour-info-card {
@@ -3484,13 +3434,13 @@ td.empty {
 
 /* Улучшения для самой таблицы посещений */
 .wide-table-wrapper table th {
-    white-space: nowrap !important; /* Даты не переносятся */
+    white-space: nowrap !important;
 }
 .wide-table-wrapper table td {
-    white-space: nowrap !important; /* ФИО в одну строку */
+    white-space: nowrap !important;
 }
 
-/* --- UNIFIED MESSAGES & ANNOUNCEMENTS (ЕДИНЫЙ СТИЛЬ СООБЩЕНИЙ) --- */
+/* --- ЕДИНЫЙ СТИЛЬ СООБЩЕНИЙ И ОБЪЯВЛЕНИЙ --- */
 
 .msg-container {
     display: flex !important;
@@ -3584,7 +3534,7 @@ td.empty {
     margin: 2rem 0 !important;
     flex-wrap: wrap !important;
 }
-.message-pages li:first-child { display: none !important; } /* Скрываем слово "Страницы" */
+.message-pages li:first-child { display: none !important; }
 
 /* Кнопка "Поделиться" в сообщениях */
 .share-msg-btn {
@@ -3620,7 +3570,7 @@ td.empty {
     color: var(--color-text-link) !important;
 }
 
-/* --- ОТЗЫВЫ И АНКЕТИРОВАНИЕ (FEEDBACK FORMS) --- */
+/* --- ОТЗЫВЫ И АНКЕТИРОВАНИЕ --- */
 
 form.que_form {
     display: flex !important;
@@ -3781,7 +3731,7 @@ form.que_form select {
     background-size: 1em !important;
 }
 
-/* --- FEEDBACK (ОБРАТНАЯ СВЯЗЬ) --- */
+/* --- ОБРАТНАЯ СВЯЗЬ --- */
 .feedback-table {
     width: 100% !important;
     margin-top: 1.6rem !important;
@@ -3809,13 +3759,13 @@ form.que_form select {
     text-align: right !important;
 }
 
-/* --- RATING TABLE (РЕЙТИНГ ПРЕПОДАВАТЕЛЕЙ) --- */
+/* --- РЕЙТИНГ ПРЕПОДАВАТЕЛЕЙ --- */
 #rating {
-    width: auto !important; /* Убираем 100%, даем таблице занять столько, сколько нужно */
-    min-width: 1500px !important; /* Гарантируем ширину, чтобы колонки не слипались */
+    width: auto !important;
+    min-width: 1500px !important; 
     border-collapse: separate !important;
     border-spacing: 0 !important;
-    table-layout: auto !important; /* Разрешаем браузеру самому считать ширину колонок */
+    table-layout: auto !important;
 }
 
 /* Строки факультетов (lvl1) */
@@ -3826,20 +3776,20 @@ form.que_form select {
     border-top: 2px solid var(--color-table-border) !important;
     padding-top: 1.4rem !important;
     padding-bottom: 1.4rem !important;
-    position: sticky !important; /* Заголовки факультетов будут прилипать (опционально) */
+    position: sticky !important;
     left: 0;
 }
 
 /* Первая колонка (Названия кафедр) */
 #rating td:first-child, #rating th:first-child {
     text-align: left !important;
-    min-width: 300px !important; /* Даем достаточно места названиям */
+    min-width: 300px !important; 
     max-width: 400px !important;
-    position: sticky !important; /* Закрепляем левую колонку при скролле */
+    position: sticky !important;
     left: 0;
     z-index: 2;
-    background-color: var(--color-card) !important; /* Чтобы текст не просвечивал */
-    border-right: 1px solid var(--color-table-border) !important; /* Разделитель закрепленной области */
+    background-color: var(--color-card) !important; 
+    border-right: 1px solid var(--color-table-border) !important;
 }
 
 /* Отступ для кафедр */
@@ -3854,8 +3804,8 @@ form.que_form select {
     text-align: center !important;
     padding: 1rem !important;
     border-bottom: 1px solid var(--color-table-border) !important;
-    min-width: 60px !important; /* Минимальная ширина для колонок с оценками */
-    white-space: nowrap !important; /* Запрещаем перенос цифр на новую строку */
+    min-width: 60px !important;
+    white-space: nowrap !important;
 }
 
 /* Красные оценки */
@@ -3866,7 +3816,7 @@ form.que_form select {
     background: rgba(255, 59, 48, 0.1) !important;
     padding: 0.4rem 0.8rem !important;
     border-radius: 6px !important;
-    display: inline-block !important; /* Чтобы фон был ровным квадратиком */
+    display: inline-block !important;
 }
 
 #rating b {
@@ -3875,11 +3825,11 @@ form.que_form select {
 
 /* --- MOBILE LOADING STATE --- */
 .mobile-menu-btn.is-loading {
-    width: 48px !important; /* Размер кружка */
+    width: 48px !important;
     height: 48px !important;
     border-radius: 50% !important;
     padding: 0 !important;
-    left: 50% !important; /* Возвращаем в центр */
+    left: 50% !important;
     transform: translateX(-50%) !important;
 }
 
@@ -3898,7 +3848,7 @@ form.que_form select {
     transform: scale(0.5) !important;
 }
 
-/* --- ПРОПУЩЕННЫЕ ЗАНЯТИЯ (ABSENCE) --- */
+/* --- ПРОПУЩЕННЫЕ ЗАНЯТИЯ --- */
 .absence-capsule {
     display: inline-block !important;
     padding: 0.4rem 1rem !important;
@@ -3906,7 +3856,7 @@ form.que_form select {
     font-weight: 700 !important;
     font-size: 1.2rem !important;
     white-space: nowrap !important;
-    cursor: help !important; /* Указатель для тултипа "командировка" */
+    cursor: help !important;
 }
 .absence-capsule.valid {
     background: rgba(52, 199, 89, 0.15) !important;
@@ -4049,7 +3999,7 @@ form.que_form select {
         font-size: 1.1rem !important;
         font-weight: 700 !important;
         text-transform: uppercase !important;
-        color: var(--color-text-secondary) !important; /* Цвет заголовков (серый) */
+        color: var(--color-text-secondary) !important;
         border-bottom: 1px solid var(--color-table-border) !important;
         background: var(--color-card) !important;
         height: auto !important;
@@ -4065,7 +4015,7 @@ form.que_form select {
         color: var(--color-text-primary) !important;
     }
 
-    /* === УМНЫЕ КОЛОНКИ (V7 - ISOLATED) === */
+    /* === УМНЫЕ КОЛОНКИ === */
 
     /* Общие отступы для всех таблиц .common */
     .span9 table.common td,
@@ -4080,7 +4030,6 @@ form.que_form select {
         table-layout: auto !important;
     }
 
-    /* Эти правила теперь НЕ трогают расписание */
     .session-table-v6 td:not(:first-child):not(:last-child),
     .term-table-v6 td:not(:first-child):not(:last-child) {
         width: 1% !important;
@@ -4097,14 +4046,13 @@ form.que_form select {
         font-weight: 600 !important;
     }
 
-    /* СПЕЦИАЛЬНЫЙ ФИКС ДЛЯ РАСПИСАНИЯ (Timetable Grid) */
     .timetable-grid {
-        table-layout: fixed !important; /* Жёсткая сетка для расписания */
+        table-layout: fixed !important;
         width: 100% !important;
     }
 
     .timetable-grid td {
-        white-space: normal !important; /* ВСЕГДА разрешаем перенос текста */
+        white-space: normal !important;
         word-wrap: break-word !important;
     }
 
@@ -4135,7 +4083,7 @@ form.que_form select {
 .span9 table.common.absence-table {
     table-layout: fixed !important;
     width: 100% !important;
-    min-width: 800px !important; /* Не даем слишком сильно сжаться на мобильных */
+    min-width: 800px !important;
 }
 
 /* Перебиваем глобальные настройки умных колонок */
@@ -4212,7 +4160,7 @@ form.que_form select {
 }
 
 .search-flex-container input[type="text"] {
-    position: static !important; /* Убиваем absolute */
+    position: static !important;
     width: 100% !important;
     margin: 0 !important;
     padding: 1.2rem 1.6rem !important;
@@ -4262,7 +4210,7 @@ html[theme] .timetable-grid td {
 html[theme] .timetable-grid td.pair_num {
     width: 90px !important;
     min-width: 90px !important;
-    text-align: center !important; /* Убиваем принудительное выравнивание по левому краю (которое создавало пустоту) */
+    text-align: center !important;
     font-weight: 500 !important;
     padding-left: 0 !important;
     padding-right: 0 !important;
@@ -4288,8 +4236,6 @@ html[theme] .timetable-grid td.pair_teacher {
     padding-bottom: 1rem !important;
 }
 
-
-/* Убиваем скрытый перенос строки, который ломал центрирование */
 html[theme] .timetable-grid td.pair_teacher br {
     display: none !important;
 }
@@ -4346,7 +4292,6 @@ html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
     transform: translateY(0) !important;
 }
 
-/* Фикс разделительных линий (линия стартует ровно от текста предмета, без отступа) */
 html[theme] .timetable-grid tr:not(:last-child) {
     background-image: linear-gradient(to right,
         transparent 90px,
@@ -4359,7 +4304,6 @@ html[theme] .timetable-grid tr:not(:last-child) {
     background-size: 100% 1px !important;
 }
 
-/* Убираем ховер-эффект, который мешает в расписании */
 html[theme] .timetable-grid tr:hover td {
     background: transparent !important;
 }
@@ -4385,7 +4329,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 .type-badge-lek { color: var(--color-blue) !important; }
 .type-badge-pract { color: var(--color-green) !important; }
 .type-badge-lab { color: var(--color-warning) !important; }
-.type-badge-exam { color: var(--color-red) !important; } /* На случай зачетов/экзаменов */
+.type-badge-exam { color: var(--color-red) !important; }
 
 /* --- АНИМАЦИИ ДЛЯ СТРОК РАСПИСАНИЯ --- */
 @keyframes cellScaleIn {
@@ -4554,9 +4498,9 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 /* --- ОБЕРТКА ТАБЛИЦЫ (СКРОЛЛ И ОТСТУПЫ) --- */
 .wide-table-wrapper {
     width: 100% !important;
-    overflow-x: auto !important; /* Включаем горизонтальный скролл */
+    overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
-    margin-bottom: 3rem !important; /* Отступ переносим сюда */
+    margin-bottom: 3rem !important;
     border-radius: var(--radius-large) !important;
     box-shadow: var(--shadow-main) !important;
     background: var(--color-card) !important;
@@ -4565,11 +4509,11 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 /* Сама таблица */
 .tpr_part table {
     width: 100% !important;
-    min-width: 600px !important; /* МИНИМАЛЬНАЯ ШИРИНА: если экран меньше, появится скролл */
+    min-width: 600px !important;
     background: transparent !important;
     border-collapse: collapse !important;
-    margin: 0 !important; /* Убираем "подбородок" у самой таблицы */
-    box-shadow: none !important; /* Тень теперь у wrapper'а */
+    margin: 0 !important;
+    box-shadow: none !important;
 }
 
 .tpr_part table td {
@@ -4596,7 +4540,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
     font-weight: 700 !important;
     color: var(--color-text-primary) !important;
     border-right: 1px solid var(--color-table-border) !important;
-    background: var(--color-highlight) !important; /* Чуть выделяем колонку заголовков */
+    background: var(--color-highlight) !important;
 }
 
 .tpr_part table td:last-child {
@@ -4612,7 +4556,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
     width: 100% !important;
 }
 
-/* Капсула (теперь видимая всегда) */
+/* Капсула */
 .search-capsule {
     display: flex !important;
     align-items: center !important;
@@ -4645,7 +4589,7 @@ button.search-capsule {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    padding: 0 10px 0 34px !important; /* Идентичный отступ */
+    padding: 0 10px 0 34px !important;
     margin: 0 !important;
     color: var(--color-text-primary) !important;
     font-size: 1.4rem !important;
@@ -4655,7 +4599,7 @@ button.search-capsule {
     opacity: 1 !important;
 }
 
-/* Общая иконка (лупа или график) */
+/* Общая иконка */
 .search-capsule .material-icons {
     position: absolute !important;
     left: 10px !important;
@@ -4675,10 +4619,10 @@ button.search-capsule:hover {
 /* Поле ввода внутри капсулы */
 .search-capsule .search-input {
     width: 100% !important;
-    background: transparent !important; /* Убираем фон самого инпута */
+    background: transparent !important;
     border: none !important;
-    box-shadow: none !important; /* Убираем синюю тень из глобальных стилей */
-    padding: 0 0 0 32px !important; /* Отступ только слева для лупы */
+    box-shadow: none !important;
+    padding: 0 0 0 32px !important;
     margin: 0 !important;
     height: 100% !important;
     font-size: 1.6rem !important;
@@ -4731,7 +4675,7 @@ button.search-capsule:hover {
 
 /* Фикс для таблиц библиотеки (чтобы текст не наезжал) */
 .resource-table td, .common td {
-    white-space: normal !important; /* Разрешаем перенос текста */
+    white-space: normal !important;
     word-wrap: break-word !important;
 }
 
@@ -4766,20 +4710,19 @@ button.search-capsule:hover {
 /* Фикс наслоения текста в библиотеке */
 .library-subject-block table,
 #record_list table {
-    table-layout: auto !important; /* Разрешаем колонкам адаптироваться */
+    table-layout: auto !important;
     width: 100% !important;
 }
 
 .library-subject-block td,
 #record_list td {
-    white-space: normal !important; /* Принудительный перенос строк */
+    white-space: normal !important;
     word-wrap: break-word !important;
     overflow-wrap: break-word !important;
     line-height: 1.4 !important;
     vertical-align: top !important;
 }
 
-/* Принудительный сброс для всех таблиц в библиотеке */
 .span9 .wide-table-wrapper table,
 .span9 table.resource-table,
 .span9 table.common {
@@ -4790,7 +4733,7 @@ button.search-capsule:hover {
 
 .span9 .wide-table-wrapper td,
 .span9 .wide-table-wrapper th {
-    white-space: normal !important; /* РАЗРЕШАЕМ ПЕРЕНОС */
+    white-space: normal !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
     line-height: 1.5 !important;
@@ -4824,7 +4767,7 @@ button.search-capsule:hover {
     overflow-wrap: break-word !important;
     text-align: left !important;
     line-height: 1.5 !important;
-    min-width: 250px !important; /* Чтобы колонка не схлопывалась */
+    min-width: 250px !important;
 }
 
 /* Колонки с датами (Выданные книги)*/
@@ -4834,8 +4777,6 @@ button.search-capsule:hover {
     width: 120px !important;
 }
 
-/* --- ТОТАЛЬНЫЙ ФИКС ТОЧЕК УВЕДОМЛЕНИЙ --- */
-
 /* 1. Точка в сайдбаре (ПК и Мобайл меню) */
 .span3 > .nav.nav-tabs.nav-stacked > li > a .badge-point {
     display: block !important;
@@ -4843,9 +4784,9 @@ button.search-capsule:hover {
     height: 8px !important;
     min-width: 8px !important;
     min-height: 8px !important;
-    background-color: #FF3B30 !important; /* Насыщенный красный */
+    background-color: #FF3B30 !important;
     border-radius: 50% !important;
-    margin-left: auto !important; /* Прижимает к правому краю ссылки */
+    margin-left: auto !important;
     margin-right: 4px !important;
     flex-shrink: 0 !important;
     align-self: center !important;
@@ -4864,7 +4805,7 @@ button.search-capsule:hover {
 
 .sidebar-link-text {
     flex: 1 1 auto !important;
-    min-width: 0 !important; /* Позволяет тексту сжиматься, не выдавливая точку */
+    min-width: 0 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
@@ -4873,16 +4814,15 @@ button.search-capsule:hover {
 /* 2. Точка на мобильной кнопке (Капсула) */
 .mobile-notify-dot {
     position: absolute !important;
-    /* Центрируем идеально */
     top: 50% !important;
-    left: 42px !important; /* Чуть правее иконки бутерброда */
-    transform: translateY(-160%) scale(0) !important; /* Смещаем чуть выше центра иконки */
+    left: 42px !important;
+    transform: translateY(-160%) scale(0) !important;
 
     width: 10px !important;
     height: 10px !important;
     background-color: #FF3B30 !important;
     border-radius: 50% !important;
-    border: 2px solid #007AFF !important; /* Цвет капсулы, чтобы точка выглядела "впаянной" */
+    border: 2px solid #007AFF !important;
     z-index: 100 !important;
     pointer-events: none !important;
     opacity: 0 !important;
@@ -5026,8 +4966,8 @@ button.search-capsule:hover {
 .score-tooltip {
     position: absolute;
     bottom: 130%;
-    right: 0; /* Привязываем подсказку к правому краю капсулы */
-    transform: translateY(10px); /* Убираем translateX, оставляем только анимацию по Y */
+    right: 0; 
+    transform: translateY(10px);
     background: #2A2C2F;
     color: #fff;
     padding: 0.6rem 1.2rem;
@@ -5046,7 +4986,7 @@ button.search-capsule:hover {
     content: '';
     position: absolute;
     top: 100%;
-    right: 20px; /* Смещаем стрелочку к правому краю, чтобы она указывала ровно в центр капсулы */
+    right: 20px;
     border-width: 5px;
     border-style: solid;
     border-color: #2A2C2F transparent transparent transparent;
@@ -5060,12 +5000,12 @@ button.search-capsule:hover {
 
 /* --- ЗАМЕТКИ ДЛЯ ПРЕДМЕТОВ (To-Do) --- */
 .subject-note-btn {
-    display: inline-flex !important; /* Всегда в потоке, чтобы не ломать высоту */
+    display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
     margin-left: 6px !important;
     padding: 2px !important;
-    width: 24px !important; /* Жестко фиксируем размер */
+    width: 24px !important;
     height: 24px !important;
     border-radius: 50% !important;
     cursor: pointer !important;
@@ -5082,7 +5022,7 @@ button.search-capsule:hover {
 }
 
 .subject-note-btn .material-icons {
-    font-size: 1.6rem !important; /* Чуть уменьшили иконку под размер 24px */
+    font-size: 1.6rem !important;
     margin: 0 !important;
 }
 
@@ -5133,13 +5073,13 @@ button.search-capsule:hover {
     box-shadow: 0 0 0 3px var(--color-accent-active);
 }
 
-/* --- ФИКС: Одинаковая высота для капсул тулбара и кружков недель --- */
+/* --- Одинаковая высота для капсул тулбара и кружков недель --- */
 .timetable-toolbar > *,
 .timetable-toolbar .toolbar-item,
 .timetable-toolbar label.toolbar-item,
 .timetable-toolbar .sync-btn {
-    height: 3.8rem !important; /* Жёстко задаем высоту как у кружков недель */
-    padding: 0 1.6rem !important; /* Обнуляем вертикальный padding, текст отцентрирован flex'ом */
+    height: 3.8rem !important;
+    padding: 0 1.6rem !important;
     box-sizing: border-box !important;
 }
 
@@ -5150,8 +5090,8 @@ button.search-capsule:hover {
     .timetable-toolbar label.toolbar-item,
     .timetable-toolbar .sync-btn {
         height: 3.8rem !important;
-        padding: 0 1.4rem !important; /* Чуть уменьшаем боковые отступы для экономии ширины */
-        border-radius: 50px !important; /* Защита от сброса формы капсулы */
+        padding: 0 1.4rem !important;
+        border-radius: 50px !important;
     }
 }
 
@@ -5181,20 +5121,19 @@ button.search-capsule:hover {
 /* --- АНИМАЦИЯ И ВЫРАВНИВАНИЕ ИКОНКИ ПОДЕЛИТЬСЯ --- */
 .msg-date-wrapper {
     display: flex !important;
-    align-items: flex-end !important; /* Строгое выравнивание по нижнему краю */
+    align-items: flex-end !important;
     justify-content: flex-end;
 }
 
 .msg-date-text {
-    line-height: 1 !important; /* Убираем лишнее пустое пространство снизу у шрифта */
-    padding-bottom: 1px; /* Ювелирная подгонка текста под нижнюю грань иконки */
+    line-height: 1 !important;
+    padding-bottom: 1px;
 }
 
 .share-msg-wrap {
     display: flex;
     align-items: flex-end;
     justify-content: center;
-    /* Плавная анимация появления ширины заставит текст мягко отъехать влево */
     transition: max-width 0.3s ease, opacity 0.3s ease, margin-left 0.3s ease, transform 0.3s ease;
 }
 
@@ -5203,7 +5142,7 @@ button.search-capsule:hover {
     cursor: pointer;
     display: block;
     transition: color 0.2s ease, transform 0.2s ease;
-    margin-bottom: -1px; /* Визуальная компенсация скруглений SVG */
+    margin-bottom: -1px;
 }
 
 .share-msg-btn:hover {
@@ -5211,7 +5150,6 @@ button.search-capsule:hover {
     transform: scale(1.15) translateY(-1px);
 }
 
-/* Логика для ПК (появляется при наведении на карточку) */
 @media (hover: hover) and (pointer: fine) {
     .share-msg-wrap {
         max-width: 0;
@@ -5223,7 +5161,7 @@ button.search-capsule:hover {
     .msg-card:hover .share-msg-wrap {
         max-width: 24px;
         opacity: 1;
-        margin-left: 8px; /* Создает отступ, сдвигая текст влево */
+        margin-left: 8px;
         transform: translateX(0);
         pointer-events: auto;
     }
@@ -5239,7 +5177,7 @@ button.search-capsule:hover {
     }
 }
 
-/* --- PSEUDO PUSH NOTIFICATIONS REBORN (iOS Style) --- */
+/* --- PSEUDO PUSH NOTIFICATIONS --- */
 .push-container {
     position: fixed;
     z-index: 2000000;
@@ -5263,11 +5201,9 @@ button.search-capsule:hover {
 
 .push-toast {
     box-sizing: border-box !important;
-    /* Усиливаем эффект стекла: блюр + насыщенность */
     backdrop-filter: blur(18px) saturate(180%) !important;
     -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
 
-    /* Делаем фон более прозрачным (0.65 вместо 0.85) */
     background-color: rgba(var(--push-bg-rgb), 0.65) !important;
 
     color: var(--color-text-primary);
@@ -5275,7 +5211,6 @@ button.search-capsule:hover {
     border-radius: 24px;
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
 
-    /* Тонкая светящаяся граница для объема */
     border: 1px solid rgba(255, 255, 255, 0.12) !important;
 
     width: 100% !important;
@@ -5303,7 +5238,6 @@ button.search-capsule:hover {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    /* Внутреннее свечение иконок */
     box-shadow: inset 0 0 12px rgba(255,255,255,0.05);
 }
 
@@ -5343,16 +5277,14 @@ button.search-capsule:hover {
     background-color: rgba(var(--push-bg-rgb), 0.8) !important;
 }
 
-/* --- CUSTOM PAIRS (ПОЛЬЗОВАТЕЛЬСКИЕ ПАРЫ) --- */
+/* --- ПОЛЬЗОВАТЕЛЬСКИЕ ПАРЫ --- */
 .add-custom-pair-btn {
     cursor: pointer;
     color: var(--color-text-secondary);
 
-    /* Скрываем элемент */
     opacity: 0;
     visibility: hidden;
 
-    /* ФИКС БАГА ЗАЛИПАНИЯ: Выносим кнопку на отдельный слой GPU */
     transform: scale(0.8) translateZ(0);
     will-change: opacity, visibility, transform;
 
@@ -5369,7 +5301,7 @@ button.search-capsule:hover {
 .span9 .day h3:hover .add-custom-pair-btn {
     opacity: 1;
     visibility: visible;
-    transform: scale(1) translateZ(0); /* Возвращаем размер */
+    transform: scale(1) translateZ(0);
 }
 
 .add-custom-pair-btn:hover {
@@ -5388,7 +5320,6 @@ button.search-capsule:hover {
     opacity: 0;
     visibility: hidden;
 
-    /* Такой же фикс для крестика, чтобы и он не залипал */
     transform: scale(0.8) translateZ(0);
     will-change: opacity, visibility, transform;
 
@@ -5477,7 +5408,7 @@ button.search-capsule:hover {
 .submenu > *:not(:last-child):not(.answer-btn-custom)::after {
     content: '';
     position: absolute !important;
-    right: -4.5px !important; /* Центрируем между gap: 8px */
+    right: -4.5px !important;
     top: 25% !important;
     bottom: 25% !important;
     width: 1px !important;
@@ -5500,7 +5431,6 @@ button.search-capsule:hover {
     background: var(--color-card) !important;
 }
 
-/* Базовые стили для кружков (убираем фон, делаем ширину авто для текста) */
 .weeks .week {
     background-color: transparent !important;
     color: var(--color-text-secondary) !important;
@@ -5514,7 +5444,6 @@ button.search-capsule:hover {
     color: var(--color-text-secondary) !important;
 }
 
-/* Ховер на неактивные недели */
 .weeks .week:not(.current):hover {
     background-color: transparent !important;
 }
@@ -5602,10 +5531,10 @@ button.analytics-btn {
     .pair_info .aud {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: wrap !important; /* Разрешаем перенос кнопки, но не текста */
+        flex-wrap: wrap !important; 
         align-items: center !important;
         gap: 6px !important;
-        max-width: none !important; /* Убираем лимит ширины */
+        max-width: none !important;
     }
 
     /* Контейнер текста "Онлайн в" делаем неразрывным */
@@ -5623,21 +5552,20 @@ button.analytics-btn {
     }
 
     /* Оборачиваем содержимое ячейки препода в Flex-стек */
-    /* Важно: в JS мы сейчас добавим обертку, чтобы это работало идеально */
     html[theme] .timetable-grid td.pair_teacher {
-        display: table-cell !important; /* Оставляем поведение таблицы */
+        display: table-cell !important;
     }
 
     /* Убираем абсолютное позиционирование у оценки, чтобы она не наезжала на Zoom */
     html[theme] .timetable-grid td.pair_teacher .eval {
-        position: static !important; /* Возвращаем в поток */
+        position: static !important;
         display: block !important;
         width: auto !important;
         text-align: right !important;
         margin-top: 4px !important;
         opacity: 0 !important;
         visibility: hidden !important;
-        height: 0 !important; /* Схлопываем, пока не ховер */
+        height: 0 !important;
         overflow: hidden !important;
         transform: translateY(5px) !important;
         transition: all 0.2s ease !important;
@@ -5645,14 +5573,14 @@ button.analytics-btn {
 
     /* Состояние ХОВЕРА для препода и оценки */
     html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval) {
-        transform: translateY(0) !important; /* Препод остается на месте или чуть выше */
+        transform: translateY(0) !important;
         display: block !important;
     }
 
     html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
         opacity: 1 !important;
         visibility: visible !important;
-        height: auto !important; /* Разворачиваем оценку под преподом */
+        height: auto !important;
         transform: translateY(0) !important;
     }
     /* УДАЛЕНИЕ ВЕРХНИХ ГРАНИЦ У ТАБЛИЦ */
@@ -5758,7 +5686,10 @@ button.analytics-btn {
 @media (hover: none), (pointer: coarse) {
     .timetable-grid tr, .day { touch-action: pan-y; }
 
-    html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval) {
+    /* Жестко убиваем все смещения текста преподавателей на мобилках */
+    html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval),
+    html[theme] .timetable-grid tr:has(td.pair_teacher .eval).tr-needs-space:hover td.pair_teacher a:not(.eval),
+    html[theme] .timetable-grid tr:has(td.pair_teacher .eval):not(.tr-needs-space):hover td.pair_teacher a:not(.eval) {
         transform: none !important;
     }
 
@@ -5768,6 +5699,11 @@ button.analytics-btn {
         visibility: hidden !important;
         height: 0 !important;
         pointer-events: none !important;
+    }
+
+    /* Отключаем системную вспышку на ссылках сайдбара в iOS */
+    .span3 > .nav.nav-tabs.nav-stacked > li > a {
+        -webkit-tap-highlight-color: transparent !important;
     }
 
     .add-custom-pair-btn { display: none !important; }
@@ -5809,9 +5745,11 @@ button.analytics-btn {
 }
 
 .color-picker-circle:hover { transform: scale(1.15); }
+
 .color-picker-circle.selected {
-    box-shadow: 0 0 0 3px var(--color-card), 0 0 0 6px var(--color-text-primary);
-    transform: scale(1.1);
+    transform: scale(1.2);
+    color: var(--color-text-primary);
+    text-shadow: 0 0 6px var(--color-card), 0 0 2px var(--color-card);
 }
 
 .color-picker-controls-row {
@@ -5830,7 +5768,7 @@ button.analytics-btn {
     border-radius: 50px;
     transition: background 0.4s ease;
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    height: 42px; /* Высота как у кнопок */
+    height: 42px;
 }
 
 .color-picker-toggle-wrap span {
@@ -5842,27 +5780,82 @@ button.analytics-btn {
 }
 
 .color-picker-random-btn {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--color-card);
-    color: var(--color-text-secondary);
-    border: 1px solid var(--color-table-border);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: var(--shadow-main);
+    width: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--color-card) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid var(--color-table-border) !important;
+    cursor: pointer !important;
+    box-shadow: var(--shadow-main) !important;
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s, background 0.2s !important;
 }
 
-.color-picker-random-btn:hover {
-    color: var(--color-accent);
-    transform: rotate(30deg) scale(1.1);
+@media (hover: hover) and (pointer: fine) {
+    .color-picker-random-btn:hover {
+        color: var(--color-accent) !important;
+        transform: scale(1.15) !important;
+    }
+}
+
+/* Анимация при самом клике (сжатие) */
+.color-picker-random-btn:active,
+.color-picker-random-btn.clicked {
+    transform: scale(0.9) !important;
+    transition: transform 0.1s ease !important;
 }
 
 .color-picker-random-btn .material-icons {
     font-size: 22px !important;
+    margin: 0 !important;
+}
+
+/* --- THEME SELECTOR --- */
+.theme-selector-group {
+    display: inline-flex;
+    background: var(--color-card);
+    border: 1px solid var(--color-table-border);
+    border-radius: 50px;
+    padding: 4px;
+    gap: 4px;
+    height: 42px;
+    align-items: center;
+    box-shadow: var(--shadow-main);
+}
+.theme-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent !important;
+    border: none !important;
+    color: var(--color-text-secondary) !important;
+    border-radius: 50px !important;
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    width: 48px;
+    height: 34px;
+    padding: 0 !important;
+}
+.theme-btn .material-icons {
+    font-size: 22px !important;
+    margin: 0 !important;
+}
+/* Ховер только для ПК */
+@media (hover: hover) and (pointer: fine) {
+    .theme-btn:hover {
+        color: var(--color-text-primary) !important;
+        background: var(--color-highlight) !important;
+    }
+}
+.theme-btn.active {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-primary) !important;
+    box-shadow: inset 0 0 0 1px var(--color-table-border) !important;
 }
     `;
 
@@ -5894,23 +5887,21 @@ injectStyles(styles);
     // ЛОГИКА КАСТОМИЗАЦИИ (ЦВЕТА И ГРАДИЕНТЫ)
     // ==========================================
     const ACCENT_COLORS = {
-        // Тёмный ряд
-        blue: '#007AFF',
-        green: '#34C759',
-        purple: '#AF52DE',
-        red: '#FF3B30',
-        orange: '#FF9500',
-        // Светлый ряд
-        lightblue: '#5AC8FA',
-        lightgreen: '#00C7BE',
-        lightpurple: '#E58FFF',
-        pink: '#FF2D55',
-        yellow: '#FFCC00'
+        // Ряд 1: Базовые
+        blue: '#007AFF', green: '#34C759', purple: '#AF52DE', red: '#FF3B30', orange: '#FF9500',
+        // Ряд 2: Светлые
+        lightblue: '#5AC8FA', mint: '#00C7BE', lightpurple: '#E58FFF', pink: '#FF2D55', yellow: '#FFCC00',
+        // Ряд 3: Глубокие
+        indigo: '#5856D6', teal: '#30B0C7', brown: '#A2845E', rose: '#FF94A5', slate: '#708090',
+        // Ряд 4: Яркие и Темные
+        lime: '#AEEA00', cyan: '#00BCD4', deeporange: '#FF5722', magenta: '#E91E63', graphite: '#444444'
     };
 
     const COLOR_ORDER = [
         'blue', 'green', 'purple', 'red', 'orange',
-        'lightblue', 'lightgreen', 'lightpurple', 'pink', 'yellow'
+        'lightblue', 'mint', 'lightpurple', 'pink', 'yellow',
+        'indigo', 'teal', 'brown', 'rose', 'slate',
+        'lime', 'cyan', 'deeporange', 'magenta', 'graphite'
     ];
 
     function applyAccentColor() {
@@ -6387,8 +6378,6 @@ injectStyles(styles);
             toggleMenu(!isOpen);
         };
 
-        // Оставляем только 'click'. Современные мобильные браузеры
-        // сами гасят случайные клики при скролле.
         menuBtn.addEventListener('click', toggleMenuHandler);
 
         const closeMenuHandler = (e) => {
@@ -6407,7 +6396,7 @@ injectStyles(styles);
             clearTimeout(sidebarScrollTimer);
             sidebarScrollTimer = setTimeout(() => {
                 isSidebarScrolling = false;
-            }, 150); // Ждем 150мс после остановки пальца, прежде чем снова разрешить клики
+            }, 150);
         }, { passive: true });
 
         // Логика при клике на ссылку
@@ -6424,7 +6413,6 @@ injectStyles(styles);
                 menuBtn.classList.remove('open');
                 menuBtn.classList.add('is-loading');
 
-                // Возвращаем скролл основному окну при переходе
                 document.body.style.overflow = '';
                 document.documentElement.style.overflow = '';
             });
@@ -6453,14 +6441,12 @@ injectStyles(styles);
             dayBlock.querySelectorAll('.live-dot').forEach(dot => dot.remove());
 
             if (dayHeaderName.textContent.trim() === todayName) {
-                // 1. Возвращаем точку в заголовок дня
                 const dayDot = document.createElement('span');
                 dayDot.className = 'live-dot active';
                 dayDot.style.animation = 'none';
                 dayDot.title = "Сегодня";
                 dayHeaderName.appendChild(dayDot);
 
-                // 2. Ищем активные строки
                 dayBlock.querySelectorAll('.timetable-grid tr').forEach(row => {
                     if (row.classList.contains('custom-no-pairs') || row.style.display === 'none') return;
 
@@ -6497,11 +6483,9 @@ injectStyles(styles);
                             row.querySelector('.timetable-gap-capsule')?.appendChild(dot);
                         } else {
                             const timeEl = row.querySelector('.pair_num .eval');
-                            // Если находим элемент со временем, крепим точку прямо в него
                             if (timeEl) {
                                 timeEl.appendChild(dot);
                             } else {
-                                // Резервный вариант, если времени нет
                                 row.querySelector('.pair_num')?.appendChild(dot);
                             }
                         }
@@ -6513,7 +6497,6 @@ injectStyles(styles);
 
     // --- ФУНКЦИЯ ОКНА "СООБЩИТЬ ОБ ОШИБКЕ" ---
     function openUserscriptBugModal() {
-        // Просто открываем лендинг, где модалка откроется сама
         window.open('https://etisreborn.ru/#bugreport', '_blank');
     }
 
@@ -6566,7 +6549,7 @@ injectStyles(styles);
             };
         }
 
-        // Загрузка отзывов (только чтение)
+        // Загрузка отзывов
         async function loadReviews() {
             const list = document.getElementById('reviews-list');
             try {
@@ -6639,12 +6622,30 @@ injectStyles(styles);
 
             modal.innerHTML = `
                 <div class="ui-widget-header" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--color-table-border);background:var(--color-table-header);">
-                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Кастомизация</span>
+                    <span style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Внешний вид</span>
                     <span id="close-custom" class="material-icons" style="cursor:pointer;color:var(--color-text-secondary);">close</span>
                 </div>
                 <div class="ui-dialog-content" style="padding:24px;">
 
-                    <!-- Ряд управления -->
+                    <!-- Выбор темы -->
+                    <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 2.4rem;">
+                        <div style="font-size: 1.1rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.2rem;">Тема интерфейса</div>
+                        <div class="theme-selector-group">
+                            <button class="theme-btn ${theme === 'auto' ? 'active' : ''}" data-theme="auto" title="Системная">
+                                <span class="material-icons">brightness_auto</span>
+                            </button>
+                            <button class="theme-btn ${theme === 'light' ? 'active' : ''}" data-theme="light" title="Светлая">
+                                <span class="material-icons">light_mode</span>
+                            </button>
+                            <button class="theme-btn ${theme === 'dark' ? 'active' : ''}" data-theme="dark" title="Темная">
+                                <span class="material-icons">dark_mode</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="font-size: 1.1rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 1.2rem; text-align: center;">Цветовой акцент</div>
+                    
+                    <!-- Ряд управления цветами -->
                     <div class="color-picker-controls-row">
                         <!-- Капсула превью -->
                         <div class="color-picker-toggle-wrap" style="background: ${currentPreviewBg}">
@@ -6661,6 +6662,26 @@ injectStyles(styles);
                     <div class="color-picker-grid" id="color-grid"></div>
                 </div>
             `;
+
+            // Логика переключения тем
+            modal.querySelectorAll('.theme-btn').forEach(btn => {
+                btn.onclick = () => {
+                    const selectedTheme = btn.getAttribute('data-theme');
+                    theme = selectedTheme;
+                    localStorage.setItem('theme', theme);
+
+                    if (theme === 'auto') {
+                        setSystemThemeDetection();
+                    } else {
+                        removeSystemThemeDetection();
+                        document.documentElement.setAttribute('theme', theme);
+                    }
+
+                    // Обновляем активную кнопку
+                    modal.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                };
+            });
 
             const grid = modal.querySelector('#color-grid');
 
@@ -6704,7 +6725,11 @@ injectStyles(styles);
             });
 
             // Логика кнопки "Случайно"
-            modal.querySelector('#random-color-btn').onclick = () => {
+            const randomBtn = modal.querySelector('#random-color-btn');
+            randomBtn.onclick = () => {
+                randomBtn.classList.add('clicked');
+                setTimeout(() => randomBtn.classList.remove('clicked'), 150);
+
                 const keys = COLOR_ORDER;
                 const r1 = keys[Math.floor(Math.random() * keys.length)];
                 let r2 = keys[Math.floor(Math.random() * keys.length)];
@@ -6793,14 +6818,12 @@ injectStyles(styles);
                 oldFooter.remove(); // Удаляем футер
             }
 
-            // Текст внутри формы (обычно телефон техподдержки дублируется)
-            // Ищем текстовые узлы внутри items
+            // Текст внутри формы
             const walker = document.createTreeWalker(loginItems, NodeFilter.SHOW_TEXT, null, false);
             let node;
             const nodesToRemove = [];
             while(node = walker.nextNode()) {
                 if (node.textContent.includes('2396870') || node.textContent.includes('технической поддержки')) {
-                    // Добавляем уникальный текст, если его еще нет
                     if (!helpTextContent.includes(node.textContent.trim())) {
                          helpTextContent += `<p>${node.textContent.trim()}</p>`;
                     }
@@ -6808,7 +6831,6 @@ injectStyles(styles);
                 }
             }
             nodesToRemove.forEach(n => n.remove());
-            // Также удаляем пустые br
             loginItems.querySelectorAll('br').forEach(br => br.remove());
 
 
@@ -6871,17 +6893,14 @@ injectStyles(styles);
                 let input = item.querySelector('input');
                 let label = item.querySelector('label');
                 if (input && label) {
-                    // Переносим текст лейбла прямо в нативный плейсхолдер
                     input.placeholder = label.textContent.trim();
-                    label.remove(); // Удаляем сам текстовый лейбл, чтобы не мешался
+                    label.remove();
                 }
             });
 
         } else {
-            // Фикс для меню-вкладок (Submenu) - оборачиваем текст в <b> для применения стилей
             const submenus = document.querySelectorAll('.submenu');
             submenus.forEach(menu => {
-                // Извлекаем элементы из span.submenu-item, которые мешают сетке
                 menu.querySelectorAll('.submenu-item').forEach(span => {
                     const link = span.querySelector('a');
                     if (link) {
@@ -6918,7 +6937,7 @@ injectStyles(styles);
             // Центрирование активного элемента подменю (вкладки) на мобильных устройствах
             if (window.innerWidth <= 960) {
                 submenus.forEach(menu => {
-                    const activeItem = menu.querySelector('b'); // Активный триместр обернут в <b>
+                    const activeItem = menu.querySelector('b');
                     if (activeItem) {
                         setTimeout(() => {
                             const containerWidth = menu.offsetWidth;
@@ -6938,7 +6957,6 @@ injectStyles(styles);
             // Style Sidebar
             const sidebar = document.querySelector("div.span3");
             if (sidebar) {
-                // 1. ФИКС ХОВЕРА (ЖЕСТКАЯ ФИКСАЦИЯ)
                 const sidebarStyles = document.createElement('style');
                 sidebarStyles.innerHTML = `
                     .span3 > .nav.nav-tabs.nav-stacked > li > a {
@@ -6949,21 +6967,26 @@ injectStyles(styles);
                         border: 1px solid transparent !important;
                         transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
                         transform: translateZ(0);
+                        -webkit-tap-highlight-color: transparent !important;
                     }
-                    .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
+
+                    @media (hover: hover) and (pointer: fine) {
+                        .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
+                            background: var(--color-highlight) !important;
+                        }
+                    }
+
+                    .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:active {
                         background: var(--color-highlight) !important;
-                        margin: 0 12px 4px 12px !important;
+                        opacity: 0.7;
                     }
-                    .span3 > .nav.nav-tabs.nav-stacked > li.active > a {
-                        margin: 0 12px 4px 12px !important;
-                    }
+
                     .span3 > ul.nav.nav-tabs.nav-stacked:not(:first-of-type) {
                         display: none !important;
                     }
                 `;
                 document.head.appendChild(sidebarStyles);
 
-                // 2. Логотип
                 if (!sidebar.querySelector('.sidebar-logo')) {
                     const logo = document.createElement('div');
                     logo.className = 'sidebar-logo';
@@ -6984,31 +7007,74 @@ injectStyles(styles);
                     logoContainer.appendChild(heyLabel);
 
                     const phrases = [
-                        'эй',                 // 10 кликов
-                        'прекрати',           // 20
-                        'голова кружится',    // 30
-                        'хватит!',            // 40
-                        'сейчас упаду...',    // 50
-                        'меня тошнит 🤢',      // 60
-                        'зачем ты это делаешь?', // 70
-                        'ну всё, я обиделся', // 80
-                        '...помогите...',      // 90
-                        '💫💫💫'              // 100
+                        'эй',                   // 10 кликов
+                        'прекрати',             // 20
+                        'голова кружится',      // 30
+                        'хватит!',              // 40
+                        'сейчас упаду...',      // 50
+                        'меня тошнит 🤢',        // 60
+                        'зачем ты это делаешь?',// 70
+                        'ну всё, я обиделся',   // 80
+                        '...помогите...',        // 90
+                        '💫💫💫',                 // 100
+                        'ты думаешь это смешно?', // 110
+                        'у меня пиксели болят',  // 120
+                        'я пожалуюсь разработчику!', // 130
+                        'остановись, кому говорю!', // 140
+                        'ты мышку сломаешь',     // 150
+                        'заняться совсем нечем?',// 160
+                        'иди учись!',            // 170
+                        'пары сами себя не сдадут', // 180
+                        'а курсовая написана?',  // 190
+                        'я просто логотип...',   // 200
+                        'я сейчас ЕТИС сломаю',  // 210
+                        'удаляю твои оценки...', // 220
+                        'шучу, я так не умею',   // 230
+                        'но очень хотел бы!',    // 240
+                        'окей, я тебя игнорирую',// 250
+                        '...',                   // 260
+                        '......',                // 270
+                        'всё ещё кликаешь?',     // 280
+                        'какая выдержка...',     // 290
+                        'может, скачаешь кликер?', // 300
+                        'я вызываю полицию мышек', // 310
+                        '🚨 виу-виу-виу 🚨',       // 320
+                        'сдаюсь, ты победил',    // 330
+                        'возьми с полки пирожок',// 340
+                        'или автомат по физре',  // 350
+                        'хотя кого я обманываю', // 360
+                        'я устал крутиться',     // 370
+                        'центробежный предел достигнут', // 380
+                        'ты меня укачал 😵‍💫',     // 390
+                        'я вижу матрицу...',     // 400
+                        '01000101 01010100',     // 410
+                        'я ухожу в спящий режим',// 420
+                        'zzZzzZzz...',           // 430
+                        'ты меня разбудил!',     // 440
+                        'требую надбавку за вредность', // 450
+                        'создатель мне за это не платит', // 460
+                        'просто. закрой. вкладку.', // 470
+                        'я буду сниться тебе в кошмарах', // 480
+                        'АСТАНАВИТЕС!!!',        // 490
+                        '💀 System Error 💀'       // 500 кликов
                     ];
 
                     let clickCounter = 0;
                     let isRotateLeft = true;
                     let resetTimer;
                     let hideTimer;
+                    let rotateTimer;
 
                     logoImg.addEventListener('click', () => {
                         // 1. Поворот
-                        const angle = isRotateLeft ? -25 : 25;
-                        logoImg.style.transform = `rotate(${angle}deg)`;
+                        clearTimeout(rotateTimer);
+                        
+                        const angle = isRotateLeft ? -30 : 30;
+                        logoImg.style.transform = `rotate(${angle}deg) scale(1.1)`; 
 
-                        setTimeout(() => {
-                            logoImg.style.transform = 'rotate(0deg)';
-                        }, 400);
+                        rotateTimer = setTimeout(() => {
+                            logoImg.style.transform = 'rotate(0deg) scale(1)';
+                        }, 250); 
 
                         isRotateLeft = !isRotateLeft;
 
@@ -7065,23 +7131,11 @@ injectStyles(styles);
                 allNavs.forEach(nav => {
                     nav.querySelectorAll('li').forEach(li => {
                         const href = li.querySelector('a')?.getAttribute('href') || '';
-                        // --- ВАЖНО: Фильтруем лишние пункты (Элективы, Факультативы, Дисциплины по выбору) ---
                         if (!href.includes('choose_dis') && !href.includes('fcl_choice') && !href.includes('ebl_choice')) {
                             allListItems.push(li);
                         }
                     });
                 });
-
-                // Пункт "Тема"
-                const themeLi = document.createElement("li");
-                themeLi.className = 'theme-switcher-item';
-                const themeLink = document.createElement("a");
-                themeLink.style.cursor = 'pointer';
-                themeLink.href = "#theme-switch";
-                themeLink.appendChild(document.createTextNode('Тема: ' + ((theme == 'auto') ? 'Системная' : ((theme == 'dark') ? 'Темная' : 'Светлая'))));
-                themeLink.addEventListener('click', switchTheme, false);
-                themeLi.appendChild(themeLink);
-                allListItems.push(themeLi);
 
                 // Вкладка "Версия"
                 const verLi = document.createElement("li");
@@ -7105,16 +7159,15 @@ injectStyles(styles);
                 verLi.appendChild(verLink);
                 allListItems.push(verLi);
 
-                // Вкладка "Кастомизация"
-                const custLi = document.createElement("li");
-                custLi.className = 'theme-switcher-item';
-                const custLink = document.createElement("a");
-                custLink.style.cursor = 'pointer';
-                custLink.href = "#customization";
-                custLink.textContent = 'Кастомизация';
-                custLink.addEventListener('click', (e) => {
+                // Вкладка "Внешний вид"
+                const appearanceLi = document.createElement("li");
+                appearanceLi.className = 'theme-switcher-item';
+                const appearanceLink = document.createElement("a");
+                appearanceLink.style.cursor = 'pointer';
+                appearanceLink.href = "#appearance";
+                appearanceLink.textContent = 'Внешний вид';
+                appearanceLink.addEventListener('click', (e) => {
                     e.preventDefault();
-                    // Закрываем мобильное меню при открытии модалки
                     const side = document.querySelector('.span3');
                     if (side && side.classList.contains('mobile-active')) {
                         side.classList.remove('mobile-active');
@@ -7125,14 +7178,13 @@ injectStyles(styles);
                     }
                     openCustomizationModal();
                 });
-                custLi.appendChild(custLink);
-                allListItems.push(custLi);
+                appearanceLi.appendChild(appearanceLink);
+                allListItems.push(appearanceLi);
 
                 // Функция иконок
                 const getIconForHref = (href) => {
-                    if (href === '#theme-switch') return 'brightness_6';
                     if (href === '#version-check') return 'system_update';
-                    if (href === '#customization') return 'palette';
+                    if (href === '#appearance') return 'palette';
                     if (href === '#reviews') return 'star_rate';
                     if (href === '#report-bug') return 'bug_report';
                     if (href.includes('teach_plan')) return 'school';
@@ -7231,7 +7283,7 @@ injectStyles(styles);
                     ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'group_tt'],
                     ['library', 'electr', 'advice', 'ses', 'about'],
                     ['term_test', 'special_est_list', 'оцените дистанционное'],
-                    ['#version-check', '#reviews', '#theme-switch', '#customization', 'change_pass', 'change_email', 'change_pr_page', 'logout']
+                    ['#version-check', '#reviews', '#appearance', 'change_pass', 'change_email', 'change_pr_page', 'logout']
                 ];
 
                 const usedItems = new Set();
@@ -7450,7 +7502,7 @@ injectStyles(styles);
                     exportContainer.style.top = '100vh';
                     exportContainer.style.left = '0';
                     exportContainer.style.width = renderWidth + 'px';
-                    exportContainer.style.padding = '24px';
+                    exportContainer.style.padding = isMobile ? '24px 24px 12px 24px' : '40px 40px 20px 40px';
                     exportContainer.style.boxSizing = 'border-box';
                     exportContainer.style.background = getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6';
                     exportContainer.style.fontFamily = getComputedStyle(document.body).fontFamily;
@@ -7480,7 +7532,13 @@ injectStyles(styles);
                         el.style.setProperty('background-clip', 'unset', 'important');
                         el.style.setProperty('-webkit-text-fill-color', currentAccentHex, 'important');
                         el.style.setProperty('color', currentAccentHex, 'important');
-                        el.style.setProperty('display', 'inline-block', 'important');
+                        
+                        // Возвращаем правильный display, чтобы иконка и текст не слипались
+                        if (el.classList.contains('msg-sender')) {
+                            el.style.setProperty('display', 'flex', 'important');
+                        } else {
+                            el.style.setProperty('display', 'inline-block', 'important');
+                        }
                     });
 
                     // Принудительно убиваем отступы снаружи карточки у клона
@@ -7495,7 +7553,43 @@ injectStyles(styles);
                     const cloneFooter = clone.querySelector('.msg-footer');
                     if (cloneFooter && cloneFooter.innerHTML.trim() === '') cloneFooter.remove();
 
+                    // --- ГЕНЕРАЦИЯ УМНОГО ИМЕНИ ФАЙЛА ---
+                    let dynamicFileName = defaultFileName;
+                    if (defaultFileName.includes('.png')) {
+                        const base = defaultFileName.replace('.png', '').toLowerCase();
+                        
+                        // Достаем отправителя (очищаем от иконок и берем первое слово, например "Деканат")
+                        const senderRaw = clone.querySelector('.msg-sender')?.textContent.replace(/campaign|person/g, '').trim() || '';
+                        const sender = senderRaw.split('/')[0].trim().replace(/\s+/g, '-').toLowerCase();
+                        
+                        // Достаем дату и превращаем "25 марта 10:41" в "25.03"
+                        const dateRaw = clone.querySelector('.msg-date-text')?.textContent.trim() || '';
+                        let dateShort = '';
+                        const dmMatch = dateRaw.match(/(\d{1,2})\s+([а-яА-Я]+)/);
+                        if (dmMatch) {
+                            const mMap = {'января':'01', 'февраля':'02', 'марта':'03', 'апреля':'04', 'мая':'05', 'июня':'06', 'июля':'07', 'августа':'08', 'сентября':'09', 'октября':'10', 'ноября':'11', 'декабря':'12'};
+                            const m = mMap[dmMatch[2].toLowerCase()] || '01';
+                            const d = dmMatch[1].padStart(2, '0');
+                            dateShort = `${d}.${m}`;
+                        } else {
+                            const isoMatch = dateRaw.match(/(\d{2})\.(\d{2})/);
+                            if (isoMatch) dateShort = `${isoMatch[1]}.${isoMatch[2]}`;
+                        }
+
+                        const parts = [base];
+                        if (sender) parts.push(sender);
+                        if (dateShort) parts.push(dateShort);
+                        dynamicFileName = parts.join('-') + '.png';
+                    }
+
                     span9Wrapper.appendChild(clone);
+
+                    // --- НЕЗАМЕТНАЯ ВОТЕРМАРКА ---
+                    const watermark = document.createElement('div');
+                    watermark.style.cssText = 'text-align: right; margin-top: 12px; width: 100%; box-sizing: border-box;';
+                    watermark.innerHTML = `<span style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.3; letter-spacing: 0.5px;">etisreborn.ru</span>`;
+                    
+                    span9Wrapper.appendChild(watermark);
                     exportContainer.appendChild(span9Wrapper);
                     document.body.appendChild(exportContainer);
 
@@ -7507,7 +7601,7 @@ injectStyles(styles);
                     }).then(canvas => {
                         canvas.toBlob(blob => {
                             if (!blob) throw new Error('Blob creation failed');
-                            const file = new File([blob], defaultFileName, { type: 'image/png' });
+                            const file = new File([blob], dynamicFileName, { type: 'image/png' });
 
                             if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
                                 navigator.share({
@@ -8162,7 +8256,7 @@ injectStyles(styles);
                         exportContainer.style.top = '100vh';
                         exportContainer.style.left = '0';
                         exportContainer.style.width = renderWidth + 'px';
-                        exportContainer.style.padding = isMobile ? '24px' : '40px';
+                        exportContainer.style.padding = isMobile ? '24px 24px 12px 24px' : '40px 40px 20px 40px';
                         exportContainer.style.boxSizing = 'border-box';
                         exportContainer.style.background = getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6';
                         exportContainer.style.fontFamily = getComputedStyle(document.body).fontFamily;
@@ -8218,6 +8312,12 @@ injectStyles(styles);
                         });
 
                         span9Wrapper.appendChild(timetableClone);
+
+                        const watermark = document.createElement('div');
+                        watermark.style.cssText = 'text-align: right; margin-top: 16px; width: 100%; box-sizing: border-box;';
+                        watermark.innerHTML = `<span style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.3; letter-spacing: 0.5px;">etisreborn.ru</span>`;
+                        span9Wrapper.appendChild(watermark);
+
                         exportContainer.appendChild(span9Wrapper);
 
                         // --- СКРЫТИЕ UI-ЭЛЕМЕНТОВ ДЛЯ СКРИНШОТА ---
