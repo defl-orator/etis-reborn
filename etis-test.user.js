@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8104
+// @version      1.8105
 // @changelog    Настройка внешнего вида. Удобная установка для пользователей iOS
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -4833,16 +4833,11 @@ button.search-capsule:hover {
     height: 10px !important;
     background-color: #FF3B30 !important;
     border-radius: 50% !important;
-    border: 2px solid #007AFF !important;
+    border: 2px solid var(--color-accent) !important;
     z-index: 100 !important;
     pointer-events: none !important;
     opacity: 0 !important;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-}
-
-/* Цвет рамки точки в темной теме */
-[theme="dark"] .mobile-notify-dot {
-    border-color: #4B89DC !important;
 }
 
 /* Показ точки при наличии обновлений */
@@ -6294,14 +6289,27 @@ injectStyles(styles);
                 if (btn) {
                     btn.onclick = () => {
                         if (isIOS) {
-                            setTimeout(() => {
-                                modal.style.display = 'none';
-                                const overlay = document.getElementById('etis-update-overlay');
-                                if (overlay) overlay.style.display = 'none';
-                            }, 500);
+                            // 1. Формируем глубокую ссылку
+                            const encodedUrl = encodeURIComponent(UPDATE_URL);
+                            const stayDeepLink = `stay://x-callback-url/open-install?url=${encodedUrl}`;
+
+                            // 2. Закрываем модалку чуть быстрее для iOS
+                            modal.style.display = 'none';
+                            const overlay = document.getElementById('etis-update-overlay');
+                            if (overlay) overlay.style.display = 'none';
+
+                            // 3. Переход в приложение Stay
+                            window.location.href = stayDeepLink;
                             
-                            window.location.href = UPDATE_URL;
+                            // 4. Фолбэк (на случай если Stay не установлен, откроется обычная страница через 2 сек)
+                            setTimeout(() => {
+                                if (document.hasFocus()) {
+                                     window.location.href = UPDATE_URL;
+                                }
+                            }, 2000);
+
                         } else {
+                            // Стандартная логика для ПК (Tampermonkey и др.)
                             modal.style.display = 'none';
                             const overlay = document.getElementById('etis-update-overlay');
                             if (overlay) overlay.style.display = 'none';
