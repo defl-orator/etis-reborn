@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8106
+// @version      1.8107
 // @changelog    Настройка внешнего вида. Удобная установка для пользователей iOS
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -6238,9 +6238,31 @@ injectStyles(styles);
         if (updateState.status === 'error') return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-red);">error_outline</span><div style="font-size:1.6rem;margin:1rem 0;">Ошибка: ${updateState.details}</div><button id="retry-update" class="answer-btn-custom" style="margin:0 auto;">Повторить</button></div>`;
 
         if (updateState.hasUpdate) {
-            // Текст кнопки меняется для iOS
-            const buttonText = isIOS ? 'Обновить в Stay / Userscripts' : 'Обновить сейчас';
             const testLabel = IS_TEST_MODE ? '<div style="color:var(--color-red); font-weight:800; font-size:1rem; margin-bottom:5px;">TEST MODE</div>' : '';
+
+            // Генерируем разные кнопки в зависимости от платформы
+            let actionButtons = '';
+            if (isIOS) {
+                actionButtons = `
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <button id="update-stay" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-accent)!important;color:#fff!important;font-weight:700; gap:8px;">
+                            <span class="material-icons">open_in_new</span>
+                            Обновить через Stay
+                        </button>
+                        <button id="update-browser" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px;">
+                            <span class="material-icons">public</span>
+                            Обновить в браузере (Userscripts)
+                        </button>
+                    </div>
+                    <div style="font-size:1.1rem; color:var(--color-text-secondary); margin-top:12px;">Выберите ваш менеджер скриптов</div>
+                `;
+            } else {
+                actionButtons = `
+                    <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px;">
+                        Обновить сейчас
+                    </button>
+                `;
+            }
 
             return `
                 <div style="text-align:center;">
@@ -6267,11 +6289,7 @@ injectStyles(styles);
                         </div>
                     </div>
 
-                    <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px;">
-                        ${isIOS ? '<span class="material-icons">open_in_new</span>' : ''}
-                        ${buttonText}
-                    </button>
-                    ${isIOS ? '<div style="font-size:1.1rem; color:var(--color-text-secondary); margin-top:10px;">После клика Stay предложит импортировать скрипт</div>' : ''}
+                    ${actionButtons}
                 </div>`;
         }
 
@@ -6285,42 +6303,44 @@ injectStyles(styles);
             if (content) {
                 content.innerHTML = getUpdateHTML();
 
-                const btn = content.querySelector('#update-confirm');
-                if (btn) {
-                    btn.onclick = () => {
-                        if (isIOS) {
-                            // 1. Формируем глубокую ссылку
+                // Вспомогательная функция для закрытия окна
+                const closeModalAndOverlay = () => {
+                    modal.style.display = 'none';
+                    const overlay = document.getElementById('etis-update-overlay');
+                    if (overlay) overlay.style.display = 'none';
+                };
+
+                if (isIOS) {
+                    // Логика для кнопки Stay (Глубокая ссылка)
+                    const btnStay = content.querySelector('#update-stay');
+                    if (btnStay) {
+                        btnStay.onclick = () => {
                             const encodedUrl = encodeURIComponent(UPDATE_URL);
                             const stayDeepLink = `stay://x-callback-url/open-install?url=${encodedUrl}`;
-
-                            // 2. Закрываем модалку чуть быстрее для iOS
-                            modal.style.display = 'none';
-                            const overlay = document.getElementById('etis-update-overlay');
-                            if (overlay) overlay.style.display = 'none';
-
-                            // 3. Переход в приложение Stay
+                            closeModalAndOverlay();
                             window.location.href = stayDeepLink;
-                            
-                            // 4. Фолбэк (на случай если Stay не установлен, откроется обычная страница через 2 сек)
-                            setTimeout(() => {
-                                if (document.hasFocus()) {
-                                     window.location.href = UPDATE_URL;
-                                }
-                            }, 2000);
+                        };
+                    }
 
-                        } else {
-                            // Стандартная логика для ПК (Tampermonkey и др.)
-                            modal.style.display = 'none';
-                            const overlay = document.getElementById('etis-update-overlay');
-                            if (overlay) overlay.style.display = 'none';
-
+                    // Логика для кнопки браузера (Обычный переход)
+                    const btnBrowser = content.querySelector('#update-browser');
+                    if (btnBrowser) {
+                        btnBrowser.onclick = () => {
+                            closeModalAndOverlay();
                             window.location.href = UPDATE_URL;
-
-                            setTimeout(() => {
-                                window.location.reload();
-                            }, 1500);
-                        }
-                    };
+                            setTimeout(() => window.location.reload(), 1500);
+                        };
+                    }
+                } else {
+                    // Стандартная логика для ПК (Tampermonkey и др.)
+                    const btn = content.querySelector('#update-confirm');
+                    if (btn) {
+                        btn.onclick = () => {
+                            closeModalAndOverlay();
+                            window.location.href = UPDATE_URL;
+                            setTimeout(() => window.location.reload(), 1500);
+                        };
+                    }
                 }
 
                 const retry = content.querySelector('#retry-update');
