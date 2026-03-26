@@ -4,7 +4,7 @@
   # ЕТИС REBORN
   **Сделай ЕТИС великим снова**
 
-  [![Version](https://img.shields.io/badge/Версия-1.81-blue.svg)](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)
+  [![Version](https://img.shields.io/badge/Версия-1.82-blue.svg)](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)
   [![Website](https://img.shields.io/badge/Сайт-etisreborn.ru-success.svg)](https://etisreborn.ru/)
   [![License](https://img.shields.io/badge/Лицензия-MIT-green.svg)](LICENSE)
 
