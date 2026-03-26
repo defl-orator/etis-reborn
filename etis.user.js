@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8100
-// @changelog    Настройка внешнего вида, свайпы, пасхалка.
+// @version      1.8200
+// @changelog    Настройка внешнего вида снизу сайдбара. Удобная установка для пользователей iOS
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @match        https://student.psu.ru/*
@@ -20,6 +20,17 @@
 
 (function() {
     'use strict';
+
+    // ==========================================
+    // НАСТРОЙКИ ОБНОВЛЕНИЯ И ТЕСТИРОВАНИЯ
+    // ==========================================
+    const IS_TEST_MODE = false;
+    
+    const BASE_REPO_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/';
+    const UPDATE_URL = IS_TEST_MODE ? BASE_REPO_URL + 'etis-test.user.js' : BASE_REPO_URL + 'etis.user.js';
+
+    // Детектор iOS устройств
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
     // ==========================================
     // 1. ВНЕДРЕНИЕ CSS СТИЛЕЙ
@@ -4822,16 +4833,11 @@ button.search-capsule:hover {
     height: 10px !important;
     background-color: #FF3B30 !important;
     border-radius: 50% !important;
-    border: 2px solid #007AFF !important;
+    border: 2px solid var(--color-accent) !important;
     z-index: 100 !important;
     pointer-events: none !important;
     opacity: 0 !important;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-}
-
-/* Цвет рамки точки в темной теме */
-[theme="dark"] .mobile-notify-dot {
-    border-color: #4B89DC !important;
 }
 
 /* Показ точки при наличии обновлений */
@@ -6120,7 +6126,6 @@ injectStyles(styles);
     // ==========================================
     // ЛОГИКА ОБНОВЛЕНИЯ
     // ==========================================
-    const UPDATE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js';
 
     let updateState = {
         status: 'idle',
@@ -6233,10 +6238,40 @@ injectStyles(styles);
         if (updateState.status === 'error') return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-red);">error_outline</span><div style="font-size:1.6rem;margin:1rem 0;">Ошибка: ${updateState.details}</div><button id="retry-update" class="answer-btn-custom" style="margin:0 auto;">Повторить</button></div>`;
 
         if (updateState.hasUpdate) {
+            const testLabel = IS_TEST_MODE ? '<div style="color:var(--color-red); font-weight:800; font-size:1rem; margin-bottom:5px;">TEST MODE</div>' : '';
+
+            // Кнопки теперь являются реальными <a> ссылками. Это 100% обходит блокировщики всплывающих окон.
+            let actionButtons = '';
+            if (isIOS) {
+                const encodedUrl = encodeURIComponent(UPDATE_URL);
+                const stayDeepLink = `stay://x-callback-url/open-install?url=${encodedUrl}`;
+                actionButtons = `
+                    <div style="display:flex; flex-direction:column; gap:10px;">
+                        <a href="${stayDeepLink}" id="update-stay" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-accent)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
+                            <span class="material-icons">open_in_new</span>
+                            Обновить через Stay
+                        </a>
+                        <a href="${UPDATE_URL}" target="_blank" id="update-browser" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
+                            <span class="material-icons">public</span>
+                            В браузере
+                        </a>
+                    </div>
+                    <div style="font-size:1.1rem; color:var(--color-text-secondary); margin-top:12px;">Выберите ваш менеджер скриптов</div>
+                `;
+            } else {
+                actionButtons = `
+                    <a href="${UPDATE_URL}" target="_blank" id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
+                        <span class="material-icons">system_update_alt</span>
+                        Обновить сейчас
+                    </a>
+                `;
+            }
+
             return `
                 <div style="text-align:center;">
+                    ${testLabel}
                     <span class="material-icons" style="font-size:48px;color:var(--color-green);margin-bottom:1rem;">system_update</span>
-                    <div style="font-size:1.8rem;font-weight:800;margin-bottom:1.5rem;color:var(--color-text-primary);">Новая версия!</div>
+                    <div style="font-size:1.8rem;font-weight:800;margin-bottom:1.5rem;color:var(--color-text-primary);">Новая версия! ${IS_TEST_MODE ? '(TEST)' : ''}</div>
 
                     <div style="background:var(--color-highlight);padding:1.6rem;border-radius:12px;text-align:left;margin-bottom:2rem;border:1px solid var(--color-table-border);">
                         <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Доступно:</div>
@@ -6251,13 +6286,13 @@ injectStyles(styles);
                             </div>
                         ` : ''}
 
-                        <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">У вас:</div>
+                        <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Текущая:</div>
                         <div style="font-size:1.4rem;font-weight:700;color:var(--color-text-primary);">
                             ${cur}
                         </div>
                     </div>
 
-                    <button id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700;">Обновить</button>
+                    ${actionButtons}
                 </div>`;
         }
 
@@ -6271,24 +6306,45 @@ injectStyles(styles);
             if (content) {
                 content.innerHTML = getUpdateHTML();
 
-                const btn = content.querySelector('#update-confirm');
-                if (btn) {
-                    btn.onclick = () => {
-                        // 1. Скрываем окно и фон немедленно
+                const setupAutoReload = () => {
+                    // Прячем модалку с микро-задержкой, чтобы браузер успел обработать клик по ссылке
+                    setTimeout(() => {
                         modal.style.display = 'none';
                         const overlay = document.getElementById('etis-update-overlay');
                         if (overlay) overlay.style.display = 'none';
+                    }, 50);
 
-                        // 2. Запускаем скачивание обновления
-                        window.location.href = UPDATE_URL;
+                    // Сохраняем флаг, что мы ждем обновления
+                    sessionStorage.setItem('etis_update_pending', 'true');
 
-                        // 3. Перезагружаем страницу через 1.5 секунды,
-                        // чтобы после установки скрипта пользователь сразу увидел новую версию
+                    const onFocusOrVisible = () => {
                         setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
+                            if (document.visibilityState === 'visible' && document.hasFocus()) {
+                                if (sessionStorage.getItem('etis_update_pending')) {
+                                    sessionStorage.removeItem('etis_update_pending');
+                                    window.location.reload(); // Перезагружаем вкладку, когда юзер вернулся!
+                                }
+                            }
+                        }, 200);
                     };
-                }
+
+                    // Ждем 1.5 секунды (пока открывается новая вкладка), чтобы не словить ложное "возвращение"
+                    setTimeout(() => {
+                        document.addEventListener('visibilitychange', onFocusOrVisible);
+                        window.addEventListener('focus', onFocusOrVisible);
+                    }, 1500);
+                };
+
+                // Мы навешиваем листенер, но НЕ делаем e.preventDefault().
+                // Благодаря этому браузер сам открывает ссылку (href), а мы лишь вешаем обработчик возврата.
+                const btnStay = content.querySelector('#update-stay');
+                if (btnStay) btnStay.addEventListener('click', setupAutoReload);
+
+                const btnBrowser = content.querySelector('#update-browser');
+                if (btnBrowser) btnBrowser.addEventListener('click', setupAutoReload);
+
+                const btnConfirm = content.querySelector('#update-confirm');
+                if (btnConfirm) btnConfirm.addEventListener('click', setupAutoReload);
 
                 const retry = content.querySelector('#retry-update');
                 if (retry) retry.onclick = () => initAutoUpdateCheck(true);
