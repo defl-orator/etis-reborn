@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.8200
-// @changelog    Настройка внешнего вида снизу сайдбара. Удобная установка для пользователей iOS
+// @version      1.9000
+// @changelog    Умное расписание: 1) Возможность добавлять события из объявлений. 2) Адаптивные иконки у активных дней. 3) Интеграция внешних календарей. Улучшенный вид оценки занятий. 
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @match        https://student.psu.ru/*
@@ -14,6 +14,7 @@
 // @grant        unsafeWindow
 // @require      https://cdn.jsdelivr.net/npm/chart.js
 // @connect      raw.githubusercontent.com
+// @connect      *
 // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
 // @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
 // ==/UserScript==
@@ -1207,7 +1208,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         bottom: 0 !important;
         width: 280px !important;
         max-width: 85% !important;
-        height: 100vh !important;
+        height: 100dvh !important;
         margin: 0 !important;
         padding-top: 60px !important;
         padding-bottom: calc(env(safe-area-inset-bottom, 40px) + 100px) !important;
@@ -1278,6 +1279,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         transition: opacity 0.3s ease;
         backdrop-filter: blur(4px) !important;
         -webkit-backdrop-filter: blur(4px) !important;
+        touch-action: none !important;
     }
     .mobile-overlay.active { opacity: 1; pointer-events: auto; }
 
@@ -3583,7 +3585,7 @@ td.empty {
 
 /* --- ОТЗЫВЫ И АНКЕТИРОВАНИЕ --- */
 
-form.que_form {
+form.que_form, form[name="estimate"] {
     display: flex !important;
     flex-direction: column !important;
     gap: 2rem !important;
@@ -3592,7 +3594,7 @@ form.que_form {
 }
 
 /* Карточка каждого вопроса */
-form.que_form .question {
+form.que_form .question, form[name="estimate"] .question {
     background: var(--color-card) !important;
     border-radius: var(--radius-large) !important;
     padding: 2.4rem !important;
@@ -3602,7 +3604,7 @@ form.que_form .question {
 }
 
 /* Текст вопроса */
-form.que_form .question > .text {
+form.que_form .question > .text, form[name="estimate"] .question > .text {
     font-size: 1.6rem !important;
     font-weight: 800 !important;
     color: var(--color-text-primary) !important;
@@ -3611,7 +3613,7 @@ form.que_form .question > .text {
 }
 
 /* Список вариантов ответа */
-form.que_form .question ul {
+form.que_form .question ul, form[name="estimate"] .question ul {
     display: flex !important;
     flex-direction: column !important;
     gap: 1rem !important;
@@ -3619,12 +3621,12 @@ form.que_form .question ul {
     padding: 0 !important;
 }
 
-form.que_form .question li {
+form.que_form .question li, form[name="estimate"] .question li {
     margin: 0 !important;
 }
 
 /* Плашка варианта ответа */
-form.que_form .question label {
+form.que_form .question label, form[name="estimate"] .question label {
     display: flex !important;
     align-items: center !important;
     padding: 1.2rem 1.6rem !important;
@@ -3638,20 +3640,20 @@ form.que_form .question label {
     border: 1px solid transparent !important;
 }
 
-form.que_form .question label:hover {
+form.que_form .question label:hover, form[name="estimate"] .question label:hover {
     background: var(--color-highlight-light) !important;
     border-color: var(--color-accent-active) !important;
     transform: translateX(4px) !important;
 }
 
 /* Чекбокс "Анонимно" (Одиночный вопрос) */
-form.que_form .question > label[for="anonim"] {
+form.que_form .question > label[for="anonim"], form[name="estimate"] .question > label[for="anonim"] {
     display: inline-flex !important;
     width: fit-content !important;
 }
 
 /* Блок текстового комментария */
-form.que_form .comment {
+form.que_form .comment, form[name="estimate"] .comment {
     background: var(--color-card) !important;
     border-radius: var(--radius-large) !important;
     padding: 2.4rem !important;
@@ -3659,7 +3661,7 @@ form.que_form .comment {
     margin: 0 !important;
 }
 
-form.que_form .comment > label {
+form.que_form .comment > label, form[name="estimate"] .comment > label {
     display: block !important;
     font-size: 1.6rem !important;
     font-weight: 800 !important;
@@ -3667,7 +3669,7 @@ form.que_form .comment > label {
     margin-bottom: 1.6rem !important;
 }
 
-form.que_form .comment > textarea {
+form.que_form .comment > textarea, form[name="estimate"] .comment > textarea {
     width: 100% !important;
     min-height: 140px !important;
     padding: 1.6rem !important;
@@ -3682,20 +3684,20 @@ form.que_form .comment > textarea {
     transition: all 0.2s !important;
 }
 
-form.que_form .comment > textarea:focus {
+form.que_form .comment > textarea:focus, form[name="estimate"] .comment > textarea:focus {
     border-color: var(--color-accent) !important;
     outline: none !important;
     box-shadow: 0 0 0 3px var(--color-accent-active) !important;
 }
 
 /* Обертка и кнопка "Отправить" */
-form.que_form .button_gray {
+form.que_form .button_gray, form[name="estimate"] .button_gray {
     margin-top: 1rem !important;
     width: 100% !important;
     text-align: left !important;
 }
 
-form.que_form #send_btn {
+form.que_form #send_btn, form[name="estimate"] #send_btn {
     background: var(--color-accent) !important;
     color: var(--color-text-primary-invert) !important;
     border-radius: 50px !important;
@@ -3712,12 +3714,12 @@ form.que_form #send_btn {
     width: fit-content !important;
 }
 
-form.que_form #send_btn:hover:not(:disabled) {
+form.que_form #send_btn:hover:not(:disabled), form[name="estimate"] #send_btn:hover:not(:disabled) {
     opacity: 0.9 !important;
     transform: translateY(-2px) !important;
 }
 
-form.que_form #send_btn:disabled {
+form.que_form #send_btn:disabled, form[name="estimate"] #send_btn:disabled {
     background: var(--color-highlight) !important;
     color: var(--color-text-secondary) !important;
     cursor: not-allowed !important;
@@ -3725,8 +3727,7 @@ form.que_form #send_btn:disabled {
     transform: none !important;
 }
 
-/* Красивый селект внутри вариантов ответа (например, "в понедельник") */
-form.que_form select {
+form.que_form select, form[name="estimate"] select {
     margin-left: 1.2rem !important;
     padding: 0.6rem 3rem 0.6rem 1.2rem !important;
     font-size: 1.3rem !important;
@@ -3740,6 +3741,59 @@ form.que_form select {
     background-repeat: no-repeat !important;
     background-position: right 1rem center !important;
     background-size: 1em !important;
+}
+
+/* --- ТАБЛИЦА ОЦЕНКИ ЗАНЯТИЯ (ДЛЯ МОБИЛЬНЫХ) --- */
+.question-table-wrapper {
+    width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    border-radius: var(--radius-large) !important;
+    box-shadow: var(--shadow-main) !important;
+    background: var(--color-card) !important;
+    margin-bottom: 0 !important;
+}
+table.question_table {
+    width: 100% !important;
+    min-width: 850px !important; /* Форсируем ширину для свайпа */
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+table.question_table td.answer_text {
+    font-weight: 600 !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 1.1rem !important;
+    text-transform: uppercase !important;
+    line-height: 1.3 !important;
+    padding: 1.2rem 1rem !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+table.question_table td.text {
+    font-weight: 600 !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.3rem !important;
+    padding: 1.6rem !important;
+}
+table.question_table td.answer_cell {
+    text-align: center !important;
+    vertical-align: middle !important;
+    padding: 1rem !important;
+}
+table.question_table td.answer_cell label {
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 1rem !important;
+    cursor: pointer !important;
+    border-radius: 50% !important;
+}
+table.question_table td.answer_cell input[type="radio"] {
+    margin: 0 !important;
 }
 
 /* --- ОБРАТНАЯ СВЯЗЬ --- */
@@ -5100,30 +5154,6 @@ button.search-capsule:hover {
         border-radius: 50px !important;
     }
 }
-
-/* --- REVIEWS MODAL --- */
-.star-rating {
-    display: flex; gap: 4px; cursor: pointer; color: var(--color-yellow); margin-bottom: 1rem;
-}
-.star-rating .material-icons {
-    font-size: 32px !important; transition: transform 0.1s;
-}
-.star-rating .material-icons:hover { transform: scale(1.1); }
-
-.reviews-list-container {
-    max-height: 300px; overflow-y: auto; margin-top: 2rem; padding-top: 2rem;
-    border-top: 1px solid var(--color-table-border); display: flex; flex-direction: column; gap: 1rem;
-}
-.review-item-db {
-    background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium);
-}
-.review-item-db-header {
-    display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;
-}
-.review-item-db-stars { color: var(--color-yellow); display: flex; align-items: center; font-size: 1.6rem; }
-.review-item-db-date { color: var(--color-text-secondary); font-size: 1.1rem; }
-.review-item-db-text { color: var(--color-text-primary); font-size: 1.3rem; line-height: 1.5; }
-
 /* --- АНИМАЦИЯ И ВЫРАВНИВАНИЕ ИКОНКИ ПОДЕЛИТЬСЯ --- */
 .msg-date-wrapper {
     display: flex !important;
@@ -5863,6 +5893,81 @@ button.analytics-btn {
     color: var(--color-text-primary) !important;
     box-shadow: inset 0 0 0 1px var(--color-table-border) !important;
 }
+
+/* --- СТИЛИ ДЛЯ УМНЫХ ДАТ --- */
+.msg-event-link {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: var(--color-text-secondary);
+    color: var(--color-text-primary);
+    font-weight: 700;
+    transition: color 0.2s ease, text-decoration-color 0.2s ease, background 0.2s ease;
+    padding: 2px 4px;
+    border-radius: 6px;
+    margin: 0 2px;
+}
+
+.msg-event-link:hover {
+    color: var(--color-accent) !important;
+    text-decoration-color: var(--color-accent) !important;
+    background: var(--color-accent-active);
+}
+
+/* Состояние "Уже добавлено" */
+.msg-event-link.added {
+    color: var(--color-accent) !important;
+    text-decoration: none !important;
+    background: var(--color-accent-active);
+    pointer-events: auto; /* Разрешаем повторный клик */
+}
+
+/* Ховер для добавленного события (Удаление) */
+.msg-event-link.added:hover {
+    color: var(--color-red) !important;
+    background: rgba(255, 59, 48, 0.15) !important;
+    text-decoration: line-through !important;
+}
+
+/* --- ВКЛАДКИ СИНХРОНИЗАЦИИ --- */
+.sync-tabs {
+    display: flex;
+    background: var(--color-input) !important;
+    border-radius: 50px !important;
+    padding: 4px !important;
+    margin-bottom: 2rem !important;
+    gap: 4px !important;
+    border: none !important;
+}
+button.sync-tab {
+    flex: 1;
+    padding: 1rem 1.6rem !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 50px !important;
+    box-shadow: none !important;
+    color: var(--color-text-secondary) !important;
+    cursor: pointer;
+    font-weight: 600 !important;
+    font-size: 1.3rem !important;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center !important;
+}
+button.sync-tab.active {
+    background: var(--color-card) !important;
+    color: var(--color-text-primary) !important;
+    box-shadow: var(--shadow-main) !important;
+}
+[theme="dark"] button.sync-tab.active {
+    background: var(--color-highlight-light) !important;
+}
+.sync-tab-content { display: none; }
+.sync-tab-content.active { 
+    display: block; 
+    animation: fadeIn 0.2s ease; 
+}
     `;
 
     // Внедряем стили
@@ -5893,21 +5998,23 @@ injectStyles(styles);
     // ЛОГИКА КАСТОМИЗАЦИИ (ЦВЕТА И ГРАДИЕНТЫ)
     // ==========================================
     const ACCENT_COLORS = {
-        // Ряд 1: Базовые
-        blue: '#007AFF', green: '#34C759', purple: '#AF52DE', red: '#FF3B30', orange: '#FF9500',
-        // Ряд 2: Светлые
-        lightblue: '#5AC8FA', mint: '#00C7BE', lightpurple: '#E58FFF', pink: '#FF2D55', yellow: '#FFCC00',
-        // Ряд 3: Глубокие
-        indigo: '#5856D6', teal: '#30B0C7', brown: '#A2845E', rose: '#FF94A5', slate: '#708090',
-        // Ряд 4: Яркие и Темные
-        lime: '#AEEA00', cyan: '#00BCD4', deeporange: '#FF5722', magenta: '#E91E63', graphite: '#444444'
+        blue: '#007AFF', green: '#34C759', orange: '#FF9500', red: '#FF3B30', pink: '#FF2D55',
+        
+        lightblue: '#5AC8FA', mint: '#00C7BE', yellow: '#FFCC00', lightpurple: '#E58FFF', rose: '#FF94A5',
+        
+        indigo: '#5856D6', teal: '#30B0C7', lime: '#AEEA00', cyan: '#00BCD4', magenta: '#E91E63',
+        
+        deeporange: '#FF5722', brown: '#A2845E', slate: '#708090', cobalt: '#3F51B5', crimson: '#DC143C',
+        
+        darkblue: '#1A237E', darkgreen: '#1B5E20', chocolate: '#5D4037', darkred: '#800000', graphite: '#333333'
     };
 
     const COLOR_ORDER = [
-        'blue', 'green', 'purple', 'red', 'orange',
-        'lightblue', 'mint', 'lightpurple', 'pink', 'yellow',
-        'indigo', 'teal', 'brown', 'rose', 'slate',
-        'lime', 'cyan', 'deeporange', 'magenta', 'graphite'
+        'blue', 'green', 'orange', 'red', 'pink',
+        'lightblue', 'mint', 'yellow', 'lightpurple', 'rose',
+        'indigo', 'teal', 'lime', 'cyan', 'magenta',
+        'deeporange', 'brown', 'slate', 'cobalt', 'crimson',
+        'darkblue', 'darkgreen', 'chocolate', 'darkred', 'graphite'
     ];
 
     function applyAccentColor() {
@@ -6415,16 +6522,14 @@ injectStyles(styles);
                 sidebar.classList.add('mobile-active');
                 overlay.classList.add('active');
                 menuBtn.classList.add('open');
-                // Блокируем скролл фона
+                // Блокируем скролл фона ТОЛЬКО у body
                 document.body.style.overflow = 'hidden';
-                document.documentElement.style.overflow = 'hidden';
             } else {
                 sidebar.classList.remove('mobile-active');
                 overlay.classList.remove('active');
                 menuBtn.classList.remove('open');
                 // Возвращаем скролл
                 document.body.style.overflow = '';
-                document.documentElement.style.overflow = '';
             }
         }
 
@@ -6458,7 +6563,6 @@ injectStyles(styles);
         // Логика при клике на ссылку
         sidebar.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', (e) => {
-                // Если сайдбар прямо сейчас скроллится — блокируем переход и скрытие
                 if (isSidebarScrolling) {
                     e.preventDefault();
                     return;
@@ -6470,7 +6574,6 @@ injectStyles(styles);
                 menuBtn.classList.add('is-loading');
 
                 document.body.style.overflow = '';
-                document.documentElement.style.overflow = '';
             });
         });
     }
@@ -6486,22 +6589,19 @@ injectStyles(styles);
         const currentDay = now.getDay();
         const currentTime = now.getHours() * 60 + now.getMinutes();
 
-        const daysMap = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+        const daysMap =["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
         const todayName = daysMap[currentDay];
 
         document.querySelectorAll('.day').forEach(dayBlock => {
             const dayHeaderName = dayBlock.querySelector('.day-name');
             if (!dayHeaderName) return;
 
-            // Очищаем ВСЕ старые точки в этом дне
-            dayBlock.querySelectorAll('.live-dot').forEach(dot => dot.remove());
+            // Очищаем ВСЕ старые точки и иконки статуса в этом дне
+            dayBlock.querySelectorAll('.live-dot, .day-status-icon').forEach(dot => dot.remove());
 
             if (dayHeaderName.textContent.trim() === todayName) {
-                const dayDot = document.createElement('span');
-                dayDot.className = 'live-dot active';
-                dayDot.style.animation = 'none';
-                dayDot.title = "Сегодня";
-                dayHeaderName.appendChild(dayDot);
+                let hasRealPairs = false;
+                let lastPairEnd = 0;
 
                 dayBlock.querySelectorAll('.timetable-grid tr').forEach(row => {
                     if (row.classList.contains('custom-no-pairs') || row.style.display === 'none') return;
@@ -6520,9 +6620,13 @@ injectStyles(styles);
 
                     if (!startTimeStr || startTimeStr === "00:00") return;
 
+                    hasRealPairs = true;
                     const parts = startTimeStr.split(':');
                     const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
                     const endMins = startMins + duration;
+
+                    // Запоминаем время окончания последней пары
+                    if (endMins > lastPairEnd) lastPairEnd = endMins;
 
                     let type = "";
                     if (currentTime >= startMins && currentTime <= endMins) {
@@ -6538,15 +6642,51 @@ injectStyles(styles);
                         if (row.classList.contains('timetable-gap-row')) {
                             row.querySelector('.timetable-gap-capsule')?.appendChild(dot);
                         } else {
-                            const timeEl = row.querySelector('.pair_num .eval');
-                            if (timeEl) {
-                                timeEl.appendChild(dot);
+                            const timeElInner = row.querySelector('.pair_num .eval');
+                            if (timeElInner) {
+                                timeElInner.appendChild(dot);
                             } else {
                                 row.querySelector('.pair_num')?.appendChild(dot);
                             }
                         }
                     }
                 });
+
+                // --- Умная индикация для заголовка текущего дня ---
+                if (!hasRealPairs) {
+                    // Выходной (пар нет вообще)
+                    const icon = document.createElement('span');
+                    icon.className = 'material-icons day-status-icon';
+                    icon.style.fontSize = '1.8rem';
+                    icon.style.marginLeft = '8px';
+                    icon.style.color = 'var(--color-green)';
+                    icon.style.verticalAlign = 'middle';
+                    icon.textContent = 'free_breakfast';
+                    icon.title = 'Выходной';
+                    dayHeaderName.appendChild(icon);
+                } else if (currentTime > lastPairEnd) {
+                    // Пары были, но уже закончились
+                    const icon = document.createElement('span');
+                    icon.className = 'material-icons day-status-icon';
+                    icon.style.fontSize = '1.8rem';
+                    icon.style.marginLeft = '8px';
+                    icon.style.color = 'var(--color-text-secondary)';
+                    icon.style.verticalAlign = 'middle';
+                    icon.textContent = 'done_all';
+                    icon.title = 'Пары закончились';
+                    dayHeaderName.appendChild(icon);
+                } else {
+                    // Идут пары или перерыв
+                    const dayDot = document.createElement('span');
+                    dayDot.className = 'live-dot active day-status-icon';
+                    dayDot.style.animation = 'none';
+                    dayDot.style.position = 'static';
+                    dayDot.style.verticalAlign = 'middle';
+                    dayDot.style.transform = 'none';
+                    dayDot.style.marginLeft = '10px';
+                    dayDot.title = "Сегодня";
+                    dayHeaderName.appendChild(dayDot);
+                }
             }
         });
     }
@@ -6827,6 +6967,232 @@ injectStyles(styles);
     // Модификация стилей страниц
     function stylePages() {
         initMobileMenu();
+
+        // --- ГЛОБАЛЬНАЯ СИСТЕМА УВЕДОМЛЕНИЙ ---
+        let pushContainer = document.getElementById('etis-push-container');
+        if (!pushContainer) {
+            pushContainer = document.createElement('div');
+            pushContainer.id = 'etis-push-container';
+            pushContainer.className = 'push-container';
+            document.body.appendChild(pushContainer);
+        }
+
+        const showPush = (title, subject, body, type = 'info', icon = 'notifications') => {
+            const toast = document.createElement('div');
+            toast.className = `push-toast ${type}`;
+            toast.innerHTML = `
+                <div class="push-icon-wrap">
+                    <span class="material-icons">${icon}</span>
+                </div>
+                <div class="push-content">
+                    <div class="push-toast-title">${title}</div>
+                    <div class="push-subject">${subject}</div>
+                    <div class="push-detail">${body}</div>
+                </div>
+            `;
+            toast.onclick = () => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 400);
+            };
+            pushContainer.appendChild(toast);
+            requestAnimationFrame(() => setTimeout(() => toast.classList.add('show'), 50));
+            setTimeout(() => {
+                if(toast.parentNode) {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 400);
+                }
+            }, 8000);
+        };
+        window.showEtisPush = showPush; // Делаем доступной отовсюду
+
+        // --- ПАРСЕР ДАТ И УМНОЕ ДОБАВЛЕНИЕ В РАСПИСАНИЕ ---
+        const monthsDict = { 'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11 };
+        
+        function highlightDatesInHTML(html, msgTitle) {
+            const temp = document.createElement('div');
+            temp.innerHTML = html;
+
+            // Регулярки для поиска времени
+            const regex1 = /(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)(?:[\s,]*?(?:в|с|на)?\s*(\d{1,2})[:.](\d{2}))/ig;
+            const regex2 = /(\d{2})\.(\d{2})(?:\.\d{2,4})?(?:[\s,]*?(?:в|с|на)?\s*(\d{1,2})[:.](\d{2}))/ig;
+
+            // УМНЫЙ ПОИСК АУДИТОРИИ (с корпусом и этажом)
+            let aud = '';
+            // Ищем формат с корпусом: "ауд.413/8", "ауд 413 / 8", "ауд. 413\8"
+            let audMatch = html.match(/(?:в\s+)?ауд(?:итории|\.)?\s*(\d+[а-яa-z]*)\s*[\/\\]\s*(\d+[а-яa-z]*)/i);
+            if (audMatch) {
+                let room = audMatch[1];
+                let building = audMatch[2];
+                let floor = room.charAt(0); // Этаж по первой цифре аудитории
+                aud = `ауд. ${room}, к. ${building}, э. ${floor}`;
+            } else {
+                // Если корпуса нет, ищем просто аудиторию
+                let audMatchSingle = html.match(/(?:в\s+)?ауд(?:итории|\.)?\s*(\d+[а-яa-z]*)/i);
+                if (audMatchSingle) {
+                    let room = audMatchSingle[1];
+                    let floor = room.charAt(0);
+                    aud = `ауд. ${room}, э. ${floor}`;
+                }
+            }
+
+            // Если аудитории нет физически, но есть ссылка онлайн
+            if (!aud) {
+                let linkMatch = html.match(/href="(https?:\/\/[^"]+)"/i);
+                if (linkMatch && (linkMatch[1].includes('zoom') || linkMatch[1].includes('telemost'))) {
+                    aud = linkMatch[1];
+                }
+            }
+
+            const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT, null, false);
+            const nodesToReplace =[];
+            let node;
+            
+            while (node = walker.nextNode()) {
+                // Пропускаем уже обработанные ссылки
+                if (node.parentNode && (node.parentNode.tagName === 'A' || node.parentNode.classList.contains('msg-event-link'))) continue;
+                nodesToReplace.push(node);
+            }
+
+            nodesToReplace.forEach(txtNode => {
+                let text = txtNode.nodeValue;
+                let replaced = false;
+
+                text = text.replace(regex1, (match, d, m, hr, min) => {
+                    replaced = true;
+                    return createEventTag(match, d, monthsDict[m.toLowerCase()], hr, min, msgTitle, aud);
+                });
+
+                text = text.replace(regex2, (match, d, m, hr, min) => {
+                    replaced = true;
+                    return createEventTag(match, d, parseInt(m, 10) - 1, hr, min, msgTitle, aud);
+                });
+
+                if (replaced) {
+                    const span = document.createElement('span');
+                    span.innerHTML = text;
+                    txtNode.parentNode.replaceChild(span, txtNode);
+                }
+            });
+
+            return temp.innerHTML;
+        }
+
+        function createEventTag(match, d, m, hr, min, title, aud) {
+            // ОЧИСТКА НАЗВАНИЯ от даты, времени и номера аудитории
+            let cleanTitle = (title || 'Объявление');
+            
+            // 1. Убираем время (в 11:00, 11.00, с 10:00, до 12.00)
+            cleanTitle = cleanTitle.replace(/(?:^|\s+)(?:в\s+|с\s+|до\s+|по\s+)?\d{1,2}[:.]\d{2}(?=\s|$|[.,])/ig, ' ');
+
+            // 2. Убираем даты с месяцами прописью (без \b, так как кириллица в JS с ним не работает)
+            cleanTitle = cleanTitle.replace(/(?:^|\s+)(?:с\s+|до\s+|по\s+)?\d{1,2}\s+(?:января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)/ig, ' ');
+
+            // 3. Убираем числовые даты (12.05.2024)
+            cleanTitle = cleanTitle.replace(/(?:^|\s+)(?:с\s+|до\s+|по\s+)?\d{2}\.\d{2}(?:\.\d{2,4})?/ig, ' ');
+
+            // 4. Убираем аудиторию (в ауд. 311/2)
+            cleanTitle = cleanTitle.replace(/(?:^|\s+)(?:в\s+)?ауд(?:итории|\.)?\s*\d+[/а-яa-z0-9\\]*/ig, ' ');
+
+            // 5. Убираем популярные слова-паразиты, которые могли остаться от предложений
+            cleanTitle = cleanTitle.replace(/(?:^|\s+)(?:состоится|пройдет|пройдёт)(?=\s|$)/ig, ' ');
+
+            // 6. Чистим двойные пробелы, висячие предлоги на конце и знаки препинания по краям
+            cleanTitle = cleanTitle.replace(/\s+/g, ' ').trim();
+            cleanTitle = cleanTitle.replace(/\s+(в|с|на|до|по|к|от)$/ig, '').trim();
+            cleanTitle = cleanTitle.replace(/^[.,\s\-:]+|[.,\s\-:]+$/g, '').trim();
+
+            if (!cleanTitle) cleanTitle = 'Мероприятие'; // Если название стерлось полностью
+
+            // Защита от HTML-инъекций в атрибутах
+            cleanTitle = cleanTitle.replace(/"/g, '&quot;');
+            const cleanAud = (aud || '').replace(/"/g, '&quot;');
+            
+            const hash = `evt_${d}_${m}_${hr}_${min}_${cleanTitle.substring(0,8)}`.replace(/\s+/g, '');
+            return `<span class="msg-event-link" data-hash="${hash}" data-d="${d}" data-m="${m}" data-hr="${hr}" data-min="${min}" data-title="${cleanTitle}" data-aud="${cleanAud}">${match}</span>`;
+        }
+
+        function initEventLinks() {
+            document.querySelectorAll('.msg-event-link').forEach(el => {
+                const hash = el.getAttribute('data-hash');
+                
+                // Функция проверки, добавлено ли событие
+                const checkAdded = () => {
+                    const added = JSON.parse(localStorage.getItem('etis_added_msg_events') || '[]');
+                    return added.includes(hash);
+                };
+                
+                // Проверяем статус при загрузке страницы
+                if (checkAdded()) el.classList.add('added');
+
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    const isAdded = checkAdded();
+                    let addedMsgs = JSON.parse(localStorage.getItem('etis_added_msg_events') || '[]');
+                    let cp = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
+                    const title = el.dataset.title;
+
+                    if (isAdded) {
+                        // --- ЛОГИКА УДАЛЕНИЯ ---
+                        
+                        // Удаляем саму пару из расписания
+                        cp = cp.filter(p => p.msgHash !== hash);
+                        localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
+                        
+                        // Удаляем хэш из списка добавленных
+                        addedMsgs = addedMsgs.filter(h => h !== hash);
+                        localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
+                        
+                        // Меняем визуал
+                        el.classList.remove('added');
+                        
+                        // Показываем уведомление
+                        if (window.showEtisPush) window.showEtisPush('Удалено', title, `Событие убрано из расписания`, 'info', 'event_busy');
+                        
+                    } else {
+                        // --- ЛОГИКА ДОБАВЛЕНИЯ ---
+                        
+                        const d = parseInt(el.dataset.d), m = parseInt(el.dataset.m), hr = el.dataset.hr.padStart(2,'0'), min = el.dataset.min.padStart(2,'0');
+                        const aud = el.dataset.aud;
+
+                        const now = new Date(); let targetDate = new Date(now.getFullYear(), m, d);
+                        if (targetDate < now && (now.getMonth() - m) > 6) targetDate.setFullYear(now.getFullYear() + 1);
+
+                        const getMon = (date) => { const d = new Date(date); d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1)); return d.setHours(0,0,0,0); };
+                        const weekDiff = Math.round((getMon(targetDate) - getMon(now)) / (7 * 24 * 3600 * 1000));
+                        const targetWeek = parseInt(localStorage.getItem('etis_actual_week') || '1') + weekDiff;
+
+                        let eM = parseInt(min) + 90, eH = parseInt(hr) + Math.floor(eM/60);
+                        const pair = { 
+                            id: 'cp_' + Date.now(), 
+                            addedWeek: targetWeek, 
+                            dayName:["Воскресенье","Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"][targetDate.getDay()],
+                            subject: title, 
+                            startTime: `${hr}:${min}`, 
+                            endTime: `${(eH%24).toString().padStart(2,'0')}:${(eM%60).toString().padStart(2,'0')}`,
+                            type: 'лаб',
+                            recurrence: 'once', 
+                            aud: aud, 
+                            teacher: '',
+                            msgHash: hash
+                        };
+
+                        // Сохраняем в память
+                        cp.push(pair); 
+                        localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
+                        
+                        addedMsgs.push(hash); 
+                        localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
+
+                        // Меняем визуал
+                        el.classList.add('added');
+                        
+                        // Показываем уведомление
+                        if (window.showEtisPush) window.showEtisPush('Добавлено в расписание', title, `${targetWeek} неделя, ${pair.dayName}`, 'success', 'event_available');
+                    }
+                };
+            });
+        }
+
         const page = window.location.pathname.split('/').pop();
 
         // Style Login Page
@@ -7208,7 +7574,6 @@ injectStyles(styles);
                         document.querySelector('.mobile-overlay')?.classList.remove('active');
                         document.querySelector('.mobile-menu-btn')?.classList.remove('open');
                         document.body.style.overflow = '';
-                        document.documentElement.style.overflow = '';
                     }
                     showUpdateModal();
                 });
@@ -7230,7 +7595,6 @@ injectStyles(styles);
                         document.querySelector('.mobile-overlay')?.classList.remove('active');
                         document.querySelector('.mobile-menu-btn')?.classList.remove('open');
                         document.body.style.overflow = '';
-                        document.documentElement.style.overflow = '';
                     }
                     openCustomizationModal();
                 });
@@ -7241,7 +7605,6 @@ injectStyles(styles);
                 const getIconForHref = (href) => {
                     if (href === '#version-check') return 'system_update';
                     if (href === '#appearance') return 'palette';
-                    if (href === '#reviews') return 'star_rate';
                     if (href === '#report-bug') return 'bug_report';
                     if (href.includes('teach_plan')) return 'school';
                     if (href.includes('timetable')) return 'calendar_today';
@@ -7322,6 +7685,16 @@ injectStyles(styles);
                         dot.className = 'badge-point';
                         a.appendChild(dot);
                     }
+
+                    // --- БЕЗОПАСНОЕ ОБНОВЛЕНИЕ БЕЗ ПАРАМЕТРОВ ---
+                    if (allowedDotHrefs.some(target => href.includes(target))) {
+                        a.onclick = function(e) {
+                            if (window.location.href.includes(href)) {
+                                e.preventDefault();
+                                window.location.reload();
+                            }
+                        };
+                    }
                 });
 
                 if (globalHasNotifications) {
@@ -7339,7 +7712,7 @@ injectStyles(styles);
                     ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'group_tt'],
                     ['library', 'electr', 'advice', 'ses', 'about'],
                     ['term_test', 'special_est_list', 'оцените дистанционное'],
-                    ['#version-check', '#reviews', '#appearance', 'change_pass', 'change_email', 'change_pr_page', 'logout']
+                    ['#version-check', '#appearance', 'change_pass', 'change_email', 'change_pr_page', 'logout']
                 ];
 
                 const usedItems = new Set();
@@ -7434,7 +7807,6 @@ injectStyles(styles);
                             </a>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <a href="#reviews" id="footer-reviews" style="cursor: pointer; text-decoration: none; color: var(--color-text-secondary); transition: color 0.2s;">Отзывы о расширении</a>
                             <a href="#report-bug" id="footer-report-bug" style="cursor: pointer; text-decoration: none; color: var(--color-text-secondary); transition: color 0.2s;">Нашли ошибку?</a>
                         </div>
                     `;
@@ -7448,7 +7820,6 @@ injectStyles(styles);
                             document.querySelector('.mobile-overlay')?.classList.remove('active');
                             document.querySelector('.mobile-menu-btn')?.classList.remove('open');
                             document.body.style.overflow = '';
-                            document.documentElement.style.overflow = '';
                         }
                     };
 
@@ -7461,21 +7832,13 @@ injectStyles(styles);
                             openUserscriptBugModal();
                         });
                     }
-
-                    // Обработчик: Отзывы о REBORN
-                    const reviewLinkFooter = footer.querySelector('#footer-reviews');
-                    if (reviewLinkFooter) {
-                        reviewLinkFooter.addEventListener('click', (e) => {
-                            e.preventDefault();
-                            closeMobileMenu();
-                            openReviewsModal();
-                        });
-                    }
+                    sidebar.appendChild(footer);
                 }
             }
 
             // Main page content
             const span9 = document.querySelector('div.span9');
+            if (!span9 && !document.querySelector('.login')) return;
             const urlParams = new URLSearchParams(window.location.search);
             const pageMode = urlParams.get('p_mode');
 
@@ -8484,7 +8847,21 @@ injectStyles(styles);
                         let totalCount = 0;
                         span9.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
                             if (row.style.display !== 'none' && !row.classList.contains('hidden-by-filter')) {
-                                totalCount++;
+                                const typeBadge = row.querySelector('.pair-type-badge');
+                                const disName = row.querySelector('.dis') ? row.querySelector('.dis').textContent.toLowerCase() : '';
+                                
+                                let isCountable = false;
+                                if (typeBadge) {
+                                    const t = typeBadge.textContent.toLowerCase();
+                                    // Считаем только учебные типы (личное игнорируем)
+                                    if (t.includes('лек') || t.includes('практ') || t.includes('лаб') || t.includes('экз') || t.includes('зач')) {
+                                        isCountable = true;
+                                    }
+                                } else if (disName.includes('консультация') || disName.includes('экзамен') || disName.includes('зачет') || disName.includes('зачёт')) {
+                                    isCountable = true;
+                                }
+                                
+                                if (isCountable) totalCount++;
                             }
                         });
                         const storageKey = 'etis_weekly_pairs_history_v1';
@@ -8497,27 +8874,35 @@ injectStyles(styles);
                 setTimeout(saveWeekToHistory, 500);
 
                 summaryBtn.addEventListener('click', () => {
-                    let lek = 0, pract = 0, lab = 0, cons = 0, exam = 0, total = 0;
+                    let lek = 0, pract = 0, lab = 0, cons = 0, exam = 0;
 
                     // Считаем текущие пары
                     span9.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
                         if (row.style.display === 'none' || row.classList.contains('hidden-by-filter')) return;
+                        if (!row.querySelector('.pair_info')) return;
 
-                        total++;
                         const typeBadge = row.querySelector('.pair-type-badge');
                         const disName = row.querySelector('.dis') ? row.querySelector('.dis').textContent.toLowerCase() : '';
 
+                        let counted = false;
+
                         if (typeBadge) {
                             const t = typeBadge.textContent.toLowerCase();
-                            if (t.includes('лек')) lek++;
-                            else if (t.includes('практ')) pract++;
-                            else if (t.includes('лаб')) lab++;
-                            else if (t.includes('экз') || t.includes('зач')) exam++;
-                        } else {
-                            if (disName.includes('консультация')) cons++;
-                            else if (disName.includes('экзамен') || disName.includes('зачет') || disName.includes('зачёт')) exam++;
+                            if (t.includes('лек')) { lek++; counted = true; }
+                            else if (t.includes('практ')) { pract++; counted = true; }
+                            else if (t.includes('лаб')) { lab++; counted = true; }
+                            else if (t.includes('экз') || t.includes('зач')) { exam++; counted = true; }
+                        } 
+                        
+                        if (!counted) {
+                            if (disName.includes('консультация')) { cons++; counted = true; }
+                            else if (disName.includes('экзамен') || disName.includes('зачет') || disName.includes('зачёт')) { exam++; counted = true; }
                         }
+                        // Строки без этих тегов (например, физра) вообще не считаются!
                     });
+
+                    // ИТОГО (Только строго учтенные лекции, практики, лабы, консультации и экзамены)
+                    const total = lek + pract + lab + cons + exam;
 
                     const totalMins = total * 90;
                     const hours = Math.floor(totalMins / 60);
@@ -8532,7 +8917,6 @@ injectStyles(styles);
                     let comparisonHtml = '';
                     let avgHtml = '';
 
-                    // Вспомогательная функция для склонения слова "пара"
                     const getPairsWord = (n) => {
                         const absN = Math.abs(Math.round(n));
                         if (absN % 10 === 1 && absN % 100 !== 11) return 'пару';
@@ -8545,23 +8929,16 @@ injectStyles(styles);
                         const avgVal = sum / keys.length;
                         const avgRounded = Math.round(avgVal * 10) / 10;
 
-                        // Разница
                         const diff = Math.round((total - avgVal) * 10) / 10;
                         const absDiff = Math.abs(diff);
                         const word = getPairsWord(diff);
 
                         if (diff > 0) {
-                            comparisonHtml = `<span style="color:var(--color-red); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">
-                                (выше среднего на ${diff} ${word})
-                            </span>`;
+                            comparisonHtml = `<span style="color:var(--color-red); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">(выше среднего на ${diff} ${word})</span>`;
                         } else if (diff < 0) {
-                            comparisonHtml = `<span style="color:var(--color-green); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">
-                                (ниже на ${absDiff} ${word})
-                            </span>`;
+                            comparisonHtml = `<span style="color:var(--color-green); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem;">(ниже на ${absDiff} ${word})</span>`;
                         } else {
-                            comparisonHtml = `<span style="color:var(--color-text-secondary); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem; opacity: 0.8;">
-                                (в пределах нормы)
-                            </span>`;
+                            comparisonHtml = `<span style="color:var(--color-text-secondary); font-weight:600; margin-left:8px; text-transform: none; font-size: 1.1rem; opacity: 0.8;">(в пределах нормы)</span>`;
                         }
 
                         const avgTotalMins = avgRounded * 90;
@@ -8576,7 +8953,7 @@ injectStyles(styles);
                                 </div>
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.2rem;">
                                     <div class="stat-box">
-                                        <span class="stat-box-title">Всего пар</span>
+                                        <span class="stat-box-title">Учебных пар</span>
                                         <span class="stat-box-value">${avgRounded}</span>
                                     </div>
                                     <div class="stat-box">
@@ -8597,7 +8974,15 @@ injectStyles(styles);
                         `;
                     }
 
-                    // Отрисовка модального окна
+                    // Генерация капсул категорий (Без личных и другого)
+                    let badgesHtml = '';
+                    if (lek > 0) badgesHtml += `<div style="background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Лекции: ${lek}</div>`;
+                    if (pract > 0) badgesHtml += `<div style="background: rgba(52, 199, 89, 0.1); color: var(--color-green); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Практики: ${pract}</div>`;
+                    if (lab > 0) badgesHtml += `<div style="background: rgba(255, 149, 0, 0.1); color: var(--color-warning); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Лабы: ${lab}</div>`;
+                    if (exam > 0) badgesHtml += `<div style="background: rgba(255, 59, 48, 0.1); color: var(--color-red); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Зачет/Экзамен: ${exam}</div>`;
+                    if (cons > 0) badgesHtml += `<div style="background: var(--color-highlight); color: var(--color-text-primary); border: 1px solid var(--color-table-border); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Консультации: ${cons}</div>`;
+                    if (total === 0) badgesHtml += `<div style="color: var(--color-text-secondary); font-size: 1.3rem;">На этой неделе учебных пар нет! ☕</div>`;
+
                     let overlay = document.querySelector('.analytics-overlay');
                     let modal = document.querySelector('.analytics-modal');
 
@@ -8617,7 +9002,6 @@ injectStyles(styles);
                             <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
                         </div>
                         <div class="ui-dialog-content" style="padding: 2.4rem;">
-
                             <div>
                                 <div style="display: flex; align-items: center; margin-bottom: 1.2rem;">
                                     <span style="font-size: 1.2rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">За текущую неделю</span>
@@ -8625,7 +9009,7 @@ injectStyles(styles);
                                 </div>
                                 <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1.2rem;">
                                     <div class="stat-box">
-                                        <span class="stat-box-title">Всего пар</span>
+                                        <span class="stat-box-title">Учебных пар</span>
                                         <span class="stat-box-value">${total}</span>
                                     </div>
                                     <div class="stat-box">
@@ -8633,27 +9017,17 @@ injectStyles(styles);
                                         <span class="stat-box-value accent-stat">${timeStr}</span>
                                     </div>
                                 </div>
-
                                 <div style="margin-top: 1.2rem;">
                                     <div style="display:flex; gap: 0.8rem; flex-wrap: wrap;">
-                                        ${lek > 0 ? `<div style="background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Лекции: ${lek}</div>` : ''}
-                                        ${pract > 0 ? `<div style="background: rgba(52, 199, 89, 0.1); color: var(--color-green); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Практики: ${pract}</div>` : ''}
-                                        ${lab > 0 ? `<div style="background: rgba(255, 149, 0, 0.1); color: var(--color-warning); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Лабы: ${lab}</div>` : ''}
-                                        ${exam > 0 ? `<div style="background: rgba(255, 59, 48, 0.1); color: var(--color-red); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Зачет/Экзамен: ${exam}</div>` : ''}
-                                        ${cons > 0 ? `<div style="background: var(--color-highlight); color: var(--color-text-primary); border: 1px solid var(--color-table-border); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.2rem; font-weight: 700;">Консультации: ${cons}</div>` : ''}
-                                        ${total === 0 ? `<div style="color: var(--color-text-secondary); font-size: 1.3rem;">На этой неделе пар нет. Выдыхаем! ☕</div>` : ''}
+                                        ${badgesHtml}
                                     </div>
                                 </div>
                             </div>
-
                             ${avgHtml}
                         </div>
                     `;
 
-                    const closeAnalytics = () => {
-                        overlay.classList.remove('active');
-                        modal.classList.remove('active');
-                    };
+                    const closeAnalytics = () => { overlay.classList.remove('active'); modal.classList.remove('active'); };
                     overlay.onclick = closeAnalytics;
                     modal.querySelector('.close-analytics').onclick = closeAnalytics;
 
@@ -8737,95 +9111,209 @@ injectStyles(styles);
                     }
                 }
 
-                // --- 3. КНОПКА "СИНХРОНИЗАЦИЯ" ---
+                // --- 3. КНОПКА "СИНХРОНИЗАЦИЯ" (С ИМПОРТОМ) ---
                 const syncHeader = Array.from(document.querySelectorAll('h2')).find(h2 => h2.querySelector('#tb_show') || h2.textContent.includes('Синхронизация'));
                 if (syncHeader) {
                     const resourcesDiv = document.getElementById('resources');
                     if (resourcesDiv) {
                         resourcesDiv.className = 'sync-card';
 
-                        // 1. Удаляем заголовок "С помощью стандарта iCalendar"
-                        const h3 = resourcesDiv.querySelector('h3');
-                        if (h3) h3.remove();
+                        // 1. Скрываем всё оригинальное содержимое ЕТИСа
+                        Array.from(resourcesDiv.children).forEach(child => {
+                            child.style.display = 'none';
+                        });
 
-                        // 2. Очищаем текст "Ссылка на календарь:" и лишние <br>
-                        const wrapper = resourcesDiv.querySelector('div');
-                        if (wrapper) {
-                            wrapper.removeAttribute('style'); // Убираем кривой отступ ЕТИСа
-                            Array.from(wrapper.childNodes).forEach(node => {
-                                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('Ссылка на календарь')) node.remove();
-                                if (node.tagName === 'BR') node.remove();
+                        let etisLink = '';
+                        const textBox = resourcesDiv.querySelector('#textbox');
+                        if (textBox) etisLink = textBox.value;
+
+                        // 2. Создаем новый интерфейс (с инструкциями)
+                        const newUI = document.createElement('div');
+                        newUI.innerHTML = `
+                            <div class="sync-tabs">
+                                <button class="sync-tab active" data-tab="export">Экспорт в календарь</button>
+                                <button class="sync-tab" data-tab="import">Импорт из календаря</button>
+                            </div>
+                            
+                            <div class="sync-tab-content active" id="sync-tab-export">
+                                <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); font-size: 1.3rem; line-height: 1.5; color: var(--color-text-primary); margin-bottom: 1.6rem;">
+                                    <b>Чтобы подключить своё расписание к различным сервисам календарей, Вам необходимо (на примере Google Calendar):</b><br><br>
+                                    1. Нажать кнопку "Скопировать" и скопировать ссылку на свой календарь.<br>
+                                    2. Перейти в настройки Google Calendar в правом верхнем углу (изображение зубчатого колеса).<br>
+                                    3. В меню с левой стороны нажать "Добавить календарь" и далее нажать "Добавить по URL".<br>
+                                    4. В поле URL календаря вставить ссылку на Ваш календарь из личного кабинета (пункт 1).<br>
+                                    5. Нажать кнопку "Добавить календарь". Синхронизация может занимать некоторое время.
+                                </div>
+                                <div style="display: flex; justify-content: flex-start; gap: 1.2rem; flex-wrap: wrap;">
+                                    <button class="answer-btn-custom copy-etis-link-btn" style="background: var(--color-accent) !important; color: #fff !important;">
+                                        <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">content_copy</span>Скопировать
+                                    </button>
+                                    <button class="answer-btn-custom unsub-etis-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">
+                                        <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">delete_outline</span>Отписаться
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="sync-tab-content" id="sync-tab-import">
+                                <p style="color: var(--color-text-secondary); margin-bottom: 1.2rem; font-size: 1.3rem; line-height: 1.5;">Вставьте ссылку на ваш публичный календарь в формате <b>.ics</b> (iCloud, Google), чтобы видеть личные события прямо в расписании ЕТИС. Можно добавить несколько!</p>
+                                
+                                <div id="ext-cals-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.2rem;"></div>
+
+                                <div style="display: flex; gap: 1rem; margin-bottom: 1.6rem; flex-wrap: wrap; align-items: stretch;">
+                                    <input type="text" id="ext-cal-input" placeholder="webcal://... или https://..." style="flex: 1; min-width: 250px; padding: 1.2rem 1.6rem !important; border-radius: var(--radius-small) !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; box-shadow: none !important; margin: 0 !important;">
+                                    
+                                    <button class="answer-btn-custom" id="ext-cal-add" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important; height: auto !important; margin: 0 !important;">
+                                        <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">add</span>Добавить
+                                    </button>
+                                </div>
+                                
+                                <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); font-size: 1.3rem; color: var(--color-text-primary); line-height: 1.5;">
+                                    <b style="display:block; margin-bottom: 8px;">Как получить ссылку на iPhone (iCloud):</b>
+                                    1. Откройте приложение «Календарь».<br>
+                                    2. Нажмите «Календари» внизу экрана.<br>
+                                    3. Нажмите иконку «i» справа от нужного календаря.<br>
+                                    4. Включите тумблер «Публичный календарь».<br>
+                                    5. Нажмите «Поделиться ссылкой» и скопируйте её сюда.
+                                </div>
+                            </div>
+                        `;
+                        resourcesDiv.appendChild(newUI);
+
+                        // --- Логика вкладок ---
+                        const tabs = newUI.querySelectorAll('.sync-tab');
+                        const contents = newUI.querySelectorAll('.sync-tab-content');
+                        tabs.forEach(t => t.addEventListener('click', () => {
+                            tabs.forEach(tab => tab.classList.remove('active'));
+                            contents.forEach(c => c.classList.remove('active'));
+                            t.classList.add('active');
+                            newUI.querySelector('#sync-tab-' + t.getAttribute('data-tab')).classList.add('active');
+                        }));
+
+                        // --- Логика Экспорта ---
+                        const copyBtn = newUI.querySelector('.copy-etis-link-btn');
+                        copyBtn.addEventListener('click', () => {
+                            navigator.clipboard.writeText(etisLink).then(() => {
+                                const origHtml = copyBtn.innerHTML;
+                                copyBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">check</span>Скопировано!';
+                                copyBtn.style.setProperty('background', 'var(--color-green)', 'important');
+                                setTimeout(() => {
+                                    copyBtn.innerHTML = origHtml;
+                                    copyBtn.style.setProperty('background', 'var(--color-accent)', 'important');
+                                }, 2000);
                             });
+                        });
+
+                        const unsubBtn = newUI.querySelector('.unsub-etis-btn');
+                        unsubBtn.addEventListener('click', () => {
+                            const origDelBtn = Array.from(resourcesDiv.querySelectorAll('button')).find(b => b.textContent.includes('Отписаться'));
+                            if (origDelBtn) origDelBtn.click();
+                        });
+
+                        // --- Логика Импорта (Множественные календари) ---
+                        const calsListContainer = newUI.querySelector('#ext-cals-list');
+                        const extInput = newUI.querySelector('#ext-cal-input');
+                        const addExtBtn = newUI.querySelector('#ext-cal-add');
+
+                        // Миграция старой одиночной ссылки в новый список
+                        let oldLink = localStorage.getItem('etis_external_cal_link');
+                        if (oldLink) {
+                            let arr = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+                            if (!arr.includes(oldLink)) arr.push(oldLink);
+                            localStorage.setItem('etis_external_cals_v2', JSON.stringify(arr));
+                            localStorage.removeItem('etis_external_cal_link');
                         }
 
-                        // 3. Пересобираем блок с кнопками
-                        const calendarDiv = resourcesDiv.querySelector('#calendar');
-                        if (calendarDiv) {
-                            const textBox = calendarDiv.querySelector('#textbox');
-                            const copyBtn = Array.from(calendarDiv.querySelectorAll('button')).find(b => b.textContent.includes('Скопировать'));
-                            const delBtn = Array.from(calendarDiv.querySelectorAll('button')).find(b => b.textContent.includes('Отписаться'));
-
-                            if (textBox && copyBtn && delBtn) {
-                                // Сохраняем саму ссылку
-                                const linkValue = textBox.value;
-
-                                // Стилизуем кнопку "Скопировать"
-                                copyBtn.className = 'answer-btn-custom';
-                                copyBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">content_copy</span>Скопировать';
-                                copyBtn.removeAttribute('onclick'); // Убиваем старый скрипт ЕТИСа
-                                copyBtn.addEventListener('click', () => {
-                                    navigator.clipboard.writeText(linkValue).then(() => {
-                                        const origHtml = copyBtn.innerHTML;
-                                        copyBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">check</span>Скопировано!';
-                                        // Форсированно делаем зеленой через !important
-                                        copyBtn.style.setProperty('background', 'var(--color-green)', 'important');
-                                        setTimeout(() => {
-                                            copyBtn.innerHTML = origHtml;
-                                            copyBtn.style.removeProperty('background'); // Возвращаем родной синий
-                                        }, 2000);
-                                    });
-                                });
-
-                                // Стилизуем кнопку "Отписаться"
-                                delBtn.className = 'answer-btn-custom';
-                                // Форсированно делаем красной через !important
-                                delBtn.style.setProperty('background', 'var(--color-red)', 'important');
-                                delBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">delete_outline</span>Отписаться';
-
-                                // Собираем блок заново (текстбокс исчезает, остаются только красивые кнопки)
-                                calendarDiv.innerHTML = '';
-                                calendarDiv.style.display = 'flex';
-                                calendarDiv.style.gap = '1.2rem';
-                                calendarDiv.style.marginTop = '2rem';
-                                calendarDiv.appendChild(copyBtn);
-                                calendarDiv.appendChild(delBtn);
+                        const renderCalsList = () => {
+                            let cals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+                            calsListContainer.innerHTML = '';
+                            
+                            if (cals.length === 0) {
+                                calsListContainer.style.display = 'none';
+                                return;
                             }
-                        }
+                            calsListContainer.style.display = 'flex';
+                            
+                            cals.forEach((calUrl, idx) => {
+                                const item = document.createElement('div');
+                                item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.4rem; background: var(--color-card); border: 1px solid var(--color-table-border); border-radius: var(--radius-small); gap: 1rem; box-shadow: var(--shadow-main);';
+                                
+                                // Сокращаем длинные ссылки для красоты
+                                const shortUrl = calUrl.length > 40 ? calUrl.substring(0, 25) + '...' + calUrl.substring(calUrl.length - 10) : calUrl;
+                                
+                                item.innerHTML = `
+                                    <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
+                                        <span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem; flex-shrink: 0;">event</span>
+                                        <span style="font-size: 1.3rem; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${calUrl}">${shortUrl}</span>
+                                    </div>
+                                    <button class="delete-cal-btn" data-idx="${idx}" style="background: none; border: none; cursor: pointer; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center; padding: 6px; border-radius: 50%; flex-shrink: 0; transition: all 0.2s ease;">
+                                        <span class="material-icons" style="font-size: 2rem;">delete_outline</span>
+                                    </button>
+                                `;
+                                calsListContainer.appendChild(item);
+                            });
+
+                            // Навешиваем события на кнопки удаления
+                            calsListContainer.querySelectorAll('.delete-cal-btn').forEach(btn => {
+                                // Красный ховер
+                                btn.addEventListener('mouseenter', () => {
+                                    btn.style.background = 'rgba(255, 59, 48, 0.12)';
+                                    btn.style.color = 'var(--color-red)';
+                                });
+                                // Сброс цвета
+                                btn.addEventListener('mouseleave', () => {
+                                    btn.style.background = 'none';
+                                    btn.style.color = 'var(--color-text-secondary)';
+                                });
+                                // Удаление
+                                btn.addEventListener('click', (e) => {
+                                    const idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
+                                    let currentCals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+                                    
+                                    if (confirm('Удалить этот календарь из расписания?')) {
+                                        currentCals.splice(idx, 1);
+                                        localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
+                                        window.location.reload(); 
+                                    }
+                                });
+                            });
+                        };
+
+                        renderCalsList();
+
+                        addExtBtn.addEventListener('click', () => {
+                            const val = extInput.value.trim();
+                            if (!val) return;
+                            
+                            let cals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+                            if (!cals.includes(val)) {
+                                cals.push(val);
+                                localStorage.setItem('etis_external_cals_v2', JSON.stringify(cals));
+                            }
+                            
+                            extInput.value = '';
+                            addExtBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">check</span>Добавлено!';
+                            setTimeout(() => { window.location.reload(); }, 600);
+                        });
                     }
 
-                    // Кнопка в тулбаре для вызова карточки
+                    // Кнопка в тулбаре
                     const newBtn = document.createElement('div');
                     newBtn.className = 'toolbar-item';
                     newBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">sync</span> Синхронизация';
 
                     newBtn.addEventListener('click', () => {
                         if (resourcesDiv) {
-                            // Проверяем, скрыта ли сейчас карточка
                             const isHidden = resourcesDiv.hasAttribute('hidden') || resourcesDiv.style.display === 'none';
-
                             if (isHidden) {
-                                // ОТКРЫВАЕМ
                                 resourcesDiv.removeAttribute('hidden');
                                 resourcesDiv.style.display = 'block';
-                                newBtn.classList.add('is-active'); // Красим капсулу в синий
+                                newBtn.classList.add('is-active');
                             } else {
-                                // ЗАКРЫВАЕМ
                                 resourcesDiv.style.display = 'none';
-                                newBtn.classList.remove('is-active'); // Возвращаем серый цвет
+                                newBtn.classList.remove('is-active');
                             }
                         }
                     });
-
                     toolbar.appendChild(newBtn);
                     syncHeader.remove();
                 }
@@ -9032,8 +9520,15 @@ injectStyles(styles);
                                     e.stopPropagation();
                                     if(confirm(`Удалить пару "${pair.subject}"?`)) {
                                         removeCustomPair(pair.id);
+                                        
+                                        if (pair.msgHash) {
+                                            let addedMsgs = JSON.parse(localStorage.getItem('etis_added_msg_events') || '[]');
+                                            addedMsgs = addedMsgs.filter(h => h !== pair.msgHash);
+                                            localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
+                                        }
+
                                         tr.remove();
-                                        window.location.reload(); // Перезагружаем для чистого пересчета окон ЕТИСом
+                                        window.location.reload();
                                     }
                                 });
 
@@ -9093,8 +9588,8 @@ injectStyles(styles);
                             <div class="tab-content" id="tab-notes">
                                 <textarea class="note-modal-textarea" id="cp-notes-area" placeholder="Что нужно сделать?"></textarea>
                                 <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
-                                    <button class="answer-btn-custom clear-cp-note-btn" style="background: var(--color-highlight); color: var(--color-red); border: 1px solid var(--color-table-border); box-shadow: none;">Удалить</button>
-                                    <button class="answer-btn-custom save-cp-note-btn" style="box-shadow: none;">Сохранить заметку</button>
+                                    <button class="answer-btn-custom clear-cp-note-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Удалить</button>
+                                    <button class="answer-btn-custom save-cp-note-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить заметку</button>
                                 </div>
                             </div>
                             ` : ''}
@@ -9534,7 +10029,110 @@ injectStyles(styles);
                     });
                 }
 
-                // --- УМНЫЕ ЗАМЕТКИ ---
+                // --- МОДАЛЬНОЕ ОКНО РЕДАКТОРА ВНЕШНЕГО СОБЫТИЯ ---
+                function openExtEventModal(row) {
+                    let overlay = document.querySelector('.analytics-overlay');
+                    let modal = document.querySelector('.analytics-modal');
+
+                    if (!overlay || !modal) {
+                        overlay = document.createElement('div');
+                        overlay.className = 'analytics-overlay';
+                        document.body.appendChild(overlay);
+
+                        modal = document.createElement('div');
+                        modal.className = 'analytics-modal';
+                        document.body.appendChild(modal);
+                    }
+
+                    // Читаем данные, зашитые в строку
+                    const origTitle = row.getAttribute('data-ext-orig-title');
+                    const timeKey = row.getAttribute('data-ext-time');
+                    const dateKey = row.getAttribute('data-ext-date');
+                    const dispTitle = row.getAttribute('data-ext-disp-title');
+                    const dispLoc = row.getAttribute('data-ext-disp-loc');
+                    const dispTeacher = row.getAttribute('data-ext-disp-teacher');
+                    const isSeries = row.getAttribute('data-ext-is-series') === 'true';
+
+                    modal.innerHTML = `
+                        <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span class="ui-dialog-title">Редактор события</span>
+                            <button class="close-modal" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                        </div>
+                        <div class="ui-dialog-content" style="padding: 2.4rem;">
+                            <div style="margin-bottom: 1.5rem; color: var(--color-text-secondary); font-size: 1.2rem;">
+                                Оригинал: <b>${origTitle}</b> (${timeKey})
+                            </div>
+
+                            <input type="text" id="ext-subject" class="custom-pair-input-group" placeholder="Название события *" value="${dispTitle}" style="width: 100%; box-sizing:border-box;">
+
+                            <div class="custom-pair-input-group">
+                                <input type="text" id="ext-aud" placeholder="Место / Аудитория" value="${dispLoc}">
+                                <input type="text" id="ext-teacher" placeholder="Преподаватель" value="${dispTeacher}">
+                            </div>
+
+                            <div style="margin: 2rem 0;">
+                                <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition);">
+                                    <div style="display:flex; flex-direction:column; gap:2px;">
+                                        <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Для всех таких событий</span>
+                                        <span style="font-size:1.1rem; color:var(--color-text-secondary);">Применять ко всем с этим именем и временем</span>
+                                    </div>
+                                    <input type="checkbox" id="ext-apply-all" class="tumbler-checkbox" ${isSeries ? 'checked' : ''}>
+                                </label>
+                            </div>
+
+                            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                                <button class="answer-btn-custom reset-ext-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Сбросить</button>
+                                <button class="answer-btn-custom save-ext-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить</button>
+                            </div>
+                        </div>
+                    `;
+
+                    const closeModal = () => { overlay.classList.remove('active'); modal.classList.remove('active'); };
+                    overlay.onclick = closeModal;
+                    modal.querySelector('.close-modal').onclick = closeModal;
+
+                    modal.querySelector('.save-ext-btn').onclick = () => {
+                        const newTitle = document.getElementById('ext-subject').value.trim();
+                        const newLoc = document.getElementById('ext-aud').value.trim();
+                        const newTeacher = document.getElementById('ext-teacher').value.trim();
+                        const applyAll = document.getElementById('ext-apply-all').checked;
+
+                        if (!newTitle) return alert('Введите название!');
+
+                        let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
+                        const singleKey = `SINGLE_${dateKey}_${timeKey}_${origTitle}`;
+                        const seriesKey = `SERIES_${timeKey}_${origTitle}`;
+
+                        if (applyAll) {
+                            overrides[seriesKey] = { title: newTitle, loc: newLoc, teacher: newTeacher };
+                            delete overrides[singleKey]; // Очищаем локальное переопределение, если есть
+                        } else {
+                            overrides[singleKey] = { title: newTitle, loc: newLoc, teacher: newTeacher };
+                        }
+                        
+                        localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
+                        closeModal();
+                        window.location.reload();
+                    };
+
+                    modal.querySelector('.reset-ext-btn').onclick = () => {
+                        let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
+                        const singleKey = `SINGLE_${dateKey}_${timeKey}_${origTitle}`;
+                        const seriesKey = `SERIES_${timeKey}_${origTitle}`;
+                        
+                        delete overrides[singleKey];
+                        delete overrides[seriesKey];
+                        
+                        localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
+                        closeModal();
+                        window.location.reload();
+                    };
+
+                    overlay.classList.add('active');
+                    modal.classList.add('active');
+                }
+
+                // --- УМНЫЕ ЗАМЕТКИ (С РЕДАКТОРОМ ВНЕШНИХ СОБЫТИЙ) ---
                 function renderNotes() {
                     let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
                     const seenSubjects = new Set();
@@ -9566,11 +10164,8 @@ injectStyles(styles);
 
                         const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
 
-                        // Если для этого предмета есть отложенная заметка (на след. неделю)
                         if (notesData.next_unbound && notesData.next_unbound[cleanSubjectName] && !seenSubjects.has(cleanSubjectName)) {
                             const unbound = notesData.next_unbound[cleanSubjectName];
-                            
-                            // Проверяем: если мы уже на следующей (или более поздней) неделе, привязываем заметку
                             if (currentWeek > unbound.week) {
                                 notesData.specific[pairId] = unbound.text;
                                 delete notesData.next_unbound[cleanSubjectName];
@@ -9581,11 +10176,9 @@ injectStyles(styles);
 
                         const currentNote = notesData.specific[pairId] || '';
 
-                        // Удаляем старые кнопки перед перерисовкой
                         row.querySelectorAll('.note-btn-wrapper').forEach(w => w.remove());
                         row.querySelectorAll('.subject-note-btn').forEach(btn => btn.remove());
 
-                        // Создаем саму кнопку
                         const noteBtn = document.createElement('button');
                         noteBtn.className = 'subject-note-btn';
                         noteBtn.innerHTML = currentNote ? '<span class="material-icons">assignment</span>' : '<span class="material-icons">edit</span>';
@@ -9593,7 +10186,11 @@ injectStyles(styles);
 
                         noteBtn.addEventListener('click', (e) => {
                             e.preventDefault(); e.stopPropagation();
-                            if (row.classList.contains('custom-pair-row')) {
+                            
+                            // Разделяем логику кнопок
+                            if (row.classList.contains('external-event-row')) {
+                                openExtEventModal(row); // Редактор внешнего события
+                            } else if (row.classList.contains('custom-pair-row')) {
                                 const pairIdFromRow = row.getAttribute('data-custom-id');
                                 const pairData = customPairs.find(p => p.id === pairIdFromRow);
                                 if (pairData) {
@@ -9606,13 +10203,11 @@ injectStyles(styles);
                             }
                         });
 
-                        // Оборачиваем кнопку, чтобы она не ломала Flex-строку аудитории
                         const noteWrapper = document.createElement('span');
                         noteWrapper.className = 'note-btn-wrapper';
                         noteWrapper.style.display = 'inline-flex';
                         noteWrapper.appendChild(noteBtn);
 
-                        // Выбираем контейнер (всегда в аудиторию, если она есть)
                         let targetContainer = audContainer && audContainer.textContent.trim() !== '' ? audContainer : disContainer;
                         targetContainer.appendChild(noteWrapper);
                     });
@@ -9652,8 +10247,8 @@ injectStyles(styles);
                             </div>
 
                             <div style="display: flex; justify-content: flex-end; gap: 1rem;">
-                                <button class="answer-btn-custom clear-note-btn" style="background: var(--color-highlight); color: var(--color-red); border: 1px solid var(--color-table-border); box-shadow: none;">Удалить</button>
-                                <button class="answer-btn-custom save-note-btn" style="box-shadow: none;">Сохранить</button>
+                                <button class="answer-btn-custom clear-note-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Удалить</button>
+                                <button class="answer-btn-custom save-note-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить</button>
                             </div>
                         </div>
                     `;
@@ -9848,7 +10443,8 @@ injectStyles(styles);
                             targetElements.forEach(el => el.style.transform = `translateX(${moveX}px)`);
 
                             // 2. Иконка появляется ровно по центру образующейся пустоты
-                            bubble.style.top = `${originalRect.top + originalRect.height / 2 - 12}px`; // 12px = половина высоты иконки
+                            const currentRect = targetElements[0].getBoundingClientRect();
+                            bubble.style.top = `${currentRect.top + currentRect.height / 2 - 12}px`;
                             bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
 
                             if (swipeDir === 'left') {
@@ -9928,6 +10524,353 @@ injectStyles(styles);
 
                 // Запускаем отрисовку заметок при загрузке страницы
                 renderNotes();
+
+                // --- 10. ИМПОРТ И ПАРСИНГ ВНЕШНЕГО КАЛЕНДАРЯ (iCloud / Google) ---
+                function loadExternalCalendar() {
+                    // Авто-миграция (на случай, если пользователь еще не заходил во вкладку Синхронизация)
+                    let oldUrl = localStorage.getItem('etis_external_cal_link');
+                    if (oldUrl) {
+                        let arr = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+                        if (!arr.includes(oldUrl)) arr.push(oldUrl);
+                        localStorage.setItem('etis_external_cals_v2', JSON.stringify(arr));
+                        localStorage.removeItem('etis_external_cal_link');
+                    }
+
+                    let urls = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+                    if (urls.length === 0) return;
+
+                    urls.forEach(url => {
+                        let fetchUrl = url.trim();
+                        if (fetchUrl.startsWith('webcal://')) {
+                            fetchUrl = fetchUrl.replace(/^webcal:\/\//i, 'https://');
+                        } else if (!fetchUrl.startsWith('http')) {
+                            fetchUrl = 'https://' + fetchUrl;
+                        }
+
+                        console.log("[ETIS Calendar] Отправляем запрос на:", fetchUrl);
+
+                        GM_xmlhttpRequest({
+                            method: "GET",
+                            url: fetchUrl,
+                            headers: {
+                                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                                "Accept": "text/calendar, text/plain, */*",
+                                "Cache-Control": "no-cache"
+                            },
+                            timeout: 15000,
+                            onload: function(res) {
+                                if (res.status >= 200 && res.status < 400) {
+                                    if (!res.responseText.includes('BEGIN:VCALENDAR')) {
+                                        console.error("[ETIS Calendar] Файл не является iCal.");
+                                        return;
+                                    }
+                                    try {
+                                        const events = parseICS(res.responseText);
+                                        console.log(`[ETIS Calendar] Успешно распарсено событий: ${events.length}`);
+                                        injectExternalEvents(events);
+                                    } catch (e) {
+                                        console.error("[ETIS Calendar] Ошибка при парсинге календаря:", e);
+                                    }
+                                } else {
+                                    console.error(`[ETIS Calendar] Ошибка сервера: ${res.status}`);
+                                }
+                            },
+                            onerror: function(err) {
+                                console.error("[ETIS Calendar] Ошибка сети (Network Error):", err);
+                            }
+                        });
+                    });
+                }
+
+                function parseICS(icsString) {
+                    const unfolded = icsString.replace(/\r?\n[ \t]/g, '');
+                    const lines = unfolded.split(/\r?\n/);
+                    
+                    const events = [];
+                    let currentEvent = null;
+
+                    for (let line of lines) {
+                        if (line.startsWith('BEGIN:VEVENT')) {
+                            currentEvent = { exdates: [] };
+                        } else if (line.startsWith('END:VEVENT')) {
+                            if (currentEvent && currentEvent.start && !currentEvent.cancelled) {
+                                events.push(currentEvent);
+                            }
+                            currentEvent = null;
+                        } else if (currentEvent) {
+                            const colonIdx = line.indexOf(':');
+                            if (colonIdx > -1) {
+                                let key = line.substring(0, colonIdx);
+                                const value = line.substring(colonIdx + 1);
+                                
+                                if (key.includes(';')) key = key.split(';')[0];
+                                
+                                if (key === 'SUMMARY') currentEvent.summary = value.replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '');
+                                else if (key === 'LOCATION') currentEvent.location = value.replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '');
+                                else if (key === 'DTSTART') currentEvent.start = parseICalDate(value);
+                                else if (key === 'DTEND') currentEvent.end = parseICalDate(value);
+                                else if (key === 'RRULE') currentEvent.rrule = value.toUpperCase();
+                                else if (key === 'EXDATE') currentEvent.exdates.push(value);
+                                else if (key === 'STATUS' && value.toUpperCase() === 'CANCELLED') currentEvent.cancelled = true;
+                            }
+                        }
+                    }
+                    return events;
+                }
+
+                function parseICalDate(str) {
+                    if (!str) return null;
+                    if (str.includes(':')) str = str.split(':')[1];
+                    str = str.replace(/[^0-9TZ]/g, ''); // Удаляем любые скрытые символы
+
+                    if (str.length === 8) {
+                        const y = parseInt(str.substring(0, 4), 10);
+                        const m = parseInt(str.substring(4, 6), 10) - 1;
+                        const d = parseInt(str.substring(6, 8), 10);
+                        return new Date(y, m, d);
+                    }
+
+                    if (str.length >= 15) {
+                        const y = parseInt(str.substring(0, 4), 10);
+                        const m = parseInt(str.substring(4, 6), 10) - 1;
+                        const d = parseInt(str.substring(6, 8), 10);
+                        const tIdx = str.indexOf('T');
+                        
+                        if (tIdx > -1) {
+                            const h = parseInt(str.substring(tIdx + 1, tIdx + 3), 10);
+                            const min = parseInt(str.substring(tIdx + 3, tIdx + 5), 10);
+                            const s = parseInt(str.substring(tIdx + 5, tIdx + 7), 10);
+                            
+                            if (str.endsWith('Z')) return new Date(Date.UTC(y, m, d, h, min, s));
+                            return new Date(y, m, d, h, min, s);
+                        }
+                    }
+                    return null;
+                }
+
+                function eventOccursOnDate(ev, targetDateObj) {
+                    if (!ev.start) return false;
+                    const evStartZero = new Date(ev.start.getFullYear(), ev.start.getMonth(), ev.start.getDate());
+
+                    if (ev.exdates && ev.exdates.length > 0) {
+                        const yyyy = targetDateObj.getFullYear();
+                        const mm = String(targetDateObj.getMonth() + 1).padStart(2, '0');
+                        const dd = String(targetDateObj.getDate()).padStart(2, '0');
+                        const dateStr = `${yyyy}${mm}${dd}`;
+                        if (ev.exdates.some(ex => ex.includes(dateStr))) return false;
+                    }
+
+                    if (!ev.rrule) {
+                        if (evStartZero.getTime() === targetDateObj.getTime()) return true;
+                        if (ev.end) {
+                            const evEndZero = new Date(ev.end.getFullYear(), ev.end.getMonth(), ev.end.getDate());
+                            if (targetDateObj >= evStartZero && targetDateObj < evEndZero) return true;
+                        }
+                        return false;
+                    }
+
+                    if (targetDateObj.getTime() < evStartZero.getTime()) return false;
+
+                    const untilMatch = ev.rrule.match(/UNTIL=([0-9A-Z]+)/);
+                    if (untilMatch) {
+                        const untilDate = parseICalDate(untilMatch[1]);
+                        if (untilDate) {
+                            untilDate.setHours(23, 59, 59, 999);
+                            if (targetDateObj.getTime() > untilDate.getTime()) return false;
+                        }
+                    }
+
+                    const intervalMatch = ev.rrule.match(/INTERVAL=(\d+)/);
+                    const interval = intervalMatch ? parseInt(intervalMatch[1], 10) : 1;
+
+                    if (ev.rrule.includes('FREQ=DAILY')) {
+                        const diffTime = Math.abs(targetDateObj - evStartZero);
+                        const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+                        return diffDays % interval === 0;
+                    }
+
+                    if (ev.rrule.includes('FREQ=WEEKLY')) {
+                        const getMon = (d) => { const nd = new Date(d); nd.setDate(nd.getDate() - (nd.getDay() || 7) + 1); return nd.setHours(0,0,0,0); };
+                        const diffWeeks = Math.round((getMon(targetDateObj) - getMon(evStartZero)) / (7 * 24 * 3600 * 1000));
+                        
+                        if (diffWeeks % interval !== 0) return false;
+
+                        const byDayMatch = ev.rrule.match(/BYDAY=([^;]+)/);
+                        if (byDayMatch) {
+                            const daysMap = { 'SU':0, 'MO':1, 'TU':2, 'WE':3, 'TH':4, 'FR':5, 'SA':6 };
+                            const targetDay = targetDateObj.getDay();
+                            const validDays = byDayMatch[1].split(',').map(d => daysMap[d.trim().slice(-2)]);
+                            return validDays.includes(targetDay);
+                        } else {
+                            return ev.start.getDay() === targetDateObj.getDay();
+                        }
+                    }
+                    return false;
+                }
+
+                function injectExternalEvents(parsedEvents) {
+                    let injectedAnything = false;
+                    const days = span9.querySelectorAll("div.day");
+
+                    console.log(`[ETIS Calendar] Поиск совпадений для ${days.length} дней на странице...`);
+
+                    days.forEach(day => {
+                        const dateSpan = day.querySelector('.day-date');
+                        if (!dateSpan) return;
+                        
+                        const dateStr = dateSpan.textContent.trim();
+                        let targetDate = null;
+                        
+                        const dateMatch = dateStr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+                        if (dateMatch) {
+                            targetDate = new Date(parseInt(dateMatch[3], 10), parseInt(dateMatch[2], 10)-1, parseInt(dateMatch[1], 10));
+                        } else {
+                            const monthsMap = { 'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11 };
+                            const textMatch = dateStr.match(/(\d{1,2})\s+([а-я]+)(?:\s+(\d{4}))?/i);
+                            
+                            if (textMatch && monthsMap[textMatch[2].toLowerCase()] !== undefined) {
+                                const d = parseInt(textMatch[1], 10);
+                                const m = monthsMap[textMatch[2].toLowerCase()];
+                                let y;
+                                
+                                if (textMatch[3]) {
+                                    y = parseInt(textMatch[3], 10);
+                                } else {
+                                    const now = new Date();
+                                    y = now.getFullYear();
+                                    const curM = now.getMonth();
+                                    
+                                    if (curM >= 9 && m <= 5) y++;
+                                    else if (curM <= 2 && m >= 7) y--;
+                                }
+                                targetDate = new Date(y, m, d);
+                            }
+                        }
+                        
+                        if (!targetDate) {
+                            console.warn("[ETIS Calendar] Не удалось распознать дату из заголовка ЕТИС:", dateStr);
+                            return;
+                        }
+                        targetDate.setHours(0, 0, 0, 0);
+
+                        const dayEvents = parsedEvents.filter(ev => eventOccursOnDate(ev, targetDate));
+                        if (dayEvents.length === 0) return;
+
+                        const table = day.querySelector('table');
+                        if (!table) return;
+                        const tbody = table.querySelector('tbody') || table;
+
+                        dayEvents.forEach(ev => {
+                            injectedAnything = true;
+
+                            Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+                                if (r.textContent.includes('0 пар') || r.textContent.includes('Выходной')) r.remove();
+                            });
+
+                            const isAllDay = ev.start.getHours() === 0 && ev.start.getMinutes() === 0 && (!ev.end || (ev.end.getHours() === 0 && ev.end.getMinutes() === 0));
+                            
+                            // Подготавливаем ключи для системы переопределений (Overrides)
+                            const originalTitle = ev.summary || 'Личное событие';
+                            const originalLoc = ev.location || '';
+                            const timeKey = isAllDay ? "Весь день" : `${String(ev.start.getHours()).padStart(2, '0')}:${String(ev.start.getMinutes()).padStart(2, '0')}`;
+                            const dateKey = `${targetDate.getFullYear()}${String(targetDate.getMonth()+1).padStart(2,'0')}${String(targetDate.getDate()).padStart(2,'0')}`;
+                            
+                            const overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
+                            const singleKey = `SINGLE_${dateKey}_${timeKey}_${originalTitle}`;
+                            const seriesKey = `SERIES_${timeKey}_${originalTitle}`;
+                            
+                            let activeOverride = null;
+                            let isSeries = false;
+                            
+                            if (overrides[singleKey]) {
+                                activeOverride = overrides[singleKey];
+                            } else if (overrides[seriesKey]) {
+                                activeOverride = overrides[seriesKey];
+                                isSeries = true;
+                            }
+
+                            // Применяем переопределения, если они есть
+                            const displayTitle = activeOverride && activeOverride.title ? activeOverride.title : originalTitle;
+                            const displayLoc = activeOverride && activeOverride.loc !== undefined ? activeOverride.loc : originalLoc;
+                            const displayTeacher = activeOverride && activeOverride.teacher ? activeOverride.teacher : '';
+
+                            // Форматируем время вывода
+                            let timeHtml = '';
+                            if (isAllDay) {
+                                timeHtml = `<font class="eval" style="font-size: inherit !important; color: inherit !important;">Весь день</font>`;
+                            } else {
+                                const startStr = timeKey;
+                                const endStr = ev.end ? `${String(ev.end.getHours()).padStart(2, '0')}:${String(ev.end.getMinutes()).padStart(2, '0')}` : '';
+                                
+                                timeHtml = `<font class="eval" style="font-size: inherit !important; color: inherit !important; display: inline-flex !important; align-items: center !important; gap: 4px !important; line-height: 1.2 !important;">${startStr}</font>`;
+                                if (endStr) {
+                                    timeHtml += `<br><span style="font-size: 1.1rem; color: var(--color-text-secondary); line-height: 1.4;">${endStr}</span>`;
+                                }
+                            }
+
+                            // Создаем строку, зашивая в data-атрибуты оригинальные данные (для редактора)
+                            const tr = document.createElement('tr');
+                            tr.className = 'custom-pair-row external-event-row';
+                            tr.setAttribute('data-ext-orig-title', originalTitle.replace(/"/g, '&quot;'));
+                            tr.setAttribute('data-ext-orig-loc', originalLoc.replace(/"/g, '&quot;'));
+                            tr.setAttribute('data-ext-time', timeKey);
+                            tr.setAttribute('data-ext-date', dateKey);
+                            tr.setAttribute('data-ext-disp-title', displayTitle.replace(/"/g, '&quot;'));
+                            tr.setAttribute('data-ext-disp-loc', displayLoc.replace(/"/g, '&quot;'));
+                            tr.setAttribute('data-ext-disp-teacher', displayTeacher.replace(/"/g, '&quot;'));
+                            tr.setAttribute('data-ext-is-series', isSeries);
+
+                            tr.innerHTML = `
+                                <td class="pair_num">
+                                    <span class="pair-type-badge" style="color: #AF52DE;">ЛИЧ</span>
+                                    ${timeHtml}
+                                </td>
+                                <td class="pair_info">
+                                    <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
+                                        <span style="font-weight:700; color:var(--color-text-primary); pointer-events:none;">${displayTitle}</span>
+                                    </div>
+                                    ${displayLoc ? `
+                                    <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">
+                                        <div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);">
+                                            <span class="material-icons" style="font-size: 1.5rem;">place</span>${displayLoc}
+                                        </div>
+                                    </div>` : ''}
+                                </td>
+                                <td class="pair_teacher">
+                                    ${displayTeacher ? `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${displayTeacher}</a>` : ''}
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+
+                        const rows = Array.from(tbody.querySelectorAll('tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
+                        rows.sort((a, b) => {
+                            const timeA = a.querySelector('.eval')?.textContent || '';
+                            const timeB = b.querySelector('.eval')?.textContent || '';
+                            
+                            if (timeA === "Весь день") return -1;
+                            if (timeB === "Весь день") return 1;
+
+                            const timeAStr = timeA.split(':');
+                            const timeBStr = timeB.split(':');
+                            
+                            const valA = (parseInt(timeAStr[0], 10) || 0) * 60 + (parseInt(timeAStr[1], 10) || 0);
+                            const valB = (parseInt(timeBStr[0], 10) || 0) * 60 + (parseInt(timeBStr[1], 10) || 0);
+                            
+                            return valA - valB;
+                        });
+                        rows.forEach(r => tbody.appendChild(r));
+                    });
+
+                    if (injectedAnything) {
+                        if (typeof recalculateTimetable === 'function') recalculateTimetable();
+                        if (typeof renderNotes === 'function') renderNotes();
+                        if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                    }
+                }
+
+                // Запуск логики
+                loadExternalCalendar();
 
                 updateLiveTimetable();
                 setInterval(updateLiveTimetable, 60000);
@@ -10046,6 +10989,14 @@ injectStyles(styles);
                         const firstLi = msg.querySelector('li:first-child');
                         if (!firstLi) return;
                         const cloneContent = firstLi.cloneNode(true);
+                        // --- АВТО-ПРОЧТЕНИЕ ---
+                        if (firstLi.hasAttribute('onclick')) {
+                            const clickFunc = firstLi.getAttribute('onclick');
+                            // Выполняем только если это функция прочтения (Oracle ann_read)
+                            if (clickFunc.includes('ann_read') || clickFunc.includes('msg_read')) {
+                                try { new Function(clickFunc)(); } catch(e) {}
+                            }
+                        }
                         const dateNode = cloneContent.querySelector('font[color="#808080"]');
                         const dateStr = dateNode ? formatEtisDate(dateNode.textContent.trim()) : '';
                         if (dateNode) dateNode.remove();
@@ -10070,6 +11021,7 @@ injectStyles(styles);
                             }
                         }
                         let bodyHtml = parts.join('<br>').replace(/^(<br\s*\/?>|\s)+/, '');
+                        bodyHtml = highlightDatesInHTML(bodyHtml, titleStr || 'Объявление');
 
                         const card = document.createElement('div');
                         card.className = 'msg-card';
@@ -10140,15 +11092,26 @@ injectStyles(styles);
                         const mainLi = msg.querySelector('li');
                         if (!mainLi) return;
                         const cloneContent = mainLi.cloneNode(true);
+                        // --- АВТО-ПРОЧТЕНИЕ ---
+                        if (mainLi.hasAttribute('onclick')) {
+                            const clickFunc = mainLi.getAttribute('onclick');
+                            if (clickFunc.includes('read')) {
+                                try { new Function(clickFunc)(); } catch(e) {}
+                            }
+                        }
                         const teacherNode = cloneContent.querySelector('b i');
                         const teacherName = teacherNode ? teacherNode.textContent.trim() : 'Преподаватель';
+                        
                         const bTag = cloneContent.querySelector('b');
                         if (bTag && bTag.contains(teacherNode)) bTag.remove();
                         const dateNode = cloneContent.querySelector('font[color="#808080"]');
                         const dateStr = dateNode ? formatEtisDate(dateNode.textContent.trim()) : '';
                         if (dateNode) dateNode.remove();
+                        
                         const subjects = [];
                         cloneContent.querySelectorAll('font').forEach(f => { subjects.push(f.textContent.trim()); f.remove(); });
+
+                        let highlightedBody = highlightDatesInHTML(cloneContent.innerHTML, subjects[0] || teacherName || 'Сообщение');
 
                         const card = document.createElement('div');
                         card.className = 'msg-card';
@@ -10161,8 +11124,9 @@ injectStyles(styles);
                                 </div>
                             </div>
                             ${subjects.length ? `<div class="msg-subject">${subjects.join(' • ')}</div>` : ''}
-                            <div class="msg-body">${cloneContent.innerHTML}</div>
+                            <div class="msg-body">${highlightedBody}</div> 
                         `;
+                        
                         container.appendChild(card);
                     });
 
@@ -12592,6 +13556,14 @@ injectStyles(styles);
 
                             const clone = li.cloneNode(true);
 
+                            // --- АВТО-ПРОЧТЕНИЕ ---
+                            if (li.hasAttribute('onclick')) {
+                                const clickFunc = li.getAttribute('onclick');
+                                if (clickFunc.includes('read')) {
+                                    try { new Function(clickFunc)(); } catch(e) {}
+                                }
+                            }
+
                             const dateNode = clone.querySelector('font[color="#808080"]');
                             const dateStr = dateNode ? formatEtisDate(dateNode.textContent.trim()) : '';
                             if (dateNode) dateNode.remove();
@@ -12773,23 +13745,45 @@ injectStyles(styles);
                 }
             // --- ГЛОБАЛЬНЫЕ УЛУЧШЕНИЯ ДЛЯ ЛЮБЫХ СТРАНИЦ ---
 
-            // Формы отзывов и анкетирования (que_form)
-            const queForm = document.querySelector('form.que_form');
-            if (queForm) {
+            // Формы отзывов и анкетирования (que_form и form[name="estimate"])
+            const queForms = document.querySelectorAll('form.que_form, form[name="estimate"]');
+            queForms.forEach(form => {
                 // Добавляем красивый заголовок страницы, если его нет
                 if (!span9.querySelector('h2')) {
                     const pageTitle = document.createElement('h2');
-                    pageTitle.textContent = 'Оставить отзыв';
+                    
+                    if (form.getAttribute('name') === 'estimate') {
+                        // Для страницы оценки занятия берем текст из h3 (Предмет, Дата)
+                        const origH3 = span9.querySelector('h3');
+                        if (origH3) {
+                            pageTitle.textContent = origH3.textContent.trim();
+                            origH3.remove(); // Удаляем оригинальный мелкий заголовок
+                        } else {
+                            pageTitle.textContent = 'Оценить занятие';
+                        }
+                    } else {
+                        pageTitle.textContent = 'Оставить отзыв';
+                    }
+                    
                     pageTitle.style.marginBottom = '2.4rem';
-                    span9.insertBefore(pageTitle, queForm.closest('.review') || queForm);
+                    span9.insertBefore(pageTitle, form.closest('.review') || form);
                 }
 
                 // Улучшаем кнопку отправки (добавляем иконку бумажного самолетика)
-                const sendBtn = document.getElementById('send_btn');
+                const sendBtn = form.querySelector('#send_btn');
                 if (sendBtn && !sendBtn.querySelector('.material-icons')) {
                     sendBtn.innerHTML = '<span class="material-icons" style="font-size: 2rem; margin-right: 0.8rem;">send</span>' + sendBtn.textContent;
                 }
-            }
+                
+                // Оборачиваем question_table для скролла на мобильных телефонах
+                const qTable = form.querySelector('table.question_table');
+                if (qTable && !qTable.parentElement.classList.contains('question-table-wrapper')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'question-table-wrapper';
+                    qTable.parentNode.insertBefore(wrapper, qTable);
+                    wrapper.appendChild(qTable);
+                }
+            });
         }
 
         // --- УМНЫЙ СКРОЛЛ ДЛЯ ПОДВКЛАДОК И НЕДЕЛЬ ---
@@ -12876,5 +13870,8 @@ injectStyles(styles);
             }
 
         initSmartScroll();
+        if (page.includes('announces') || page.includes('teacher_notes')) {
+            initEventLinks();
+        }
     }
 })();
