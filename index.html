@@ -297,6 +297,51 @@
             
             .mobile-limit { max-width: 400px; margin: 0 auto; }
 
+            /* --- ФИЧИ ПОД БЛОКАМИ --- */
+            .block-features {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+                gap: 15px;
+                margin-top: 25px;
+                text-align: left;
+            }
+
+            .bf-item {
+                background: var(--card-bg);
+                border: 1px solid var(--border-color);
+                padding: 18px 20px;
+                border-radius: 16px;
+                transition: transform 0.2s ease, border-color 0.2s ease;
+            }
+
+            .bf-item:hover {
+                border-color: var(--primary);
+                transform: translateY(-3px);
+            }
+
+            .bf-title {
+                font-weight: 700;
+                font-size: 1.05rem;
+                color: var(--text-color);
+                margin-bottom: 6px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .bf-desc {
+                font-size: 0.9rem;
+                color: var(--text-secondary);
+                line-height: 1.4;
+            }
+
+            @media (max-width: 768px) {
+                .block-features {
+                    grid-template-columns: 1fr;
+                    gap: 12px;
+                }
+            }
+
             /* --- БЛОК АНАЛИТИКИ --- */
             .analytics-cards {
                 display: flex;
@@ -752,6 +797,22 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Фичи мобильной версии -->
+                    <div class="block-features">
+                        <div class="bf-item">
+                            <div class="bf-title">📱 Адаптивная верстка</div>
+                            <div class="bf-desc">Весь интерфейс перестраивается под экраны смартфонов. Больше не нужно зумить страницу.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">👆 Жесты (Свайпы)</div>
+                            <div class="bf-desc">Управление с помощью привычных свайпов — смахните пару, чтобы открыть заметки или оценки.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🎯 Умный скролл</div>
+                            <div class="bf-desc">Автоматическое центрирование текущей недели и активных вкладок при загрузке.</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 2. РАСПИСАНИЕ -->
@@ -767,19 +828,74 @@
                             <img class="dynamic-img" data-ver="old" src="" alt="Old Schedule">
                         </div>
                     </div>
+
+                    <!-- Фичи расписания -->
+                    <div class="block-features">
+                        <div class="bf-item">
+                            <div class="bf-title">🟢 Умная индикация</div>
+                            <div class="bf-desc">Визуально понятно когда пара начнётся или закончится.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">⏱️ Авторасчет «окон»</div>
+                            <div class="bf-desc">Система находит пустые промежутки между парами и отображает сколько «окон» осталось до следующей пары.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">📅 Интеграция календарей</div>
+                            <div class="bf-desc">Подключи свой Apple или Google календарь по ссылке. События в из них отобразятся прямо в расписании ЕТИСа.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">✍️ Свои занятия</div>
+                            <div class="bf-desc">Вручную добавляй дополнительные занятия или встречи. Есть возможность добавить их периодичность, например раз в день/неделю.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">📝 Заметки и ДЗ</div>
+                            <div class="bf-desc">Добавляй список задач к конкретному занятию, с возможностью переноса к следующему занятию.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">📸 Красивый экспорт</div>
+                            <div class="bf-desc">Кнопка «Поделиться» создает аккуратный скриншот расписания для отправки одногруппникам.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🗣️ Интеграция с объявлениями</div>
+                            <div class="bf-desc">Скрипт находит даты в объявлениях и предлагает добавить их в расписание в один клик.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">📊 Еженедельная сводка</div>
+                            <div class="bf-desc">Статистика нагрузки на текущую неделю со сравнением со средней.</div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- 3. ТЁМНАЯ ТЕМА -->
+                <!-- 3. АДАПТИВНАЯ ТЕМА -->
                 <div class="comparison-block">
-                    <h2 class="block-title" id="title-theme">Тёмная тема</h2>
-                    <div class="img-comp-container" data-type="theme-feature">
+                    <h2 class="block-title">Адаптивная тема</h2>
+                    <div class="img-comp-container" data-type="adaptive-theme">
                         <div class="img-comp-img img-result">
-                            <span class="label label-new">REBORN</span>
-                            <img class="dynamic-img" data-ver="new" src="" alt="New Theme">
+                            <span class="label label-new" style="background: #16181A; border: 1px solid #333;">Тёмная</span>
+                            <img class="dynamic-img" data-ver="dark-new" src="" alt="Dark Theme">
                         </div>
                         <div class="img-comp-img img-source">
-                            <span class="label label-old">Original</span>
-                            <img class="dynamic-img" data-ver="old" src="" alt="Old Theme">
+                            <span class="label label-old" style="background: #ffffff; color: #000;">Светлая</span>
+                            <img class="dynamic-img" data-ver="light-new" src="" alt="Light Theme">
+                        </div>
+                    </div>
+
+                    <div class="block-features">
+                        <div class="bf-item">
+                            <div class="bf-title">✨ Полный редизайн</div>
+                            <div class="bf-desc">Интерфейс начала 2000-х заменен на актуальный для 2026-го года.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🌙 Ночной режим</div>
+                            <div class="bf-desc">Полноценная поддержка тёмной темы, которая бережет зрение и заряд батареи.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🎨 Авто-переключение</div>
+                            <div class="bf-desc">Тема может подстраиваться под настройки твоего устройства или включаться вручную.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🎨 Кастомизация</div>
+                            <div class="bf-desc">Выбери свой уникальный акцентный цвет среди 600+ вариаций.</div>
                         </div>
                     </div>
                 </div>
@@ -797,6 +913,22 @@
                             <img class="dynamic-img" data-ver="old" src="" alt="Old Grades">
                         </div>
                     </div>
+
+                    <!-- Фичи оценок -->
+                    <div class="block-features">
+                        <div class="bf-item">
+                            <div class="bf-title">📈 Визуальный прогресс</div>
+                            <div class="bf-desc">Добавлены цветные «капсулы», позволяющие мгновенно понять успеваемость по конкретному предмету.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🔮 Прогноз баллов</div>
+                            <div class="bf-desc">Наведи курсор на баллы, и калькулятор подскажет, сколько именно не хватает до ближайшей оценки.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🔔 Уведомления</div>
+                            <div class="bf-desc">Push-уведомления сообщат, если преподаватель выставил баллы или закрыл ведомость.</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 5. ПРЕПОДАВАТЕЛИ -->
@@ -812,6 +944,18 @@
                             <img class="dynamic-img" data-ver="old" src="" alt="Old Teachers">
                         </div>
                     </div>
+
+                    <!-- Фичи преподавателей -->
+                    <div class="block-features">
+                        <div class="bf-item">
+                            <div class="bf-title">👤 Инфо-карточки</div>
+                            <div class="bf-desc">Современный вид списка преподавателей с бейджиками.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">⚡ Мгновенный поиск</div>
+                            <div class="bf-desc">Найди нужного преподавателя по его ФИО или предмету.</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 6. ОБЪЯВЛЕНИЯ -->
@@ -825,6 +969,22 @@
                         <div class="img-comp-img img-source">
                             <span class="label label-old">Original</span>
                             <img class="dynamic-img" data-ver="old" src="" alt="Old Spravka">
+                        </div>
+                    </div>
+
+                    <!-- Фичи объявлений -->
+                    <div class="block-features">
+                        <div class="bf-item">
+                            <div class="bf-title">🔍 Поиск</div>
+                            <div class="bf-desc">Найди нужное объявление среди огромного списка.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">📊 Визуальная иерархия</div>
+                            <div class="bf-desc">Вся информация отображается в более удобном и понятном виде.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">📎 Файлы</div>
+                            <div class="bf-desc">Все файлы визуально отделены от основного текста объявления.</div>
                         </div>
                     </div>
                 </div>
@@ -846,10 +1006,40 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Фичи аналитики -->
+                    <div class="block-features">
+                        <div class="bf-item">
+                            <div class="bf-title">📈 Графики сессий</div>
+                            <div class="bf-desc">Наглядный линейный график изменения твоего среднего балла от периода к периоду.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🏆 Топ предметов</div>
+                            <div class="bf-desc">Автоматический рейтинг твоих дисциплин в текущем периоде на основе набранных баллов.</div>
+                        </div>
+                    </div>
                 </div>
 
-                <h2 class="more-features">И много чего ещё...</h2>
+                <!-- 8. ТЕХНОЛОГИИ И БЕЗОПАСНОСТЬ -->
+                <div class="comparison-block more-features" style="opacity: 1; margin-bottom: 120px;">
+                    <h2 class="block-title" style="text-align: center; margin-bottom: 30px;">🔒 Технологии и безопасность</h2>
+                    <div class="block-features">
+                        <div class="bf-item">
+                            <div class="bf-title">🛡️ Local-only</div>
+                            <div class="bf-desc">Все данные (заметки, кастомные пары) хранятся <b>только в браузере</b>. Скрипт не передает пароли или оценки на сторонние серверы.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">🔄 Авто-обновление</div>
+                            <div class="bf-desc">Встроенная система проверки новых версий — ты всегда будешь использовать самый актуальный и исправленный код.</div>
+                        </div>
+                        <div class="bf-item">
+                            <div class="bf-title">⚡ Оптимизация</div>
+                            <div class="bf-desc">Скрипт написан так, чтобы не нагружать процессор и работать плавно даже на старых устройствах.</div>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- ОТЗЫВЫ -->
                 <section class="reviews-section" style="margin-bottom: 120px;">
                     <h2 class="block-title">Что говорят студенты</h2>
 
@@ -870,6 +1060,7 @@
                     </div>
                 </section>
 
+                <!-- FAQ -->
                 <section class="faq-section">
                     <h2 class="block-title">Частые вопросы</h2>
                     
@@ -1143,48 +1334,40 @@
                     crossSideView.style.display = 'none';
                     crossSliderView.style.display = 'block';
                     crossSliderContainer.classList.remove('mobile-limit');
-                    
                     crossSliderContainer.classList.add('mobile-rounded');
-
                     sliderNew.src = `img/schedule-pc-${currentTheme}-new.png`;
                     sliderOld.src = `img/schedule-pc-light-old.png`;
                 } else {
                     crossTitle.textContent = "Мобильная версия";
                     crossSideView.style.display = 'flex';
                     crossSliderView.style.display = 'none';
-                    
                     crossSliderContainer.classList.remove('mobile-rounded');
-
                     sideNew.src = `img/schedule-mobile-${currentTheme}-new.png`;
                     sideOld.src = `img/schedule-mobile-light-old.png`;
                 }
 
-                // 2. ОСТАЛЬНЫЕ БЛОКИ (Расписание, Оценки и т.д.)
+                // 2. ОСТАЛЬНЫЕ БЛОКИ
                 document.querySelectorAll('.img-comp-container').forEach(container => {
-                    if (isMobile) {
-                        container.classList.add('mobile-rounded');
-                    } else {
-                        container.classList.remove('mobile-rounded');
-                    }
+                    if (isMobile) container.classList.add('mobile-rounded');
+                    else container.classList.remove('mobile-rounded');
 
                     const type = container.dataset.type;
                     if (!type) return;
 
                     const imgs = container.querySelectorAll('.dynamic-img');
-                    let themeForBlock = currentTheme;
-                    let filePrefix = type;
-
-                    if (type === 'theme-feature') {
-                        themeForBlock = isDark ? 'light' : 'dark';
-                        filePrefix = 'schedule';
-                        document.getElementById('title-theme').textContent = isDark ? 'Светлая тема' : 'Тёмная тема';
+                    
+                    if (type === 'adaptive-theme') {
+                        imgs.forEach(img => {
+                            const ver = img.dataset.ver;
+                            img.src = `img/schedule-${deviceType}-${ver}.png`;
+                        });
+                    } else {
+                        imgs.forEach(img => {
+                            const ver = img.dataset.ver;
+                            const finalTheme = (ver === 'old') ? 'light' : currentTheme;
+                            img.src = `img/${type}-${deviceType}-${finalTheme}-${ver}.png`;
+                        });
                     }
-
-                    imgs.forEach(img => {
-                        const ver = img.dataset.ver;
-                        const finalTheme = (ver === 'old') ? 'light' : themeForBlock;
-                        img.src = `img/${filePrefix}-${deviceType}-${finalTheme}-${ver}.png`;
-                    });
                 });
 
                 // 3. БЛОК АНАЛИТИКИ
@@ -1195,7 +1378,6 @@
                     analyticsTop.src = `img/analytics-top-${deviceType}-${currentTheme}.png`;
                 }
             }
-
 
             function preloadImages() {
                 const prefixes = ['schedule', 'grades', 'teachers', 'spravka'];
