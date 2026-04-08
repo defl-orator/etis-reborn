@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.9000
-// @changelog    Умное расписание: 1) Возможность добавлять события из объявлений. 2) Адаптивные иконки у активных дней. 3) Интеграция внешних календарей. Улучшенный вид оценки занятий. 
+// @version      1.9100
+// @changelog    Умное расписание: поддержка ссылок в событиях из внешних календарей, пометка важных пар. Доработка вида оценок. Фикс переключения вкладок на телефонах.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @match        https://student.psu.ru/*
@@ -144,6 +144,7 @@
 /* Page Base */
 html {
 	font-size: 10px !important;
+	background-color: var(--color-body) !important;
 }
 
 body {
@@ -151,6 +152,7 @@ body {
 	color: var(--color-text-primary) !important;
 	font-family: var(--font-family) !important;
     min-height: 100vh !important;
+    min-height: 100dvh !important;
 }
 
 /* ПК версия скроллбара и layout */
@@ -881,12 +883,50 @@ html[theme="dark"] .psu-logo::before {
     filter: invert(1) !important;
 }
 .login > form > .choose { display: block !important; padding: 0 !important; border-bottom: none !important; background: none !important; margin-bottom: 2.4rem !important; font-size: 0 !important; }
+.login .items {
+    padding: 0 !important;
+}
+
 .login-actions {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    width: 100% !important;
+    margin-top: 3.2rem !important;
+}
+
+#sbmt {
+    margin: 0 !important;
+}
+
+.forgot-password {
     font-size: 1.4rem !important;
-    margin-top: 1.6rem !important;
+    font-weight: 600 !important;
+    color: var(--color-accent) !important;
+    text-decoration: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+}
+.forgot-password:hover {
+    text-decoration: underline !important;
+}
+
+.forgot-password {
+    font-size: 1.4rem !important;
+    font-weight: 600 !important;
+    color: var(--color-accent) !important;
+    text-decoration: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+}
+.forgot-password:hover {
+    text-decoration: underline !important;
 }
 .login form, .form { display: flex !important; flex-direction: column !important; padding: 3.2rem !important; box-shadow: var(--shadow-main) !important; background: var(--color-card) !important; border-radius: var(--radius-large) !important; width: 36rem !important; margin: 0 auto !important; }
 .footer { margin: 0 auto !important; max-width: var(--width-content) !important; padding: 2rem !important; color: var(--color-text-secondary) !important; font-size: 1.2rem !important; text-align: center !important; }
@@ -903,8 +943,8 @@ html[theme="dark"] .psu-logo::before {
     .login form {
         flex-direction: row !important;
         width: 840px !important;
-        min-height: 500px !important;
-        padding: 48px !important;
+        min-height: 400px !important; 
+        padding: 48px 48px 40px 48px !important;
         display: flex !important;
         align-items: stretch !important;
     }
@@ -914,15 +954,15 @@ html[theme="dark"] .psu-logo::before {
         margin-bottom: 0 !important;
         display: flex !important;
         flex-direction: column !important;
-        align-items: flex-start !important;
-        justify-content: center !important;
-        padding-right: 20px !important;
+        align-items: flex-start !important; 
+        justify-content: flex-start !important;
+        padding-right: 40px !important;
     }
 
     .psu-logo::before {
-        height: 12rem !important;
-        width: 12rem !important;
-        margin-bottom: 2.4rem !important;
+        height: 4.8rem !important;
+        width: 4.8rem !important;
+        margin-bottom: 1.6rem !important;
         background-position: left center !important;
     }
 
@@ -930,7 +970,7 @@ html[theme="dark"] .psu-logo::before {
 
     .psu-logo-subtitle {
         display: block !important;
-        font-size: 3.2rem !important;
+        font-size: 3.6rem !important;
         line-height: 1.2 !important;
         font-weight: 400 !important;
         color: var(--color-text-primary) !important;
@@ -940,31 +980,32 @@ html[theme="dark"] .psu-logo::before {
         flex: 1 !important;
         display: flex !important;
         flex-direction: column !important;
-        justify-content: space-between !important;
+        justify-content: center !important;
         padding-left: 40px !important;
     }
 
     .login-inputs-wrapper {
-        margin-top: auto !important;
-        margin-bottom: auto !important;
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
         width: 100% !important;
     }
 
     .login-actions {
-        margin-top: 0 !important;
+        margin-top: 4rem !important;
+        margin-bottom: 0 !important;
         display: flex !important;
-        justify-content: flex-end !important;
+        justify-content: space-between !important;
         align-items: center !important;
         gap: 2.4rem !important;
     }
 
     #sbmt {
         min-width: 130px !important;
-        height: 52px !important;
+        height: 48px !important;
         padding: 0 32px !important;
-        font-size: 1.6rem !important;
+        font-size: 1.5rem !important;
         font-weight: 700 !important;
-        border-radius: 26px !important;
+        border-radius: 24px !important;
         background: var(--color-accent) !important;
         display: flex !important;
         align-items: center !important;
@@ -1215,11 +1256,19 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         background: var(--color-card) !important;
         z-index: 1000000 !important;
         transform: translateX(-105%) !important;
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        
+        transition: none !important; 
+        
         overflow-y: auto !important;
         border-radius: 0 24px 24px 0 !important;
         visibility: visible !important;
+        overscroll-behavior: contain !important;
     }
+    
+    .span3.ready-to-animate { 
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
+    }
+    
     .span3.mobile-active { transform: translateX(0) !important; box-shadow: 100px 0 100px rgba(0,0,0,0.5) !important; }
 
     .mobile-menu-btn {
@@ -1275,13 +1324,22 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         background: rgba(0,0,0,0.6) !important;
         z-index: 999999 !important;
         opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
+        visibility: hidden;
+        
+        transition: none !important;
+        
         backdrop-filter: blur(4px) !important;
         -webkit-backdrop-filter: blur(4px) !important;
-        touch-action: none !important;
     }
-    .mobile-overlay.active { opacity: 1; pointer-events: auto; }
+    
+    .mobile-overlay.ready-to-animate {
+        transition: opacity 0.3s ease, visibility 0.3s ease !important;
+    }
+    
+    .mobile-overlay.active { 
+        opacity: 1; 
+        visibility: visible; 
+    }
 
     .common, .teach_plan, .slimtab_nice {
         display: block !important;
@@ -1719,7 +1777,7 @@ input::placeholder {
 }
 
 .sidebar-logo img {
-    height: 3.2rem !important;
+    height: 3.5rem !important;
     width: auto !important;
     flex-shrink: 0 !important;
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
@@ -3340,7 +3398,7 @@ td.empty {
         width: 90% !important;
         max-width: 360px !important;
         margin: 0 auto !important;
-        padding: 3.2rem 2.4rem !important;
+        padding: 3.2rem 2.4rem 2.4rem 2.4rem !important;
         box-sizing: border-box !important;
     }
 
@@ -5529,9 +5587,9 @@ button.analytics-btn {
     font-weight: 600 !important;
 }
 
-/* Убираем тень при наведении на активную кнопку */
+/* Затемнение активной кнопки при наведении */
 .timetable-toolbar .toolbar-item.is-active:hover {
-    background: var(--color-accent-dark, var(--color-accent)) !important;
+    filter: brightness(0.85) !important;
 }
 
 .weeks .week.session:not(.current),
@@ -5968,6 +6026,152 @@ button.sync-tab.active {
     display: block; 
     animation: fadeIn 0.2s ease; 
 }
+
+/* Цвет бейджа для консультаций */
+.type-badge-cons { color: var(--color-text-secondary) !important; }
+
+/* Затемнение активной кнопки Синхронизации при наведении */
+.timetable-toolbar .toolbar-item.is-active:hover {
+    filter: brightness(0.85) !important;
+}
+
+/* Кнопка удаления внешнего календаря */
+.delete-cal-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+.delete-cal-btn:hover {
+    background: rgba(255, 59, 48, 0.12) !important;
+    color: var(--color-red) !important;
+}
+
+/* Фикс всплывающего окна в рейтинге */
+#tooltip {
+    max-width: 500px !important;
+    width: auto !important;
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    border-radius: var(--radius-medium) !important;
+    box-shadow: var(--shadow-dialog) !important;
+    padding: 12px !important;
+    z-index: 1000000 !important;
+    pointer-events: none !important;
+}
+
+#tooltip table.common {
+    margin: 0 !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    background: transparent !important;
+}
+
+#tooltip table.common th {
+    font-size: 1rem !important;
+    padding: 6px !important;
+    background: var(--color-table-header) !important;
+    color: var(--color-text-secondary) !important;
+}
+
+#tooltip table.common td {
+    font-size: 1.1rem !important;
+    padding: 6px !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    background: transparent !important;
+}
+
+/* --- ВАЖНЫЕ ПАРЫ --- */
+.timetable-grid tr.is-important .pair-type-badge {
+    background: transparent !important;
+    color: var(--color-red) !important;
+}
+
+/* Контейнер, который держит элементы по центру */
+.pair-badge-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 2px !important;
+}
+
+.pair-type-badge {
+    display: inline-block !important;
+    margin-bottom: 0 !important;
+    white-space: nowrap !important;
+}
+
+.pair-important-btn {
+    position: relative !important; /* Возвращаем в общий поток */
+    width: 0 !important; /* Скрыто по умолчанию */
+    margin-right: 0 !important;
+    
+    cursor: pointer !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--color-text-secondary) !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    
+    opacity: 0 !important;
+    visibility: hidden !important;
+    overflow: hidden !important; /* Чтобы иконка не торчала при сужении */
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+
+/* Уменьшаем саму иконку, чтобы она была вровень с текстом */
+.pair-important-btn .material-icons {
+    font-size: 1.4rem !important;
+}
+
+/* При наведении ширина увеличивается, плавно сдвигая текст вправо */
+.timetable-grid tr:hover .pair-important-btn,
+.pair-important-btn.is-active {
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: 16px !important;
+    margin-right: 4px !important;
+    pointer-events: auto !important;
+}
+
+.pair-important-btn.is-active {
+    color: var(--color-red) !important;
+    animation: pulse-important-bell 2s infinite;
+}
+
+.pair-important-btn:hover {
+    color: var(--color-red) !important;
+    transform: scale(1.15) !important;
+}
+
+@keyframes pulse-important-bell {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.85); }
+    100% { transform: scale(1); }
+}
+
+#swipe-action-bubble.active-threshold.action-important { color: var(--color-red) !important; }
+
+/* Фикс для смартфонов */
+@media (hover: none), (pointer: coarse) {
+    .timetable-grid tr:hover .pair-important-btn:not(.is-active) {
+        opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; width: 0 !important; margin-right: 0 !important;
+    }
+    .pair-important-btn.is-active {
+        opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; width: 16px !important; margin-right: 4px !important;
+    }
+}
     `;
 
     // Внедряем стили
@@ -6173,6 +6377,22 @@ injectStyles(styles);
     }
 
     detectTheme();
+
+    // --- ФИКС ЦВЕТА БРАУЗЕРНОЙ ПАНЕЛИ НАВИГАЦИИ И СТАТУС-БАРА ---
+    function updateBrowserNavColor() {
+        const isDark = document.documentElement.getAttribute('theme') === 'dark';
+        const color = isDark ? '#16181A' : '#F2F2F6'; // Цвета нашего var(--color-body)
+        let metaTheme = document.querySelector('meta[name="theme-color"]');
+        if (!metaTheme) {
+            metaTheme = document.createElement('meta');
+            metaTheme.name = 'theme-color';
+            document.head.appendChild(metaTheme);
+        }
+        metaTheme.content = color;
+    }
+    // Следим за сменой темы и мгновенно обновляем цвет браузера
+    new MutationObserver(updateBrowserNavColor).observe(document.documentElement, { attributes: true, attributeFilter: ['theme'] });
+    updateBrowserNavColor();
 
     function createTooltipTriangle() {
         const xmlns = 'http://www.w3.org/2000/svg'
@@ -6517,19 +6737,23 @@ injectStyles(styles);
         overlay.className = 'mobile-overlay';
         sidebar.parentNode.insertBefore(overlay, sidebar);
 
+        // Защита от "проезда" сайдбара при загрузке:
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                sidebar.classList.add('ready-to-animate');
+                overlay.classList.add('ready-to-animate');
+            }, 50);
+        });
+
         function toggleMenu(show) {
             if (show) {
                 sidebar.classList.add('mobile-active');
                 overlay.classList.add('active');
                 menuBtn.classList.add('open');
-                // Блокируем скролл фона ТОЛЬКО у body
-                document.body.style.overflow = 'hidden';
             } else {
                 sidebar.classList.remove('mobile-active');
                 overlay.classList.remove('active');
                 menuBtn.classList.remove('open');
-                // Возвращаем скролл
-                document.body.style.overflow = '';
             }
         }
 
@@ -6572,8 +6796,6 @@ injectStyles(styles);
                 overlay.classList.remove('active');
                 menuBtn.classList.remove('open');
                 menuBtn.classList.add('is-loading');
-
-                document.body.style.overflow = '';
             });
         });
     }
@@ -6602,6 +6824,7 @@ injectStyles(styles);
             if (dayHeaderName.textContent.trim() === todayName) {
                 let hasRealPairs = false;
                 let lastPairEnd = 0;
+                let firstPairStart = 24 * 60; // Для отслеживания начала первой пары
 
                 dayBlock.querySelectorAll('.timetable-grid tr').forEach(row => {
                     if (row.classList.contains('custom-no-pairs') || row.style.display === 'none') return;
@@ -6625,7 +6848,7 @@ injectStyles(styles);
                     const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
                     const endMins = startMins + duration;
 
-                    // Запоминаем время окончания последней пары
+                    if (startMins < firstPairStart) firstPairStart = startMins;
                     if (endMins > lastPairEnd) lastPairEnd = endMins;
 
                     let type = "";
@@ -6633,6 +6856,40 @@ injectStyles(styles);
                         type = (endMins - currentTime <= 15) ? 'ending' : 'active';
                     } else if (startMins - currentTime <= 20 && startMins - currentTime > 0) {
                         type = 'soon';
+                    }
+
+                    // --- АВТО-СБРОС ВАЖНОЙ ПАРЫ ПРИ ЕЁ НАЧАЛЕ ---
+                    if (currentTime >= startMins) {
+                        const disContainer = row.querySelector('.pair_info .dis');
+                        const numTd = row.querySelector('.pair_num');
+                        if (disContainer && numTd) {
+                            const targetEl = disContainer.querySelector('a') || disContainer;
+                            const cleanSubjectName = targetEl.textContent.trim();
+                            const dayDateStr = dayBlock.querySelector('.day-date')?.textContent.trim() || 'UnknownDate';
+                            
+                            let rawPairNum = "";
+                            Array.from(numTd.childNodes).forEach(n => {
+                                if (n.nodeType === Node.TEXT_NODE && /пара/i.test(n.nodeValue)) {
+                                    rawPairNum = n.nodeValue.trim();
+                                }
+                            });
+                            if (!rawPairNum) rawPairNum = numTd.textContent.trim().split(' ')[0] + ' пара';
+                            
+                            const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
+                            let imp = JSON.parse(localStorage.getItem('etis_important_pairs_v1') || '[]');
+                            if (imp.includes(pairId)) {
+                                imp = imp.filter(id => id !== pairId);
+                                localStorage.setItem('etis_important_pairs_v1', JSON.stringify(imp));
+                                
+                                // Мгновенно убираем стили
+                                row.classList.remove('is-important');
+                                const impBtn = numTd.querySelector('.pair-important-btn');
+                                if (impBtn) {
+                                    impBtn.classList.remove('is-active');
+                                    impBtn.innerHTML = '<span class="material-icons" style="font-size:1.6rem;">notifications_none</span>';
+                                }
+                            }
+                        }
                     }
 
                     if (type) {
@@ -6653,40 +6910,42 @@ injectStyles(styles);
                 });
 
                 // --- Умная индикация для заголовка текущего дня ---
+                
+                // 1. Всегда добавляем статичный зеленый кружок
+                const dayDot = document.createElement('span');
+                dayDot.className = 'day-status-icon';
+                dayDot.style.cssText = 'display: inline-block; width: 8px; height: 8px; background-color: var(--color-green); border-radius: 50%; flex-shrink: 0;';
+
+                // 2. Определяем пояснительную иконку
+                let iconName = '';
+                let iconTitle = '';
+                let iconColor = 'var(--color-text-secondary)';
+
                 if (!hasRealPairs) {
-                    // Выходной (пар нет вообще)
-                    const icon = document.createElement('span');
-                    icon.className = 'material-icons day-status-icon';
-                    icon.style.fontSize = '1.8rem';
-                    icon.style.marginLeft = '8px';
-                    icon.style.color = 'var(--color-green)';
-                    icon.style.verticalAlign = 'middle';
-                    icon.textContent = 'free_breakfast';
-                    icon.title = 'Выходной';
-                    dayHeaderName.appendChild(icon);
+                    iconName = 'free_breakfast';
+                    iconTitle = 'Выходной';
+                    iconColor = 'var(--color-green)';
                 } else if (currentTime > lastPairEnd) {
-                    // Пары были, но уже закончились
-                    const icon = document.createElement('span');
-                    icon.className = 'material-icons day-status-icon';
-                    icon.style.fontSize = '1.8rem';
-                    icon.style.marginLeft = '8px';
-                    icon.style.color = 'var(--color-text-secondary)';
-                    icon.style.verticalAlign = 'middle';
-                    icon.textContent = 'done_all';
-                    icon.title = 'Пары закончились';
-                    dayHeaderName.appendChild(icon);
+                    iconName = 'done_all';
+                    iconTitle = 'Пары закончились';
+                } else if (currentTime < firstPairStart) {
+                    iconName = 'schedule';
+                    iconTitle = 'Скоро пары';
+                    iconColor = 'var(--color-yellow)';
                 } else {
-                    // Идут пары или перерыв
-                    const dayDot = document.createElement('span');
-                    dayDot.className = 'live-dot active day-status-icon';
-                    dayDot.style.animation = 'none';
-                    dayDot.style.position = 'static';
-                    dayDot.style.verticalAlign = 'middle';
-                    dayDot.style.transform = 'none';
-                    dayDot.style.marginLeft = '10px';
-                    dayDot.title = "Сегодня";
-                    dayHeaderName.appendChild(dayDot);
+                    iconName = 'play_circle_outline';
+                    iconTitle = 'Пары идут';
+                    iconColor = 'var(--color-accent)';
                 }
+
+                const icon = document.createElement('span');
+                icon.className = 'material-icons day-status-icon';
+                icon.style.cssText = `font-size: 1.8rem; color: ${iconColor}; flex-shrink: 0;`;
+                icon.textContent = iconName;
+                icon.title = iconTitle;
+                
+                dayHeaderName.after(icon);
+                dayHeaderName.after(dayDot);
             }
         });
     }
@@ -7315,7 +7574,11 @@ injectStyles(styles);
                 let input = item.querySelector('input');
                 let label = item.querySelector('label');
                 if (input && label) {
-                    input.placeholder = label.textContent.trim();
+                    let labelText = label.textContent.trim();
+                    // Меняем текст плейсхолдера
+                    if (labelText === 'Фамилия / email') labelText = 'Email';
+                    
+                    input.placeholder = labelText;
                     label.remove();
                 }
             });
@@ -7573,7 +7836,6 @@ injectStyles(styles);
                         side.classList.remove('mobile-active');
                         document.querySelector('.mobile-overlay')?.classList.remove('active');
                         document.querySelector('.mobile-menu-btn')?.classList.remove('open');
-                        document.body.style.overflow = '';
                     }
                     showUpdateModal();
                 });
@@ -7594,7 +7856,6 @@ injectStyles(styles);
                         side.classList.remove('mobile-active');
                         document.querySelector('.mobile-overlay')?.classList.remove('active');
                         document.querySelector('.mobile-menu-btn')?.classList.remove('open');
-                        document.body.style.overflow = '';
                     }
                     openCustomizationModal();
                 });
@@ -7819,7 +8080,6 @@ injectStyles(styles);
                             side.classList.remove('mobile-active');
                             document.querySelector('.mobile-overlay')?.classList.remove('active');
                             document.querySelector('.mobile-menu-btn')?.classList.remove('open');
-                            document.body.style.overflow = '';
                         }
                     };
 
@@ -8620,7 +8880,7 @@ injectStyles(styles);
 
                     table.innerHTML = `
                         <tbody>
-                            <tr>
+                            <tr class="custom-no-pairs">
                                 <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
                                     <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
@@ -8957,7 +9217,7 @@ injectStyles(styles);
                                         <span class="stat-box-value">${avgRounded}</span>
                                     </div>
                                     <div class="stat-box">
-                                        <span class="stat-box-title">Времени в вузе</span>
+                                        <span class="stat-box-title">Времени на учебе</span>
                                         <span class="stat-box-value accent-stat">${avgTimeStr}</span>
                                     </div>
                                 </div>
@@ -9013,7 +9273,7 @@ injectStyles(styles);
                                         <span class="stat-box-value">${total}</span>
                                     </div>
                                     <div class="stat-box">
-                                        <span class="stat-box-title">Времени на учёбе</span>
+                                        <span class="stat-box-title">Времени на учебе</span>
                                         <span class="stat-box-value accent-stat">${timeStr}</span>
                                     </div>
                                 </div>
@@ -9237,7 +9497,6 @@ injectStyles(styles);
                                 const item = document.createElement('div');
                                 item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.4rem; background: var(--color-card); border: 1px solid var(--color-table-border); border-radius: var(--radius-small); gap: 1rem; box-shadow: var(--shadow-main);';
                                 
-                                // Сокращаем длинные ссылки для красоты
                                 const shortUrl = calUrl.length > 40 ? calUrl.substring(0, 25) + '...' + calUrl.substring(calUrl.length - 10) : calUrl;
                                 
                                 item.innerHTML = `
@@ -9245,7 +9504,7 @@ injectStyles(styles);
                                         <span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem; flex-shrink: 0;">event</span>
                                         <span style="font-size: 1.3rem; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${calUrl}">${shortUrl}</span>
                                     </div>
-                                    <button class="delete-cal-btn" data-idx="${idx}" style="background: none; border: none; cursor: pointer; color: var(--color-text-secondary); display: flex; align-items: center; justify-content: center; padding: 6px; border-radius: 50%; flex-shrink: 0; transition: all 0.2s ease;">
+                                    <button class="delete-cal-btn" data-idx="${idx}">
                                         <span class="material-icons" style="font-size: 2rem;">delete_outline</span>
                                     </button>
                                 `;
@@ -9254,17 +9513,6 @@ injectStyles(styles);
 
                             // Навешиваем события на кнопки удаления
                             calsListContainer.querySelectorAll('.delete-cal-btn').forEach(btn => {
-                                // Красный ховер
-                                btn.addEventListener('mouseenter', () => {
-                                    btn.style.background = 'rgba(255, 59, 48, 0.12)';
-                                    btn.style.color = 'var(--color-red)';
-                                });
-                                // Сброс цвета
-                                btn.addEventListener('mouseleave', () => {
-                                    btn.style.background = 'none';
-                                    btn.style.color = 'var(--color-text-secondary)';
-                                });
-                                // Удаление
                                 btn.addEventListener('click', (e) => {
                                     const idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
                                     let currentCals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
@@ -9495,7 +9743,9 @@ injectStyles(styles);
 
                                 tr.innerHTML = `
                                     <td class="pair_num">
-                                        <span class="pair-type-badge ${typeClass}">${pair.type}</span>
+                                        <div class="pair-badge-wrapper">
+                                            <span class="pair-type-badge ${typeClass}">${pair.type}</span>
+                                        </div>
                                         1 пара<br><font class="eval">${pair.startTime}</font>
                                     </td>
                                     <td class="pair_info">
@@ -9859,38 +10109,43 @@ injectStyles(styles);
                     aud.style.marginTop = '0.6rem';
                 });
 
-                // --- ПАРСИНГ ТИПА ПАРЫ (ЛЕК, ПРАКТ, ЛАБ) ---
+                // --- ПАРСИНГ ТИПА ПАРЫ (ЛЕК, ПРАКТ, ЛАБ, КОНС) ---
                 span9.querySelectorAll('.timetable-grid tr').forEach(row => {
                     const disContainer = row.querySelector('.pair_info .dis');
                     const numTd = row.querySelector('.pair_num');
 
                     if (disContainer && numTd) {
-                        // Тип пары обычно приписан в конце ссылки или прямо в span
                         const targetEl = disContainer.querySelector('a') || disContainer;
                         const text = targetEl.textContent;
 
                         // Ищем (лек), (практ), (лаб), (зач), (экз) в самом конце строки
                         const match = text.match(/\s*\((лек|практ|лаб|зач|экз)\)\s*$/i);
+                        let type = '';
+                        let typeClass = 'type-badge-lek';
 
                         if (match) {
-                            const type = match[1].toLowerCase();
-
-                            // Удаляем тип из оригинального названия предмета
+                            type = match[1].toLowerCase();
                             targetEl.textContent = text.replace(match[0], '');
+                        } else if (text.toLowerCase().includes('консультация')) {
+                            type = 'конс';
+                        }
 
-                            // Выбираем цвет в зависимости от типа
-                            let typeClass = 'type-badge-lek';
+                        if (type) {
                             if (type === 'лек') typeClass = 'type-badge-lek';
                             else if (type === 'практ') typeClass = 'type-badge-pract';
                             else if (type === 'лаб') typeClass = 'type-badge-lab';
                             else if (type === 'зач' || type === 'экз') typeClass = 'type-badge-exam';
+                            else if (type === 'конс') typeClass = 'type-badge-cons';
 
-                            // Создаем метку и вставляем её в колонку со временем (перед "1 пара")
                             const badge = document.createElement('span');
                             badge.className = `pair-type-badge ${typeClass}`;
                             badge.textContent = type;
 
-                            numTd.prepend(badge);
+                            const badgeWrapper = document.createElement('div');
+                            badgeWrapper.className = 'pair-badge-wrapper';
+                            badgeWrapper.appendChild(badge);
+
+                            numTd.prepend(badgeWrapper);
                         }
                     }
                 });
@@ -10178,29 +10433,102 @@ injectStyles(styles);
 
                         row.querySelectorAll('.note-btn-wrapper').forEach(w => w.remove());
                         row.querySelectorAll('.subject-note-btn').forEach(btn => btn.remove());
+                        row.querySelectorAll('.pair-important-btn').forEach(btn => btn.remove());
 
+                        // --- ПРОВЕРКА: ПРОШЛА ЛИ ПАРА ---
+                        let isPassed = false;
+                        if (dayDateStr !== 'UnknownDate') {
+                            const match = dayDateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
+                            let classDate = new Date();
+                            if (match) {
+                                const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
+                                if (m !== undefined) {
+                                    classDate.setMonth(m);
+                                    classDate.setDate(parseInt(match[1]));
+                                }
+                            } else {
+                                const isoMatch = dayDateStr.match(/(\d{2})\.(\d{2})/);
+                                if (isoMatch) {
+                                    classDate.setMonth(parseInt(isoMatch[2])-1);
+                                    classDate.setDate(parseInt(isoMatch[1]));
+                                }
+                            }
+                            
+                            classDate.setHours(0,0,0,0);
+                            const today = new Date();
+                            today.setHours(0,0,0,0);
+                            
+                            if (classDate.getTime() < today.getTime()) {
+                                isPassed = true; // День в прошлом
+                            } else if (classDate.getTime() === today.getTime()) {
+                                const timeEl = numTd.querySelector('.eval');
+                                if (timeEl) {
+                                    const parts = timeEl.textContent.trim().split(':');
+                                    if (parts.length === 2) {
+                                        const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                        const now = new Date();
+                                        const currentMins = now.getHours() * 60 + now.getMinutes();
+                                        if (currentMins >= startMins) isPassed = true; // Время вышло
+                                    }
+                                }
+                            }
+                        }
+
+                        // --- ЛОГИКА КНОПКИ ВАЖНОЙ ПАРЫ ---
+                        const importantPairs = JSON.parse(localStorage.getItem('etis_important_pairs_v1') || '[]');
+                        const isImportant = importantPairs.includes(pairId);
+
+                        // Окрашиваем тип пары
+                        if (isImportant) {
+                            row.classList.add('is-important');
+                        } else {
+                            row.classList.remove('is-important');
+                        }
+
+                        // Рендерим колокольчик ТОЛЬКО если пара ещё не началась (или если она уже отмечена, чтобы можно было снять)
+                        if (!isPassed || isImportant) {
+                            const impBtn = document.createElement('button');
+                            impBtn.className = 'pair-important-btn';
+                            impBtn.title = isImportant ? "Снять отметку" : "Пометить как важную";
+                            impBtn.innerHTML = isImportant ? '<span class="material-icons" style="font-size:1.6rem;">notification_important</span>' : '<span class="material-icons" style="font-size:1.6rem;">notifications_none</span>';
+                            if (isImportant) impBtn.classList.add('is-active');
+
+                            impBtn.addEventListener('click', (e) => {
+                                e.preventDefault(); e.stopPropagation();
+                                
+                                let imp = JSON.parse(localStorage.getItem('etis_important_pairs_v1') || '[]');
+                                if (imp.includes(pairId)) {
+                                    imp = imp.filter(id => id !== pairId);
+                                } else {
+                                    imp.push(pairId);
+                                }
+                                localStorage.setItem('etis_important_pairs_v1', JSON.stringify(imp));
+                                renderNotes();
+                            });
+
+                            const typeBadge = numTd.querySelector('.pair-type-badge');
+                            if (typeBadge) {
+                                typeBadge.appendChild(impBtn);
+                            } else {
+                                const fallbackWrapper = document.createElement('div');
+                                fallbackWrapper.className = 'pair-badge-wrapper';
+                                impBtn.style.position = 'static';
+                                impBtn.style.transform = 'none';
+                                fallbackWrapper.appendChild(impBtn);
+                                numTd.prepend(fallbackWrapper);
+                            }
+                        }
+
+                        // --- ЛОГИКА ЗАМЕТКИ ---
                         const noteBtn = document.createElement('button');
                         noteBtn.className = 'subject-note-btn';
-                        noteBtn.innerHTML = currentNote ? '<span class="material-icons">assignment</span>' : '<span class="material-icons">edit</span>';
                         if (currentNote) noteBtn.classList.add('has-note');
+                        noteBtn.title = currentNote ? "Изменить заметку" : "Добавить заметку";
+                        noteBtn.innerHTML = '<span class="material-icons">edit</span>';
 
                         noteBtn.addEventListener('click', (e) => {
                             e.preventDefault(); e.stopPropagation();
-                            
-                            // Разделяем логику кнопок
-                            if (row.classList.contains('external-event-row')) {
-                                openExtEventModal(row); // Редактор внешнего события
-                            } else if (row.classList.contains('custom-pair-row')) {
-                                const pairIdFromRow = row.getAttribute('data-custom-id');
-                                const pairData = customPairs.find(p => p.id === pairIdFromRow);
-                                if (pairData) {
-                                    pairData.pairNoteId = pairId;
-                                    const dayNameEl = row.closest('.day').querySelector('.day-name');
-                                    openCustomPairModal(dayNameEl ? dayNameEl.textContent.trim() : 'День', pairData);
-                                }
-                            } else {
-                                openNoteModal(cleanSubjectName, pairId, index, allRowsArray, currentNote);
-                            }
+                            openNoteModal(cleanSubjectName, pairId, index, allRowsArray, currentNote);
                         });
 
                         const noteWrapper = document.createElement('span');
@@ -10208,6 +10536,7 @@ injectStyles(styles);
                         noteWrapper.style.display = 'inline-flex';
                         noteWrapper.appendChild(noteBtn);
 
+                        // Вставляем карандашик справа от ПРЕДМЕТА/АУДИТОРИИ
                         let targetContainer = audContainer && audContainer.textContent.trim() !== '' ? audContainer : disContainer;
                         targetContainer.appendChild(noteWrapper);
                     });
@@ -10379,8 +10708,8 @@ injectStyles(styles);
                             evalLink = row.querySelector('.pair_teacher .eval');
                             hasEval = !!evalLink;
                         } else if (dayHeader) {
-                            currentTarget = dayHeader;
-                            targetElements = [dayHeader];
+                            currentTarget = dayHeader.closest('.day'); 
+                            targetElements = [currentTarget];
                             targetType = 'day';
                         }
 
@@ -10424,9 +10753,60 @@ injectStyles(styles);
                             if (diffX < 0) {
                                 swipeDir = 'left';
                                 iconEl.textContent = targetType === 'day' ? 'add' : 'edit';
-                            } else if (diffX > 0 && targetType === 'row' && hasEval) {
+                            } else if (diffX > 0 && targetType === 'row') {
                                 swipeDir = 'right';
-                                iconEl.textContent = 'star_rate';
+                                
+                                // ПРОВЕРКА НА ПРОШЕДШУЮ ПАРУ
+                                let isPassed = false;
+                                const dayDateEl = currentTarget.closest('.day')?.querySelector('.day-date');
+                                if (dayDateEl) {
+                                    const dateStr = dayDateEl.textContent.trim();
+                                    const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
+                                    let classDate = new Date();
+                                    if (match) {
+                                        const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
+                                        if (m !== undefined) {
+                                            classDate.setMonth(m);
+                                            classDate.setDate(parseInt(match[1]));
+                                        }
+                                    } else {
+                                        const isoMatch = dateStr.match(/(\d{2})\.(\d{2})/);
+                                        if (isoMatch) {
+                                            classDate.setMonth(parseInt(isoMatch[2])-1);
+                                            classDate.setDate(parseInt(isoMatch[1]));
+                                        }
+                                    }
+                                    classDate.setHours(0,0,0,0);
+                                    const today = new Date();
+                                    today.setHours(0,0,0,0);
+                                    
+                                    if (classDate.getTime() < today.getTime()) {
+                                        isPassed = true;
+                                    } else if (classDate.getTime() === today.getTime()) {
+                                        const timeEl = currentTarget.querySelector('.eval');
+                                        if (timeEl) {
+                                            const parts = timeEl.textContent.trim().split(':');
+                                            if (parts.length === 2) {
+                                                const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                                const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
+                                                if (currentMins >= startMins) isPassed = true;
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (!isPassed) {
+                                    iconEl.textContent = 'notification_important';
+                                    bubble.className = 'active-threshold action-important';
+                                } else if (hasEval) {
+                                    iconEl.textContent = 'star_rate';
+                                    bubble.className = 'active-threshold action-eval';
+                                } else {
+                                    // Если пара прошла и кнопки оценки тоже нет — сбрасываем свайп
+                                    targetElements.forEach(el => el.style.transform = `translateX(0px)`);
+                                    bubble.style.opacity = '0';
+                                    return;
+                                }
                             } else {
                                 targetElements.forEach(el => el.style.transform = `translateX(0px)`);
                                 bubble.style.opacity = '0';
@@ -10503,9 +10883,16 @@ injectStyles(styles);
                                     if (dir === 'left') {
                                         const noteBtn = target.querySelector('.subject-note-btn');
                                         if (noteBtn) noteBtn.click();
-                                    } else if (dir === 'right' && el) {
-                                        if (el.hasAttribute('href')) window.location.href = el.getAttribute('href');
-                                        else el.click();
+                                    } else if (dir === 'right') {
+                                        if (bubble.classList.contains('action-important')) {
+                                            const impBtn = target.querySelector('.pair-important-btn');
+                                            if (impBtn) impBtn.click();
+                                        } else if (bubble.classList.contains('action-eval')) {
+                                            if (el) {
+                                                if (el.hasAttribute('href')) window.location.href = el.getAttribute('href');
+                                                else el.click();
+                                            }
+                                        }
                                     }
                                 }
                             }, 150); // Небольшая задержка, чтобы строка успела вернуться визуально
@@ -10607,6 +10994,8 @@ injectStyles(styles);
                                 
                                 if (key === 'SUMMARY') currentEvent.summary = value.replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '');
                                 else if (key === 'LOCATION') currentEvent.location = value.replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '');
+                                else if (key === 'DESCRIPTION') currentEvent.description = value.replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '');
+                                else if (key === 'URL') currentEvent.url = value;
                                 else if (key === 'DTSTART') currentEvent.start = parseICalDate(value);
                                 else if (key === 'DTEND') currentEvent.end = parseICalDate(value);
                                 else if (key === 'RRULE') currentEvent.rrule = value.toUpperCase();
@@ -10794,6 +11183,36 @@ injectStyles(styles);
                             const displayLoc = activeOverride && activeOverride.loc !== undefined ? activeOverride.loc : originalLoc;
                             const displayTeacher = activeOverride && activeOverride.teacher ? activeOverride.teacher : '';
 
+                            // ИЗВЛЕЧЕНИЕ ССЫЛОК ИЗ КАЛЕНДАРЯ
+                            let extractedUrl = ev.url || '';
+                            if (!extractedUrl && ev.description) {
+                                // Ищем любую ссылку в описании события
+                                const urlMatch = ev.description.match(/(https?:\/\/[^\s<]+)/i);
+                                if (urlMatch) extractedUrl = urlMatch[1];
+                            }
+                            if (!extractedUrl && originalLoc) {
+                                // Или ищем ссылку в поле локации
+                                const urlMatch = originalLoc.match(/(https?:\/\/[^\s<]+)/i);
+                                if (urlMatch) extractedUrl = urlMatch[1];
+                            }
+
+                            // Генерируем контент для блока аудитории
+                            let audContent = '';
+                            if (displayLoc && !displayLoc.match(/^https?:\/\//i)) {
+                                // Если локация это текст, а не ссылка, выводим с иконкой метки
+                                audContent += `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>${displayLoc}</div>`;
+                            }
+                            if (extractedUrl) {
+                                // Формируем красивую капсулу-кнопку для ссылки
+                                let platformName = "Онлайн";
+                                let linkClass = "btn-generic-online";
+                                
+                                if (extractedUrl.includes('zoom.us')) { platformName = "Zoom"; linkClass = ""; }
+                                else if (extractedUrl.includes('telemost')) { platformName = "Телемост"; linkClass = ""; }
+                                
+                                audContent += `<a href="${extractedUrl}" target="_blank" class="${linkClass}">${platformName}</a>`;
+                            }
+
                             // Форматируем время вывода
                             let timeHtml = '';
                             if (isAllDay) {
@@ -10822,18 +11241,18 @@ injectStyles(styles);
 
                             tr.innerHTML = `
                                 <td class="pair_num">
-                                    <span class="pair-type-badge" style="color: #AF52DE;">ЛИЧ</span>
+                                    <div class="pair-badge-wrapper">
+                                        <span class="pair-type-badge" style="color: #AF52DE;">ЛИЧ</span>
+                                    </div>
                                     ${timeHtml}
                                 </td>
                                 <td class="pair_info">
                                     <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
                                         <span style="font-weight:700; color:var(--color-text-primary); pointer-events:none;">${displayTitle}</span>
                                     </div>
-                                    ${displayLoc ? `
+                                    ${audContent ? `
                                     <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">
-                                        <div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);">
-                                            <span class="material-icons" style="font-size: 1.5rem;">place</span>${displayLoc}
-                                        </div>
+                                        ${audContent}
                                     </div>` : ''}
                                 </td>
                                 <td class="pair_teacher">
@@ -11415,7 +11834,7 @@ injectStyles(styles);
                                         <div class="order-meta">${date} • Запрос ${code}</div>
                                         <div class="order-title" style="white-space: normal; overflow: hidden; text-overflow: ellipsis;">${title}</div>
                                     </div>
-                                    <div style="font-size: 1.05rem; font-weight: 800; text-transform: uppercase; padding: 0.5rem 1rem; border-radius: 50px; letter-spacing: 0.5px; white-space: nowrap; background: ${statusBg}; color: ${statusColor}; margin-left: 10px; flex-shrink: 0; align-self: center;">
+                                    <div style="font-size: 1.05rem; font-weight: 800; text-transform: uppercase; padding: 0 1.2rem; height: 2.4rem; border-radius: 50px; letter-spacing: 0.5px; white-space: nowrap; background: ${statusBg}; color: ${statusColor}; margin-left: 10px; flex-shrink: 0; align-self: center; display: inline-flex; align-items: center; justify-content: center; line-height: 1;">
                                         ${displayStatus}
                                     </div>
                                 `;
@@ -11476,6 +11895,8 @@ injectStyles(styles);
                             el.removeAttribute('bgcolor');
                             el.removeAttribute('align');
                             el.removeAttribute('valign');
+                            el.removeAttribute('onmouseover');
+                            el.removeAttribute('onmouseout');
                         });
                     });
 
@@ -11483,74 +11904,134 @@ injectStyles(styles);
                     if (pageMode === 'session' || !pageMode) {
                         const submenu = span9.querySelector('.submenu');
 
-                        // Подгружаем библиотеку графиков Chart.js
-                        if (typeof Chart === 'undefined' && !document.querySelector('script[src*="chart.js"]')) {
-                            const script = document.createElement('script');
-                            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-                            document.head.appendChild(script);
+                        // Тулбар поиска
+                        let searchContainer = document.querySelector('.signs-local-input')?.closest('.timetable-toolbar');
+                        if (!searchContainer) {
+                            searchContainer = document.createElement('div');
+                            searchContainer.className = 'timetable-toolbar';
+                            searchContainer.style.marginBottom = '2.4rem';
+                            searchContainer.innerHTML = `
+                                <div class="capsule-search-item">
+                                    <span class="material-icons">search</span>
+                                    <input type="text" class="signs-local-input" placeholder="Поиск">
+                                </div>
+                                <button class="toolbar-item analytics-btn" style="flex: 0 0 auto !important;">
+                                    <span class="material-icons">insights</span>
+                                    Аналитика
+                                </button>
+                            `;
+                            if (submenu) submenu.after(searchContainer);
                         }
-
-                        // --- ДОБАВЛЕНИЕ ПОИСКА И КНОПКИ "АНАЛИТИКА" (КАПСУЛА) ---
-                        const searchContainer = document.createElement('div');
-                        searchContainer.className = 'timetable-toolbar'; // Применяем стиль тулбара-капсулы
-                        searchContainer.style.marginBottom = '2.4rem';
-
-                        searchContainer.innerHTML = `
-                            <div class="capsule-search-item">
-                                <span class="material-icons">search</span>
-                                <input type="text" class="signs-local-input" placeholder="Поиск">
-                            </div>
-                            <button class="toolbar-item analytics-btn" style="flex: 0 0 auto !important;">
-                                <span class="material-icons">insights</span>
-                                Аналитика
-                            </button>
-                        `;
-                        if (submenu) submenu.after(searchContainer);
 
                         const signsTables = span9.querySelectorAll('table.common');
 
-                        // Шаг 1. Разделение таблиц по триместрам
                         signsTables.forEach(table => {
                             const rows = Array.from(table.querySelectorAll('tr'));
-                            const isHeader = (r) => r.textContent.toLowerCase().includes('дисциплина') && r.textContent.toLowerCase().includes('оценка');
-                            const headerRow = rows.find(isHeader);
+                            const headerRow = rows.find(r => r.textContent.toLowerCase().includes('дисциплина'));
+                            let trimesterData = [];
 
-                            let currentTbody = null;
-                            let validSplit = false;
-
+                            let currentBlock = null;
                             rows.forEach(row => {
                                 const cells = row.children;
                                 if (cells.length === 1 && (cells[0].tagName === 'TH' || cells[0].classList.contains('subheader'))) {
-                                    validSplit = true;
-
-                                    const title = document.createElement('h3');
-                                    title.className = 'term-title';
-                                    title.style.marginTop = '2rem';
-                                    title.textContent = cells[0].textContent.trim();
-                                    table.parentNode.insertBefore(title, table);
-
-                                    const wrapper = document.createElement('div');
-                                    wrapper.className = 'wide-table-wrapper';
-
-                                    const newTable = document.createElement('table');
-                                    newTable.className = 'common session-table-v6';
-
-                                    if (headerRow) {
-                                        const thead = document.createElement('thead');
-                                        thead.appendChild(headerRow.cloneNode(true));
-                                        newTable.appendChild(thead);
-                                    }
-
-                                    currentTbody = document.createElement('tbody');
-                                    newTable.appendChild(currentTbody);
-                                    wrapper.appendChild(newTable);
-                                    table.parentNode.insertBefore(wrapper, table);
-                                }
-                                else if (currentTbody && !isHeader(row) && cells.length > 1) {
-                                    currentTbody.appendChild(row);
+                                    if (currentBlock) trimesterData.push(currentBlock);
+                                    currentBlock = { headerRaw: cells[0].textContent.trim(), rows: [] };
+                                } else if (currentBlock && cells.length > 1 && !row.textContent.includes('Дисциплина')) {
+                                    currentBlock.rows.push(row);
                                 }
                             });
-                            if (validSplit) table.remove();
+                            if (currentBlock) trimesterData.push(currentBlock);
+
+                            trimesterData.forEach(block => {
+                                let sum = 0, count = 0, hasFail = false, hasPass = false, hasAny = false;
+                                block.rows.forEach(r => {
+                                    const gText = r.cells[1].textContent.trim().toLowerCase();
+                                    if (gText && gText !== 'н') {
+                                        hasAny = true;
+                                        let num = parseFloat(gText.replace(',', '.'));
+                                        if (gText.includes('незач') || gText === '2') { hasFail = true; sum += 2; count++; }
+                                        else if (gText.includes('зач')) { hasPass = true; sum += 5; count++; }
+                                        else if (!isNaN(num) && num >= 3 && num <= 5) { sum += num; count++; }
+                                    }
+                                    
+                                    const gradeCell = r.cells[1];
+                                    const dateCell = r.cells[2];
+                                    if (gradeCell) {
+                                        let bg = 'rgba(142, 142, 147, 0.15)', color = 'var(--color-text-secondary)';
+                                        const gt = gradeCell.textContent.trim().toLowerCase();
+                                        if (gt.includes('отлич') || gt === '5' || gt.includes('зач')) { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
+                                        else if (gt.includes('хор') || gt === '4') { bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)'; }
+                                        else if (gt.includes('удовл') || gt === '3') { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
+                                        else if (gt.includes('незач') || gt.includes('неуд') || gt === '2' || gt === 'н') { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
+                                        gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center;">${gradeCell.textContent.trim()}</span>`;
+                                    }
+                                    if (dateCell) {
+                                        dateCell.textContent = dateCell.textContent.trim().replace(/\.20(\d{2})/, '.$1');
+                                        dateCell.style.fontSize = '1.2rem'; dateCell.style.opacity = '0.7';
+                                    }
+                                });
+
+                                const avg = count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
+
+                                // Парсинг (Только Номер, Тип периода и Курс)
+                                const trimM = block.headerRaw.match(/(\d+)\s+(триместр|семестр)/i);
+                                const courseM = block.headerRaw.match(/(\d+)\s+курс/i);
+                                
+                                const typePart = trimM ? trimM[2].toUpperCase() : "ТРИМЕСТР";
+                                const numPart = trimM ? trimM[1] : "";
+                                const coursePart = courseM ? `${courseM[1]} КУРС` : "";
+                                const combinedInfo = [`${numPart} ${typePart}`, coursePart].filter(x => x.trim()).join(', ');
+
+                                // Контейнер заголовков
+                                const headerContainer = document.createElement('div');
+                                headerContainer.className = 'subject-header-flex session-term-header-group';
+                                headerContainer.style.cssText = 'display: flex !important; justify-content: space-between !important; align-items: center !important; margin-top: 4rem; margin-bottom: 1.5rem; padding: 0 !important; margin-left: 0 !important; width: 100%; box-sizing: border-box;';
+
+                                // Левая капсула (Инфо)
+                                const leftCapsule = document.createElement('div');
+                                leftCapsule.className = 'subject-score-capsule';
+                                leftCapsule.style.cssText = 'margin-left: 0 !important; margin-right: 0; background: var(--color-highlight); color: var(--color-text-primary); border: 1px solid var(--color-table-border); box-shadow: none; font-size: 1.15rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 16px;';
+                                leftCapsule.textContent = combinedInfo;
+                                headerContainer.appendChild(leftCapsule);
+
+                                // Правая капсула (GPA)
+                                if (hasAny) {
+                                    const gpaCapsule = document.createElement('div');
+                                    gpaCapsule.className = 'subject-score-capsule';
+                                    gpaCapsule.style.cssText = 'margin: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 80px; height: 32px; font-weight: 800; font-size: 1.4rem; color: #fff;';
+                                    gpaCapsule.textContent = hasFail ? 'ДОЛГИ' : `${avg} / 5`;
+                                    
+                                    if (hasFail) { gpaCapsule.style.background = 'var(--color-red)'; }
+                                    else {
+                                        const p = (avg / 5) * 100;
+                                        if (p < 61) { gpaCapsule.style.background = 'var(--color-yellow)'; gpaCapsule.style.color = '#000'; }
+                                        else if (p < 81) { gpaCapsule.style.background = '#8BC34A'; }
+                                        else { gpaCapsule.style.background = 'var(--color-green)'; }
+                                    }
+                                    headerContainer.appendChild(gpaCapsule);
+                                }
+                                
+                                table.parentNode.insertBefore(headerContainer, table);
+
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'wide-table-wrapper session-term-table-group';
+                                wrapper.setAttribute('data-term-avg', avg);
+                                wrapper.setAttribute('data-term-name', block.headerRaw);
+
+                                const newTable = document.createElement('table');
+                                newTable.className = 'common session-table-v6';
+                                if (headerRow) {
+                                    const thead = document.createElement('thead');
+                                    thead.appendChild(headerRow.cloneNode(true));
+                                    newTable.appendChild(thead);
+                                }
+                                const tbody = document.createElement('tbody');
+                                block.rows.forEach(r => tbody.appendChild(r));
+                                newTable.appendChild(tbody);
+                                wrapper.appendChild(newTable);
+                                table.parentNode.insertBefore(wrapper, table);
+                            });
+                            table.remove();
                         });
 
                         // Шаг 2. Расчет среднего балла и создание Flex-заголовков
@@ -11988,6 +12469,31 @@ injectStyles(styles);
                                 }
                             });
                         });
+
+                        // --- ОФОРМЛЕНИЕ ПАМЯТКИ ТОЛЬКО ДЛЯ СЕССИЙ ---
+                        const sessionFooterP = span9.querySelector('p');
+                        if (sessionFooterP && sessionFooterP.textContent.includes('Показанные здесь оценки являются официальными')) {
+                            const infoBox = document.createElement('div');
+                            infoBox.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large) !important; box-shadow: var(--shadow-main); padding: 2.6rem !important; margin-top: 4rem; text-align: left !important; color: var(--color-text-primary); border: 1px solid var(--color-table-border); line-height: 1.6;';
+
+                            let rawHTML = sessionFooterP.innerHTML.replace(/&nbsp;/g, '').trim();
+                            let lines = rawHTML.split(/<br\s*\/?>/i).map(l => l.trim()).filter(l => l.length > 0);
+                            let processedContent = '';
+
+                            lines.forEach(line => {
+                                if (line.match(/^\d\./)) {
+                                    processedContent += `<div style="margin-bottom: 12px; padding-left: 28px; position: relative; font-size: 1.35rem;"><span style="position: absolute; left: 0; font-weight: 800; color: var(--color-accent);">${line.charAt(0)}</span>${line.substring(2)}</div>`;
+                                } else if (line.toLowerCase().includes('порядок уточнения')) {
+                                    processedContent += `<div style="font-weight: 800; margin: 20px 0 15px; font-size: 1.4rem; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 0.5px;">${line}</div>`;
+                                } else {
+                                    processedContent += `<p style="margin-bottom: 16px; opacity: 0.9; font-size: 1.35rem;">${line}</p>`;
+                                }
+                            });
+
+                            infoBox.innerHTML = `<div style="display:flex; align-items:center; gap:12px; margin-bottom:22px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;"><span class="material-icons" style="color:var(--color-accent); font-size: 26px;">gavel</span>Официальное уведомление</div><div style="text-align: left !important;">${processedContent}</div>`;
+                            sessionFooterP.replaceWith(infoBox);
+                        }
+
                     }
 
                     // 4. ОБРАБОТКА "ОЦЕНКИ В ТРИМЕСТРЕ"
@@ -12078,14 +12584,56 @@ injectStyles(styles);
                                     }
                                 }
 
-                                // 3. Считаем баллы для общей капсулы предмета
+                                // 3. Расчет баллов (Оценка / Макс. рейтинг) и отрисовка капсул
                                 if (cells.length >= 7) {
-                                    const curStr = cells[5].textContent.trim();
-                                    const maxStr = cells[6].textContent.trim();
-                                    if (curStr !== '' && curStr !== 'н') {
+                                    const gradeStr = cells[3].textContent.trim(); // Колонка "Оценка"
+                                    const maxStr = cells[6].textContent.trim();   // Колонка "Макс. балл в рейтинг"
+                                    
+                                    const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
+
+                                    if (gradeStr !== '') {
                                         hasAnyGrades = true;
-                                        calculatedCurrent += parseInt(curStr, 10) || 0;
-                                        calculatedMax += parseInt(maxStr, 10) || 0;
+                                        
+                                        // Прибавляем максимальный балл в знаменатель (если он больше 0), даже если стоит "н"
+                                        if (maxVal > 0) {
+                                            calculatedMax += maxVal;
+                                            
+                                            // А текущие баллы плюсуем только если это не "н"
+                                            if (gradeStr !== 'н') {
+                                                calculatedCurrent += parseFloat(gradeStr.replace(',', '.')) || 0;
+                                            }
+                                        }
+
+                                        if (gradeStr !== 'н') {
+                                            // Оформляем колонку "Оценка" (cells[3]) в цветную капсулу
+                                            if (!cells[3].querySelector('.kt-score-capsule')) {
+                                                let bg, color;
+                                                
+                                                if (maxVal > 0) {
+                                                    const gradeVal = parseFloat(gradeStr.replace(',', '.')) || 0;
+                                                    const p = (gradeVal / maxVal) * 100;
+                                                    if (p < 41) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
+                                                    else if (p < 61) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
+                                                    else if (p < 81) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; }
+                                                    else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
+                                                } else {
+                                                    // Если макс. балл 0, делаем капсулу серой
+                                                    bg = 'rgba(142, 142, 147, 0.15)'; color = 'var(--color-text-secondary)';
+                                                }
+
+                                                // Сохраняем содержимое и оборачиваем в капсулу
+                                                const originalContent = cells[3].innerHTML;
+                                                cells[3].innerHTML = `<span class="kt-score-capsule" style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-block; text-align: center; min-width: 24px;">${originalContent}</span>`;
+                                                // Убираем подчеркивание у внутреннего спана ЕТИСа, чтобы не двоилось
+                                                const innerSpan = cells[3].querySelector('span span');
+                                                if (innerSpan) innerSpan.style.borderBottom = 'none';
+                                            }
+                                        } else {
+                                            // Если стоит "н", рисуем красную капсулу неявки
+                                            if (!cells[3].querySelector('.kt-score-capsule')) {
+                                                cells[3].innerHTML = `<span class="kt-score-capsule" style="background: rgba(255, 59, 48, 0.15); color: var(--color-red); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-block; text-align: center; min-width: 24px;">н</span>`;
+                                            }
+                                        }
                                     }
                                 }
                             });
@@ -12174,12 +12722,20 @@ injectStyles(styles);
                                         // --- ПЕРЕСЧЕТ БАЛЛОВ НА ЛЕТУ ---
                                         const cells = row.querySelectorAll('td');
                                         if (cells.length >= 7) {
-                                            const curStr = cells[5].textContent.trim();
+                                            const gradeStr = cells[3].textContent.trim();
                                             const maxStr = cells[6].textContent.trim();
-                                            if (curStr !== '' && curStr !== 'н') {
+                                            
+                                            if (gradeStr !== '') {
                                                 hasAnyGrades = true;
-                                                calculatedCurrent += parseInt(curStr, 10) || 0;
-                                                calculatedMax += parseInt(maxStr, 10) || 0;
+                                                const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
+                                                
+                                                if (maxVal > 0) {
+                                                    calculatedMax += maxVal;
+                                                    
+                                                    if (gradeStr !== 'н') {
+                                                        calculatedCurrent += parseFloat(gradeStr.replace(',', '.')) || 0;
+                                                    }
+                                                }
                                             }
                                         }
                                     } else {
@@ -12338,51 +12894,292 @@ injectStyles(styles);
                             overlay.classList.add('active');
                             modal.classList.add('active');
                         });
+                        
+                        // --- ОФОРМЛЕНИЕ ПАМЯТКИ "ПОРЯДОК УТОЧНЕНИЯ ОЦЕНОК" ---
+                        const currentFooterP = span9.querySelector('p');
+                        if (currentFooterP && currentFooterP.textContent.includes('Показанные здесь оценки являются официальными')) {
+                            const infoBox = document.createElement('div');
+                            infoBox.style.cssText = `
+                                background: var(--color-card);
+                                border-radius: var(--radius-large) !important;
+                                box-shadow: var(--shadow-main);
+                                padding: 2.6rem !important;
+                                margin-top: 4rem;
+                                text-align: left !important;
+                                color: var(--color-text-primary);
+                                border: 1px solid var(--color-table-border);
+                                line-height: 1.6;
+                            `;
+
+                            // Очищаем текст от мусора и разбиваем на строки
+                            let rawHTML = currentFooterP.innerHTML.replace(/&nbsp;/g, '').trim();
+                            let lines = rawHTML.split(/<br\s*\/?>/i).map(l => l.trim()).filter(l => l.length > 0);
+
+                            let processedContent = '';
+                            lines.forEach(line => {
+                                // Если строка начинается с цифры (пункты порядка)
+                                if (line.match(/^\d\./)) {
+                                    processedContent += `
+                                        <div style="margin-bottom: 12px; padding-left: 28px; position: relative; font-size: 1.35rem;">
+                                            <span style="position: absolute; left: 0; font-weight: 800; color: var(--color-accent);">${line.charAt(0)}</span>
+                                            ${line.substring(2)}
+                                        </div>`;
+                                } 
+                                // Заголовок "Порядок уточнения:"
+                                else if (line.toLowerCase().includes('порядок уточнения')) {
+                                    processedContent += `<div style="font-weight: 800; margin: 20px 0 15px; font-size: 1.4rem; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 0.5px;">${line}</div>`;
+                                }
+                                // Обычные абзацы
+                                else {
+                                    processedContent += `<p style="margin-bottom: 16px; opacity: 0.9; font-size: 1.35rem;">${line}</p>`;
+                                }
+                            });
+
+                            infoBox.innerHTML = `
+                                <div style="display:flex; align-items:center; gap:12px; margin-bottom:22px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;">
+                                    <span class="material-icons" style="color:var(--color-accent); font-size: 26px;">gavel</span>
+                                    Официальное уведомление
+                                </div>
+                                <div style="text-align: left !important;">
+                                    ${processedContent}
+                                </div>
+                            `;
+
+                            currentFooterP.replaceWith(infoBox);
+                        }
+
                     }
 
                     // 5. ОБРАБОТКА "ОЦЕНКИ В ДИПЛОМ"
-                    if (pageMode === 'diplom') {
+                    const activeSubmenu = span9.querySelector('.submenu b');
+                    const isDiplom = pageMode === 'diplom' || (activeSubmenu && activeSubmenu.textContent.toLowerCase().includes('диплом'));
+
+                    if (isDiplom) {
                         const table = span9.querySelector('table.common');
                         if (table) {
+                            // Скрываем старый текст среднего балла
                             const oldAvg = Array.from(span9.querySelectorAll('div')).find(d => d.textContent.includes('Средний балл') && !d.classList.contains('subject-score-capsule'));
                             if (oldAvg) oldAvg.style.display = 'none';
+
                             const wrapper = document.createElement('div');
                             wrapper.className = 'wide-table-wrapper';
                             table.parentNode.insertBefore(wrapper, table);
                             wrapper.appendChild(table);
+
                             let sum = 0, count = 0, hasFail = false;
                             const rows = table.querySelectorAll('tr');
+
                             rows.forEach(row => {
                                 const cells = row.querySelectorAll('td');
                                 if (cells.length >= 2) {
-                                    const text = cells[1].textContent.toLowerCase().trim();
+                                    const gradeCell = cells[1];
+                                    const text = gradeCell.textContent.toLowerCase().trim();
+
+                                    // Парсим оценки для среднего балла
                                     if (text.includes('отлично')) { sum += 5; count++; }
                                     else if (text.includes('хорошо')) { sum += 4; count++; }
                                     else if (text.includes('удовлетворительно') || text.includes('удовл.')) { sum += 3; count++; }
                                     else if (text.includes('неудовлетворительно') || text.includes('незачет') || text.includes('незачёт')) { hasFail = true; }
+
+                                    // Оформляем капсулу оценки
+                                    if (text && !text.includes('нет итоговой оценки')) {
+                                        let bg = 'rgba(142, 142, 147, 0.15)', color = 'var(--color-text-secondary)';
+                                        if (text.includes('отлично') || (text.includes('зачет') && !text.includes('незачет'))) {
+                                            bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)';
+                                        } else if (text.includes('хорошо')) {
+                                            bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)';
+                                        } else if (text.includes('удовлетворительно') || text.includes('удовл.')) {
+                                            bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)';
+                                        } else if (text.includes('неуд') || text.includes('незач') || text === '2') {
+                                            bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)';
+                                        }
+                                        
+                                        gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">${gradeCell.textContent.trim()}</span>`;
+                                    } else if (text.includes('нет итоговой оценки')) {
+                                        gradeCell.innerHTML = `<span style="color: var(--color-text-secondary); font-size: 1.2rem;">Нет оценки</span>`;
+                                    }
+                                    
+                                    // Убираем старый шрифт из первой колонки (элективы)
+                                    const nameCell = cells[0];
+                                    if (nameCell && nameCell.querySelector('i')) {
+                                        nameCell.innerHTML = nameCell.innerHTML.replace(/<font[^>]*>/gi, '').replace(/<\/font>/gi, '');
+                                        const notes = nameCell.querySelectorAll('i');
+                                        notes.forEach(note => {
+                                            note.style.color = 'var(--color-text-secondary)';
+                                            note.style.fontSize = '1.1rem';
+                                            note.style.fontStyle = 'normal';
+                                            note.style.textTransform = 'uppercase';
+                                            note.style.letterSpacing = '0.5px';
+                                            note.style.display = 'block';
+                                            note.style.marginBottom = '0.4rem';
+                                        });
+                                    }
                                 }
                             });
+
                             const headerContainer = document.createElement('div');
                             headerContainer.className = 'subject-header-flex';
                             const title = document.createElement('h3');
                             title.textContent = 'Выписка оценок к диплому';
                             headerContainer.appendChild(title);
+
                             const capsule = document.createElement('div');
                             capsule.className = 'subject-score-capsule';
-                            if (hasFail) { capsule.textContent = 'ЕСТЬ ДОЛГИ'; capsule.style.background = 'var(--color-red)'; capsule.style.color = '#fff'; }
-                            else if (count > 0) {
+                            if (hasFail) { 
+                                capsule.textContent = 'ЕСТЬ ДОЛГИ'; 
+                                capsule.style.background = 'var(--color-red)'; 
+                                capsule.style.color = '#fff'; 
+                            } else if (count > 0) {
                                 const avg = Math.round((sum / count) * 100) / 100;
                                 capsule.textContent = `${avg} / 5`;
                                 const p = (avg / 5) * 100;
                                 if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
                                 else if (p < 81) { capsule.style.background = '#8BC34A'; capsule.style.color = '#fff'; }
                                 else { capsule.style.background = 'var(--color-green)'; capsule.style.color = '#fff'; }
-                                if (avg >= 4.75) capsule.style.boxShadow = '0 0 0 2px #FFD700';
+                                if (avg >= 4.75) capsule.style.boxShadow = '0 0 0 2px #FFD700'; // Красивый бордер для красного диплома
                             } else {
-                                capsule.textContent = 'Нет оценок'; capsule.style.background = 'var(--color-highlight)'; capsule.style.color = 'var(--color-text-secondary)';
+                                capsule.textContent = 'Нет оценок'; 
+                                capsule.style.background = 'var(--color-highlight)'; 
+                                capsule.style.color = 'var(--color-text-secondary)';
                             }
                             headerContainer.appendChild(capsule);
                             span9.insertBefore(headerContainer, wrapper);
+
+                            // Оформление подвала с текстом
+                            const footerP = span9.querySelector('p');
+                            if (footerP && footerP.textContent.includes('Итоговая оценка по дисциплине')) {
+                                const infoBox = document.createElement('div');
+                                infoBox.style.cssText = `
+                                    background: var(--color-card);
+                                    border-radius: var(--radius-large) !important;
+                                    box-shadow: var(--shadow-main);
+                                    padding: 2.4rem !important;
+                                    margin-top: 3rem;
+                                    text-align: left !important;
+                                    color: var(--color-text-primary);
+                                    border: 1px solid var(--color-table-border);
+                                `;
+
+                                let rawHTML = footerP.innerHTML.replace(/&nbsp;/g, '').trim();
+                                let cleanHTML = rawHTML.split(/<br\s*\/?>/i)
+                                    .map(line => line.trim())
+                                    .filter(line => line.length > 0)
+                                    .map(line => {
+                                        line = line.replace(/<sup>\*<\/sup>/i, '');
+                                        return `<p style="margin-bottom: 12px; line-height: 1.6; opacity: 0.9; font-size: 1.35rem;">${line}</p>`;
+                                    }).join('');
+
+                                infoBox.innerHTML = `
+                                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;">
+                                        <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">info</span>
+                                        Правила расчета
+                                    </div>
+                                    <div style="text-align: left !important;">
+                                        ${cleanHTML}
+                                    </div>
+                                `;
+
+                                footerP.replaceWith(infoBox);
+                            }
+                        }
+                    }
+
+                    // 6. ОБРАБОТКА "ИТОГОВЫЙ РЕЙТИНГ"
+                    const allTables = span9.querySelectorAll('table.common');
+                    let ratingTable = null;
+
+                    // Ищем таблицу рейтинга по заголовку
+                    allTables.forEach(t => {
+                        if (t.textContent.includes('Совокупность студентов')) ratingTable = t;
+                    });
+
+                    if (ratingTable) {
+                        // Оборачиваем для скролла
+                        if (!ratingTable.parentNode.classList.contains('wide-table-wrapper')) {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'wide-table-wrapper';
+                            ratingTable.parentNode.insertBefore(wrapper, ratingTable);
+                            wrapper.appendChild(ratingTable);
+                        }
+                        
+                        // Принудительно растягиваем таблицу и убираем артефакты display: block
+                        ratingTable.style.setProperty('display', 'table', 'important');
+                        ratingTable.style.setProperty('width', '100%', 'important');
+                        ratingTable.style.setProperty('min-width', '100%', 'important');
+
+                        // --- ОФОРМЛЕНИЕ ЧИСЕЛ В КАПСУЛЫ ---
+                        ratingTable.querySelectorAll('tr').forEach(row => {
+                            const cells = row.querySelectorAll('td');
+                            if (cells.length >= 2) {
+                                const ratingCell = cells[cells.length - 1]; // Последняя ячейка
+                                const text = ratingCell.textContent.trim();
+                                const match = text.match(/(\d+)\s+из\s+(\d+)/);
+
+                                if (match) {
+                                    const current = parseInt(match[1], 10);
+                                    const total = parseInt(match[2], 10);
+                                    
+                                    let bg = 'rgba(142, 142, 147, 0.15)'; // Дефолтный серый
+                                    let color = 'var(--color-text-secondary)';
+                                    
+                                    if (current > 0) {
+                                        // Чем ближе к 1 месту, тем "зеленее" процент
+                                        // 1 место из 22 => 100%. 22 место из 22 => 0%.
+                                        const p = total > 1 ? ((total - current) / (total - 1)) * 100 : 100;
+                                        
+                                        if (p < 30) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
+                                        else if (p < 60) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
+                                        else if (p < 85) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; }
+                                        else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
+                                    }
+
+                                    // Оборачиваем текст. pointer-events: none нужен, чтобы ховер шел сквозь капсулу на саму ячейку
+                                    ratingCell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; pointer-events: none;">${text}</span>`;
+                                    ratingCell.style.textAlign = 'right';
+                                    ratingCell.style.cursor = 'help';
+                                }
+                            }
+                        });
+
+                        // --- ОФОРМЛЕНИЕ ТЕКСТА СНИЗУ ---
+                        const footerP = span9.querySelector('p');
+                        if (footerP && footerP.textContent.includes('Показанные здесь оценки')) {
+                            const infoBox = document.createElement('div');
+                            
+                            infoBox.style.cssText = `
+                                background: var(--color-card);
+                                border-radius: var(--radius-large) !important;
+                                box-shadow: var(--shadow-main);
+                                padding: 2.4rem !important;
+                                margin-top: 3rem;
+                                text-align: left !important;
+                                color: var(--color-text-primary);
+                                border: 1px solid var(--color-table-border);
+                            `;
+                            
+                            // Очистка текста от мусора ЕТИСа
+                            let rawHTML = footerP.innerHTML
+                                .replace(/&nbsp;/g, '')
+                                .trim();
+                            
+                            // Превращаем старые переносы в аккуратные абзацы
+                            let cleanHTML = rawHTML.split(/<br\s*\/?>/i)
+                                .map(line => line.trim())
+                                .filter(line => line.length > 0)
+                                .map(line => `<p style="margin-bottom: 12px; line-height: 1.6; opacity: 0.9; font-size: 1.35rem;">${line}</p>`)
+                                .join('');
+                            
+                            infoBox.innerHTML = `
+                                <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;">
+                                    <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">info</span>
+                                    Порядок уточнения оценок
+                                </div>
+                                <div style="text-align: left !important;">
+                                    ${cleanHTML}
+                                </div>
+                            `;
+                            
+                            footerP.replaceWith(infoBox);
                         }
                     }
 
@@ -13870,6 +14667,19 @@ injectStyles(styles);
             }
 
         initSmartScroll();
+
+        // --- АНИМАЦИЯ ЗАГРУЗКИ ПРИ ПЕРЕКЛЮЧЕНИИ ВКЛАДОК ---
+        document.querySelectorAll('.submenu a:not(.answer-btn-custom), .weeks a, .timetable-toolbar a.toolbar-item').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const href = link.getAttribute('href');
+                // Игнорируем якорные ссылки и JS-функции, так как они не перезагружают страницу
+                if (href && !href.startsWith('#') && !href.includes('javascript:')) {
+                    const menuBtn = document.querySelector('.mobile-menu-btn');
+                    if (menuBtn) menuBtn.classList.add('is-loading');
+                }
+            });
+        });
+
         if (page.includes('announces') || page.includes('teacher_notes')) {
             initEventLinks();
         }
