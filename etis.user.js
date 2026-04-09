@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.9100
-// @changelog    Умное расписание: поддержка ссылок в событиях из внешних календарей, пометка важных пар. Доработка вида оценок. Фикс переключения вкладок на телефонах.
+// @version      2.0000
+// @changelog    1) Закрашивание уже прошедших пар, 2) Шеринг отдельного дня, 3) Генерация QR кода при шеринге на онлайн занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
+// @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
+// @icon64       https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
 // @match        https://student.psu.ru/*
 // @run-at       document-start
 // @grant        GM_xmlhttpRequest
@@ -12,7 +14,6 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
-// @require      https://cdn.jsdelivr.net/npm/chart.js
 // @connect      raw.githubusercontent.com
 // @connect      *
 // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
@@ -1341,7 +1342,7 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         visibility: visible; 
     }
 
-    .common, .teach_plan, .slimtab_nice {
+    .teach_plan, .slimtab_nice {
         display: block !important;
         width: 100% !important;
         overflow-x: auto !important;
@@ -1452,7 +1453,6 @@ input[type="checkbox"].tumbler-checkbox:checked:after {
         overflow-x: auto !important;
         -webkit-overflow-scrolling: touch !important;
         margin-bottom: 2rem !important;
-        max-width: calc(100vw - 2rem) !important;
         display: block !important;
     }
 
@@ -1767,7 +1767,7 @@ input::placeholder {
 .sidebar-logo {
     display: flex !important;
     align-items: center !important;
-    padding: 2.6rem 2.6rem 0.5rem 2.6rem !important;
+    padding: 2.2rem 2.2rem 0.5rem 2.2rem !important;
     gap: 10px !important;
     margin-bottom: 2.4rem !important;
     position: relative !important;
@@ -4204,10 +4204,12 @@ table.question_table td.answer_cell input[type="radio"] {
 
 /* Специальные стили для таблицы пропусков */
 .span9 table.common.absence-table {
-    table-layout: fixed !important;
+    table-layout: auto !important;
     width: 100% !important;
-    min-width: 800px !important;
+    min-width: 700px !important; 
+    border-collapse: separate !important;
 }
+
 
 /* Перебиваем глобальные настройки умных колонок */
 .span9 table.common.absence-table tr > th,
@@ -4453,6 +4455,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 .type-badge-pract { color: var(--color-green) !important; }
 .type-badge-lab { color: var(--color-warning) !important; }
 .type-badge-exam { color: var(--color-red) !important; }
+.type-badge-holiday { color: #00BFA5 !important; }
 
 /* --- АНИМАЦИИ ДЛЯ СТРОК РАСПИСАНИЯ --- */
 @keyframes cellScaleIn {
@@ -6172,25 +6175,73 @@ button.sync-tab.active {
         opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; width: 16px !important; margin-right: 4px !important;
     }
 }
+
+/* --- ШЕРИНГ ДНЯ И ЗАТЕМНЕНИЕ ПРОШЕДШИХ ПАР --- */
+.day-header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+.share-day-btn {
+    font-size: 1.8rem !important;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    margin-left: 0;
+    overflow: hidden;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+/* Прошедшие пары */
+.timetable-grid tr.pair-passed td {
+    opacity: 0.45;
+    transition: opacity 0.3s ease;
+}
+
+.timetable-grid tr.pair-passed .timetable-gap-capsule {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-secondary) !important;
+    border-color: var(--color-highlight) !important;
+}
+
+/* Ховеры только для ПК (мышь) */
+@media (hover: hover) and (pointer: fine) {
+    .timetable-grid tr.pair-passed:hover td { 
+        opacity: 0.9; 
+    }
+    .span9 .day h3:hover .share-day-btn {
+        opacity: 1;
+        visibility: visible;
+        width: 18px;
+        margin-left: 8px;
+    }
+}
+
+#swipe-action-bubble.active-threshold.action-share { color: var(--color-blue) !important; }
     `;
 
     // Внедряем стили
     const injectStyles = (css) => {
-    const style = document.createElement('style');
-    style.innerHTML = css;
-    if (document.head) {
-        document.head.appendChild(style);
-    } else {
-        // Если head еще не готов, ждем его появления
-        const observer = new MutationObserver(() => {
-            if (document.head) {
+        const style = document.createElement('style');
+        style.innerHTML = css;
+        if (document.head) {
+            document.head.appendChild(style);
+        } else if (document.documentElement) {
+            const observer = new MutationObserver(() => {
+                if (document.head) {
+                    document.head.appendChild(style);
+                    observer.disconnect();
+                }
+            });
+            observer.observe(document.documentElement, { childList: true });
+        } else {
+            document.addEventListener('DOMContentLoaded', () => {
                 document.head.appendChild(style);
-                observer.disconnect();
-            }
-        });
-        observer.observe(document.documentElement, { childList: true });
-    }
-};
+            });
+        }
+    };
 injectStyles(styles);
 
 
@@ -8311,21 +8362,30 @@ injectStyles(styles);
                     }
                 };
 
-                let existingH2c = null;
-                if (typeof html2canvas !== 'undefined') existingH2c = html2canvas;
-                else if (typeof unsafeWindow !== 'undefined' && unsafeWindow.html2canvas) existingH2c = unsafeWindow.html2canvas;
-                else if (typeof window !== 'undefined' && window.html2canvas) existingH2c = window.html2canvas;
+                let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
+                let qrObj = typeof QRious !== 'undefined' ? QRious : (window.QRious || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.QRious : null));
 
-                if (!existingH2c) {
-                    const script = document.createElement('script');
-                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                    script.onload = renderScreenshot;
-                    script.onerror = () => {
-                        if (originalBtnContainer) originalBtnContainer.innerHTML = '<span class="material-icons" style="color:var(--color-red);">error</span>';
-                    };
-                    document.head.appendChild(script);
+                if (!h2cObj || !qrObj) {
+                    const scripts =[];
+                    if (!h2cObj) scripts.push('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+                    if (!qrObj) scripts.push('https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js');
+                    
+                    let loadedCount = 0;
+                    scripts.forEach(src => {
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.onload = () => {
+                            loadedCount++;
+                            if (loadedCount === scripts.length) renderTimetable();
+                        };
+                        script.onerror = () => {
+                            shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">error</span> Ошибка';
+                            setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
+                        };
+                        document.head.appendChild(script);
+                    });
                 } else {
-                    renderScreenshot();
+                    renderTimetable();
                 }
             };
 
@@ -8876,12 +8936,17 @@ injectStyles(styles);
                 // --- ОФОРМЛЕНИЕ ВЫХОДНЫХ ДНЕЙ (0 ПАР) ---
                 span9.querySelectorAll('.no_pairs').forEach(el => {
                     const table = document.createElement('table');
-                    table.className = 'timetable-grid'; // Применяем сетку расписания
+                    table.className = 'timetable-grid'; 
 
                     table.innerHTML = `
                         <tbody>
                             <tr class="custom-no-pairs">
-                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
+                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">
+                                    <div class="pair-badge-wrapper">
+                                        <span class="pair-type-badge type-badge-holiday">ВЫХ</span>
+                                    </div>
+                                    0 пар<br><font class="eval">00:00</font>
+                                </td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
                                     <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
                                         <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
@@ -8893,7 +8958,6 @@ injectStyles(styles);
                         </tbody>
                     `;
 
-                    // Заменяем скучный текст на полноценную таблицу
                     el.parentNode.replaceChild(table, el);
                 });
                 span9.querySelectorAll('.day table').forEach(t => t.classList.add('timetable-grid'));
@@ -8912,13 +8976,8 @@ injectStyles(styles);
                     const originalText = shareBtn.innerHTML;
                     shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">hourglass_empty</span> Загрузка...';
 
-                    const renderTimetable = () => {
-                        // Хелпер для получения html2canvas из любых контекстов
-                        let h2c = null;
-                        if (typeof html2canvas !== 'undefined') h2c = html2canvas;
-                        else if (typeof unsafeWindow !== 'undefined' && unsafeWindow.html2canvas) h2c = unsafeWindow.html2canvas;
-                        else if (typeof window !== 'undefined' && window.html2canvas) h2c = window.html2canvas;
-
+                    const renderTimetable = async () => {
+                        let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
                         if (!h2c) {
                             console.error('html2canvas не найден');
                             shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">error</span> Ошибка';
@@ -8930,7 +8989,6 @@ injectStyles(styles);
                         const renderWidth = isMobile ? 540 : 1000;
 
                         const exportContainer = document.createElement('div');
-                        // Скрываем контейнер внизу экрана
                         exportContainer.style.position = 'fixed';
                         exportContainer.style.top = '100vh';
                         exportContainer.style.left = '0';
@@ -8941,14 +8999,10 @@ injectStyles(styles);
                         exportContainer.style.fontFamily = getComputedStyle(document.body).fontFamily;
                         exportContainer.style.zIndex = '-9999';
 
-                        // Если мобилка, форсируем минимальную высоту для соотношения 9:16 (как сторис)
-                        if (isMobile) {
-                            exportContainer.style.minHeight = (renderWidth * 16 / 9) + 'px';
-                        }
+                        if (isMobile) exportContainer.style.minHeight = (renderWidth * 16 / 9) + 'px';
 
                         let fileName = 'Расписание.png';
 
-                        // Формируем заголовок и название файла
                         const dateStyled = document.querySelector('.week-date-styled');
                         if (dateStyled) {
                             const dateText = dateStyled.textContent.trim();
@@ -8965,30 +9019,16 @@ injectStyles(styles);
                             exportContainer.appendChild(title);
                         }
 
-                        // Оборачиваем клон в .span9 для сохранения стилей
                         const span9Wrapper = document.createElement('div');
                         span9Wrapper.className = 'span9';
                         span9Wrapper.style.setProperty('margin', '0', 'important');
                         span9Wrapper.style.setProperty('padding', '0', 'important');
                         span9Wrapper.style.setProperty('width', '100%', 'important');
 
-                        // Клонируем всю таблицу расписания
                         const timetableClone = document.querySelector('.timetable').cloneNode(true);
 
-                        // Удаляем кнопки "оценить занятие", скрытые пары и точки
-                        timetableClone.querySelectorAll('.pair_teacher .eval').forEach(el => el.remove());
-                        timetableClone.querySelectorAll('.hidden-by-filter').forEach(el => el.remove());
-                        timetableClone.querySelectorAll('.live-dot').forEach(el => el.remove());
-
-                        // Снимаем синие подчеркивания у ссылок
-                        timetableClone.querySelectorAll('a').forEach(a => {
-                            a.style.textDecoration = 'none';
-                            a.style.color = getComputedStyle(a).color;
-                        });
-
-                        timetableClone.querySelectorAll('*').forEach(el => {
-                            el.style.boxSizing = 'border-box';
-                        });
+                        // ДОЖИДАЕМСЯ ПОДГОТОВКИ (В ТОМ ЧИСЛЕ ЗАГРУЗКИ QR-КОДОВ ИЗ API)
+                        await cleanTimetableForExport(timetableClone);
 
                         span9Wrapper.appendChild(timetableClone);
 
@@ -8999,94 +9039,59 @@ injectStyles(styles);
 
                         exportContainer.appendChild(span9Wrapper);
 
-                        // --- СКРЫТИЕ UI-ЭЛЕМЕНТОВ ДЛЯ СКРИНШОТА ---
                         const hideUIStyle = document.createElement('style');
                         hideUIStyle.innerHTML = `
-                            .live-dot,
-                            .add-custom-pair-btn,
-                            .delete-custom-pair-btn,
-                            .subject-note-btn {
-                                display: none !important;
-                                opacity: 0 !important;
-                                visibility: hidden !important;
-                            }
-
-                            .msg-sender,
-                            .msg-sender .material-icons,
-                            .teacher-name-link,
-                            .review-dis-link,
-                            .tpr_part > a,
-                            .theme a,
-                            .logo-say-hey,
-                            .accent-stat {
-                                background: none !important;
-                                -webkit-background-clip: initial !important;
-                                -webkit-text-fill-color: initial !important;
-                                color: var(--color-accent) !important;
-                            }
+                            .live-dot, .add-custom-pair-btn, .delete-custom-pair-btn, .subject-note-btn { display: none !important; opacity: 0 !important; visibility: hidden !important; }
+                            .msg-sender, .msg-sender .material-icons, .teacher-name-link, .review-dis-link, .tpr_part > a, .theme a, .logo-say-hey, .accent-stat { background: none !important; -webkit-background-clip: initial !important; -webkit-text-fill-color: initial !important; color: var(--color-accent) !important; }
                         `;
                         exportContainer.appendChild(hideUIStyle);
-
                         document.body.appendChild(exportContainer);
 
-                        // Рендерим канвас
                         h2c(exportContainer, {
                             scale: 2,
                             useCORS: true,
-                            windowWidth: isMobile ? renderWidth : 1200, // Включает мобильные стили CSS при рендере
+                            windowWidth: isMobile ? renderWidth : 1200,
                             backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'
                         }).then(canvas => {
-                            // Превращаем канвас в файл для нативного окна "Поделиться"
                             canvas.toBlob(blob => {
                                 if (!blob) throw new Error('Blob creation failed');
-
                                 const file = new File([blob], fileName, { type: 'image/png' });
 
-                                // Если мы с телефона и браузер поддерживает окно "Share"
                                 if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
-                                    navigator.share({
-                                        files: [file],
-                                        title: 'Расписание',
-                                    }).then(() => {
+                                    navigator.share({ files: [file], title: 'Расписание' }).then(() => {
                                         exportContainer.remove();
                                         shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">check</span> Готово!';
                                         setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
                                     }).catch(err => {
-                                        console.log('Пользователь отменил шаринг', err);
                                         exportContainer.remove();
                                         shareBtn.innerHTML = originalText;
                                     });
                                 } else {
-                                    // Фолбэк для ПК (просто скачивание)
                                     const link = document.createElement('a');
-                                    link.download = fileName;
-                                    link.href = URL.createObjectURL(blob);
-                                    link.click();
+                                    link.download = fileName; link.href = URL.createObjectURL(blob); link.click();
                                     URL.revokeObjectURL(link.href);
-
                                     exportContainer.remove();
                                     shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">check</span> Сохранено!';
                                     setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
                                 }
                             }, 'image/png');
                         }).catch(err => {
-                            console.error('Ошибка при создании картинки:', err);
                             exportContainer.remove();
                             shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">error</span> Ошибка';
                             setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
                         });
                     };
 
-                    // Подгружаем библиотеку
-                    let existingH2c = null;
-                    if (typeof html2canvas !== 'undefined') existingH2c = html2canvas;
-                    else if (typeof unsafeWindow !== 'undefined' && unsafeWindow.html2canvas) existingH2c = unsafeWindow.html2canvas;
-                    else if (typeof window !== 'undefined' && window.html2canvas) existingH2c = window.html2canvas;
-
-                    if (!existingH2c) {
+                    // Загрузчик ТОЛЬКО для html2canvas
+                    let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
+                    if (!h2cObj) {
                         const script = document.createElement('script');
                         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
                         script.onload = renderTimetable;
+                        script.onerror = () => {
+                            shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">error</span> Ошибка';
+                            setTimeout(() => { shareBtn.innerHTML = originalText; }, 2000);
+                        };
                         document.head.appendChild(script);
                     } else {
                         renderTimetable();
@@ -9605,31 +9610,47 @@ injectStyles(styles);
                     }
                 });
 
-                // 7. КРАСИВАЯ ДАТА
-                // Ищем блок с текстом даты внутри week-select
+                // 7. КРАСИВАЯ ДАТА И КАНИКУЛЫ
                 const weekSelect = span9.querySelector('.week-select');
                 if (weekSelect) {
                     const dateDiv = weekSelect.querySelector('div[style*="text-align:center"]');
                     if (dateDiv) {
+                        const holidayEl = dateDiv.querySelector('.holiday');
+                        let holidayText = '';
+                        
+                        if (holidayEl) {
+                            holidayText = holidayEl.textContent.trim();
+                            holidayEl.remove();
+                        }
+
                         const dateSpan = dateDiv.querySelector('span');
-                        if (dateSpan) {
-                            // Заменяем текст
-                            let text = dateSpan.textContent.trim();
-                            // Удаляем "Неделя " в начале (регистронезависимо)
-                            text = text.replace(/^Неделя\s+/i, '');
+                        if (dateSpan || dateDiv.textContent.trim()) {
+                            let text = (dateSpan ? dateSpan.textContent : dateDiv.textContent).trim();
+                            text = text.replace(/^Неделя\s+/i, '').replace(/\.\d{4}/g, '');
+                            if (text) text = text.charAt(0).toUpperCase() + text.slice(1);
 
-                            // Вырезаем точку и 4 цифры года (например, .2026)
-                            text = text.replace(/\.\d{4}/g, '');
+                            dateDiv.innerHTML = '';
+                            dateDiv.className = '';
+                            dateDiv.style.cssText = 'display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 1.5rem;';
 
-                            // Делаем первую букву заглавной ("с 23.02..." -> "С 23.02...")
-                            text = text.charAt(0).toUpperCase() + text.slice(1);
+                            if (text) {
+                                const dateCapsule = document.createElement('div');
+                                dateCapsule.className = 'week-date-styled';
+                                dateCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important;';
+                                dateCapsule.textContent = text;
+                                dateDiv.appendChild(dateCapsule);
+                            }
 
-                            dateSpan.textContent = text;
-
-                            // Добавляем класс стиля
-                            dateDiv.className = 'week-date-styled';
-                            // Убираем старый inline стиль, чтобы он не мешал
-                            dateDiv.removeAttribute('style');
+                            if (holidayText) {
+                                holidayText = holidayText.replace(/\.\d{4}/g, '');
+                                
+                                const holidayCapsule = document.createElement('div');
+                                holidayCapsule.className = 'week-date-styled';
+                                holidayCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important; background: rgba(52, 199, 89, 0.15) !important; color: var(--color-green) !important; font-weight: 800 !important; border: 1px solid rgba(52, 199, 89, 0.3) !important;';
+                                holidayCapsule.innerHTML = `<span class="material-icons" style="font-size: 1.4rem; margin-right: 4px;">celebration</span>${holidayText}`;
+                                
+                                dateDiv.appendChild(holidayCapsule);
+                            }
                         }
                     }
                 }
@@ -9974,7 +9995,7 @@ injectStyles(styles);
                     modal.classList.add('active');
                 }
 
-                // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ) И КНОПКА "+" ---
+                // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ), КНОПКИ "+" И ШЕРИНГА ---
                 const dayHeaders = span9.querySelectorAll('.day h3');
                 dayHeaders.forEach(header => {
                     const text = header.textContent.trim();
@@ -9988,18 +10009,106 @@ injectStyles(styles);
                         datePart = parts.slice(1).join(',').trim();
                     }
 
-                    // Кнопка "+" теперь встроена прямо в flex-блок рядом с днем недели
                     header.innerHTML = `
                         <div style="display:flex; align-items:center; gap: 6px;">
                             <span class="day-name">${dayOfWeek}</span>
                             <span class="material-icons add-custom-pair-btn" title="Добавить свою пару">add</span>
                         </div>
-                        <span class="day-date">${datePart}</span>
+                        <div class="day-header-right">
+                            <span class="day-date">${datePart}</span>
+                            <span class="material-icons share-day-btn" title="Поделиться днем">ios_share</span>
+                        </div>
                     `;
 
                     header.querySelector('.add-custom-pair-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
                         openCustomPairModal(dayOfWeek);
+                    });
+
+                    header.querySelector('.share-day-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const btn = e.currentTarget;
+                        btn.textContent = 'hourglass_empty';
+                        
+                        const dayBlock = header.closest('.day');
+                        const fileName = `Расписание (${datePart || dayOfWeek}).png`;
+
+                        const renderScreenshot = async () => {
+                            let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
+                            
+                            if (!h2c) {
+                                btn.textContent = 'error';
+                                setTimeout(() => btn.textContent = 'ios_share', 2000);
+                                return;
+                            }
+
+                            const isMobile = window.innerWidth <= 960;
+                            const renderWidth = 540;
+
+                            const exportContainer = document.createElement('div');
+                            exportContainer.style.cssText = `position:fixed; top:100vh; left:0; width:${renderWidth}px; padding:24px; background:var(--color-body); z-index:-9999; box-sizing:border-box;`;
+                            
+                            const span9Wrapper = document.createElement('div');
+                            span9Wrapper.className = 'span9';
+                            span9Wrapper.style.cssText = 'margin:0 !important; padding:0 !important; width:100% !important; display:block;';
+
+                            const clone = dayBlock.cloneNode(true);
+                            clone.style.margin = '0';
+                            
+                            // ДОЖИДАЕМСЯ ПОДГОТОВКИ (В ТОМ ЧИСЛЕ ЗАГРУЗКИ QR-КОДОВ ИЗ API)
+                            await cleanTimetableForExport(clone);
+
+                            span9Wrapper.appendChild(clone);
+                            
+                            const watermark = document.createElement('div');
+                            watermark.style.cssText = 'text-align: right; margin-top: 12px; font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.4;';
+                            watermark.textContent = 'etisreborn.ru';
+                            span9Wrapper.appendChild(watermark);
+
+                            exportContainer.appendChild(span9Wrapper);
+                            document.body.appendChild(exportContainer);
+
+                            h2c(exportContainer, {
+                                scale: 2, 
+                                useCORS: true, 
+                                windowWidth: renderWidth, 
+                                backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim()
+                            }).then(canvas => {
+                                canvas.toBlob(blob => {
+                                    const file = new File([blob], fileName, { type: 'image/png' });
+                                    if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                        navigator.share({ files: [file], title: fileName });
+                                    } else {
+                                        const link = document.createElement('a');
+                                        link.download = fileName; link.href = URL.createObjectURL(blob); link.click();
+                                        URL.revokeObjectURL(link.href);
+                                    }
+                                    exportContainer.remove();
+                                    btn.textContent = 'check';
+                                    setTimeout(() => btn.textContent = 'ios_share', 2000);
+                                }, 'image/png');
+                            }).catch(err => {
+                                console.error('Screenshot error:', err);
+                                exportContainer.remove();
+                                btn.textContent = 'error';
+                                setTimeout(() => btn.textContent = 'ios_share', 2000);
+                            });
+                        };
+
+                        // Загрузчик ТОЛЬКО для html2canvas
+                        let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
+                        if (!h2cObj) {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                            script.onload = renderScreenshot;
+                            script.onerror = () => {
+                                btn.textContent = 'error';
+                                setTimeout(() => btn.textContent = 'ios_share', 2000);
+                            }
+                            document.head.appendChild(script);
+                        } else {
+                            renderScreenshot();
+                        }
                     });
                 });
 
@@ -10185,7 +10294,12 @@ injectStyles(styles);
                             const tr = document.createElement('tr');
                             tr.className = 'custom-no-pairs';
                             tr.innerHTML = `
-                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
+                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">
+                                    <div class="pair-badge-wrapper">
+                                        <span class="pair-type-badge type-badge-holiday">ВЫХ</span>
+                                    </div>
+                                    0 пар<br><font class="eval">00:00</font>
+                                </td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
                                     <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
                                         <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
@@ -10751,61 +10865,70 @@ injectStyles(styles);
 
                         if (isSwiping) {
                             if (diffX < 0) {
+                                // Свайп влево
                                 swipeDir = 'left';
-                                iconEl.textContent = targetType === 'day' ? 'add' : 'edit';
-                            } else if (diffX > 0 && targetType === 'row') {
+                                if (targetType === 'day') {
+                                    iconEl.textContent = 'ios_share';
+                                } else {
+                                    iconEl.textContent = 'edit';
+                                }
+                            } else if (diffX > 0) {
+                                // Свайп вправо
                                 swipeDir = 'right';
-                                
-                                // ПРОВЕРКА НА ПРОШЕДШУЮ ПАРУ
-                                let isPassed = false;
-                                const dayDateEl = currentTarget.closest('.day')?.querySelector('.day-date');
-                                if (dayDateEl) {
-                                    const dateStr = dayDateEl.textContent.trim();
-                                    const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
-                                    let classDate = new Date();
-                                    if (match) {
-                                        const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
-                                        if (m !== undefined) {
-                                            classDate.setMonth(m);
-                                            classDate.setDate(parseInt(match[1]));
+                                if (targetType === 'day') {
+                                    iconEl.textContent = 'add';
+                                } else if (targetType === 'row') {
+                                    // ПРОВЕРКА НА ПРОШЕДШУЮ ПАРУ
+                                    let isPassed = false;
+                                    const dayDateEl = currentTarget.closest('.day')?.querySelector('.day-date');
+                                    if (dayDateEl) {
+                                        const dateStr = dayDateEl.textContent.trim();
+                                        const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
+                                        let classDate = new Date();
+                                        if (match) {
+                                            const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
+                                            if (m !== undefined) {
+                                                classDate.setMonth(m);
+                                                classDate.setDate(parseInt(match[1]));
+                                            }
+                                        } else {
+                                            const isoMatch = dateStr.match(/(\d{2})\.(\d{2})/);
+                                            if (isoMatch) {
+                                                classDate.setMonth(parseInt(isoMatch[2])-1);
+                                                classDate.setDate(parseInt(isoMatch[1]));
+                                            }
                                         }
-                                    } else {
-                                        const isoMatch = dateStr.match(/(\d{2})\.(\d{2})/);
-                                        if (isoMatch) {
-                                            classDate.setMonth(parseInt(isoMatch[2])-1);
-                                            classDate.setDate(parseInt(isoMatch[1]));
-                                        }
-                                    }
-                                    classDate.setHours(0,0,0,0);
-                                    const today = new Date();
-                                    today.setHours(0,0,0,0);
-                                    
-                                    if (classDate.getTime() < today.getTime()) {
-                                        isPassed = true;
-                                    } else if (classDate.getTime() === today.getTime()) {
-                                        const timeEl = currentTarget.querySelector('.eval');
-                                        if (timeEl) {
-                                            const parts = timeEl.textContent.trim().split(':');
-                                            if (parts.length === 2) {
-                                                const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-                                                const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
-                                                if (currentMins >= startMins) isPassed = true;
+                                        classDate.setHours(0,0,0,0);
+                                        const today = new Date();
+                                        today.setHours(0,0,0,0);
+                                        
+                                        if (classDate.getTime() < today.getTime()) {
+                                            isPassed = true;
+                                        } else if (classDate.getTime() === today.getTime()) {
+                                            const timeEl = currentTarget.querySelector('.eval');
+                                            if (timeEl) {
+                                                const parts = timeEl.textContent.trim().split(':');
+                                                if (parts.length === 2) {
+                                                    const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                                    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
+                                                    if (currentMins >= startMins) isPassed = true;
+                                                }
                                             }
                                         }
                                     }
-                                }
 
-                                if (!isPassed) {
-                                    iconEl.textContent = 'notification_important';
-                                    bubble.className = 'active-threshold action-important';
-                                } else if (hasEval) {
-                                    iconEl.textContent = 'star_rate';
-                                    bubble.className = 'active-threshold action-eval';
-                                } else {
-                                    // Если пара прошла и кнопки оценки тоже нет — сбрасываем свайп
-                                    targetElements.forEach(el => el.style.transform = `translateX(0px)`);
-                                    bubble.style.opacity = '0';
-                                    return;
+                                    if (!isPassed) {
+                                        iconEl.textContent = 'notification_important';
+                                        bubble.className = 'active-threshold action-important';
+                                    } else if (hasEval) {
+                                        iconEl.textContent = 'star_rate';
+                                        bubble.className = 'active-threshold action-eval';
+                                    } else {
+                                        // Если пара прошла и кнопки оценки тоже нет — сбрасываем свайп
+                                        targetElements.forEach(el => el.style.transform = `translateX(0px)`);
+                                        bubble.style.opacity = '0';
+                                        return;
+                                    }
                                 }
                             } else {
                                 targetElements.forEach(el => el.style.transform = `translateX(0px)`);
@@ -10819,7 +10942,7 @@ injectStyles(styles);
                                 moveX = (moveX > 0 ? 1 : -1) * (THRESHOLD + (Math.abs(moveX) - THRESHOLD) * 0.25);
                             }
 
-                            // 1. Двигаем строку
+                            // 1. Двигаем строку или день
                             targetElements.forEach(el => el.style.transform = `translateX(${moveX}px)`);
 
                             // 2. Иконка появляется ровно по центру образующейся пустоты
@@ -10828,8 +10951,7 @@ injectStyles(styles);
                             bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
 
                             if (swipeDir === 'left') {
-                                // Пустота образуется СПРАВА (между оригинальным краем и уехавшей строкой)
-                                // Ставим иконку в центр этой пустоты (двигается в 2 раза медленнее свайпа)
+                                // Пустота образуется СПРАВА
                                 bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
                             } else {
                                 // Пустота образуется СЛЕВА
@@ -10838,16 +10960,24 @@ injectStyles(styles);
 
                             // 3. Индикация прохождения порога (смена цвета)
                             if (Math.abs(diffX) >= THRESHOLD) {
-                                if (targetType === 'day') bubble.classList.add('active-threshold', 'action-add');
-                                else if (swipeDir === 'left') bubble.classList.add('active-threshold', 'action-note');
-                                else bubble.classList.add('active-threshold', 'action-eval');
+                                if (targetType === 'day') {
+                                    if (swipeDir === 'left') {
+                                        bubble.classList.add('active-threshold', 'action-share');
+                                    } else {
+                                        bubble.classList.add('active-threshold', 'action-add');
+                                    }
+                                } else if (swipeDir === 'left') {
+                                    bubble.classList.add('active-threshold', 'action-note');
+                                } else if (!bubble.classList.contains('action-important')) {
+                                    bubble.classList.add('active-threshold', 'action-eval');
+                                }
 
                                 if (!bubble.dataset.vibrated && navigator.vibrate) {
                                     navigator.vibrate(15);
                                     bubble.dataset.vibrated = 'true';
                                 }
                             } else {
-                                bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval');
+                                bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval', 'action-share', 'action-important');
                                 bubble.dataset.vibrated = '';
                             }
                         }
@@ -10861,8 +10991,9 @@ injectStyles(styles);
                         const tType = targetType;
                         const dir = swipeDir;
                         const el = evalLink;
+                        const bubbleClass = bubble.className;
 
-                        // Плавный возврат строки на место
+                        // Плавный возврат элемента на место
                         targetElements.forEach(elem => {
                             elem.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                             elem.style.transform = 'translateX(0px)';
@@ -10870,24 +11001,29 @@ injectStyles(styles);
 
                         // Иконка плавно затухает
                         bubble.style.opacity = '0';
-                        bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval');
+                        bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval', 'action-share', 'action-important');
                         bubble.dataset.vibrated = '';
 
                         // Выполнение действия
                         if (Math.abs(diffX) >= THRESHOLD) {
                             setTimeout(() => {
-                                if (tType === 'day' && dir === 'left') {
-                                    const dayNameEl = target.querySelector('.day-name');
-                                    if (dayNameEl) openCustomPairModal(dayNameEl.textContent.trim());
+                                if (tType === 'day') {
+                                    if (dir === 'left') {
+                                        const shareBtn = target.querySelector('.share-day-btn');
+                                        if (shareBtn) shareBtn.click();
+                                    } else if (dir === 'right') {
+                                        const dayNameEl = target.querySelector('.day-name');
+                                        if (dayNameEl) openCustomPairModal(dayNameEl.textContent.trim());
+                                    }
                                 } else if (tType === 'row') {
                                     if (dir === 'left') {
                                         const noteBtn = target.querySelector('.subject-note-btn');
                                         if (noteBtn) noteBtn.click();
                                     } else if (dir === 'right') {
-                                        if (bubble.classList.contains('action-important')) {
+                                        if (bubbleClass.includes('action-important')) {
                                             const impBtn = target.querySelector('.pair-important-btn');
                                             if (impBtn) impBtn.click();
-                                        } else if (bubble.classList.contains('action-eval')) {
+                                        } else if (bubbleClass.includes('action-eval')) {
                                             if (el) {
                                                 if (el.hasAttribute('href')) window.location.href = el.getAttribute('href');
                                                 else el.click();
@@ -11285,6 +11421,7 @@ injectStyles(styles);
                         if (typeof recalculateTimetable === 'function') recalculateTimetable();
                         if (typeof renderNotes === 'function') renderNotes();
                         if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                        if (typeof dimPastPairs === 'function') dimPastPairs();
                     }
                 }
 
@@ -11292,7 +11429,208 @@ injectStyles(styles);
                 loadExternalCalendar();
 
                 updateLiveTimetable();
-                setInterval(updateLiveTimetable, 60000);
+
+                // --- ФУНКЦИЯ ЗАТЕМНЕНИЯ ПРОШЕДШИХ ПАР ---
+                function dimPastPairs() {
+                    const days = document.querySelectorAll('.span9 .day');
+                    const now = new Date();
+                    const todayMins = now.getHours() * 60 + now.getMinutes();
+                    const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+                    days.forEach(day => {
+                        const dateEl = day.querySelector('.day-date');
+                        if (!dateEl) return;
+                        
+                        let classDateObj = new Date();
+                        const dateStr = dateEl.textContent.trim();
+                        const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
+                        
+                        if (match) {
+                            const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
+                            classDateObj.setMonth(m);
+                            classDateObj.setDate(parseInt(match[1]));
+                        } else {
+                            const isoMatch = dateStr.match(/(\d{2})\.(\d{2})/);
+                            if (isoMatch) {
+                                classDateObj.setMonth(parseInt(isoMatch[2])-1);
+                                classDateObj.setDate(parseInt(isoMatch[1]));
+                            }
+                        }
+                        classDateObj.setHours(0,0,0,0);
+                        const classTime = classDateObj.getTime();
+
+                        const isPastDay = classTime < todayZero;
+                        const isToday = classTime === todayZero;
+
+                        day.querySelectorAll('.timetable-grid tr:not(.custom-no-pairs)').forEach(row => {
+                            let isPassed = false;
+                            
+                            if (isPastDay) {
+                                isPassed = true;
+                            } else if (isToday) {
+                                let startMins = -1;
+                                let duration = 90; // Стандартная пара
+
+                                // Окна
+                                if (row.classList.contains('timetable-gap-row')) {
+                                    const startStr = row.getAttribute('data-gap-start');
+                                    const count = parseInt(row.getAttribute('data-gap-count') || "1");
+                                    duration = (count * 90) + ((count - 1) * 10);
+                                    if (startStr && startStr !== "00:00") {
+                                        const p = startStr.split(':');
+                                        startMins = parseInt(p[0]) * 60 + parseInt(p[1]);
+                                    }
+                                } 
+                                // Обычные, кастомные и внешние пары
+                                else {
+                                    const timeEl = row.querySelector('.eval'); // Ищем любой элемент со временем
+                                    if (timeEl && !timeEl.textContent.includes("Весь день")) {
+                                        // Извлекаем первое попавшееся время ЧЧ:ММ
+                                        const timeMatch = timeEl.textContent.match(/(\d{1,2}):(\d{2})/);
+                                        if (timeMatch) {
+                                            startMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+                                        }
+                                    }
+                                }
+
+                                if (startMins !== -1) {
+                                    if (todayMins >= (startMins + duration)) isPassed = true;
+                                }
+                            }
+
+                            if (isPassed) row.classList.add('pair-passed');
+                            else row.classList.remove('pair-passed');
+                        });
+                    });
+                }
+
+                // --- УНИВЕРСАЛЬНАЯ ОЧИСТКА РАСПИСАНИЯ ДЛЯ HTML2CANVAS ---
+                const cleanTimetableForExport = async (clone) => {
+                    // 1. Удаляем UI-мусор
+                    clone.querySelectorAll('.share-day-btn, .add-custom-pair-btn, .live-dot, .day-status-icon, .pair_teacher .eval, .pair-important-btn, .subject-note-btn, .delete-custom-pair-btn, .hidden-by-filter').forEach(el => el.remove());
+                    
+                    // 2. Убираем эффект "прошедших пар"
+                    clone.querySelectorAll('.pair-passed, td').forEach(el => {
+                        el.classList.remove('pair-passed');
+                        el.style.setProperty('opacity', '1', 'important');
+                    });
+
+                    // 3. ДОБАВЛЯЕМ QR-КОДЫ ДЛЯ ОНЛАЙН ПАР
+                    const qrPromises =[];
+                    clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
+                        const link = tr.querySelector('.aud a[href]');
+                        const teacherCell = tr.querySelector('.pair_teacher');
+                        
+                        if (link && teacherCell && link.href) {
+                            const qrUrl = `https://quickchart.io/qr?size=150&margin=1&text=${encodeURIComponent(link.href)}`;
+                            
+                            const promise = new Promise((resolve) => {
+                                GM_xmlhttpRequest({
+                                    method: 'GET',
+                                    url: qrUrl,
+                                    responseType: 'blob',
+                                    onload: function(res) {
+                                        if (res.status === 200) {
+                                            const reader = new FileReader();
+                                            reader.onloadend = function() {
+                                                const img = document.createElement('img');
+                                                img.src = reader.result;
+                                                img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; mix-blend-mode: multiply;';
+                                                
+                                                const teacherText = teacherCell.innerHTML;
+                                                teacherCell.innerHTML = '';
+                                                
+                                                const wrapper = document.createElement('div');
+                                                wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
+                                                
+                                                const textWrapper = document.createElement('div');
+                                                textWrapper.innerHTML = teacherText;
+                                                textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
+                                                
+                                                textWrapper.querySelectorAll('a').forEach(a => {
+                                                    a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
+                                                    a.style.setProperty('text-decoration', 'none', 'important');
+                                                });
+                                                
+                                                wrapper.appendChild(img);
+                                                wrapper.appendChild(textWrapper);
+                                                teacherCell.appendChild(wrapper);
+                                                resolve();
+                                            };
+                                            reader.readAsDataURL(res.response);
+                                        } else {
+                                            resolve(); 
+                                        }
+                                    },
+                                    onerror: () => resolve()
+                                });
+                            });
+                            qrPromises.push(promise);
+                        }
+                    });
+
+                    // Ждем, пока все QR-коды загрузятся
+                    await Promise.all(qrPromises);
+
+                    // 4. Вшиваем стили рендера
+                    const exportStyles = document.createElement('style');
+                    exportStyles.innerHTML = `
+                        .timetable-grid { table-layout: fixed !important; width: 100% !important; border-spacing: 0 !important; border-collapse: collapse !important; }
+                        .timetable-grid td { white-space: normal !important; word-wrap: break-word !important; border-bottom: none !important; padding: 12px 0 !important; }
+                        
+                        .timetable-grid td.pair_num {
+                            width: 90px !important; min-width: 90px !important;
+                            font-size: 1.1rem !important; 
+                            text-align: center !important; padding: 12px 5px !important;
+                        }
+                        
+                        .timetable-grid td.pair_info {
+                            width: auto !important; padding-left: 5px !important; padding-right: 5px !important; text-align: left !important;
+                        }
+                        
+                        .timetable-grid td.pair_teacher {
+                            width: 200px !important; min-width: 200px !important;
+                            text-align: right !important; padding-right: 16px !important;
+                            display: table-cell !important;
+                        }
+
+                        .timetable-grid tr:not(:last-child) {
+                            background-image: linear-gradient(to right, transparent 90px, var(--color-table-border) 90px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)) !important;
+                            background-position: bottom !important;
+                            background-size: 100% 1px !important;
+                            background-repeat: no-repeat !important;
+                            background-color: transparent !important;
+                        }
+
+                        .day-status-icon { display: none !important; }
+
+                        .timetable-gap-capsule {
+                            background: var(--color-accent-active) !important;
+                            color: var(--color-accent) !important;
+                            border: 1px solid var(--color-accent-active) !important;
+                            display: inline-flex !important; align-items: center !important;
+                            width: max-content !important; flex: 0 0 auto !important;
+                        }
+                        .aud a, .btn-generic-online {
+                            display: inline-flex !important; align-items: center !important;
+                            width: max-content !important; flex: 0 0 auto !important;
+                            text-decoration: none !important;
+                        }
+                        .type-badge-holiday { color: #00BFA5 !important; }
+                    `;
+                    clone.appendChild(exportStyles);
+
+                    clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
+                        tr.style.removeProperty('background');
+                        tr.style.setProperty('background-color', 'transparent', 'important');
+                    });
+                    
+                    clone.querySelectorAll('*').forEach(el => el.style.boxSizing = 'border-box');
+                };
+
+                dimPastPairs();
+                setInterval(dimPastPairs, 60000);
+
                 break;
 
                 case 'stu.change_pass_form':
@@ -12505,7 +12843,8 @@ injectStyles(styles);
                         // --- ДОБАВЛЕНИЕ ПОИСКА И КНОПКИ "РЕЙТИНГ" (КАПСУЛА) ---
                         const searchContainer = document.createElement('div');
                         searchContainer.className = 'timetable-toolbar term-search-wrapper';
-                        searchContainer.style.marginBottom = '2.4rem';
+
+                        searchContainer.style.cssText = 'margin-top: -0.8rem !important; margin-bottom: 2.4rem !important;';
 
                         searchContainer.innerHTML = `
                             <div class="capsule-search-item">
@@ -14459,11 +14798,10 @@ injectStyles(styles);
 
                         // 3. Оформляем ячейки с датами (вторая колонка)
                         table.querySelectorAll('tr').forEach(tr => {
-                            const td = tr.querySelectorAll('td')[1]; // Вторая колонка
+                            const td = tr.querySelectorAll('td')[1];
                             if (td) {
                                 const fonts = td.querySelectorAll('font');
                                 if (fonts.length > 0) {
-                                    // Создаем внутренний div-контейнер для капсул
                                     const dateContainer = document.createElement('div');
                                     dateContainer.style.display = 'flex';
                                     dateContainer.style.flexWrap = 'wrap';
@@ -14483,7 +14821,6 @@ injectStyles(styles);
                                         dateContainer.appendChild(capsule);
                                     });
 
-                                    // Очищаем ячейку от старого мусора (<br>, шрифты) и вставляем контейнер
                                     td.innerHTML = '';
                                     td.appendChild(dateContainer);
                                 }
@@ -14491,18 +14828,16 @@ injectStyles(styles);
                         });
                     }
 
-                    // 4. Парсим текстовую статистику внизу и превращаем в карточки
                     let total = '0', valid = '0', invalid = '0';
                     let foundStats = false;
 
-                    // Перебираем ноды, ищем нужный текст
                     Array.from(span9.childNodes).forEach(node => {
                         if (node.nodeType === Node.TEXT_NODE) {
                             const text = node.textContent;
                             if (text.includes('Всего пропущено занятий:')) {
                                 total = text.replace(/\D/g, '');
                                 foundStats = true;
-                                node.textContent = ''; // Скрываем оригинальный текст
+                                node.textContent = '';
                             }
                             if (text.includes('Из них по уважительной причине:')) {
                                 valid = text.replace(/\D/g, '');
@@ -14510,11 +14845,10 @@ injectStyles(styles);
                             }
                         } else if (node.tagName === 'B' && node.textContent.includes('По неуважительной причине:')) {
                             invalid = node.textContent.replace(/\D/g, '');
-                            node.remove(); // Удаляем тег <b>
+                            node.remove();
                         }
                     });
 
-                    // 5. Отрисовываем сетку статистики
                     if (foundStats) {
                         const summaryDiv = document.createElement('div');
                         summaryDiv.className = 'absence-summary';
@@ -14535,26 +14869,22 @@ injectStyles(styles);
                         span9.appendChild(summaryDiv);
                     }
 
-                    // Убираем лишние <br> в конце страницы
                     span9.querySelectorAll('br').forEach(br => br.remove());
                     break;
                 }
                 }
             // --- ГЛОБАЛЬНЫЕ УЛУЧШЕНИЯ ДЛЯ ЛЮБЫХ СТРАНИЦ ---
 
-            // Формы отзывов и анкетирования (que_form и form[name="estimate"])
             const queForms = document.querySelectorAll('form.que_form, form[name="estimate"]');
             queForms.forEach(form => {
-                // Добавляем красивый заголовок страницы, если его нет
                 if (!span9.querySelector('h2')) {
                     const pageTitle = document.createElement('h2');
                     
                     if (form.getAttribute('name') === 'estimate') {
-                        // Для страницы оценки занятия берем текст из h3 (Предмет, Дата)
                         const origH3 = span9.querySelector('h3');
                         if (origH3) {
                             pageTitle.textContent = origH3.textContent.trim();
-                            origH3.remove(); // Удаляем оригинальный мелкий заголовок
+                            origH3.remove();
                         } else {
                             pageTitle.textContent = 'Оценить занятие';
                         }
@@ -14566,13 +14896,11 @@ injectStyles(styles);
                     span9.insertBefore(pageTitle, form.closest('.review') || form);
                 }
 
-                // Улучшаем кнопку отправки (добавляем иконку бумажного самолетика)
                 const sendBtn = form.querySelector('#send_btn');
                 if (sendBtn && !sendBtn.querySelector('.material-icons')) {
                     sendBtn.innerHTML = '<span class="material-icons" style="font-size: 2rem; margin-right: 0.8rem;">send</span>' + sendBtn.textContent;
                 }
                 
-                // Оборачиваем question_table для скролла на мобильных телефонах
                 const qTable = form.querySelector('table.question_table');
                 if (qTable && !qTable.parentElement.classList.contains('question-table-wrapper')) {
                     const wrapper = document.createElement('div');
@@ -14585,28 +14913,23 @@ injectStyles(styles);
 
         // --- УМНЫЙ СКРОЛЛ ДЛЯ ПОДВКЛАДОК И НЕДЕЛЬ ---
         function initSmartScroll() {
-                // Находим все контейнеры-капсулы
                 const containers = document.querySelectorAll('.submenu, .weeks, .timetable-toolbar');
 
                 containers.forEach(container => {
-                    // Ищем активный элемент (в подвкладках это <b>, в неделях это .current)
                     const activeItem = container.querySelector('b, .current');
 
                     const scrollToActive = (behavior = 'smooth') => {
                         if (!activeItem) return;
 
-                        // Идеальное вычисление центра через абсолютные координаты экрана
                         const containerRect = container.getBoundingClientRect();
                         const itemRect = activeItem.getBoundingClientRect();
 
                         const containerCenter = containerRect.left + (containerRect.width / 2);
                         const itemCenter = itemRect.left + (itemRect.width / 2);
 
-                        // Высчитываем, на сколько пикселей нужно сдвинуть скролл
                         const offset = itemCenter - containerCenter;
                         const scrollTarget = container.scrollLeft + offset;
 
-                        // Допуск в 2 пикселя (защита от микро-подергиваний)
                         if (Math.abs(offset) < 2) return;
 
                         container.scrollTo({
@@ -14619,7 +14942,6 @@ injectStyles(styles);
                     let wheelTimeout;
                     let isInteracting = false;
 
-                    // Увеличенные задержки для более спокойного поведения (~4 секунды)
                     const startSnapbackTimer = (delay = 4000) => {
                         clearTimeout(scrollTimeout);
                         if (!isInteracting) {
@@ -14627,18 +14949,15 @@ injectStyles(styles);
                         }
                     };
 
-                    // 1. Скролл колесиком / трекпадом на ПК
                     container.addEventListener('wheel', (e) => {
-                        isInteracting = true; // Блокируем возврат, пока крутим
+                        isInteracting = true;
                         clearTimeout(wheelTimeout);
 
-                        // Ждем 500мс после остановки колесика, чтобы разрешить возврат
                         wheelTimeout = setTimeout(() => {
                             isInteracting = false;
                             startSnapbackTimer(3500);
                         }, 500);
 
-                        // Трансляция вертикального скролла в горизонтальный
                         if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
                             e.preventDefault();
                             container.scrollLeft += e.deltaY > 0 ? 45 : -45;
@@ -14646,20 +14965,16 @@ injectStyles(styles);
                     }, { passive: false });
 
                     if (activeItem) {
-                        // 2. Взаимодействие мышкой (ПК)
                         container.addEventListener('mouseenter', () => { isInteracting = true; clearTimeout(scrollTimeout); });
                         container.addEventListener('mouseleave', () => { isInteracting = false; startSnapbackTimer(3500); });
 
-                        // 3. Взаимодействие пальцем (Мобильные)
                         container.addEventListener('touchstart', () => { isInteracting = true; clearTimeout(scrollTimeout); }, { passive: true });
                         container.addEventListener('touchend', () => { isInteracting = false; startSnapbackTimer(4000); }, { passive: true });
 
-                        // 4. Триггер при любом скролле (отрабатывает как защита)
                         container.addEventListener('scroll', () => {
                             if (!isInteracting) startSnapbackTimer(4000);
                         }, { passive: true });
 
-                        // При открытии страницы: центрируем мгновенно, затем плавно добиваем для надежности
                         setTimeout(() => scrollToActive('auto'), 50);
                         setTimeout(() => scrollToActive('smooth'), 400);
                     }
@@ -14668,11 +14983,9 @@ injectStyles(styles);
 
         initSmartScroll();
 
-        // --- АНИМАЦИЯ ЗАГРУЗКИ ПРИ ПЕРЕКЛЮЧЕНИИ ВКЛАДОК ---
         document.querySelectorAll('.submenu a:not(.answer-btn-custom), .weeks a, .timetable-toolbar a.toolbar-item').forEach(link => {
             link.addEventListener('click', (e) => {
                 const href = link.getAttribute('href');
-                // Игнорируем якорные ссылки и JS-функции, так как они не перезагружают страницу
                 if (href && !href.startsWith('#') && !href.includes('javascript:')) {
                     const menuBtn = document.querySelector('.mobile-menu-btn');
                     if (menuBtn) menuBtn.classList.add('is-loading');
