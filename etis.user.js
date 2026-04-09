@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      1.9100
-// @changelog    Умное расписание: поддержка ссылок в событиях из внешних календарей, пометка важных пар. Доработка вида оценок. Фикс переключения вкладок на телефонах.
+// @version      2.0000
+// @changelog    1) Закрашивание уже прошедших пар, 2) шеринг отдельного дня, 3) Генерация QR кода при шеринге на онлайн занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
+// @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
+// @icon64       https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
 // @match        https://student.psu.ru/*
 // @run-at       document-start
 // @grant        GM_xmlhttpRequest
@@ -12,7 +14,8 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        unsafeWindow
-// @require      https://cdn.jsdelivr.net/npm/chart.js
+// @require      https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js
+// @require      https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js
 // @connect      raw.githubusercontent.com
 // @connect      *
 // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
@@ -1767,7 +1770,7 @@ input::placeholder {
 .sidebar-logo {
     display: flex !important;
     align-items: center !important;
-    padding: 2.6rem 2.6rem 0.5rem 2.6rem !important;
+    padding: 2.2rem 2.2rem 0.5rem 2.2rem !important;
     gap: 10px !important;
     margin-bottom: 2.4rem !important;
     position: relative !important;
@@ -4453,6 +4456,7 @@ html[theme] .timetable-grid tr.timetable-gap-row td {
 .type-badge-pract { color: var(--color-green) !important; }
 .type-badge-lab { color: var(--color-warning) !important; }
 .type-badge-exam { color: var(--color-red) !important; }
+.type-badge-holiday { color: #00BFA5 !important; }
 
 /* --- АНИМАЦИИ ДЛЯ СТРОК РАСПИСАНИЯ --- */
 @keyframes cellScaleIn {
@@ -6172,6 +6176,51 @@ button.sync-tab.active {
         opacity: 1 !important; visibility: visible !important; pointer-events: auto !important; width: 16px !important; margin-right: 4px !important;
     }
 }
+
+/* --- ШЕРИНГ ДНЯ И ЗАТЕМНЕНИЕ ПРОШЕДШИХ ПАР --- */
+.day-header-right {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+}
+.share-day-btn {
+    font-size: 1.8rem !important;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    
+    opacity: 0;
+    visibility: hidden;
+    width: 0;
+    margin-left: 0;
+    overflow: hidden;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+/* Прошедшие пары */
+.timetable-grid tr.pair-passed td {
+    opacity: 0.45;
+    transition: opacity 0.3s ease;
+}
+
+.timetable-grid tr.pair-passed .timetable-gap-capsule {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-secondary) !important;
+    border-color: var(--color-highlight) !important;
+}
+
+/* Ховеры только для ПК (мышь) */
+@media (hover: hover) and (pointer: fine) {
+    .timetable-grid tr.pair-passed:hover td { 
+        opacity: 0.9; 
+    }
+    .span9 .day h3:hover .share-day-btn {
+        opacity: 1;
+        visibility: visible;
+        width: 18px;
+        margin-left: 8px;
+    }
+}
+
+#swipe-action-bubble.active-threshold.action-share { color: var(--color-blue) !important; }
     `;
 
     // Внедряем стили
@@ -8876,12 +8925,17 @@ injectStyles(styles);
                 // --- ОФОРМЛЕНИЕ ВЫХОДНЫХ ДНЕЙ (0 ПАР) ---
                 span9.querySelectorAll('.no_pairs').forEach(el => {
                     const table = document.createElement('table');
-                    table.className = 'timetable-grid'; // Применяем сетку расписания
+                    table.className = 'timetable-grid'; 
 
                     table.innerHTML = `
                         <tbody>
                             <tr class="custom-no-pairs">
-                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
+                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">
+                                    <div class="pair-badge-wrapper">
+                                        <span class="pair-type-badge type-badge-holiday">ВЫХ</span>
+                                    </div>
+                                    0 пар<br><font class="eval">00:00</font>
+                                </td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
                                     <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
                                         <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
@@ -8893,7 +8947,6 @@ injectStyles(styles);
                         </tbody>
                     `;
 
-                    // Заменяем скучный текст на полноценную таблицу
                     el.parentNode.replaceChild(table, el);
                 });
                 span9.querySelectorAll('.day table').forEach(t => t.classList.add('timetable-grid'));
@@ -8975,20 +9028,8 @@ injectStyles(styles);
                         // Клонируем всю таблицу расписания
                         const timetableClone = document.querySelector('.timetable').cloneNode(true);
 
-                        // Удаляем кнопки "оценить занятие", скрытые пары и точки
-                        timetableClone.querySelectorAll('.pair_teacher .eval').forEach(el => el.remove());
-                        timetableClone.querySelectorAll('.hidden-by-filter').forEach(el => el.remove());
-                        timetableClone.querySelectorAll('.live-dot').forEach(el => el.remove());
-
-                        // Снимаем синие подчеркивания у ссылок
-                        timetableClone.querySelectorAll('a').forEach(a => {
-                            a.style.textDecoration = 'none';
-                            a.style.color = getComputedStyle(a).color;
-                        });
-
-                        timetableClone.querySelectorAll('*').forEach(el => {
-                            el.style.boxSizing = 'border-box';
-                        });
+                        // Применяем универсальную очистку!
+                        cleanTimetableForExport(timetableClone);
 
                         span9Wrapper.appendChild(timetableClone);
 
@@ -9974,7 +10015,7 @@ injectStyles(styles);
                     modal.classList.add('active');
                 }
 
-                // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ) И КНОПКА "+" ---
+                // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ), КНОПКИ "+" И ШЕРИНГА ---
                 const dayHeaders = span9.querySelectorAll('.day h3');
                 dayHeaders.forEach(header => {
                     const text = header.textContent.trim();
@@ -9988,18 +10029,104 @@ injectStyles(styles);
                         datePart = parts.slice(1).join(',').trim();
                     }
 
-                    // Кнопка "+" теперь встроена прямо в flex-блок рядом с днем недели
                     header.innerHTML = `
                         <div style="display:flex; align-items:center; gap: 6px;">
                             <span class="day-name">${dayOfWeek}</span>
                             <span class="material-icons add-custom-pair-btn" title="Добавить свою пару">add</span>
                         </div>
-                        <span class="day-date">${datePart}</span>
+                        <div class="day-header-right">
+                            <span class="day-date">${datePart}</span>
+                            <span class="material-icons share-day-btn" title="Поделиться днем">ios_share</span>
+                        </div>
                     `;
 
                     header.querySelector('.add-custom-pair-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
                         openCustomPairModal(dayOfWeek);
+                    });
+
+                    header.querySelector('.share-day-btn').addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const btn = e.currentTarget;
+                        btn.textContent = 'hourglass_empty';
+                        
+                        const dayBlock = header.closest('.day');
+                        const fileName = `Расписание (${datePart || dayOfWeek}).png`;
+
+                        const renderScreenshot = () => {
+                            let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || unsafeWindow?.html2canvas);
+                            
+                            if (!h2c) {
+                                btn.textContent = 'error';
+                                setTimeout(() => btn.textContent = 'ios_share', 2000);
+                                return;
+                            }
+
+                            const isMobile = window.innerWidth <= 960;
+                            const renderWidth = 540;
+
+                            const exportContainer = document.createElement('div');
+                            exportContainer.style.cssText = `position:fixed; top:100vh; left:0; width:${renderWidth}px; padding:24px; background:var(--color-body); z-index:-9999; box-sizing:border-box;`;
+                            
+                            const span9Wrapper = document.createElement('div');
+                            span9Wrapper.className = 'span9';
+                            span9Wrapper.style.cssText = 'margin:0 !important; padding:0 !important; width:100% !important; display:block;';
+
+                            const clone = dayBlock.cloneNode(true);
+                            clone.style.margin = '0';
+                            
+                            cleanTimetableForExport(clone);
+
+                            span9Wrapper.appendChild(clone);
+                            
+                            const watermark = document.createElement('div');
+                            watermark.style.cssText = 'text-align: right; margin-top: 12px; font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.4;';
+                            watermark.textContent = 'etisreborn.ru';
+                            span9Wrapper.appendChild(watermark);
+
+                            exportContainer.appendChild(span9Wrapper);
+                            document.body.appendChild(exportContainer);
+
+                            h2c(exportContainer, {
+                                scale: 2, 
+                                useCORS: true, 
+                                windowWidth: renderWidth, 
+                                backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim()
+                            }).then(canvas => {
+                                canvas.toBlob(blob => {
+                                    const file = new File([blob], fileName, { type: 'image/png' });
+                                    if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                        navigator.share({ files: [file], title: fileName });
+                                    } else {
+                                        const link = document.createElement('a');
+                                        link.download = fileName; link.href = URL.createObjectURL(blob); link.click();
+                                        URL.revokeObjectURL(link.href);
+                                    }
+                                    exportContainer.remove();
+                                    btn.textContent = 'check';
+                                    setTimeout(() => btn.textContent = 'ios_share', 2000);
+                                }, 'image/png');
+                            }).catch(err => {
+                                console.error('Screenshot error:', err);
+                                exportContainer.remove();
+                                btn.textContent = 'error';
+                                setTimeout(() => btn.textContent = 'ios_share', 2000);
+                            });
+                        };
+
+                        let h2cExists = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || unsafeWindow?.html2canvas);
+                        if (!h2cExists) {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                            script.onload = renderScreenshot;
+                            script.onerror = () => {
+                                btn.textContent = 'error';
+                                setTimeout(() => btn.textContent = 'ios_share', 2000);
+                            }
+                            document.head.appendChild(script);
+                        } else {
+                            renderScreenshot();
+                        }
                     });
                 });
 
@@ -10185,7 +10312,12 @@ injectStyles(styles);
                             const tr = document.createElement('tr');
                             tr.className = 'custom-no-pairs';
                             tr.innerHTML = `
-                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">0 пар<br><font class="eval">00:00</font></td>
+                                <td class="pair_num" style="border-bottom: none !important; border-right: none !important;">
+                                    <div class="pair-badge-wrapper">
+                                        <span class="pair-type-badge type-badge-holiday">ВЫХ</span>
+                                    </div>
+                                    0 пар<br><font class="eval">00:00</font>
+                                </td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
                                     <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
                                         <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
@@ -10751,61 +10883,70 @@ injectStyles(styles);
 
                         if (isSwiping) {
                             if (diffX < 0) {
+                                // Свайп влево
                                 swipeDir = 'left';
-                                iconEl.textContent = targetType === 'day' ? 'add' : 'edit';
-                            } else if (diffX > 0 && targetType === 'row') {
+                                if (targetType === 'day') {
+                                    iconEl.textContent = 'ios_share';
+                                } else {
+                                    iconEl.textContent = 'edit';
+                                }
+                            } else if (diffX > 0) {
+                                // Свайп вправо
                                 swipeDir = 'right';
-                                
-                                // ПРОВЕРКА НА ПРОШЕДШУЮ ПАРУ
-                                let isPassed = false;
-                                const dayDateEl = currentTarget.closest('.day')?.querySelector('.day-date');
-                                if (dayDateEl) {
-                                    const dateStr = dayDateEl.textContent.trim();
-                                    const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
-                                    let classDate = new Date();
-                                    if (match) {
-                                        const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
-                                        if (m !== undefined) {
-                                            classDate.setMonth(m);
-                                            classDate.setDate(parseInt(match[1]));
+                                if (targetType === 'day') {
+                                    iconEl.textContent = 'add';
+                                } else if (targetType === 'row') {
+                                    // ПРОВЕРКА НА ПРОШЕДШУЮ ПАРУ
+                                    let isPassed = false;
+                                    const dayDateEl = currentTarget.closest('.day')?.querySelector('.day-date');
+                                    if (dayDateEl) {
+                                        const dateStr = dayDateEl.textContent.trim();
+                                        const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
+                                        let classDate = new Date();
+                                        if (match) {
+                                            const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
+                                            if (m !== undefined) {
+                                                classDate.setMonth(m);
+                                                classDate.setDate(parseInt(match[1]));
+                                            }
+                                        } else {
+                                            const isoMatch = dateStr.match(/(\d{2})\.(\d{2})/);
+                                            if (isoMatch) {
+                                                classDate.setMonth(parseInt(isoMatch[2])-1);
+                                                classDate.setDate(parseInt(isoMatch[1]));
+                                            }
                                         }
-                                    } else {
-                                        const isoMatch = dateStr.match(/(\d{2})\.(\d{2})/);
-                                        if (isoMatch) {
-                                            classDate.setMonth(parseInt(isoMatch[2])-1);
-                                            classDate.setDate(parseInt(isoMatch[1]));
-                                        }
-                                    }
-                                    classDate.setHours(0,0,0,0);
-                                    const today = new Date();
-                                    today.setHours(0,0,0,0);
-                                    
-                                    if (classDate.getTime() < today.getTime()) {
-                                        isPassed = true;
-                                    } else if (classDate.getTime() === today.getTime()) {
-                                        const timeEl = currentTarget.querySelector('.eval');
-                                        if (timeEl) {
-                                            const parts = timeEl.textContent.trim().split(':');
-                                            if (parts.length === 2) {
-                                                const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-                                                const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
-                                                if (currentMins >= startMins) isPassed = true;
+                                        classDate.setHours(0,0,0,0);
+                                        const today = new Date();
+                                        today.setHours(0,0,0,0);
+                                        
+                                        if (classDate.getTime() < today.getTime()) {
+                                            isPassed = true;
+                                        } else if (classDate.getTime() === today.getTime()) {
+                                            const timeEl = currentTarget.querySelector('.eval');
+                                            if (timeEl) {
+                                                const parts = timeEl.textContent.trim().split(':');
+                                                if (parts.length === 2) {
+                                                    const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
+                                                    const currentMins = new Date().getHours() * 60 + new Date().getMinutes();
+                                                    if (currentMins >= startMins) isPassed = true;
+                                                }
                                             }
                                         }
                                     }
-                                }
 
-                                if (!isPassed) {
-                                    iconEl.textContent = 'notification_important';
-                                    bubble.className = 'active-threshold action-important';
-                                } else if (hasEval) {
-                                    iconEl.textContent = 'star_rate';
-                                    bubble.className = 'active-threshold action-eval';
-                                } else {
-                                    // Если пара прошла и кнопки оценки тоже нет — сбрасываем свайп
-                                    targetElements.forEach(el => el.style.transform = `translateX(0px)`);
-                                    bubble.style.opacity = '0';
-                                    return;
+                                    if (!isPassed) {
+                                        iconEl.textContent = 'notification_important';
+                                        bubble.className = 'active-threshold action-important';
+                                    } else if (hasEval) {
+                                        iconEl.textContent = 'star_rate';
+                                        bubble.className = 'active-threshold action-eval';
+                                    } else {
+                                        // Если пара прошла и кнопки оценки тоже нет — сбрасываем свайп
+                                        targetElements.forEach(el => el.style.transform = `translateX(0px)`);
+                                        bubble.style.opacity = '0';
+                                        return;
+                                    }
                                 }
                             } else {
                                 targetElements.forEach(el => el.style.transform = `translateX(0px)`);
@@ -10819,7 +10960,7 @@ injectStyles(styles);
                                 moveX = (moveX > 0 ? 1 : -1) * (THRESHOLD + (Math.abs(moveX) - THRESHOLD) * 0.25);
                             }
 
-                            // 1. Двигаем строку
+                            // 1. Двигаем строку или день
                             targetElements.forEach(el => el.style.transform = `translateX(${moveX}px)`);
 
                             // 2. Иконка появляется ровно по центру образующейся пустоты
@@ -10828,8 +10969,7 @@ injectStyles(styles);
                             bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
 
                             if (swipeDir === 'left') {
-                                // Пустота образуется СПРАВА (между оригинальным краем и уехавшей строкой)
-                                // Ставим иконку в центр этой пустоты (двигается в 2 раза медленнее свайпа)
+                                // Пустота образуется СПРАВА
                                 bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
                             } else {
                                 // Пустота образуется СЛЕВА
@@ -10838,16 +10978,24 @@ injectStyles(styles);
 
                             // 3. Индикация прохождения порога (смена цвета)
                             if (Math.abs(diffX) >= THRESHOLD) {
-                                if (targetType === 'day') bubble.classList.add('active-threshold', 'action-add');
-                                else if (swipeDir === 'left') bubble.classList.add('active-threshold', 'action-note');
-                                else bubble.classList.add('active-threshold', 'action-eval');
+                                if (targetType === 'day') {
+                                    if (swipeDir === 'left') {
+                                        bubble.classList.add('active-threshold', 'action-share');
+                                    } else {
+                                        bubble.classList.add('active-threshold', 'action-add');
+                                    }
+                                } else if (swipeDir === 'left') {
+                                    bubble.classList.add('active-threshold', 'action-note');
+                                } else if (!bubble.classList.contains('action-important')) {
+                                    bubble.classList.add('active-threshold', 'action-eval');
+                                }
 
                                 if (!bubble.dataset.vibrated && navigator.vibrate) {
                                     navigator.vibrate(15);
                                     bubble.dataset.vibrated = 'true';
                                 }
                             } else {
-                                bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval');
+                                bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval', 'action-share', 'action-important');
                                 bubble.dataset.vibrated = '';
                             }
                         }
@@ -10861,8 +11009,9 @@ injectStyles(styles);
                         const tType = targetType;
                         const dir = swipeDir;
                         const el = evalLink;
+                        const bubbleClass = bubble.className;
 
-                        // Плавный возврат строки на место
+                        // Плавный возврат элемента на место
                         targetElements.forEach(elem => {
                             elem.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                             elem.style.transform = 'translateX(0px)';
@@ -10870,24 +11019,29 @@ injectStyles(styles);
 
                         // Иконка плавно затухает
                         bubble.style.opacity = '0';
-                        bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval');
+                        bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval', 'action-share', 'action-important');
                         bubble.dataset.vibrated = '';
 
                         // Выполнение действия
                         if (Math.abs(diffX) >= THRESHOLD) {
                             setTimeout(() => {
-                                if (tType === 'day' && dir === 'left') {
-                                    const dayNameEl = target.querySelector('.day-name');
-                                    if (dayNameEl) openCustomPairModal(dayNameEl.textContent.trim());
+                                if (tType === 'day') {
+                                    if (dir === 'left') {
+                                        const shareBtn = target.querySelector('.share-day-btn');
+                                        if (shareBtn) shareBtn.click();
+                                    } else if (dir === 'right') {
+                                        const dayNameEl = target.querySelector('.day-name');
+                                        if (dayNameEl) openCustomPairModal(dayNameEl.textContent.trim());
+                                    }
                                 } else if (tType === 'row') {
                                     if (dir === 'left') {
                                         const noteBtn = target.querySelector('.subject-note-btn');
                                         if (noteBtn) noteBtn.click();
                                     } else if (dir === 'right') {
-                                        if (bubble.classList.contains('action-important')) {
+                                        if (bubbleClass.includes('action-important')) {
                                             const impBtn = target.querySelector('.pair-important-btn');
                                             if (impBtn) impBtn.click();
-                                        } else if (bubble.classList.contains('action-eval')) {
+                                        } else if (bubbleClass.includes('action-eval')) {
                                             if (el) {
                                                 if (el.hasAttribute('href')) window.location.href = el.getAttribute('href');
                                                 else el.click();
@@ -11285,6 +11439,7 @@ injectStyles(styles);
                         if (typeof recalculateTimetable === 'function') recalculateTimetable();
                         if (typeof renderNotes === 'function') renderNotes();
                         if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                        if (typeof dimPastPairs === 'function') dimPastPairs();
                     }
                 }
 
@@ -11292,7 +11447,193 @@ injectStyles(styles);
                 loadExternalCalendar();
 
                 updateLiveTimetable();
-                setInterval(updateLiveTimetable, 60000);
+
+                // --- ФУНКЦИЯ ЗАТЕМНЕНИЯ ПРОШЕДШИХ ПАР ---
+                function dimPastPairs() {
+                    const days = document.querySelectorAll('.span9 .day');
+                    const now = new Date();
+                    const todayMins = now.getHours() * 60 + now.getMinutes();
+                    const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+                    days.forEach(day => {
+                        const dateEl = day.querySelector('.day-date');
+                        if (!dateEl) return;
+                        
+                        let classDateObj = new Date();
+                        const dateStr = dateEl.textContent.trim();
+                        const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
+                        
+                        if (match) {
+                            const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
+                            classDateObj.setMonth(m);
+                            classDateObj.setDate(parseInt(match[1]));
+                        } else {
+                            const isoMatch = dateStr.match(/(\d{2})\.(\d{2})/);
+                            if (isoMatch) {
+                                classDateObj.setMonth(parseInt(isoMatch[2])-1);
+                                classDateObj.setDate(parseInt(isoMatch[1]));
+                            }
+                        }
+                        classDateObj.setHours(0,0,0,0);
+                        const classTime = classDateObj.getTime();
+
+                        const isPastDay = classTime < todayZero;
+                        const isToday = classTime === todayZero;
+
+                        day.querySelectorAll('.timetable-grid tr:not(.custom-no-pairs)').forEach(row => {
+                            let isPassed = false;
+                            
+                            if (isPastDay) {
+                                isPassed = true;
+                            } else if (isToday) {
+                                let startMins = -1;
+                                let duration = 90; // Стандартная пара
+
+                                // Окна
+                                if (row.classList.contains('timetable-gap-row')) {
+                                    const startStr = row.getAttribute('data-gap-start');
+                                    const count = parseInt(row.getAttribute('data-gap-count') || "1");
+                                    duration = (count * 90) + ((count - 1) * 10);
+                                    if (startStr && startStr !== "00:00") {
+                                        const p = startStr.split(':');
+                                        startMins = parseInt(p[0]) * 60 + parseInt(p[1]);
+                                    }
+                                } 
+                                // Обычные, кастомные и внешние пары
+                                else {
+                                    const timeEl = row.querySelector('.eval'); // Ищем любой элемент со временем
+                                    if (timeEl && !timeEl.textContent.includes("Весь день")) {
+                                        // Извлекаем первое попавшееся время ЧЧ:ММ
+                                        const timeMatch = timeEl.textContent.match(/(\d{1,2}):(\d{2})/);
+                                        if (timeMatch) {
+                                            startMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+                                        }
+                                    }
+                                }
+
+                                if (startMins !== -1) {
+                                    if (todayMins >= (startMins + duration)) isPassed = true;
+                                }
+                            }
+
+                            if (isPassed) row.classList.add('pair-passed');
+                            else row.classList.remove('pair-passed');
+                        });
+                    });
+                }
+
+                // --- УНИВЕРСАЛЬНАЯ ОЧИСТКА РАСПИСАНИЯ ДЛЯ HTML2CANVAS ---
+                const cleanTimetableForExport = (clone) => {
+                    // 1. Удаляем UI-мусор
+                    clone.querySelectorAll('.share-day-btn, .add-custom-pair-btn, .live-dot, .day-status-icon, .pair_teacher .eval, .pair-important-btn, .subject-note-btn, .delete-custom-pair-btn, .hidden-by-filter').forEach(el => el.remove());
+                    
+                    // 2. Убираем эффект "прошедших пар"
+                    clone.querySelectorAll('.pair-passed, td').forEach(el => {
+                        el.classList.remove('pair-passed');
+                        el.style.setProperty('opacity', '1', 'important');
+                    });
+
+                    // 3. ДОБАВЛЯЕМ QR-КОДЫ ДЛЯ ОНЛАЙН ПАР
+                    const qriousObj = typeof QRious !== 'undefined' ? QRious : (window.QRious || unsafeWindow?.QRious);
+                    if (qriousObj) {
+                        clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
+                            const link = tr.querySelector('.aud a[href]');
+                            const teacherCell = tr.querySelector('.pair_teacher');
+                            
+                            if (link && teacherCell && link.href) {
+                                const qrCanvas = document.createElement('canvas');
+                                new qriousObj({
+                                    element: qrCanvas,
+                                    value: link.href,
+                                    size: 100,
+                                    level: 'L'
+                                });
+                                
+                                const img = document.createElement('img');
+                                img.src = qrCanvas.toDataURL();
+                                img.style.cssText = 'width: 38px; height: 38px; border-radius: 6px; flex-shrink: 0; margin-right: 12px; border: 1px solid var(--color-table-border);';
+                                
+                                const teacherText = teacherCell.innerHTML;
+                                teacherCell.innerHTML = '';
+                                
+                                const wrapper = document.createElement('div');
+                                wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
+                                
+                                const textWrapper = document.createElement('div');
+                                textWrapper.innerHTML = teacherText;
+                                textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
+                                
+                                textWrapper.querySelectorAll('a').forEach(a => {
+                                    a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
+                                    a.style.setProperty('text-decoration', 'none', 'important');
+                                });
+                                
+                                wrapper.appendChild(img);
+                                wrapper.appendChild(textWrapper);
+                                teacherCell.appendChild(wrapper);
+                            }
+                        });
+                    }
+
+                    // 4. Вшиваем стили рендера
+                    const exportStyles = document.createElement('style');
+                    exportStyles.innerHTML = `
+                        .timetable-grid { table-layout: fixed !important; width: 100% !important; border-spacing: 0 !important; border-collapse: collapse !important; }
+                        .timetable-grid td { white-space: normal !important; word-wrap: break-word !important; border-bottom: none !important; padding: 12px 0 !important; }
+                        
+                        .timetable-grid td.pair_num {
+                            width: 90px !important; min-width: 90px !important;
+                            font-size: 1.1rem !important; 
+                            text-align: center !important; padding: 12px 5px !important;
+                        }
+                        
+                        .timetable-grid td.pair_info {
+                            width: auto !important; padding-left: 5px !important; padding-right: 5px !important; text-align: left !important;
+                        }
+                        
+                        .timetable-grid td.pair_teacher {
+                            width: 170px !important; min-width: 170px !important;
+                            text-align: right !important; padding-right: 16px !important;
+                            display: table-cell !important;
+                        }
+
+                        .timetable-grid tr:not(:last-child) {
+                            background-image: linear-gradient(to right, transparent 90px, var(--color-table-border) 90px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)) !important;
+                            background-position: bottom !important;
+                            background-size: 100% 1px !important;
+                            background-repeat: no-repeat !important;
+                            background-color: transparent !important;
+                        }
+
+                        .day-status-icon { display: none !important; }
+
+                        .timetable-gap-capsule {
+                            background: var(--color-accent-active) !important;
+                            color: var(--color-accent) !important;
+                            border: 1px solid var(--color-accent-active) !important;
+                            display: inline-flex !important; align-items: center !important;
+                            width: max-content !important; flex: 0 0 auto !important;
+                        }
+                        .aud a, .btn-generic-online {
+                            display: inline-flex !important; align-items: center !important;
+                            width: max-content !important; flex: 0 0 auto !important;
+                            text-decoration: none !important;
+                        }
+                        .type-badge-holiday { color: #00BFA5 !important; }
+                    `;
+                    clone.appendChild(exportStyles);
+
+                    clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
+                        tr.style.removeProperty('background');
+                        tr.style.setProperty('background-color', 'transparent', 'important');
+                    });
+                    
+                    clone.querySelectorAll('*').forEach(el => el.style.boxSizing = 'border-box');
+                };
+
+                dimPastPairs();
+                setInterval(dimPastPairs, 60000);
+
                 break;
 
                 case 'stu.change_pass_form':
