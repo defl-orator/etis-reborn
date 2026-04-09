@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      2.0000
+// @version      2.0001
 // @changelog    1) Закрашивание уже прошедших пар, 2) Шеринг отдельного дня, 3) Генерация QR кода при шеринге на онлайн занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -8389,6 +8389,95 @@ injectStyles(styles);
                 }
             };
 
+            // --- ФУНКЦИЯ СВАЙПОВ ДЛЯ СООБЩЕНИЙ/ОБЪЯВЛЕНИЙ (МОБИЛЬНЫЕ) ---
+            const initMessageSwipes = (container, defaultFileName) => {
+                if (window.innerWidth > 960) return; // Только для мобилок
+
+                let bubble = document.getElementById('swipe-action-bubble');
+                if (!bubble) {
+                    bubble = document.createElement('div');
+                    bubble.id = 'swipe-action-bubble';
+                    bubble.innerHTML = '<span class="material-icons"></span>';
+                    document.body.appendChild(bubble);
+                }
+                const iconEl = bubble.querySelector('.material-icons');
+
+                let startX = 0, startY = 0, currentCard = null, originalRect = null;
+                let isSwiping = false, isScrollDetermined = false;
+                const THRESHOLD = 80;
+
+                container.addEventListener('touchstart', (e) => {
+                    const touch = e.touches[0];
+                    startX = touch.clientX; startY = touch.clientY;
+                    isSwiping = false; isScrollDetermined = false;
+                    currentCard = e.target.closest('.msg-card');
+                    
+                    if (currentCard) {
+                        originalRect = currentCard.getBoundingClientRect();
+                        currentCard.style.transition = 'none';
+                    }
+                }, { passive: true });
+
+                container.addEventListener('touchmove', (e) => {
+                    if (!currentCard || !originalRect) return;
+                    const touch = e.touches[0];
+                    const diffX = touch.clientX - startX;
+                    const diffY = touch.clientY - startY;
+
+                    if (!isScrollDetermined) {
+                        if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) return;
+                        isScrollDetermined = true;
+                        // Разрешаем только свайп ВЛЕВО (diffX < 0). Скролл вниз игнорируем
+                        if (Math.abs(diffY) > Math.abs(diffX) || diffX > 0) { 
+                            currentCard = null; return; 
+                        }
+                        isSwiping = true;
+                        bubble.className = '';
+                        iconEl.textContent = 'ios_share';
+                    }
+
+                    if (isSwiping && diffX < 0) {
+                        let moveX = diffX;
+                        // Пружинистое сопротивление
+                        if (Math.abs(moveX) > THRESHOLD) moveX = -THRESHOLD - (Math.abs(moveX) - THRESHOLD) * 0.25;
+
+                        currentCard.style.transform = `translateX(${moveX}px)`;
+                        
+                        bubble.style.top = `${originalRect.top + originalRect.height / 2 - 12}px`;
+                        bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
+                        bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
+
+                        if (Math.abs(diffX) >= THRESHOLD) {
+                            bubble.classList.add('active-threshold', 'action-share');
+                            if (!bubble.dataset.vibrated && navigator.vibrate) {
+                                navigator.vibrate(15); bubble.dataset.vibrated = 'true';
+                            }
+                        } else {
+                            bubble.classList.remove('active-threshold', 'action-share');
+                            bubble.dataset.vibrated = '';
+                        }
+                    }
+                }, { passive: true });
+
+                container.addEventListener('touchend', (e) => {
+                    if (!currentCard || !isSwiping) return;
+                    const diffX = e.changedTouches[0].clientX - startX;
+                    const cardToShare = currentCard;
+                    
+                    currentCard.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                    currentCard.style.transform = 'translateX(0px)';
+                    
+                    bubble.style.opacity = '0';
+                    bubble.classList.remove('active-threshold', 'action-share');
+                    bubble.dataset.vibrated = '';
+
+                    if (diffX <= -THRESHOLD) {
+                        setTimeout(() => shareMessageCard(cardToShare, defaultFileName), 150);
+                    }
+                    currentCard = null; isSwiping = false;
+                });
+            };
+
             switch (page) {
                 case 'stu.teach_plan':
                 case 'stu.fcl_choice':
@@ -11749,7 +11838,6 @@ injectStyles(styles);
                         // --- АВТО-ПРОЧТЕНИЕ ---
                         if (firstLi.hasAttribute('onclick')) {
                             const clickFunc = firstLi.getAttribute('onclick');
-                            // Выполняем только если это функция прочтения (Oracle ann_read)
                             if (clickFunc.includes('ann_read') || clickFunc.includes('msg_read')) {
                                 try { new Function(clickFunc)(); } catch(e) {}
                             }
@@ -11778,7 +11866,10 @@ injectStyles(styles);
                             }
                         }
                         let bodyHtml = parts.join('<br>').replace(/^(<br\s*\/?>|\s)+/, '');
+                        
+                        // ИЩЕМ ДАТЫ И В ТЕЛЕ, И В ЗАГОЛОВКЕ
                         bodyHtml = highlightDatesInHTML(bodyHtml, titleStr || 'Объявление');
+                        const highlightedTitle = titleStr ? highlightDatesInHTML(titleStr, titleStr) : '';
 
                         const card = document.createElement('div');
                         card.className = 'msg-card';
@@ -11790,7 +11881,7 @@ injectStyles(styles);
                                     <div class="share-msg-wrap">${softShareSVG}</div>
                                 </div>
                             </div>
-                            ${titleStr ? `<div class="msg-subject">${titleStr}</div>` : ''}
+                            ${highlightedTitle ? `<div class="msg-subject">${highlightedTitle}</div>` : ''}
                             <div class="msg-body">${bodyHtml}</div>
                             ${attachments.length > 0 ? `<div class="msg-footer"><div class="msg-attachments">${attachments.map(a => `<a href="${a.href}" class="file-attachment-link" target="_blank"><span class="material-icons">attach_file</span><span class="file-name">${a.name}</span></a>`).join('')}</div></div>` : ''}
                         `;
@@ -11807,6 +11898,9 @@ injectStyles(styles);
                             };
                         }
                     });
+
+                    // Инициализация свайпов для мобилок
+                    initMessageSwipes(container, 'Объявление.png');
 
                     // Логика фильтрации
                     searchWrapper.querySelector('#ann-search').addEventListener('input', (e) => {
@@ -11868,7 +11962,9 @@ injectStyles(styles);
                         const subjects = [];
                         cloneContent.querySelectorAll('font').forEach(f => { subjects.push(f.textContent.trim()); f.remove(); });
 
-                        let highlightedBody = highlightDatesInHTML(cloneContent.innerHTML, subjects[0] || teacherName || 'Сообщение');
+                        // ИЩЕМ ДАТЫ И В ТЕЛЕ, И В ТЕМАХ
+                        const highlightedBody = highlightDatesInHTML(cloneContent.innerHTML, subjects[0] || teacherName || 'Сообщение');
+                        const highlightedSubjects = subjects.map(s => highlightDatesInHTML(s, s));
 
                         const card = document.createElement('div');
                         card.className = 'msg-card';
@@ -11880,7 +11976,7 @@ injectStyles(styles);
                                     <div class="share-msg-wrap">${softShareSVG}</div>
                                 </div>
                             </div>
-                            ${subjects.length ? `<div class="msg-subject">${subjects.join(' • ')}</div>` : ''}
+                            ${highlightedSubjects.length ? `<div class="msg-subject">${highlightedSubjects.join('<br>')}</div>` : ''}
                             <div class="msg-body">${highlightedBody}</div> 
                         `;
                         
@@ -11897,6 +11993,9 @@ injectStyles(styles);
                             };
                         }
                     });
+
+                    // Инициализация свайпов для мобилок
+                    initMessageSwipes(container, 'Сообщение.png');
 
                     // Логика фильтрации
                     searchWrapper.querySelector('#msg-search').addEventListener('input', (e) => {
@@ -11918,7 +12017,6 @@ injectStyles(styles);
                 case 'cert_pkg.stu_certif': {
                     const action = urlParams.get('p_action');
 
-                    // --- Ищем зеленый текст с правилом (он есть на главной, но может не быть внутри) ---
                     let greenText = "Справки выдаются лично заявителю, либо доверенному лицу, если его ФИО будет написано в «Примечаниях» при заказе справки.";
                     const greenSpan = span9.querySelector('span[style*="00b050"]');
                     if (greenSpan && greenSpan.textContent.trim()) {
@@ -13705,7 +13803,6 @@ injectStyles(styles);
                 // Функция для добавления эффекта копирования
                 const addCopyLogic = (cell) => {
                     const text = cell.textContent.trim();
-                    // Не вешаем копирование на пустые ячейки, пояснения и заголовки
                     if (!text || text.includes('от личного кабинета') || text.toLowerCase().includes('код доступа') || text.includes('Логин')) return;
 
                     cell.style.cursor = 'pointer';
@@ -13728,7 +13825,6 @@ injectStyles(styles);
                     const catHeader = row.querySelector('th[colspan="3"]');
                     const rowText = row.textContent.toLowerCase();
 
-                    // Пропускаем оригинальный блок LDAP и его тех. строки
                     if (catHeader && rowText.includes('ldap/campus')) { row.remove(); return; }
                     if (rowText.includes('логин / пароль') && rowText.includes('личного кабинета') && !rowText.includes('bbb')) { row.remove(); return; }
 
@@ -13752,7 +13848,6 @@ injectStyles(styles);
                         span9.insertBefore(block, introText);
                         row.remove();
                     } else if (currentTable) {
-                        // Удаляем "шапки" внутри категорий (Логин / Пароль)
                         if (row.querySelector('th') || (rowText.includes('логин') && rowText.includes('пароль'))) {
                             row.remove();
                             return;
@@ -13760,10 +13855,10 @@ injectStyles(styles);
 
                         const cells = row.querySelectorAll('td');
                         if (cells.length === 3) {
-                            addCopyLogic(cells[1]); // Копирование Логина
-                            addCopyLogic(cells[2]); // Копирование Пароля
+                            addCopyLogic(cells[1]); 
+                            addCopyLogic(cells[2]); 
                         } else if (cells.length === 2) {
-                            addCopyLogic(cells[1]); // Копирование единственного поля (как в BOOK.RU)
+                            addCopyLogic(cells[1]);
                         }
 
                         currentTable.appendChild(row);
@@ -13789,7 +13884,6 @@ injectStyles(styles);
 
                         const icon = document.createElement('span');
                         icon.className = 'material-icons';
-                        // Иконка выставится через CSS по атрибуту href
 
                         const text = document.createElement('span');
                         text.className = 'advice-label';
@@ -13800,34 +13894,27 @@ injectStyles(styles);
                         container.appendChild(card);
                     });
 
-                    // Заменяем старый список новым контейнером
                     adviceList.parentNode.replaceChild(container, adviceList);
 
-                    // Чистим заголовок h2
                     const h2 = span9.querySelector('h2');
                     if (h2) h2.style.marginBottom = '0';
 
                     break;
 
                 case 'stu.ses':
-                    // 1. Ищем данные ПЕРЕД очисткой
                     const allElements = Array.from(span9.childNodes);
 
-                    // Ищем название направления (обычно это самый первый h2 или h3)
                     const majorHeader = span9.querySelector('h2') || span9.querySelector('h3');
                     const majorName = majorHeader ? majorHeader.textContent.trim() : "";
 
-                    // Ищем ссылку на PDF (ищем элемент, где есть текст "Текст стандарта")
                     const pdfElement = Array.from(span9.querySelectorAll('p, div, font')).find(el => el.textContent.includes('Текст стандарта'));
                     const pdfHTML = pdfElement ? pdfElement.innerHTML : "";
 
-                    // 2. Собираем карточки компетенций
                     const competencyBlocks = [];
                     const headers = Array.from(span9.querySelectorAll('h3'));
 
                     headers.forEach(h => {
                         const title = h.textContent.trim();
-                        // Игнорируем общий заголовок, берем только подразделы
                         if (title.includes('компетенции') && title !== 'Компетенции выпускника') {
                             const card = document.createElement('div');
                             card.className = 'day resource-block';
@@ -13841,11 +13928,10 @@ injectStyles(styles);
                             content.style.fontSize = '1.3rem';
                             content.style.lineHeight = '1.6';
 
-                            // Собираем всё, что идет после заголовка до следующего h3
                             let next = h.nextElementSibling;
                             while (next && next.tagName !== 'H3') {
                                 const clone = next.cloneNode(true);
-                                if (clone.style) clone.removeAttribute('style'); // Чистим старые шрифты
+                                if (clone.style) clone.removeAttribute('style');
                                 content.appendChild(clone);
                                 next = next.nextElementSibling;
                             }
@@ -13854,26 +13940,21 @@ injectStyles(styles);
                         }
                     });
 
-                    // 3. Полностью перестраиваем страницу
                     span9.innerHTML = '';
 
-                    // Заголовок страницы
                     const mainTitle = document.createElement('h2');
                     mainTitle.textContent = 'Компетенции выпускника';
                     mainTitle.style.marginBottom = '2.4rem';
                     span9.appendChild(mainTitle);
 
-                    // Добавляем карточки
                     competencyBlocks.forEach(block => span9.appendChild(block));
 
-                    // 4. Создаем футер (информация о стандарте и ссылка)
                     if (majorName || pdfHTML) {
                         const footer = document.createElement('div');
-                        footer.className = 'electr-description'; // Используем стиль плашки
+                        footer.className = 'electr-description';
                         footer.style.marginTop = '4rem';
                         footer.style.textAlign = 'center';
 
-                        // Добавляем название направления
                         if (majorName) {
                             const nameDiv = document.createElement('div');
                             nameDiv.style.fontWeight = 'bold';
@@ -13883,11 +13964,9 @@ injectStyles(styles);
                             footer.appendChild(nameDiv);
                         }
 
-                        // Добавляем ссылку на стандарт
                         if (pdfHTML) {
                             const linkDiv = document.createElement('div');
                             linkDiv.innerHTML = pdfHTML;
-                            // Убираем возможные инлайновые стили у вложенных тегов
                             linkDiv.querySelectorAll('*').forEach(el => el.removeAttribute('style'));
                             footer.appendChild(linkDiv);
                         }
@@ -13900,7 +13979,6 @@ injectStyles(styles);
                     const pageMode = new URLSearchParams(window.location.search).get('p_mode');
                     const submenu = span9.querySelector('.submenu');
 
-                    // 1. Инфо-текст в плашку вниз (универсально для всех вкладок)
                     const libIntro = Array.from(span9.querySelectorAll('p')).find(p => p.textContent.includes('Для чтения полных текстов'));
                     if (libIntro) {
                         libIntro.className = 'electr-description';
@@ -13908,7 +13986,6 @@ injectStyles(styles);
                         span9.appendChild(libIntro);
                     }
 
-                    // Вспомогательная функция для создания капсулы поиска
                     const createSearchCapsule = (placeholder, inputClass) => {
                         const container = document.createElement('div');
                         container.className = 'teacher-search-wrapper';
@@ -13921,7 +13998,6 @@ injectStyles(styles);
                         return container;
                     };
 
-                    // 2. РЕЖИМ КАТАЛОГА (Поиск по всей базе)
                     if (pageMode === 'catalog') {
                         const searchWrap = span9.querySelector('.wrap');
                         if (searchWrap) {
@@ -13951,7 +14027,6 @@ injectStyles(styles);
                             input.addEventListener('keypress', (e) => { if (e.key === 'Enter') performSearch(); });
                         }
                     }
-                    // 3. РЕЖИМ РЕКОМЕНДАЦИЙ (Списки по предметам)
                     else if (pageMode === 'recommend' || (!pageMode && span9.querySelector('h3'))) {
                         const searchContainer = createSearchCapsule("Поиск", "lib-local-input");
                         if (submenu) submenu.after(searchContainer);
@@ -13990,7 +14065,6 @@ injectStyles(styles);
                             });
                         });
                     }
-                    // 4. РЕЖИМ ВЫДАННЫХ КНИГ (История)
                     else if (pageMode === 'history' || (!pageMode && span9.querySelector('th')?.textContent.includes('Книга'))) {
                         const historyTable = span9.querySelector('table.common');
                         if (historyTable) {
@@ -14020,10 +14094,8 @@ injectStyles(styles);
                 }
 
                 case 'stu.special_est_list': {
-                    // 1. Очистка мусора
                     span9.querySelectorAll('script, style').forEach(el => el.remove());
 
-                    // Добавляем заголовок страницы
                     if (!span9.querySelector('h2')) {
                         const pageTitle = document.createElement('h2');
                         pageTitle.textContent = 'Опросы и анкетирование';
@@ -14031,7 +14103,6 @@ injectStyles(styles);
                         span9.prepend(pageTitle);
                     }
 
-                    // 2. Обработка всех "голых" текстовых узлов (типа текста про вакцинацию)
                     let currentNode = span9.firstChild;
                     while (currentNode) {
                         if (currentNode.nodeType === Node.TEXT_NODE) {
@@ -14041,23 +14112,20 @@ injectStyles(styles);
                                 title.className = 'survey-intro-text';
                                 title.innerHTML = text.replace(/\n/g, '<br>');
                                 span9.insertBefore(title, currentNode);
-                                currentNode.textContent = ''; // Очищаем оригинальный текст
+                                currentNode.textContent = '';
                             }
                         }
                         currentNode = currentNode.nextSibling;
                     }
 
-                    // 3. Обработка самих опросов
                     const surveyBlocks = span9.querySelectorAll('.nav.answ, .nav.msg');
 
                     surveyBlocks.forEach(survey => {
-                        // Убиваем старые классы ЕТИСа, из-за которых скрывались пройденные опросы
                         survey.className = 'survey-card';
 
                         const headerLi = survey.querySelector('li:first-child');
                         const contentLi = survey.querySelector('li:nth-child(2)');
 
-                        // Синхронизация стрелки и сворачивания
                         if (headerLi && contentLi) {
                             const updateArrow = () => {
                                 headerLi.classList.toggle('is-open', !contentLi.classList.contains('hide_elem'));
@@ -14068,7 +14136,6 @@ injectStyles(styles);
                                 setTimeout(updateArrow, 50);
                             });
 
-                            // Очищаем шапку от ссылок и шрифтов ЕТИСа
                             const headerLink = headerLi.querySelector('a');
                             if (headerLink) headerLi.innerHTML = headerLink.innerHTML;
 
@@ -14081,9 +14148,7 @@ injectStyles(styles);
                             headerLi.style.color = 'var(--color-text-primary)';
                         }
 
-                        // Переверстка содержимого (результатов/форм)
                         if (contentLi) {
-                            // Очищаем контент от тега <a>, которым ЕТИС зачем-то оборачивает всё
                             const contentLink = contentLi.querySelector('a');
                             if (contentLink) {
                                 contentLi.innerHTML = contentLink.innerHTML;
@@ -14091,7 +14156,6 @@ injectStyles(styles);
 
                             const rawHTML = contentLi.innerHTML;
 
-                            // А) Если внутри есть форма (текст-бокс для ввода ответа)
                             if (rawHTML.includes('<form') || rawHTML.includes('<textarea')) {
                                 const shortBtn = contentLi.querySelector('div[id$="_short"]');
                                 if (shortBtn) {
@@ -14131,13 +14195,11 @@ injectStyles(styles);
                                         sendBtn.innerHTML = '<span class="material-icons" style="font-size:18px; margin-right:6px">send</span>Отправить';
                                     }
                                 }
-                                return; // Выходим из цикла, так как это не результаты, а форма
+                                return;
                             }
 
-                            // Б) Если это РЕЗУЛЬТАТЫ уже пройденного опроса
                             const cleanContent = document.createElement('div');
 
-                            // Ищем дату
                             const dateMatch = rawHTML.match(/\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}:\d{2}/);
                             if (dateMatch) {
                                 const d = document.createElement('div');
@@ -14149,11 +14211,9 @@ injectStyles(styles);
                                 cleanContent.appendChild(d);
                             }
 
-                            // Разбираем вопросы и ответы
                             const temp = document.createElement('div');
                             temp.innerHTML = rawHTML;
 
-                            // Убираем спан с датой из парсинга
                             const dateSpan = temp.querySelector('span[style*="color:#808080"]');
                             if (dateSpan) dateSpan.remove();
 
@@ -14166,7 +14226,6 @@ injectStyles(styles);
                                     let a = "";
                                     let next = b.nextSibling;
 
-                                    // Идем по соседним узлам, пока не встретим следующий вопрос <b>
                                     while(next && next.nodeName !== 'B') {
                                         if (next.nodeName === 'SPAN' || next.nodeName === 'I' || (next.nodeType === Node.TEXT_NODE && next.textContent.trim().length > 2)) {
                                             a += next.textContent.trim() + " ";
@@ -14177,7 +14236,6 @@ injectStyles(styles);
                                 });
                             }
 
-                            // Отрисовываем вопросы и ответы
                             items.forEach(item => {
                                 const div = document.createElement('div');
                                 div.className = 'survey-result-item';
@@ -14205,7 +14263,6 @@ injectStyles(styles);
 
                     const listUl = reviewContainer.querySelector('ul.list');
                     if (listUl) {
-                        // Создаем новую структуру карточки
                         const card = document.createElement('div');
                         card.className = 'review-card';
 
@@ -14216,7 +14273,6 @@ injectStyles(styles);
                             const link = li.querySelector('a');
                             if (!link) return;
 
-                            // Извлекаем имя преподавателя из текста (удаляем скобки)
                             let teacherName = li.textContent.replace(link.textContent, '').trim();
                             teacherName = teacherName.replace(/[()]/g, '');
 
@@ -14236,13 +14292,11 @@ injectStyles(styles);
                         listUl.parentNode.replaceChild(card, listUl);
                     }
 
-                    // Чистим пустой сабменю и лишние заголовки
                     const emptySubmenu = reviewContainer.querySelector('.submenu');
                     if (emptySubmenu && !emptySubmenu.textContent.trim()) {
                         emptySubmenu.remove();
                     }
 
-                    // Немного отступов для заголовков
                     const reviewH3 = reviewContainer.querySelector('h3');
                     if (reviewH3) {
                         reviewH3.style.margin = '2.4rem 0 1.2rem 0.5rem';
@@ -14256,15 +14310,12 @@ injectStyles(styles);
                 case 'stu.about':
                     const aboutContainer = span9.querySelector('.text');
                     if (aboutContainer) {
-                        // Превращаем стандартный блок в карточку-статью
                         aboutContainer.className = 'about-card';
 
-                        // Удаляем все инлайновые стили (font-size, margin и т.д.), которые мог вставить ЕТИС
                         aboutContainer.querySelectorAll('*').forEach(el => {
                             el.removeAttribute('style');
                         });
 
-                        // Добавляем общий заголовок страницы, если его нет
                         if (!span9.querySelector('h2.page-title')) {
                             const mainTitle = document.createElement('h2');
                             mainTitle.textContent = 'О ресурсе';
@@ -14278,12 +14329,11 @@ injectStyles(styles);
                     break;
 
                 case 'stu_pay.contract_list': {
-                    const h2 = span9.querySelector('h2'); // Сохраняем заголовок
-                    const contractLinks = Array.from(span9.querySelectorAll('a')); // Сохраняем ссылки
+                    const h2 = span9.querySelector('h2');
+                    const contractLinks = Array.from(span9.querySelectorAll('a')); 
 
-                    // 1. Полностью очищаем содержимое страницы, чтобы ничего не дублировалось сверху
                     span9.innerHTML = '';
-                    if (h2) span9.appendChild(h2); // Возвращаем заголовок на место
+                    if (h2) span9.appendChild(h2);
 
                     const mainContainer = document.createElement('div');
                     mainContainer.className = 'contracts-container';
@@ -14294,11 +14344,10 @@ injectStyles(styles);
                         const text = link.textContent.trim();
                         const isInstruction = text.toLowerCase().includes('инструкция');
 
-                        // 2. Обработка инструкции
                         if (isInstruction) {
                             const card = document.createElement('a');
                             card.href = link.href;
-                            card.className = 'contract-card instruction-footer'; // Используем тот же класс карточки
+                            card.className = 'contract-card instruction-footer';
                             card.innerHTML = `
                                 <span class="material-icons" style="color: var(--color-text-secondary)">info_outline</span>
                                 <div class="contract-content">
@@ -14310,7 +14359,6 @@ injectStyles(styles);
                             return;
                         }
 
-                        // 3. Обработка договоров
                         const card = document.createElement('a');
                         card.href = link.href;
                         card.className = 'contract-card';
@@ -14346,10 +14394,8 @@ injectStyles(styles);
                         mainContainer.appendChild(card);
                     });
 
-                    // 4. Добавляем элементы на страницу
                     span9.appendChild(mainContainer);
                     if (instructionCard) {
-                        // Добавляем небольшой разделитель перед инструкцией
                         const hr = document.createElement('div');
                         hr.style.margin = '3rem 0 1.5rem';
                         hr.style.borderTop = '1px solid var(--color-table-border)';
@@ -14365,7 +14411,6 @@ injectStyles(styles);
 
                     const orders = Array.from(ordersList.querySelectorAll('li.ord'));
 
-                    // Очищаем и ставим заголовок
                     const h2 = span9.querySelector('h2') || document.createElement('h2');
                     if (!h2.parentNode) h2.textContent = 'Приказы';
                     span9.innerHTML = '';
@@ -14380,18 +14425,14 @@ injectStyles(styles);
 
                         const fullText = link.textContent.trim();
 
-                        // Ищет: №... от ДД.ММ.ГГГГ
-                        // (?:[\.\s]*) - игнорирует точку и пробелы после даты перед описанием
                         const match = fullText.match(/(№.*?от\s+\d{2}\.\d{2}\.\d{4})(?:[\.\s]*)(.*)/);
 
-                        // Если совпадение найдено, берем части, иначе выводим весь текст как заголовок
                         const meta = match ? match[1] : '';
                         const title = match ? match[2] : fullText;
 
-                        // Логика выбора иконки
                         let icon = 'assignment';
                         let type = 'default';
-                        const lowerTitle = fullText.toLowerCase(); // Проверяем по полному тексту для надежности
+                        const lowerTitle = fullText.toLowerCase();
 
                         if (lowerTitle.includes('благодарность')) { icon = 'military_tech'; type = 'благодарность'; }
                         else if (lowerTitle.includes('зачислить')) { icon = 'school'; }
@@ -14427,13 +14468,11 @@ injectStyles(styles);
                 }
 
                 case 'stu_plus.blank_forms': {
-                    // 1. Сначала собираем все данные, пока структура страницы цела
                     const sections = Array.from(span9.querySelectorAll('h3'));
                     const pageTitle = span9.querySelector('h2');
                     const data = [];
 
                     sections.forEach(h3 => {
-                        // Ищем UL, который идет после этого H3, пропуская <br> и пустые узлы
                         let next = h3.nextElementSibling;
                         while (next && next.tagName !== 'UL' && next.tagName !== 'H3') {
                             next = next.nextElementSibling;
@@ -14447,12 +14486,10 @@ injectStyles(styles);
                         }
                     });
 
-                    // 2. Теперь полностью очищаем страницу и строим заново
                     span9.innerHTML = '';
                     if (pageTitle) span9.appendChild(pageTitle);
 
                     data.forEach(item => {
-                        // Добавляем заголовок категории
                         span9.appendChild(item.header);
 
                         const grid = document.createElement('div');
@@ -14463,7 +14500,6 @@ injectStyles(styles);
                             const links = Array.from(li.querySelectorAll('a'));
                             if (links.length === 0) return;
 
-                            // Основная ссылка (обычно первая - Word или Excel)
                             const primaryLink = links[0];
                             const href = primaryLink.getAttribute('href').toLowerCase();
 
@@ -14472,13 +14508,11 @@ injectStyles(styles);
                             card.href = primaryLink.href;
                             card.target = '_blank';
 
-                            // Определяем иконку и цвет по расширению файла
                             let icon = 'description';
                             let typeClass = 'type-word';
                             if (href.includes('.xls')) { icon = 'table_chart'; typeClass = 'type-excel'; }
                             else if (href.includes('.pdf')) { icon = 'picture_as_pdf'; typeClass = 'type-pdf'; }
 
-                            // Генерируем бейджи форматов (DOC, PDF, XLS)
                             let badgesHtml = '';
                             links.forEach(l => {
                                 const lHref = l.getAttribute('href').toLowerCase();
@@ -14502,7 +14536,6 @@ injectStyles(styles);
                         span9.appendChild(grid);
                     });
 
-                    // Финальная чистка
                     span9.querySelectorAll('br').forEach(br => br.remove());
                     break;
                 }
@@ -14510,23 +14543,19 @@ injectStyles(styles);
                 case 'stu.teacher_stats': {
                     const table = span9.querySelector('table.common');
                     if (table) {
-                        // Оборачиваем в универсальный контейнер со скроллом
                         const wrapper = document.createElement('div');
                         wrapper.className = 'wide-table-wrapper';
                         table.parentNode.insertBefore(wrapper, table);
                         wrapper.appendChild(table);
 
-                        // Чистим старые атрибуты верстки
                         table.removeAttribute('border');
                         table.querySelectorAll('td, th').forEach(el => {
                             el.removeAttribute('align');
                             el.removeAttribute('valign');
-                            // Если в ячейке только пробел &nbsp;, помечаем её пустой
                             if (el.textContent.trim() === '') el.classList.add('empty');
                         });
                     }
 
-                    // Оформляем пояснительный текст под таблицей (звездочки)
                     const span9Content = span9.innerHTML;
                     const footerText = span9.innerHTML.split('</table>')[1];
                     if (footerText) {
@@ -14536,7 +14565,6 @@ injectStyles(styles);
                         footerDiv.style.marginTop = '2rem';
                         footerDiv.innerHTML = footerText.replace(/<br>/g, '');
 
-                        // Очищаем низ страницы и добавляем оформленный текст
                         const currentContent = span9.innerHTML.split('</table>')[0] + '</table>';
                         span9.innerHTML = currentContent;
                         span9.appendChild(footerDiv);
@@ -14550,10 +14578,8 @@ injectStyles(styles);
 
                     if (!listItems.length) break;
 
-                    // Очищаем страницу
                     span9.innerHTML = '';
 
-                    // Восстанавливаем заголовок
                     if (groupH3) {
                         const pageTitle = document.createElement('h2');
                         pageTitle.textContent = groupH3.textContent.trim();
@@ -14561,7 +14587,6 @@ injectStyles(styles);
                         span9.appendChild(pageTitle);
                     }
 
-                    // Контейнер для карточек
                     const container = document.createElement('div');
                     container.className = 'jour-container';
 
@@ -14574,13 +14599,11 @@ injectStyles(styles);
                         let icon = 'fact_check';
                         let typeClass = 'jour-badge-default';
 
-                        // Парсим тип занятия из конца строки (лек, практ, лаб)
                         const match = text.match(/(.*?)\s*\((лек|практ|лаб)\)$/i);
                         if (match) {
                             title = match[1];
                             badge = match[2].toLowerCase();
 
-                            // Подбираем иконку и цвет
                             if (badge === 'лек') {
                                 icon = 'menu_book';
                                 typeClass = 'jour-badge-lek';
@@ -14616,7 +14639,6 @@ injectStyles(styles);
                 case 'stu_jour.tt_pair': {
                     const h4 = span9.querySelector('h4');
                     if (h4) {
-                        // Разбираем страшный текст заголовка
                         const lines = h4.innerHTML.split('<br>').map(l => l.trim()).filter(l => l);
 
                         const infoCard = document.createElement('div');
@@ -14643,14 +14665,12 @@ injectStyles(styles);
                                 </div>` : ''}
                             `;
                         } else {
-                            // Резервный вариант, если структура текста иная
                             infoCard.innerHTML = `<h3 style="margin:0">${h4.textContent}</h3>`;
                         }
 
                         h4.parentNode.replaceChild(infoCard, h4);
                     }
 
-                    // Оборачиваем таблицу, чтобы она скроллилась горизонтально
                     const table = span9.querySelector('table.common');
                     if (table) {
                         const wrapper = document.createElement('div');
@@ -14658,20 +14678,18 @@ injectStyles(styles);
                         table.parentNode.insertBefore(wrapper, table);
                         wrapper.appendChild(table);
 
-                        // Удаляем старые инлайновые стили дат и ширин, чтобы работал CSS
                         table.removeAttribute('style');
                         table.querySelectorAll('th, td').forEach(cell => {
                             cell.removeAttribute('style');
                         });
                     }
 
-                    // Стилизуем кнопку "Сохранить"
                     const btnWrapper = span9.querySelector('.button_gray');
                     if (btnWrapper) {
                         btnWrapper.className = 'jour-save-wrapper';
                         const btn = btnWrapper.querySelector('button');
                         if (btn) {
-                            btn.className = 'answer-btn-custom'; // Даем ей красивый синий стиль
+                            btn.className = 'answer-btn-custom';
                             btn.innerHTML = '<span class="material-icons" style="font-size:18px; margin-right:6px">save</span>' + btn.innerHTML;
                         }
                     }
@@ -14679,7 +14697,6 @@ injectStyles(styles);
                 }
 
                 case 'est_pkg.show_list': {
-                    // 1. ОБРАБОТКА "МОИ КОММЕНТАРИИ"
                     const feedbackMsgs = span9.querySelectorAll('ul.nav.msg');
 
                     if (feedbackMsgs.length > 0) {
@@ -14692,7 +14709,6 @@ injectStyles(styles);
 
                             const clone = li.cloneNode(true);
 
-                            // --- АВТО-ПРОЧТЕНИЕ ---
                             if (li.hasAttribute('onclick')) {
                                 const clickFunc = li.getAttribute('onclick');
                                 if (clickFunc.includes('read')) {
@@ -14749,28 +14765,15 @@ injectStyles(styles);
                         else span9.appendChild(container);
                     }
 
-                    // 2. ОБРАБОТКА ТАБЛИЦЫ РЕЙТИНГА
-                    // Ищем именно таблицу с ID rating, так как в HTML она именно такая
                     const ratingTable = document.getElementById('rating');
 
                     if (ratingTable) {
-                        // Создаем обертку
                         const wrapper = document.createElement('div');
                         wrapper.className = 'wide-table-wrapper';
-
-                        // Вставляем обертку перед таблицей
                         ratingTable.parentNode.insertBefore(wrapper, ratingTable);
-
-                        // Перемещаем таблицу внутрь
                         wrapper.appendChild(ratingTable);
-
-                        // Чистим таблицу от мусора
                         ratingTable.removeAttribute('width');
-
-                        // Добавляем классы для красоты
-                        ratingTable.classList.add('common'); // Чтобы подхватились общие стили
-
-                        // Убираем инлайновые цвета фона строк, чтобы работал CSS
+                        ratingTable.classList.add('common');
                         ratingTable.querySelectorAll('tr').forEach(tr => {
                             tr.style.backgroundColor = '';
                         });
@@ -14782,7 +14785,6 @@ injectStyles(styles);
                 case 'stu.absence': {
                     const table = span9.querySelector('table.slimtab_nice');
                     if (table) {
-                        // 1. красивый дизайн (common) и добавляем класс-исключение (absence-table)
                         table.className = 'common absence-table';
 
                         const wrapper = document.createElement('div');
@@ -14790,13 +14792,11 @@ injectStyles(styles);
                         table.parentNode.insertBefore(wrapper, table);
                         wrapper.appendChild(table);
 
-                        // 2. Фиксим пустой заголовок первой колонки (номер по порядку)
                         const firstTh = table.querySelector('th');
                         if (firstTh && firstTh.textContent.trim() === '') {
                             firstTh.textContent = '№';
                         }
 
-                        // 3. Оформляем ячейки с датами (вторая колонка)
                         table.querySelectorAll('tr').forEach(tr => {
                             const td = tr.querySelectorAll('td')[1];
                             if (td) {
