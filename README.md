@@ -67,7 +67,7 @@
 
 Так как это *Userscript*, для его работы нужен специальный менеджер скриптов в вашем браузере. Это безопасно и полностью бесплатно.
 
-### 💻 Для ПК (Chrome, Яндекс, Edge, Firefox)
+### 💻 Для ПК и Android (Chrome, Яндекс, Edge, Firefox)
 1. Установи расширение **[Tampermonkey](https://chromewebstore.google.com/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo)** или **[Violentmonkey](https://violentmonkey.github.io/)**.
 2. Нажми на **[ЭТУ ССЫЛКУ](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)**.
 3. В открывшемся окне подтверди установку (кнопка *Установить* / *Install*).
@@ -76,7 +76,7 @@
 ### 🍎 Для Apple (Safari на iPhone, iPad, Mac)
 1. Скачай приложение **[Stay for Safari](https://apps.apple.com/ru/app/stay-for-safari/id1591620171)** из App Store.
 2. Включи расширение *Stay* в настройках Safari.
-3. Скопируй **[ЭТУ ССЫЛКУ](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)**.
+3. Скопируй **ЭТУ ССЫЛКУ: https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js**.
 4. Вставь её в приложении через "+" -> "Link".
 
 *(⚠️ Обычный мобильный Google Chrome на Android и iOS не поддерживает расширения. На iOS используй Safari, а на Android — браузеры с поддержкой расширений, например, Firefox или Яндекс.Браузер).*
