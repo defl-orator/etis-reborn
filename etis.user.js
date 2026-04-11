@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      2.0001
+// @version      2.0002
 // @changelog    1) Закрашивание уже прошедших пар, 2) Шеринг отдельного дня, 3) Генерация QR кода при шеринге на онлайн занятия.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
@@ -9725,7 +9725,7 @@ injectStyles(styles);
                             if (text) {
                                 const dateCapsule = document.createElement('div');
                                 dateCapsule.className = 'week-date-styled';
-                                dateCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important;';
+                                dateCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 3.4rem !important; padding: 0 1.6rem !important; box-sizing: border-box !important;';
                                 dateCapsule.textContent = text;
                                 dateDiv.appendChild(dateCapsule);
                             }
@@ -9735,8 +9735,8 @@ injectStyles(styles);
                                 
                                 const holidayCapsule = document.createElement('div');
                                 holidayCapsule.className = 'week-date-styled';
-                                holidayCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important; background: rgba(52, 199, 89, 0.15) !important; color: var(--color-green) !important; font-weight: 800 !important; border: 1px solid rgba(52, 199, 89, 0.3) !important;';
-                                holidayCapsule.innerHTML = `<span class="material-icons" style="font-size: 1.4rem; margin-right: 4px;">celebration</span>${holidayText}`;
+                                holidayCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 3.4rem !important; padding: 0 1.6rem !important; box-sizing: border-box !important; background: rgba(52, 199, 89, 0.15) !important; color: var(--color-green) !important; font-weight: 800 !important; border: 1px solid rgba(52, 199, 89, 0.3) !important;';
+                                holidayCapsule.innerHTML = `<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px; line-height: 1;">celebration</span>${holidayText}`;
                                 
                                 dateDiv.appendChild(holidayCapsule);
                             }
@@ -11551,16 +11551,16 @@ injectStyles(styles);
                         const isPastDay = classTime < todayZero;
                         const isToday = classTime === todayZero;
 
-                        day.querySelectorAll('.timetable-grid tr:not(.custom-no-pairs)').forEach(row => {
+                        // захватываем и строки выходных
+                        day.querySelectorAll('.timetable-grid tr').forEach(row => {
                             let isPassed = false;
                             
                             if (isPastDay) {
                                 isPassed = true;
                             } else if (isToday) {
                                 let startMins = -1;
-                                let duration = 90; // Стандартная пара
+                                let duration = 90;
 
-                                // Окна
                                 if (row.classList.contains('timetable-gap-row')) {
                                     const startStr = row.getAttribute('data-gap-start');
                                     const count = parseInt(row.getAttribute('data-gap-count') || "1");
@@ -11569,12 +11569,12 @@ injectStyles(styles);
                                         const p = startStr.split(':');
                                         startMins = parseInt(p[0]) * 60 + parseInt(p[1]);
                                     }
-                                } 
-                                // Обычные, кастомные и внешние пары
-                                else {
-                                    const timeEl = row.querySelector('.eval'); // Ищем любой элемент со временем
+                                } else if (row.classList.contains('custom-no-pairs')) {
+                                    // Выходной день сегодня не закрашиваем тусклым, пока он не закончится совсем
+                                    isPassed = false;
+                                } else {
+                                    const timeEl = row.querySelector('.eval');
                                     if (timeEl && !timeEl.textContent.includes("Весь день")) {
-                                        // Извлекаем первое попавшееся время ЧЧ:ММ
                                         const timeMatch = timeEl.textContent.match(/(\d{1,2}):(\d{2})/);
                                         if (timeMatch) {
                                             startMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
