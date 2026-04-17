@@ -309,7 +309,7 @@
                 background: var(--bg-color);
                 border: 1px solid rgba(128, 128, 128, 0.08);
                 padding: 18px 20px;
-                border-radius: 16px;
+                border-radius: 24px;
                 box-shadow: 0 8px 24px var(--shadow);
                 transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
             }
@@ -356,7 +356,7 @@
                 text-align: center;
             }
             .analytics-frame {
-                border-radius: 20px;
+                border-radius: 24px;
                 overflow: hidden;
                 box-shadow: 0 20px 50px var(--shadow);
                 border: 1px solid var(--border-color);
@@ -781,6 +781,44 @@
                 }
             }
 
+            .slider-label-wrapper {
+                position: absolute;
+                top: 15px;
+                z-index: 5;
+                pointer-events: none;
+                transition: opacity 0.2s ease;
+                transform: translateX(-50%); 
+            }
+
+            .slider-label {
+                font-size: 0.9rem;
+                font-weight: 700;
+                padding: 8px 18px;
+                border-radius: 30px;
+                line-height: 1;
+                white-space: nowrap;
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+                box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+                display: block;
+            }
+
+            .slider-label.new {
+                background: var(--primary);
+                color: white;
+            }
+
+            .slider-label.old {
+                background: rgba(0, 0, 0, 0.7);
+                color: #fff;
+            }
+
+            @media (max-width: 768px) {
+                #cross-slider-container.mobile-rounded {
+                    border-radius: 16px !important; 
+                }
+            }
+
         </style>
     </head>
     <body>
@@ -825,12 +863,13 @@
                     <!-- МОБИЛЬНЫЙ ВИД: Слайдер -->
                     <div class="view-slider" style="display: none;">
                         <div class="img-comp-container mobile-limit" id="cross-slider-container">
+                            <div class="slider-label-wrapper wrapper-new"><span class="slider-label new">REBORN</span></div>
+                            <div class="slider-label-wrapper wrapper-old"><span class="slider-label old">Original</span></div>
+
                             <div class="img-comp-img img-result">
-                                <span class="label label-new">REBORN</span>
                                 <img id="cross-slider-new" src="" alt="PC Interface">
                             </div>
                             <div class="img-comp-img img-source">
-                                <span class="label label-old">Original</span>
                                 <img id="cross-slider-old" src="" alt="PC Interface">
                             </div>
                         </div>
@@ -847,7 +886,7 @@
                             </div>
                             <div class="bf-item">
                                 <div class="bf-title">👆 Свайпы</div>
-                                <div class="bf-desc">Управляй с помощью привычных свайпов — смахни влево для добавления заметки или новой пары, или вправо для шеринга расписания дня.</div>
+                                <div class="bf-desc">Управляй с помощью привычных свайпов — смахни влево для добавления заметки или шеринга, или вправо для добавления новой пары или оценки предмета.</div>
                             </div>
                             <div class="bf-item">
                                 <div class="bf-title">🎯 Умный скролл</div>
@@ -878,12 +917,13 @@
                 <div class="comparison-block">
                     <h2 class="block-title">Наглядное расписание</h2>
                     <div class="img-comp-container" data-type="schedule">
+                        <div class="slider-label-wrapper wrapper-new"><span class="slider-label new">REBORN</span></div>
+                        <div class="slider-label-wrapper wrapper-old"><span class="slider-label old">Original</span></div>
+
                         <div class="img-comp-img img-result">
-                            <span class="label label-new">REBORN</span>
                             <img class="dynamic-img" data-ver="new" src="" alt="New Schedule">
                         </div>
                         <div class="img-comp-img img-source">
-                            <span class="label label-old">Original</span>
                             <img class="dynamic-img" data-ver="old" src="" alt="Old Schedule">
                         </div>
                     </div>
@@ -933,12 +973,17 @@
                 <div class="comparison-block">
                     <h2 class="block-title">Адаптивная тема</h2>
                     <div class="img-comp-container" data-type="adaptive-theme">
+                        <div class="slider-label-wrapper wrapper-new">
+                            <span class="slider-label" style="background: #16181A; border: 1px solid #333; color: #fff;">Тёмная</span>
+                        </div>
+                        <div class="slider-label-wrapper wrapper-old">
+                            <span class="slider-label" style="background: #ffffff; color: #000; border: 1px solid #ddd;">Светлая</span>
+                        </div>
+
                         <div class="img-comp-img img-result">
-                            <span class="label label-new" style="background: #16181A; border: 1px solid #333;">Тёмная</span>
                             <img class="dynamic-img" data-ver="dark-new" src="" alt="Dark Theme">
                         </div>
                         <div class="img-comp-img img-source">
-                            <span class="label label-old" style="background: #ffffff; color: #000;">Светлая</span>
                             <img class="dynamic-img" data-ver="light-new" src="" alt="Light Theme">
                         </div>
                     </div>
@@ -967,12 +1012,13 @@
                 <div class="comparison-block">
                     <h2 class="block-title">Все оценки под рукой</h2>
                     <div class="img-comp-container" data-type="grades">
+                        <div class="slider-label-wrapper wrapper-new"><span class="slider-label new">REBORN</span></div>
+                        <div class="slider-label-wrapper wrapper-old"><span class="slider-label old">Original</span></div>
+
                         <div class="img-comp-img img-result">
-                            <span class="label label-new">REBORN</span>
                             <img class="dynamic-img" data-ver="new" src="" alt="New Grades">
                         </div>
                         <div class="img-comp-img img-source">
-                            <span class="label label-old">Original</span>
                             <img class="dynamic-img" data-ver="old" src="" alt="Old Grades">
                         </div>
                     </div>
@@ -988,8 +1034,8 @@
                             <div class="bf-desc">Наведи курсор на баллы, и калькулятор подскажет, сколько именно не хватает до ближайшей оценки.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title">🔔 Уведомления</div>
-                            <div class="bf-desc">Push-уведомления сообщат, если преподаватель выставил баллы или закрыл ведомость.</div>
+                            <div class="bf-title">🔔 Уведомления (Beta)</div>
+                            <div class="bf-desc">Получай при входе уведомления, если преподаватель выставил баллы.</div>
                         </div>
                     </div>
                 </div>
@@ -998,12 +1044,13 @@
                 <div class="comparison-block">
                     <h2 class="block-title">Преподаватели</h2>
                     <div class="img-comp-container" data-type="teachers">
+                        <div class="slider-label-wrapper wrapper-new"><span class="slider-label new">REBORN</span></div>
+                        <div class="slider-label-wrapper wrapper-old"><span class="slider-label old">Original</span></div>
+
                         <div class="img-comp-img img-result">
-                            <span class="label label-new">REBORN</span>
                             <img class="dynamic-img" data-ver="new" src="" alt="New Teachers">
                         </div>
                         <div class="img-comp-img img-source">
-                            <span class="label label-old">Original</span>
                             <img class="dynamic-img" data-ver="old" src="" alt="Old Teachers">
                         </div>
                     </div>
@@ -1025,12 +1072,13 @@
                 <div class="comparison-block">
                     <h2 class="block-title">Объявления</h2>
                     <div class="img-comp-container" data-type="spravka">
+                        <div class="slider-label-wrapper wrapper-new"><span class="slider-label new">REBORN</span></div>
+                        <div class="slider-label-wrapper wrapper-old"><span class="slider-label old">Original</span></div>
+
                         <div class="img-comp-img img-result">
-                            <span class="label label-new">REBORN</span>
                             <img class="dynamic-img" data-ver="new" src="" alt="New Spravka">
                         </div>
                         <div class="img-comp-img img-source">
-                            <span class="label label-old">Original</span>
                             <img class="dynamic-img" data-ver="old" src="" alt="Old Spravka">
                         </div>
                     </div>
@@ -1042,8 +1090,8 @@
                             <div class="bf-desc">Найди нужное объявление среди огромного списка.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title">📊 Визуальная иерархия</div>
-                            <div class="bf-desc">Вся информация отображается в более удобном и понятном виде.</div>
+                            <div class="bf-title">🚀 Шеринг</div>
+                            <div class="bf-desc">В один клик поделись нужным объявлением в виде красивой карточки.</div>
                         </div>
                         <div class="bf-item">
                             <div class="bf-title">📅 Интеграция с расписанием</div>
@@ -1474,8 +1522,9 @@
                 
                 const imgWrapper = container.querySelector('.img-result');
                 const imgInside = imgWrapper.querySelector('img');
-                const labelNew = container.querySelector('.label-new');
-                const labelOld = container.querySelector('.label-old');
+                
+                const labelNewWrapper = container.querySelector('.wrapper-new');
+                const labelOldWrapper = container.querySelector('.wrapper-old');
 
                 slider = document.createElement("DIV");
                 slider.className = "img-comp-slider";
@@ -1507,14 +1556,11 @@
 
                 function slideMove(e) {
                     if (!clicked) return;
-                    
                     let clientX = (e.changedTouches) ? e.changedTouches[0].clientX : e.clientX;
                     let rect = container.getBoundingClientRect();
                     let x = clientX - rect.left;
-                    
                     if (x < 0) x = 0;
                     if (x > w) x = w;
-                    
                     slide(x);
                 }
 
@@ -1523,8 +1569,19 @@
                     imgWrapper.style.width = x + "px";
                     slider.style.left = x + "px";
                     
-                    labelNew.style.opacity = x < 60 ? '0' : '1';
-                    labelOld.style.opacity = x > w - 60 ? '0' : '1';
+                    const threshold = 140; 
+
+                    // Логика плавающей левой капсулы
+                    if (labelNewWrapper) {
+                        labelNewWrapper.style.left = (x / 2) + "px";
+                        labelNewWrapper.style.opacity = x < threshold ? '0' : '1';
+                    }
+                    
+                    // Логика плавающей правой капсулы
+                    if (labelOldWrapper) {
+                        labelOldWrapper.style.left = (x + (w - x) / 2) + "px";
+                        labelOldWrapper.style.opacity = (w - x) < threshold ? '0' : '1';
+                    }
                 }
 
                 slider.addEventListener("mousedown", slideStart);
