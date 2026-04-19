@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      2.1000
-// @changelog    1) Умное добавление пар. 2) Настройка сайта под себя через универсальное окно. 3) Поддержка новой вкладки "ПФК", 4) История всех версий скрипта, 5) Окна на мобильных в виде шторок, 6) Фикс для Firefox.
+// @version      2.11
+// @changelog    1) Гибкая настройка компактности оценок и шеринга. 2) Фикс окон и текстовых полей на мобильных. 3) Анимация переключения вкладок и фикс отображения оригинального ЕТИСа при загрузке (Beta). 4) Оформление для расписания преподавателей (Alpha).
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
@@ -22,6 +22,49 @@
 
 (function() {
     'use strict';
+
+    // ==========================================
+    // АНТИ-МОРГАНИЕ
+    // ==========================================
+    let initialTheme = localStorage.getItem('theme') || 'auto';
+    if (initialTheme === 'auto') {
+        initialTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    document.documentElement.setAttribute('theme', initialTheme);
+    const bgColor = initialTheme === 'dark' ? '#16181A' : '#F2F2F6';
+
+    // 1. Мгновенно красим html инлайново
+    document.documentElement.style.setProperty('background-color', bgColor, 'important');
+
+    // 2. Жестко скрываем всё через стили максимально быстро
+    const foucStyle = document.createElement('style');
+    foucStyle.textContent = `
+        html { background-color: ${bgColor} !important; }
+        body { opacity: 0 !important; visibility: hidden !important; }
+        body.etis-reborn-loaded { opacity: 1 !important; visibility: visible !important; transition: opacity 0.3s ease-out !important; }
+    `;
+    if (document.head) {
+        document.head.appendChild(foucStyle);
+    } else {
+        document.documentElement.appendChild(foucStyle);
+    }
+
+    // 3. Перехватываем появление body и прячем инлайново
+    const hideBody = () => {
+        if (document.body) {
+            document.body.style.setProperty('opacity', '0', 'important');
+            document.body.style.setProperty('visibility', 'hidden', 'important');
+            document.body.style.setProperty('background-color', bgColor, 'important');
+        }
+    };
+    hideBody(); // На случай, если body уже есть
+    const foucObserver = new MutationObserver(() => {
+        if (document.body) {
+            hideBody();
+            foucObserver.disconnect();
+        }
+    });
+    foucObserver.observe(document.documentElement, { childList: true });
 
     // ==========================================
     // НАСТРОЙКИ ОБНОВЛЕНИЯ И ТЕСТИРОВАНИЯ
@@ -1136,46 +1179,59 @@ html[theme="dark"] .psu-logo::before {
 /* Универсальный тумблер */
 html body input[type="checkbox"].tumbler-checkbox {
     position: relative !important;
-    width: 3.6rem !important;
-    min-width: 3.6rem !important;
-    height: 2rem !important;
-    margin: 0 !important;
+    width: 5rem !important;
+    min-width: 5rem !important;
+    height: 2.5rem !important;
     appearance: none !important;
-    background: var(--color-input) !important;
-    border-radius: 2rem !important;
-    border: 1px solid var(--color-scrollbar-thumb) !important;
+    background: rgba(142, 142, 147, 0.2) !important;
+    border-radius: 1.25rem !important;
+    border: none !important;
     cursor: pointer !important;
-    transition: background 0.3s, border-color 0.3s !important;
+    transition: background 0.3s ease !important;
     display: inline-flex !important;
-    box-shadow: none !important;
     flex-shrink: 0 !important;
     box-sizing: border-box !important;
+    box-shadow: none !important;
+    margin: 0 !important;
 }
+
 html body input[type="checkbox"].tumbler-checkbox:before { display: none !important; }
+
 html body input[type="checkbox"].tumbler-checkbox:after {
     content: '' !important;
     position: absolute !important;
-    top: 0.1rem !important;
-    left: 0.15rem !important;
-    width: 1.6rem !important;
-    height: 1.6rem !important;
-    background: var(--color-text-secondary) !important;
-    border-radius: 50% !important;
-    transition: transform 0.3s cubic-bezier(0.2, 0.85, 0.32, 1.2), background 0.3s !important;
+    top: 0.2rem !important;
+    left: 0.2rem !important;
+    width: 3rem !important;
+    height: 2.1rem !important;
+    background: #fff !important;
+    border-radius: 1.05rem !important;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), width 0.2s ease !important;
     margin: 0 !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1) !important;
 }
+
+html body input[type="checkbox"].tumbler-checkbox:active:after {
+    width: 3.6rem !important;
+}
+
 html body input[type="checkbox"].tumbler-checkbox:checked {
     background: var(--color-accent) !important;
-    border-color: var(--color-accent) !important;
 }
+
 html body input[type="checkbox"].tumbler-checkbox:checked:after {
-    transform: translateX(1.55rem) !important;
-    background: var(--color-white) !important;
-    width: 1.6rem !important;
-    height: 1.6rem !important;
-    margin: 0 !important;
-    border-radius: 50% !important;
+    transform: translateX(1.6rem) !important;
+}
+
+html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
+    width: 3.6rem !important;
+    transform: translateX(1rem) !important;
+}
+
+.timetable-toolbar label.toolbar-item {
+    padding-left: 0.65rem !important;
+    padding-right: 1.5rem !important;
+    gap: 0.8rem !important;
 }
 
 /* --- CAPSULE SEARCH BAR --- */
@@ -4011,21 +4067,21 @@ table.question_table td.answer_cell input[type="radio"] {
 }
 .absence-stat {
     background: var(--color-card) !important;
-    border-radius: var(--radius-large) !important;
-    padding: 2.4rem !important;
+    border-radius: var(--radius-medium) !important;
+    padding: 1.6rem 2rem !important;
     box-shadow: var(--shadow-main) !important;
     display: flex !important;
     flex-direction: column !important;
-    align-items: center !important;
+    align-items: flex-start !important;
     justify-content: center !important;
-    text-align: center !important;
+    text-align: left !important;
     border: 1px solid var(--color-table-border) !important;
 }
 .absence-stat-val {
-    font-size: 3.6rem !important;
+    font-size: 2.6rem !important;
     font-weight: 800 !important;
     line-height: 1 !important;
-    margin-bottom: 0.8rem !important;
+    margin-bottom: 0.6rem !important;
     color: var(--color-text-primary) !important;
 }
 .absence-stat-label {
@@ -5057,11 +5113,12 @@ button.search-capsule:hover {
 }
 .analytics-overlay.active { opacity: 1; visibility: visible; }
 .stat-box {
-    background: var(--color-highlight); padding: 1.6rem;
-    border-radius: var(--radius-medium); display: flex; flex-direction: column; gap: 0.6rem;
+    background: var(--color-highlight); padding: 1.4rem 1.6rem;
+    border-radius: var(--radius-medium); display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 0.4rem;
+    width: 100%; box-sizing: border-box;
 }
-.stat-box-title { font-size: 1.15rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; }
-.stat-box-value { font-size: 1.6rem; color: var(--color-text-primary); font-weight: 800; line-height: 1.3;}
+.stat-box-title { font-size: 1.1rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; line-height: 1.2; width: 100%; }
+.stat-box-value { font-size: 1.5rem; color: var(--color-text-primary); font-weight: 800; line-height: 1.2; width: 100%; }
 .stat-box-value.good { color: var(--color-green); }
 .stat-box-value.bad { color: var(--color-red); }
 .analytics-btn:hover { transform: scale(1.02); opacity: 0.9; }
@@ -5832,10 +5889,10 @@ button.analytics-btn {
 /* --- COLOR PICKER MODAL --- */
 .color-picker-grid {
     display: grid;
-    grid-template-columns: repeat(5, 42px);
+    grid-template-columns: repeat(10, 42px);
     gap: 1.2rem;
     margin-top: 1rem;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .color-picker-circle {
@@ -6512,22 +6569,77 @@ button.sync-tab.active {
     margin-bottom: 1.6rem;
     width: 100%;
 }
-.color-picker-grid {
-    display: grid;
-    grid-template-columns: repeat(8, 42px);
-    gap: 1.2rem;
-    margin-top: 1rem;
-    justify-content: flex-start;
-}
 
 @media (max-width: 600px) {
     .color-picker-grid {
-        grid-template-columns: repeat(5, 42px);
-        justify-content: center;
+        grid-template-columns: repeat(6, 42px);
+        gap: 0.8rem;
+        justify-content: flex-start;
     }
-    .appearance-section { align-items: center; }
-    .appearance-title { text-align: center; }
-    .color-picker-controls-row { justify-content: center; }
+    .appearance-section { align-items: flex-start !important; }
+    .appearance-title { text-align: left !important; }
+    .color-picker-controls-row { justify-content: flex-start !important; }
+}
+
+/* 1. Блокировка фона на уровне HTML и BODY */
+html:has(body.modal-open-body),
+body.modal-open-body {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+}
+
+/* 2. Оверлеям (темному фону) полностью запрещаем свайпы, чтобы они не тянули страницу */
+#etis-settings-overlay, .analytics-overlay, #etis-reviews-overlay {
+    touch-action: none !important;
+    overscroll-behavior: none !important;
+}
+
+/* 3. Модальным окнам жестко запрещаем передавать скролл фону */
+#etis-settings-modal, .analytics-modal, #etis-reviews-modal {
+    overscroll-behavior: contain !important;
+}
+
+/* 4. Шапкам окон тоже запрещаем скроллить фон при смахивании */
+#etis-settings-modal .ui-widget-header, 
+.analytics-modal .ui-widget-header, 
+#etis-reviews-modal .ui-widget-header {
+    touch-action: none !important;
+}
+
+/* 5. Разрешаем нормальный скролл ТОЛЬКО внутри контента модалок */
+#etis-settings-modal .ui-dialog-content,
+.analytics-modal .ui-dialog-content,
+#etis-reviews-modal .ui-dialog-content,
+.settings-content-scroll {
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important; 
+    flex: 1 1 auto !important;
+    min-height: 0 !important; 
+    overscroll-behavior: contain !important;
+}
+
+/* ==========================================
+    ФИКС АВТОМАТИЧЕСКОГО ЗУМА НА МОБИЛЬНЫХ
+    ========================================== */
+@media (max-width: 960px) {
+    input[type="text"],
+    input[type="password"],
+    input[type="email"],
+    input[type="number"],
+    input[type="time"],
+    input[type="date"],
+    textarea,
+    select,
+    .search-input,
+    .signs-local-input,
+    .term-local-input,
+    .lib-local-input,
+    .history-filter-input,
+    .custom-pair-input-group > input,
+    .custom-pair-input-group > select,
+    .note-modal-textarea {
+        font-size: 16px !important;
+    }
 }
     `;
 
@@ -6553,23 +6665,27 @@ button.sync-tab.active {
     // ==========================================
 
     const ACCENT_COLORS = {
+        // Базовые 25 цветов
         blue: '#007AFF', green: '#34C759', orange: '#FF9500', red: '#FF3B30', pink: '#FF2D55',
         lightblue: '#5AC8FA', mint: '#00C7BE', yellow: '#FFCC00', lightpurple: '#E58FFF', rose: '#FF94A5',
         indigo: '#5856D6', teal: '#30B0C7', lime: '#AEEA00', cyan: '#00BCD4', magenta: '#E91E63',
         deeporange: '#FF5722', brown: '#A2845E', slate: '#708090', cobalt: '#3F51B5', crimson: '#DC143C',
-        darkblue: '#1A237E', darkgreen: '#1B5E20', chocolate: '#5D4037', darkred: '#800000', graphite: '#333333'
+        darkblue: '#1A237E', darkgreen: '#1B5E20', chocolate: '#5D4037', darkred: '#800000', graphite: '#333333',
+        purple: '#9C27B0', deepviolet: '#673AB7', bluegrey: '#607D8B', black: '#212121', coral: '#FF6E40'
     };
 
-    const COLOR_ORDER = [
-        'blue', 'green', 'orange', 'red', 'pink', 'lightblue', 'mint', 'yellow', 'lightpurple', 'rose',
-        'indigo', 'teal', 'lime', 'cyan', 'magenta', 'deeporange', 'brown', 'slate', 'cobalt', 'crimson',
-        'darkblue', 'darkgreen', 'chocolate', 'darkred', 'graphite'
+    const COLOR_ORDER =[
+        'red', 'crimson', 'darkred', 'pink', 'rose', 'magenta', 'purple', 'deepviolet', 'indigo', 'lightpurple',
+        'darkblue', 'cobalt', 'blue', 'lightblue', 'cyan', 'teal', 'mint', 'darkgreen', 'green', 'lime',
+        'yellow', 'orange', 'deeporange', 'coral', 'brown', 'chocolate', 'bluegrey', 'slate', 'graphite', 'black'
     ];
 
     const GENERAL_CONFIG_KEY = 'etis_general_config';
     let savedConfig = JSON.parse(localStorage.getItem(GENERAL_CONFIG_KEY)) || {};
-    let generalConfig = { dimPastPairs: true, shortAudFormat: false, hideDaysOff: false, showSunday: false, absoluteScores: false, watermark: true, datesLeft: false, ...savedConfig };
-    
+    const defaultCompactConfig = { showWorkType: true, showControlType: false, showPassScore: true, showRating: false, showDate: true, showTeacher: false };
+    let generalConfig = { dimPastPairs: true, shortAudFormat: false, hideDaysOff: false, showSunday: false, absoluteScores: false, compactGrades: false, watermark: true, datesLeft: false, generateQR: true, ...savedConfig };
+    generalConfig.compactGradesConfig = { ...defaultCompactConfig, ...(generalConfig.compactGradesConfig || {}) };
+
     function applyAccentColor() {
         const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
 
@@ -6717,13 +6833,13 @@ button.sync-tab.active {
     }
 
     function addViewport() {
-        // Проверяем, нет ли уже такого тега
-        if (!document.querySelector('meta[name="viewport"]')) {
-            const meta = document.createElement('meta');
+        let meta = document.querySelector('meta[name="viewport"]');
+        if (!meta) {
+            meta = document.createElement('meta');
             meta.name = 'viewport';
-            meta.content = 'width=device-width, initial-scale=1';
             safeAppend(meta);
         }
+        meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
     }
 
     // Запускаем при загрузке документа
@@ -6731,6 +6847,21 @@ button.sync-tab.active {
         addViewport();
         setIcon();
         stylePages();
+        
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (document.body) {
+                    // Убираем жесткие инлайновые стили
+                    document.body.style.removeProperty('opacity');
+                    document.body.style.removeProperty('visibility');
+                    document.body.style.removeProperty('background-color');
+                    
+                    // Запускаем плавную CSS-анимацию проявления
+                    document.body.classList.add('etis-reborn-loaded');
+                }
+            });
+        });
+        
         // Запуск через секунду, чтобы страница прогрузилась
         setTimeout(initAutoUpdateCheck, 1500);
     }
@@ -6953,7 +7084,7 @@ button.sync-tab.active {
     function loadVersionHistory() {
         const container = document.getElementById('version-history-list');
         if (!container) return;
-        container.innerHTML = '<div style="text-align:center; padding: 2rem; color:var(--color-text-secondary);"><span class="material-icons" style="animation:spin 1s linear infinite; display:block; margin-bottom:8px;">sync</span>Загрузка истории...</div>';
+        container.innerHTML = '<div style="display:flex; align-items:center; gap:12px; padding: 1rem 0; color:var(--color-text-secondary); font-size:1.5rem; font-weight:600;"><span class="material-icons" style="animation:spin 1s linear infinite;">sync</span>Загрузка истории...</div>';
 
         // Запрашиваем последние 10 коммитов для нашего файла
         const apiUrl = 'https://api.github.com/repos/defl-orator/etis-reborn/commits?path=etis.user.js&per_page=10';
@@ -6963,7 +7094,7 @@ button.sync-tab.active {
             url: apiUrl,
             onload: async function(res) {
                 if (res.status !== 200) {
-                    container.innerHTML = '<div style="color:var(--color-red); text-align:center;">Не удалось загрузить историю версий. Попробуйте позже.</div>';
+                    container.innerHTML = '<div style="color:var(--color-red); text-align:left; padding: 1rem 0; font-size: 1.4rem;">Не удалось загрузить историю версий. Попробуйте позже.</div>';
                     return;
                 }
                 
@@ -7008,7 +7139,7 @@ button.sync-tab.active {
                 });
 
                 if (history.length === 0) {
-                    container.innerHTML = '<div style="color:var(--color-text-secondary); text-align:center;">История версий пуста</div>';
+                    container.innerHTML = '<div style="color:var(--color-text-secondary); text-align:left; font-size: 1.4rem; padding: 1rem 0;">История версий пуста</div>';
                     return;
                 }
 
@@ -7044,13 +7175,14 @@ button.sync-tab.active {
     function getUpdateHTML() {
         const cur = GM_info.script.version;
         
-        if (updateState.status === 'loading') return `<div style="padding:2rem;text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-accent);animation:spin 1s linear infinite;">sync</span><div style="margin-top:1rem;font-size:1.6rem;">Проверка...</div></div><style>@keyframes spin{100%{transform:rotate(360deg)}}</style>`;
-        if (updateState.status === 'error') return `<div style="text-align:center;"><span class="material-icons" style="font-size:48px;color:var(--color-red);">error_outline</span><div style="font-size:1.6rem;margin:1rem 0;">Ошибка: ${updateState.details}</div><button id="retry-update" class="answer-btn-custom" style="margin:0 auto;">Повторить</button></div>`;
+        if (updateState.status === 'loading') return `<div style="padding:2rem 0;text-align:left;display:flex;align-items:center;gap:12px;"><span class="material-icons" style="font-size:32px;color:var(--color-accent);animation:spin 1s linear infinite;">sync</span><div style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Проверка обновлений...</div></div><style>@keyframes spin{100%{transform:rotate(360deg)}}</style>`;
+        
+        if (updateState.status === 'error') return `<div style="text-align:left;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;"><span class="material-icons" style="font-size:36px;color:var(--color-red);">error_outline</span><div style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Ошибка: ${updateState.details}</div></div><button id="retry-update" class="answer-btn-custom" style="width:100%;justify-content:center;">Повторить</button></div>`;
 
         let mainHtml = '';
 
         if (updateState.hasUpdate) {
-            const testLabel = IS_TEST_MODE ? '<div style="color:var(--color-red); font-weight:800; font-size:1rem; margin-bottom:5px;">TEST MODE</div>' : '';
+            const testLabel = IS_TEST_MODE ? '<div style="color:var(--color-red); font-weight:800; font-size:1.1rem; margin-bottom:8px; text-transform:uppercase;">Test Mode</div>' : '';
 
             let actionButtons = '';
             if (isIOS) {
@@ -7059,64 +7191,73 @@ button.sync-tab.active {
                 actionButtons = `
                     <div style="display:flex; flex-direction:column; gap:10px;">
                         <a href="${stayDeepLink}" id="update-stay" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-accent)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
-                            <span class="material-icons">open_in_new</span>
-                            Обновить через Stay
+                            <span class="material-icons">open_in_new</span> Обновить через Stay
                         </a>
                         <a href="${UPDATE_URL}" target="_blank" id="update-browser" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
-                            <span class="material-icons">public</span>
-                            В браузере
+                            <span class="material-icons">public</span> В браузере
                         </a>
                     </div>
-                    <div style="font-size:1.1rem; color:var(--color-text-secondary); margin-top:12px;">Выберите ваш менеджер скриптов</div>
                 `;
             } else {
                 actionButtons = `
                     <a href="${UPDATE_URL}" target="_blank" id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
-                        <span class="material-icons">system_update_alt</span>
-                        Обновить сейчас
+                        <span class="material-icons">system_update_alt</span> Обновить сейчас
                     </a>
                 `;
             }
 
             mainHtml = `
-                <div style="text-align:center;">
+                <div style="text-align:left;">
                     ${testLabel}
-                    <span class="material-icons" style="font-size:48px;color:var(--color-green);margin-bottom:1rem;">system_update</span>
-                    <div style="font-size:1.8rem;font-weight:800;margin-bottom:1.5rem;color:var(--color-text-primary);">Новая версия! ${IS_TEST_MODE ? '(TEST)' : ''}</div>
+                    <div style="display:flex; align-items:center; gap:16px; margin-bottom:2rem;">
+                        <div style="background:rgba(52, 199, 89, 0.15); padding:12px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                            <span class="material-icons" style="font-size:36px;color:var(--color-green);">system_update</span>
+                        </div>
+                        <div>
+                            <div style="font-size:2rem;font-weight:800;color:var(--color-text-primary);line-height:1.2;">Обновление!</div>
+                            <div style="font-size:1.3rem;color:var(--color-text-secondary);font-weight:600;margin-top:4px;">Доступна новая версия</div>
+                        </div>
+                    </div>
 
-                    <div style="background:var(--color-highlight);padding:1.6rem;border-radius:12px;text-align:left;margin-bottom:2rem;border:1px solid var(--color-table-border);">
-                        <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Доступно:</div>
-                        <div style="font-size:1.4rem;font-weight:700;margin-bottom:12px;color:var(--color-text-primary);">
-                            ${updateState.remoteVer} от ${updateState.remoteDate}
+                    <div style="background:var(--color-highlight);padding:1.6rem;border-radius:12px;margin-bottom:2rem;border:1px solid var(--color-table-border);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--color-table-border);">
+                            <div>
+                                <div style="font-size:1.2rem;color:var(--color-text-secondary);margin-bottom:2px;">Новая версия</div>
+                                <div style="font-size:1.5rem;font-weight:800;color:var(--color-text-primary);">${updateState.remoteVer}</div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div style="font-size:1.2rem;color:var(--color-text-secondary);margin-bottom:2px;">У вас</div>
+                                <div style="font-size:1.5rem;font-weight:800;color:var(--color-text-secondary);">${cur}</div>
+                            </div>
                         </div>
 
                         ${updateState.remoteLog ? `
-                            <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Что нового:</div>
-                            <div style="font-size:1.4rem;line-height:1.4;margin-bottom:12px;color:var(--color-text-primary);">
+                            <div style="font-size:1.2rem;color:var(--color-text-secondary);margin-bottom:6px;font-weight:600;text-transform:uppercase;">Что нового:</div>
+                            <div style="font-size:1.35rem;line-height:1.5;color:var(--color-text-primary);">
                                 ${updateState.remoteLog}
                             </div>
                         ` : ''}
-
-                        <div style="font-size:1.3rem;color:var(--color-text-secondary);margin-bottom:4px;">Текущая:</div>
-                        <div style="font-size:1.4rem;font-weight:700;color:var(--color-text-primary);">
-                            ${cur}
-                        </div>
                     </div>
 
                     ${actionButtons}
                 </div>`;
         } else {
             mainHtml = `
-                <div style="text-align:center;">
-                    <span class="material-icons" style="font-size:48px;color:var(--color-accent);margin-bottom:1rem;">check_circle</span>
-                    <div style="font-size:1.8rem;font-weight:700;">Версия актуальна</div>
-                    <div style="color:var(--color-text-secondary);margin-top:0.5rem;margin-bottom:2rem;">У вас установлена v${cur}</div>
-                    <button id="retry-update" class="answer-btn-custom" style="background:var(--color-highlight)!important;color:var(--color-text-primary)!important;">Проверить снова</button>
+                <div style="text-align:left;">
+                    <div style="display:flex; align-items:center; gap:16px; margin-bottom:2rem;">
+                        <div style="background:var(--color-accent-active); padding:12px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
+                            <span class="material-icons" style="font-size:36px;color:var(--color-accent);">check_circle</span>
+                        </div>
+                        <div>
+                            <div style="font-size:2rem;font-weight:800;color:var(--color-text-primary);line-height:1.2;">Всё актуально</div>
+                            <div style="color:var(--color-text-secondary);margin-top:4px;font-size:1.3rem;font-weight:500;">У вас установлена v${cur}</div>
+                        </div>
+                    </div>
                 </div>`;
         }
 
         return mainHtml + `
-            <div style="margin-top: 2.4rem; border-top: 1px solid var(--color-table-border); padding-top: 2rem;">
+            <div style="margin-top: 2.4rem;">
                 <button id="open-history-btn" class="settings-menu-btn" style="background: transparent; border: 1px solid var(--color-table-border); padding: 12px 16px;">
                     <span class="material-icons" style="color: var(--color-text-secondary);">history</span>
                     История версий
@@ -7426,6 +7567,7 @@ button.sync-tab.active {
     function openSettingsModal(view = 'main') {
         let overlay = document.getElementById('etis-settings-overlay');
         let modal = document.getElementById('etis-settings-modal');
+        let requiresReloadOnClose = false;
 
         if (!overlay) {
             overlay = document.createElement('div');
@@ -7441,6 +7583,11 @@ button.sync-tab.active {
         const closeAll = () => { 
             overlay.classList.remove('active'); 
             modal.classList.remove('active'); 
+            document.body.classList.remove('modal-open-body');
+            
+            if (requiresReloadOnClose) {
+                setTimeout(() => window.location.reload(), 300);
+            }
         };
         overlay.onclick = closeAll;
 
@@ -7457,6 +7604,13 @@ button.sync-tab.active {
                 title = 'Общие';
                 contentHTML = `
                     <div style="margin: 0;">
+                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                            <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Генерация QR-кода</span>
+                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Создавать QR-код при экспорте онлайн-занятия</span>
+                            </div>
+                            <input type="checkbox" id="setting-generate-qr" class="tumbler-checkbox" ${generalConfig.generateQR ? 'checked' : ''}>
+                        </label>
                         <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition);">
                             <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Вотермарка на скриншотах</span>
@@ -7473,14 +7627,14 @@ button.sync-tab.active {
                         <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
                             <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Скрывать выходные дни</span>
-                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Убирает из расписания пустые дни (0 пар)</span>
+                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Убирает из расписания пустые дни без пар</span>
                             </div>
                             <input type="checkbox" id="setting-hide-days" class="tumbler-checkbox" ${generalConfig.hideDaysOff ? 'checked' : ''}>
                         </label>
                         <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
                             <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Затемнение прошедших пар</span>
-                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Делает прошедшие сегодня занятия тусклыми</span>
+                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Делает прошедшие занятия тусклыми</span>
                             </div>
                             <input type="checkbox" id="setting-dim-pairs" class="tumbler-checkbox" ${generalConfig.dimPastPairs ? 'checked' : ''}>
                         </label>
@@ -7511,13 +7665,51 @@ button.sync-tab.active {
                 title = 'Оценки';
                 contentHTML = `
                     <div style="margin: 0;">
-                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition);">
+                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
                             <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
-                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Абсолютные баллы (из 100)</span>
-                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Всегда отображать "из 100" в капсуле вместо суммы макс. баллов за прошедшие контрольные</span>
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Абсолютные баллы</span>
+                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Отображать "из 100" в капсуле над таблицей вместо суммы макс. баллов</span>
                             </div>
                             <input type="checkbox" id="setting-abs-scores" class="tumbler-checkbox" ${generalConfig.absoluteScores ? 'checked' : ''}>
                         </label>
+                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: ${generalConfig.compactGrades ? '8px' : '0'};">
+                            <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Компактные оценки</span>
+                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Скрывает лишние столбцы в таблицах с оценками</span>
+                            </div>
+                            <input type="checkbox" id="setting-compact-grades" class="tumbler-checkbox" ${generalConfig.compactGrades ? 'checked' : ''}>
+                        </label>
+                        <div id="compact-settings-btn-wrapper" style="display:${generalConfig.compactGrades ? 'block' : 'none'};">
+                            <button class="settings-menu-btn" data-target="compact_grades_settings" style="width: 100%; background: transparent; border: 1px solid var(--color-table-border);">
+                                <span class="material-icons" style="color: var(--color-text-secondary);">view_column</span>
+                                Настроить колонки
+                                <span class="material-icons chevron">chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (currentView === 'compact_grades_settings') {
+                title = 'Настройка колонок';
+                backTarget = 'grades';
+                const cfg = generalConfig.compactGradesConfig;
+                const makeToggle = (id, label, desc, checked) => `
+                    <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 8px;">
+                        <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                            <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">${label}</span>
+                            <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">${desc}</span>
+                        </div>
+                        <input type="checkbox" id="${id}" class="tumbler-checkbox compact-col-toggle" ${checked ? 'checked' : ''}>
+                    </label>
+                `;
+                contentHTML = `
+                    <div style="margin: 0;">
+                        <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-bottom: 1.6rem; padding: 0 4px; line-height: 1.4;">Выберите, какие столбцы оставить видимыми (<b>Тема</b> и <b>Оценка</b> отображаются всегда):</div>
+                        ${makeToggle('cfg-workType', 'Вид работы', 'Лек, практ, лаб, сам', cfg.showWorkType)}
+                        ${makeToggle('cfg-controlType', 'Вид контроля', 'Итоговое или текущее КМ', cfg.showControlType)}
+                        ${makeToggle('cfg-passScore', 'Проходной балл', 'Минимум для зачета', cfg.showPassScore)}
+                        ${makeToggle('cfg-rating', 'Балл в рейтинг', 'Текущий и максимальный баллы', cfg.showRating)}
+                        ${makeToggle('cfg-date', 'Дата', 'Дата выставления оценки', cfg.showDate)}
+                        ${makeToggle('cfg-teacher', 'Преподаватель', 'ФИО преподавателя', cfg.showTeacher)}
                     </div>
                 `;
             } else if (currentView === 'appearance') {
@@ -7616,26 +7808,61 @@ button.sync-tab.active {
                 btn.onclick = () => renderView(btn.getAttribute('data-target'));
             });
 
+            // Подключение кнопок внутренних страниц
+            modal.querySelectorAll('.settings-menu-btn[data-target]').forEach(btn => {
+                btn.onclick = () => renderView(btn.getAttribute('data-target'));
+            });
+
             // Обработчики чекбоксов
             if (currentView === 'general') {
                 modal.querySelector('#setting-watermark').onchange = (e) => {
                     generalConfig.watermark = e.target.checked;
                     localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                 };
+                modal.querySelector('#setting-generate-qr').onchange = (e) => {
+                    generalConfig.generateQR = e.target.checked;
+                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                };
             } else if (currentView === 'timetable') {
                 modal.querySelector('#setting-hide-days').onchange = (e) => { generalConfig.hideDaysOff = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyHideDaysOff) window.applyHideDaysOff(); };
                 modal.querySelector('#setting-dim-pairs').onchange = (e) => { generalConfig.dimPastPairs = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyDimming) window.applyDimming(); };
-                modal.querySelector('#setting-short-aud').onchange = (e) => { generalConfig.shortAudFormat = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); window.location.reload(); };
-                modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); window.location.reload(); };
-                modal.querySelector('#setting-show-sunday').onchange = (e) => { generalConfig.showSunday = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); window.location.reload(); };
+                modal.querySelector('#setting-short-aud').onchange = (e) => { generalConfig.shortAudFormat = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
+                modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
+                modal.querySelector('#setting-show-sunday').onchange = (e) => { generalConfig.showSunday = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
             } else if (currentView === 'grades') {
                 modal.querySelector('#setting-abs-scores').onchange = (e) => { 
                     generalConfig.absoluteScores = e.target.checked; 
                     localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); 
-                    window.location.reload(); // Перезагружаем страницу, чтобы обновить капсулы
+                    requiresReloadOnClose = true; 
                 };
+                modal.querySelector('#setting-compact-grades').onchange = (e) => { 
+                    generalConfig.compactGrades = e.target.checked; 
+                    const wrapper = modal.querySelector('#compact-settings-btn-wrapper');
+                    if (e.target.checked) {
+                        wrapper.style.display = 'block';
+                        wrapper.previousElementSibling.style.marginBottom = '8px';
+                    } else {
+                        wrapper.style.display = 'none';
+                        wrapper.previousElementSibling.style.marginBottom = '0';
+                    }
+                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); 
+                    requiresReloadOnClose = true; 
+                };
+            } else if (currentView === 'compact_grades_settings') {
+                modal.querySelectorAll('.compact-col-toggle').forEach(checkbox => {
+                    checkbox.onchange = (e) => {
+                        const id = e.target.id;
+                        if (id === 'cfg-workType') generalConfig.compactGradesConfig.showWorkType = e.target.checked;
+                        if (id === 'cfg-controlType') generalConfig.compactGradesConfig.showControlType = e.target.checked;
+                        if (id === 'cfg-passScore') generalConfig.compactGradesConfig.showPassScore = e.target.checked;
+                        if (id === 'cfg-rating') generalConfig.compactGradesConfig.showRating = e.target.checked;
+                        if (id === 'cfg-date') generalConfig.compactGradesConfig.showDate = e.target.checked;
+                        if (id === 'cfg-teacher') generalConfig.compactGradesConfig.showTeacher = e.target.checked;
+                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        requiresReloadOnClose = true;
+                    }
+                });
             } else if (currentView === 'appearance') {
-                // Код выбора цветов остается без изменений
                 let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
                 if (window._etisTargetIndex === undefined) window._etisTargetIndex = 0;
 
@@ -7685,7 +7912,11 @@ button.sync-tab.active {
         };
 
         renderView(view);
-        requestAnimationFrame(() => { overlay.classList.add('active'); modal.classList.add('active'); });
+        requestAnimationFrame(() => { 
+            overlay.classList.add('active'); 
+            modal.classList.add('active'); 
+            document.body.classList.add('modal-open-body');
+        });
     }
 
     // Модификация стилей страниц
@@ -7918,6 +8149,31 @@ button.sync-tab.active {
         }
 
         const page = window.location.pathname.split('/').pop();
+
+        // --- ПЕРЕХВАТ СТРАНИЦЫ РАСПИСАНИЯ ПРЕПОДАВАТЕЛЯ ---
+        const isPeoTT = document.querySelector('form#form1 input[name="P_PEO_ID"]') !== null;
+        let span9 = document.querySelector('div.span9');
+
+        if (isPeoTT && !span9) {
+            const container = document.createElement('div');
+            // Используем flexbox для надежного центрирования на любых экранах
+            container.style.cssText = 'display: flex; justify-content: center; width: 100%; box-sizing: border-box; padding: 2rem;';
+            
+            span9 = document.createElement('div');
+            span9.className = 'span9';
+            span9.style.cssText = 'margin: 0 !important; float: none !important; width: 100% !important; max-width: 1120px !important; padding-top: 1rem !important;';
+            
+            // Перемещаем всё содержимое body внутрь нашего нового контейнера
+            Array.from(document.body.childNodes).forEach(node => {
+                if (node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && node.id !== 'swipe-action-bubble' && node.id !== 'etis-push-container' && node !== container) {
+                    span9.appendChild(node);
+                }
+            });
+            
+            container.appendChild(span9);
+            document.body.appendChild(container);
+            document.body.style.backgroundColor = ''; // Сброс возможных инлайновых фонов
+        }
 
         // Style Login Page
         const login = document.querySelector('body > div.login');
@@ -8589,6 +8845,826 @@ button.sync-tab.active {
                 }
                 return rawStr;
             };
+
+            // --- ОФОРМЛЕНИЕ РАСПИСАНИЯ ПРЕПОДАВАТЕЛЯ ---
+            if (isPeoTT) {
+                // 1. Очистка заголовка
+                const h4 = span9.querySelector('h4');
+                if (h4) {
+                    const h2 = document.createElement('h2');
+                    h2.textContent = h4.textContent;
+                    h2.style.marginBottom = '2.4rem';
+                    h4.replaceWith(h2);
+                }
+
+                // 2. Парсинг семестров и недель
+                const spans = Array.from(span9.querySelectorAll('span.fl, span.active'));
+                const terms =[];
+                const weeks =[];
+                
+                spans.forEach(span => {
+                    const text = span.textContent.trim();
+                    const onclick = span.getAttribute('onclick');
+                    
+                    if (/^\d+$/.test(text) || (onclick && onclick.includes("'',"))) {
+                        weeks.push(span);
+                    } else {
+                        terms.push(span);
+                    }
+                });
+                
+                // Удаляем висячие <br> и &nbsp;
+                Array.from(span9.childNodes).forEach(node => {
+                    if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '') node.remove();
+                    if (node.tagName === 'BR') node.remove();
+                });
+
+                // 3. Создание Submenu (Семестры)
+                if (terms.length > 0) {
+                    const submenu = document.createElement('div');
+                    submenu.className = 'submenu';
+                    submenu.style.setProperty('margin-bottom', '2.4rem', 'important');
+                    
+                    terms.forEach(span => {
+                        const a = document.createElement(span.classList.contains('active') ? 'b' : 'a');
+                        a.textContent = span.textContent;
+                        if (span.hasAttribute('onclick')) {
+                            a.href = '#';
+                            a.setAttribute('onclick', span.getAttribute('onclick'));
+                        }
+                        // Заставляем вкладки равномерно растягиваться на всю ширину
+                        a.style.setProperty('flex', '1 1 0', 'important');
+                        a.style.setProperty('justify-content', 'center', 'important');
+                        submenu.appendChild(a);
+                        span.remove();
+                    });
+                    span9.insertBefore(submenu, span9.querySelector('table.slimtab_nice') || span9.firstChild);
+                }
+                
+                // 4. Создание Weeks (Недели)
+                if (weeks.length > 0) {
+                    const weeksContainer = document.createElement('div');
+                    weeksContainer.className = 'weeks';
+                    weeksContainer.style.setProperty('margin-bottom', '2.4rem', 'important');
+                    
+                    const actualWeekNum = localStorage.getItem('etis_actual_week');
+                    
+                    weeks.forEach(span => {
+                        const isActive = span.classList.contains('active');
+                        const weekDiv = document.createElement('div');
+                        weekDiv.className = 'week ' + (isActive ? 'current' : '');
+                        
+                        const text = span.textContent.trim();
+                        
+                        // Подсветка актуальной недели (если сейчас не она)
+                        if (text === actualWeekNum && !isActive) {
+                            weekDiv.classList.add('actual-week');
+                        }
+
+                        const a = document.createElement('a');
+                        a.textContent = text;
+                        if (span.hasAttribute('onclick')) {
+                            a.href = '#';
+                            a.setAttribute('onclick', span.getAttribute('onclick'));
+                        }
+                        
+                        // ФИКС ЦВЕТА АКТИВНОЙ НЕДЕЛИ
+                        if (isActive) {
+                            a.style.setProperty('color', '#fff', 'important');
+                            a.style.setProperty('font-weight', '700', 'important');
+                        }
+                        
+                        weekDiv.appendChild(a);
+                        weeksContainer.appendChild(weekDiv);
+                        span.remove();
+                    });
+                    span9.insertBefore(weeksContainer, span9.querySelector('table.slimtab_nice') || span9.firstChild);
+
+                    // Автоскролл к текущей неделе
+                    setTimeout(() => {
+                        const activeW = weeksContainer.querySelector('.current');
+                        if (activeW) {
+                            const scrollTarget = activeW.offsetLeft - (weeksContainer.offsetWidth / 2) + (activeW.offsetWidth / 2);
+                            weeksContainer.scrollTo({ left: scrollTarget, behavior: 'smooth' });
+                        }
+                    }, 200);
+                }
+                
+                // 5. Оформление таблицы (Парсинг сетки в карточки дней)
+                const table = span9.querySelector('table.slimtab_nice');
+                if (table) {
+                    if (!document.getElementById('peo-tt-hover-styles')) {
+                        const style = document.createElement('style');
+                        style.id = 'peo-tt-hover-styles';
+                        style.innerHTML = `
+                            .aud-hidden {
+                                max-height: 0;
+                                overflow: hidden;
+                                opacity: 0;
+                                transition: max-height 0.3s ease, opacity 0.3s ease, margin-top 0.3s ease;
+                                margin-top: 0;
+                                display: flex;
+                                flex-direction: column;
+                                gap: 6px;
+                            }
+                            .aud-hover-container:hover .aud-hidden {
+                                max-height: 800px;
+                                opacity: 1;
+                                margin-top: 8px;
+                            }
+                            .pair_teacher { overflow: visible !important; }
+                            .groups-more-btn {
+                                background: var(--color-highlight);
+                                color: var(--color-text-primary);
+                                padding: 4px 10px;
+                                border-radius: 12px;
+                                font-size: 1.1rem;
+                                margin-left: 6px;
+                                font-weight: 800;
+                                cursor: pointer;
+                                transition: all 0.2s ease;
+                                display: inline-block;
+                                vertical-align: middle;
+                                border: 1px solid transparent;
+                                line-height: 1.2;
+                            }
+                            .groups-more-btn:hover {
+                                background: var(--color-accent-active);
+                                color: var(--color-accent);
+                                border-color: var(--color-accent);
+                                transform: translateY(-1px);
+                            }
+                            /* Фикс ширины правой колонки для преподавателя */
+                            html[theme] .teacher-days-container .timetable-grid td.pair_teacher {
+                                width: 250px !important;
+                                min-width: 200px !important;
+                                padding-right: 1.6rem !important;
+                            }
+                            html[theme] .teacher-days-container .timetable-grid tr:not(:last-child) {
+                                background-image: linear-gradient(to right,
+                                    transparent 90px,
+                                    var(--color-table-border) 90px,
+                                    var(--color-table-border) calc(100% - 1.6rem),
+                                    transparent calc(100% - 1.6rem)
+                                ) !important;
+                                background-position: bottom !important;
+                                background-repeat: no-repeat !important;
+                                background-size: 100% 1px !important;
+                            }
+                            @media (max-width: 960px) {
+                                html[theme] .teacher-days-container .timetable-grid td.pair_teacher {
+                                    width: 110px !important;
+                                    min-width: 110px !important;
+                                    padding-right: 1.6rem !important;
+                                }
+                                html[theme] .teacher-days-container .timetable-grid tr:not(:last-child) {
+                                    background-image: linear-gradient(to right,
+                                        transparent calc(75px + 0.5rem),
+                                        var(--color-table-border) calc(75px + 0.5rem),
+                                        var(--color-table-border) calc(100% - 1.6rem),
+                                        transparent calc(100% - 1.6rem)
+                                    ) !important;
+                                }
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+
+                    const daysArr =["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+                    const daysData = daysArr.map(name => ({ name, pairs:[] }));
+                    let teacherInfoHtml = "";
+
+                    // Попытка вытащить дату начала недели (понедельника) из заголовка
+                    const h2Title = span9.querySelector('h2');
+                    let startWeekDate = null;
+                    if (h2Title) {
+                        const dateMatch = h2Title.textContent.match(/с\s+(\d{2})\.(\d{2})\.(\d{4})/i);
+                        if (dateMatch) {
+                            startWeekDate = new Date(parseInt(dateMatch[3]), parseInt(dateMatch[2]) - 1, parseInt(dateMatch[1]));
+                        }
+                    }
+                    const monthsArrCase =['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+
+                    const rows = table.querySelectorAll('tr');
+                    rows.forEach((tr, rowIndex) => {
+                        if (rowIndex === 0 || tr.children.length === 0) return;
+
+                        let time = "";
+                        let dayCellOffset = 0;
+                        const firstCell = tr.cells[0];
+
+                        if (firstCell && firstCell.rowSpan > 2 && firstCell.querySelector('b')) {
+                            teacherInfoHtml = firstCell.innerHTML;
+                            time = tr.cells[1] ? tr.cells[1].textContent.trim() : "";
+                            dayCellOffset = 2;
+                        } else {
+                            time = firstCell ? firstCell.textContent.trim() : "";
+                            dayCellOffset = 1;
+                        }
+
+                        if (!time.includes(':')) return;
+
+                        for (let i = 0; i < 6; i++) {
+                            const cell = tr.cells[i + dayCellOffset];
+                            if (!cell || cell.textContent.trim() === '') continue;
+
+                            const pairBlocks = cell.innerHTML.split(/<hr[^>]*>/i);
+
+                            pairBlocks.forEach(blockHtml => {
+                                if (blockHtml.trim() === '') return;
+                                const tempDiv = document.createElement('div');
+                                tempDiv.innerHTML = blockHtml;
+
+                                let subject = "Пара";
+                                let type = "";
+                                
+                                const allDivs = tempDiv.querySelectorAll(':scope > div');
+                                if (allDivs.length === 0) return;
+
+                                const cleanDivs = Array.from(allDivs).filter(d => !d.classList.contains('param'));
+
+                                if (cleanDivs.length === 0) return;
+
+                                const subjFont = cleanDivs[0].querySelector('font[color="#6A0035"] b') || cleanDivs[0];
+                                const titleText = subjFont.textContent.trim();
+                                const typeMatch = titleText.match(/\((лек|практ|лаб)\)$/i);
+                                if (typeMatch) {
+                                    type = typeMatch[1].toLowerCase();
+                                    subject = titleText.replace(typeMatch[0], '').trim();
+                                } else if (titleText.toLowerCase().includes('консультация')) {
+                                    type = 'конс';
+                                    subject = titleText;
+                                } else { subject = titleText; }
+
+                                let infoDiv = cleanDivs.length >= 2 ? cleanDivs[1] : null;
+                                let groupsDiv = cleanDivs.length >= 3 ? cleanDivs[2] : null;
+
+                                if (cleanDivs.length === 2) {
+                                    const c1Html = cleanDivs[1].innerHTML;
+                                    if (cleanDivs[1].querySelector('a') || (c1Html.includes('<br>') && !c1Html.match(/\d{2}\.\d{2}/) && !cleanDivs[1].classList.contains('fp'))) {
+                                        groupsDiv = cleanDivs[1];
+                                        infoDiv = null;
+                                    }
+                                }
+
+                                let infoHtml = "";
+                                if (infoDiv) {
+                                    let visibleEntries =[];
+                                    let hiddenEntries =[];
+                                    const tooltipEl = infoDiv.querySelector('.tooltip');
+                                    
+                                    let rawText = infoDiv.innerHTML.replace(/\.\d{4}/g, '')
+                                        .replace(/<font[^>]*>/g, '').replace(/<\/font>/g, '')
+                                        .replace(/<img[^>]*>/ig, '')
+                                        .replace(/&nbsp;/g, ' ')
+                                        .replace(/<span[^>]*>.*?online.*?<\/span>/ig, 'online'); 
+
+                                    let parts = rawText.split(/<br\s*\/?>/i).map(s => s.trim().replace(/<[^>]+>/g, '')).filter(s => s);
+                                    
+                                    for (let j = 0; j < parts.length; j++) {
+                                        let text = parts[j];
+                                        if (text.toLowerCase() === titleText.toLowerCase() || text.toLowerCase() === subject.toLowerCase()) continue;
+
+                                        text = text.replace(/^[\d,\s]+-\s*/, '');
+
+                                        if (text.startsWith('с ') || text.match(/^\d{2}\.\d{2}/)) {
+                                            let nxt = parts[j+1] && !parts[j+1].startsWith('с ') && !parts[j+1].match(/^\d{2}\.\d{2}/) ? parts[j+1] : '';
+                                            if (nxt) {
+                                                nxt = nxt.replace(/^[\d,\s]+-\s*/, '');
+                                                j++;
+                                            }
+                                            visibleEntries.push({ date: text, text: nxt, type: 'loc' });
+                                        } else {
+                                            visibleEntries.push({ date: '', text: text, type: 'loc' });
+                                        }
+                                    }
+
+                                    if (tooltipEl && tooltipEl.hasAttribute('title')) {
+                                        const titleStr = tooltipEl.getAttribute('title');
+                                        const tParts = titleStr.split(/<br\s*\/?>/i).filter(s => s.trim());
+                                        tParts.forEach(p => {
+                                            const m = p.match(/^([\d\.]+)\s*-\s*(.*)/);
+                                            if (m) {
+                                                hiddenEntries.push({ date: m[1].trim().replace(/\.\d{4}/g, ''), text: m[2].trim(), type: 'loc' });
+                                            } else {
+                                                if (/(?:ауд\.|к\.|[0-9]+\/[0-9]+)/i.test(p)) {
+                                                    hiddenEntries.push({ date: '', text: p.trim(), type: 'loc' });
+                                                } else {
+                                                    hiddenEntries.push({ date: '', text: p.trim(), type: 'info' });
+                                                }
+                                            }
+                                        });
+                                    } else {
+                                        hiddenEntries = visibleEntries.slice(1);
+                                    }
+
+                                    const formatAud = (audStr, strType) => {
+                                        if (!audStr) return '';
+                                        if (audStr.toLowerCase() === 'online') {
+                                            return `<span style="display:inline-flex; align-items:center; gap:4px; color:var(--color-text-secondary); font-weight:500; font-size:1.3rem;"><span class="material-icons" style="font-size:1.5rem;">public</span>Онлайн</span>`;
+                                        }
+                                        
+                                        if (strType === 'info') {
+                                            return `<div style="display:flex; align-items:flex-start; gap:8px; color:var(--color-text-secondary); font-weight:400; font-size:1.2rem; line-height:1.4; text-align:left; width:100%;"><span class="material-icons" style="font-size:1.5rem; opacity:0.7; flex-shrink:0; transform: translateY(-1px);">info_outline</span><span>${audStr}</span></div>`;
+                                        }
+
+                                        let displayAud = audStr;
+                                        if (generalConfig.shortAudFormat) {
+                                            const m = audStr.match(/(\d+)\s*к\.\s*(?:ауд\.)?\s*(\d+[а-яa-z]?)(?:\/\d+)?/i);
+                                            if (m) {
+                                                displayAud = `${m[2]}/${m[1]}`;
+                                            }
+                                        }
+                                        return `<span style="display:inline-flex; align-items:center; gap:4px; color:var(--color-text-secondary); font-weight:500; font-size:1.3rem;"><span class="material-icons" style="font-size:1.5rem;">place</span>${displayAud}</span>`;
+                                    };
+
+                                    if (visibleEntries.length > 0) {
+                                        let first = visibleEntries[0];
+                                        let visibleHtml = `<div class="aud-visible" style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; text-align: left;">
+                                            ${formatAud(first.text, first.type)}
+                                            ${first.date ? `<span style="font-size:1.15rem; color:var(--color-accent); opacity:0.8; font-weight:600;">${first.date}</span>` : ''}
+                                        </div>`;
+                                        
+                                        let hiddenHtml = '';
+                                        const listToHide = hiddenEntries.length > 0 ? hiddenEntries : visibleEntries.slice(1);
+
+                                        if (listToHide.length > 0) {
+                                            hiddenHtml = `<div class="aud-hidden">`;
+                                            listToHide.forEach(e => {
+                                                hiddenHtml += `<div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; text-align:left; width:100%;">
+                                                    ${formatAud(e.text, e.type)}
+                                                    ${e.date ? `<span style="font-size:1.15rem; color:var(--color-text-secondary); opacity:0.8; font-weight:500;">${e.date}</span>` : ''}
+                                                </div>`;
+                                            });
+                                            hiddenHtml += `</div>`;
+                                        }
+
+                                        infoHtml = `<div class="aud-hover-container" style="cursor:default; padding: 4px 0; text-align: left;">
+                                            ${visibleHtml}
+                                            ${hiddenHtml}
+                                        </div>`;
+                                    }
+                                }
+
+                                let groupsHtml = "";
+                                if (groupsDiv) {
+                                    let groupsArr =[];
+                                    const aTags = groupsDiv.querySelectorAll('a');
+                                    
+                                    if (aTags.length > 0) {
+                                        groupsArr = Array.from(aTags).map(a => a.textContent.trim()).filter(Boolean);
+                                    } else {
+                                        groupsArr = groupsDiv.innerHTML.split(/<br\s*\/?>/i)
+                                            .map(g => g.replace(/<[^>]*>/g, '').trim())
+                                            .filter(g => g.length > 1);
+                                    }
+                                    
+                                    if (groupsArr.length > 0) {
+                                        const visibleCount = 2;
+                                        const visibleGroups = groupsArr.slice(0, visibleCount).join(', ');
+                                        
+                                        if (groupsArr.length > visibleCount) {
+                                            const extraCount = groupsArr.length - visibleCount;
+                                            const safeGroups = encodeURIComponent(JSON.stringify(groupsArr));
+                                            
+                                            groupsHtml = `
+                                                <div style="color:var(--color-text-secondary); font-weight:500; font-size:1.2rem; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+                                                    <span>${visibleGroups}</span> 
+                                                    <span class="groups-more-btn modal-groups-trigger" data-groups="${safeGroups}">+${extraCount} групп</span>
+                                                </div>`;
+                                        } else {
+                                            groupsHtml = `<div style="color:var(--color-text-secondary); font-weight:500; font-size:1.2rem; text-align:right;">${visibleGroups}</div>`;
+                                        }
+                                    }
+                                }
+
+                                daysData[i].pairs.push({ time, subject, type, infoHtml, groupsHtml });
+                            });
+                        }
+                    });
+
+                    // --- СКРИНШОТ ГЕНЕРАТОР ---
+                    const handleScreenshot = async (targetEl, fileName, btnEl) => {
+                        let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
+                        if (!h2c) {
+                            btnEl.textContent = 'error';
+                            setTimeout(() => btnEl.textContent = 'ios_share', 2000);
+                            return;
+                        }
+
+                        const isMobile = window.innerWidth <= 960;
+                        const renderWidth = isMobile ? 540 : 1000;
+
+                        const exportContainer = document.createElement('div');
+                        exportContainer.style.cssText = `position:absolute; top:0; left:-9999px; width:${renderWidth}px; padding:${isMobile ? '24px 24px 12px' : '40px 40px 20px'}; background:var(--color-body); z-index:-9999; box-sizing:border-box;`;
+
+                        if (targetEl.classList.contains('teacher-days-container')) {
+                            const title = document.createElement('h2');
+                            title.textContent = h2Title ? h2Title.textContent.trim() : 'Расписание преподавателя';
+                            title.style.textAlign = 'center';
+                            title.style.marginBottom = isMobile ? '20px' : '30px';
+                            title.style.fontSize = isMobile ? '1.8rem' : '2.2rem';
+                            title.style.fontWeight = '800';
+                            title.style.color = getComputedStyle(document.body).getPropertyValue('--color-text-primary').trim() || '#000';
+                            exportContainer.appendChild(title);
+                        }
+
+                        const span9Wrapper = document.createElement('div');
+                        span9Wrapper.className = 'span9';
+                        span9Wrapper.style.cssText = 'margin:0 !important; padding:0 !important; width:100% !important; display:block;';
+
+                        const clone = targetEl.cloneNode(true);
+                        clone.style.margin = '0';
+
+                        clone.querySelectorAll('.share-day-btn, .share-all-btn, .live-dot, .day-status-icon').forEach(el => el.remove());
+                        clone.querySelectorAll('.pair-passed, td').forEach(el => {
+                            el.classList.remove('pair-passed');
+                            el.style.setProperty('opacity', '1', 'important');
+                        });
+
+                        const exportStyles = document.createElement('style');
+                        exportStyles.innerHTML = `
+                            .timetable-grid { table-layout: fixed !important; width: 100% !important; border-spacing: 0 !important; border-collapse: collapse !important; }
+                            .timetable-grid td { white-space: normal !important; word-wrap: break-word !important; border-bottom: none !important; padding: 12px 0 !important; }
+                            .timetable-grid td.pair_num { width: 90px !important; min-width: 90px !important; font-size: 1.1rem !important; text-align: center !important; padding: 12px 5px !important; }
+                            .timetable-grid td.pair_info { width: auto !important; padding-left: 5px !important; padding-right: 5px !important; text-align: left !important; }
+                            .timetable-grid td.pair_teacher { width: 250px !important; min-width: 200px !important; text-align: right !important; padding-right: 16px !important; display: table-cell !important; }
+                            .timetable-grid tr:not(:last-child) {
+                                background-image: linear-gradient(to right, transparent 90px, var(--color-table-border) 90px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)) !important;
+                                background-position: bottom !important; background-size: 100% 1px !important; background-repeat: no-repeat !important; background-color: transparent !important;
+                            }
+                        `;
+                        clone.appendChild(exportStyles);
+                        span9Wrapper.appendChild(clone);
+                        
+                        if (generalConfig.watermark) {
+                            const watermark = document.createElement('div');
+                            watermark.style.cssText = 'text-align: right; margin-top: 16px; font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.3; letter-spacing: 0.5px;';
+                            watermark.textContent = 'etisreborn.ru';
+                            span9Wrapper.appendChild(watermark);
+                        }
+
+                        exportContainer.appendChild(span9Wrapper);
+                        document.body.appendChild(exportContainer);
+
+                        try {
+                            const canvas = await h2c(exportContainer, {
+                                scale: 2, 
+                                useCORS: true, 
+                                windowWidth: renderWidth, 
+                                scrollY: 0,
+                                backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim()
+                            });
+                            canvas.toBlob(blob => {
+                                const file = new File([blob], fileName, { type: 'image/png' });
+                                if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                    navigator.share({ files: [file], title: fileName });
+                                } else {
+                                    const link = document.createElement('a');
+                                    link.download = fileName; link.href = URL.createObjectURL(blob); link.click();
+                                    URL.revokeObjectURL(link.href);
+                                }
+                                exportContainer.remove();
+                                btnEl.textContent = 'check';
+                                setTimeout(() => btnEl.textContent = 'ios_share', 2000);
+                            }, 'image/png');
+                        } catch(err) {
+                            exportContainer.remove();
+                            btnEl.textContent = 'error';
+                            setTimeout(() => btnEl.textContent = 'ios_share', 2000);
+                        }
+                    };
+
+                    const loadH2cAndShoot = (targetEl, fileName, btnEl) => {
+                        let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
+                        if (!h2cObj) {
+                            const script = document.createElement('script');
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                            script.onload = () => handleScreenshot(targetEl, fileName, btnEl);
+                            script.onerror = () => {
+                                btnEl.textContent = 'error';
+                                setTimeout(() => btnEl.textContent = 'ios_share', 2000);
+                            };
+                            document.head.appendChild(script);
+                        } else {
+                            handleScreenshot(targetEl, fileName, btnEl);
+                        }
+                    };
+
+                    const daysContainer = document.createElement('div');
+                    daysContainer.className = 'teacher-days-container';
+
+                    if (teacherInfoHtml) {
+                        const tCard = document.createElement('div');
+                        tCard.style.cssText = 'background: var(--color-card); padding: 1.8rem 2.4rem; border-radius: var(--radius-large); margin-bottom: 2.4rem; font-size: 1.4rem; color: var(--color-text-primary); border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main); display: flex; justify-content: space-between; align-items: center;';
+                        tCard.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <span class="material-icons" style="color:var(--color-accent);">person</span>
+                                <div style="line-height:1.4;">${teacherInfoHtml.replace(/<br\s*\/?>/gi, ' <span style="color:var(--color-text-secondary); margin: 0 4px;">•</span> ')}</div>
+                            </div>
+                            <span class="material-icons share-all-btn" title="Поделиться расписанием" style="color:var(--color-text-secondary); cursor:pointer; font-size:2.4rem; padding: 4px; transition: color 0.2s;">ios_share</span>
+                        `;
+                        daysContainer.appendChild(tCard);
+
+                        const shareAllBtn = tCard.querySelector('.share-all-btn');
+                        shareAllBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            shareAllBtn.textContent = 'hourglass_empty';
+                            const fileName = `Расписание (${h2Title ? h2Title.textContent.replace('Расписание преподавателей. ', '').trim() : 'Преподавателя'}).png`;
+                            loadH2cAndShoot(daysContainer, fileName, shareAllBtn);
+                        });
+                    }
+
+                    daysData.forEach(day => {
+                        if (day.pairs.length === 0) return;
+
+                        let datePart = '';
+                        if (startWeekDate) {
+                            const dayIndex = daysArr.indexOf(day.name);
+                            if (dayIndex !== -1) {
+                                const currentDayDate = new Date(startWeekDate);
+                                currentDayDate.setDate(currentDayDate.getDate() + dayIndex);
+                                datePart = `${currentDayDate.getDate()} ${monthsArrCase[currentDayDate.getMonth()]}`;
+                            }
+                        }
+
+                        let leftDateHTML = '';
+                        let rightDateHTML = '';
+                        
+                        if (datePart) {
+                            if (generalConfig.datesLeft) {
+                                leftDateHTML = `<span>,</span>&nbsp;<span class="day-date" style="font-size: 1.4rem; color: var(--color-text-secondary); font-weight: 500;">${datePart}</span>`;
+                            } else {
+                                rightDateHTML = `<span class="day-date">${datePart}</span>`;
+                            }
+                        }
+
+                        const dayDiv = document.createElement('div');
+                        dayDiv.className = 'day';
+
+                        const h3 = document.createElement('h3');
+                        h3.innerHTML = `
+                            <div style="display:flex; align-items:center; gap: 6px;">
+                                <div class="day-title-text-wrap" style="display:flex; align-items:center;">
+                                    <span class="day-name">${day.name}</span>${leftDateHTML}
+                                </div>
+                            </div>
+                            <div class="day-header-right">
+                                ${rightDateHTML}
+                                <span class="material-icons share-day-btn" title="Поделиться днем">ios_share</span>
+                            </div>
+                        `;
+                        dayDiv.appendChild(h3);
+
+                        h3.querySelector('.share-day-btn').addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const btn = e.currentTarget;
+                            btn.textContent = 'hourglass_empty';
+                            const fileName = `Расписание (${datePart || day.name}).png`;
+                            loadH2cAndShoot(dayDiv, fileName, btn);
+                        });
+
+                        const gridTable = document.createElement('table');
+                        gridTable.className = 'timetable timetable-grid'; 
+                        const tbody = document.createElement('tbody');
+
+                        day.pairs.forEach((pair, idx) => {
+                            const tr = document.createElement('tr');
+                            
+                            let typeClass = 'type-badge-lek';
+                            if (pair.type === 'практ') typeClass = 'type-badge-pract';
+                            else if (pair.type === 'лаб') typeClass = 'type-badge-lab';
+                            else if (pair.type === 'конс') typeClass = 'type-badge-cons';
+
+                            tr.innerHTML = `
+                                <td class="pair_num">
+                                    <div class="pair-badge-wrapper">
+                                        ${pair.type ? `<span class="pair-type-badge ${typeClass}">${pair.type}</span>` : ''}
+                                    </div>
+                                    ${idx + 1} пара<br><font class="eval">${pair.time}</font>
+                                </td>
+                                <td class="pair_info" style="text-align: left !important;">
+                                    <div class="dis" style="text-align: left !important;"><span style="font-weight:700; color:var(--color-text-primary); font-size:1.45rem;">${pair.subject}</span></div>
+                                    <div class="aud-list" style="margin-top:4px; text-align: left !important;">${pair.infoHtml}</div>
+                                </td>
+                                <td class="pair_teacher">
+                                    <div style="text-align:right; line-height:1.5; margin-left:auto;">
+                                        ${pair.groupsHtml}
+                                    </div>
+                                </td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+
+                        gridTable.appendChild(tbody);
+                        dayDiv.appendChild(gridTable);
+                        daysContainer.appendChild(dayDiv);
+                    });
+
+                    table.replaceWith(daysContainer);
+
+                    // Обработчик для модальных окон со списком групп
+                    daysContainer.querySelectorAll('.modal-groups-trigger').forEach(btn => {
+                        btn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            const groups = JSON.parse(decodeURIComponent(btn.getAttribute('data-groups')));
+                            
+                            let overlay = document.querySelector('.analytics-overlay');
+                            let modal = document.querySelector('.analytics-modal');
+
+                            if (!overlay || !modal) {
+                                overlay = document.createElement('div');
+                                overlay.className = 'analytics-overlay';
+                                document.body.appendChild(overlay);
+
+                                modal = document.createElement('div');
+                                modal.className = 'analytics-modal';
+                                document.body.appendChild(modal);
+                            }
+
+                            modal.innerHTML = `
+                                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span class="ui-dialog-title">Учебные группы (${groups.length})</span>
+                                    <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                                </div>
+                                <div class="ui-dialog-content" style="padding: 2.4rem;">
+                                    <div style="display:flex; flex-direction:column; gap:8px;">
+                                        ${groups.map(g => `<div style="background:var(--color-highlight); padding:1.2rem 1.6rem; border-radius:var(--radius-small); font-size:1.3rem; color:var(--color-text-primary); font-weight:600;">${g}</div>`).join('')}
+                                    </div>
+                                </div>
+                            `;
+
+                            const closeAnalytics = () => { 
+                                overlay.classList.remove('active'); 
+                                modal.classList.remove('active'); 
+                                document.body.classList.remove('modal-open-body');
+                            };
+                            overlay.onclick = closeAnalytics;
+                            modal.querySelector('.close-analytics').onclick = closeAnalytics;
+
+                            overlay.classList.add('active');
+                            modal.classList.add('active');
+                            document.body.classList.add('modal-open-body');
+                        });
+                    });
+
+                    // Инициализация свайпов для преподавателя (Мобильные)
+                    function initTeacherMobileSwipes() {
+                        if (window.innerWidth > 960) return;
+                        let bubble = document.getElementById('swipe-action-bubble');
+                        if (!bubble) {
+                            bubble = document.createElement('div');
+                            bubble.id = 'swipe-action-bubble';
+                            bubble.innerHTML = '<span class="material-icons"></span>';
+                            document.body.appendChild(bubble);
+                        }
+                        const iconEl = bubble.querySelector('.material-icons');
+                        let startX = 0, startY = 0;
+                        let currentTarget = null, targetType = '', isSwiping = false, swipeDir = '', originalRect = null, isScrollDetermined = false;
+                        const THRESHOLD = 70;
+
+                        daysContainer.addEventListener('touchstart', (e) => {
+                            const touch = e.touches[0];
+                            startX = touch.clientX; startY = touch.clientY;
+                            isSwiping = false; isScrollDetermined = false; swipeDir = '';
+                            currentTarget = null; originalRect = null;
+
+                            const dayHeader = e.target.closest('.day h3');
+                            if (dayHeader) {
+                                currentTarget = dayHeader.closest('.day');
+                                targetType = 'day';
+                                originalRect = currentTarget.getBoundingClientRect();
+                                currentTarget.style.transition = 'none';
+                            }
+                        }, { passive: true });
+
+                        daysContainer.addEventListener('touchmove', (e) => {
+                            if (!currentTarget || !originalRect) return;
+                            const touch = e.touches[0];
+                            const diffX = touch.clientX - startX;
+                            const diffY = touch.clientY - startY;
+
+                            if (!isScrollDetermined) {
+                                if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) return;
+                                isScrollDetermined = true;
+                                if (Math.abs(diffY) > Math.abs(diffX) || diffX > 0) { // Разрешаем свайп только ВЛЕВО (поделиться)
+                                    currentTarget = null; return;
+                                }
+                                isSwiping = true;
+                                bubble.className = '';
+                                iconEl.textContent = 'ios_share';
+                            }
+
+                            if (isSwiping) {
+                                swipeDir = 'left';
+                                let moveX = diffX;
+                                if (Math.abs(moveX) > THRESHOLD) moveX = -THRESHOLD - (Math.abs(moveX) - THRESHOLD) * 0.25;
+                                
+                                currentTarget.style.transform = `translateX(${moveX}px)`;
+                                
+                                bubble.style.top = `${originalRect.top + originalRect.height / 2 - 12}px`;
+                                bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
+                                bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
+
+                                if (Math.abs(diffX) >= THRESHOLD) {
+                                    bubble.classList.add('active-threshold', 'action-share');
+                                    if (!bubble.dataset.vibrated && navigator.vibrate) {
+                                        navigator.vibrate(15); bubble.dataset.vibrated = 'true';
+                                    }
+                                } else {
+                                    bubble.classList.remove('active-threshold', 'action-share');
+                                    bubble.dataset.vibrated = '';
+                                }
+                            }
+                        }, { passive: true });
+
+                        daysContainer.addEventListener('touchend', (e) => {
+                            if (!currentTarget || !isSwiping) return;
+                            const diffX = e.changedTouches[0].clientX - startX;
+                            const target = currentTarget;
+                            
+                            currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                            currentTarget.style.transform = 'translateX(0px)';
+                            
+                            bubble.style.opacity = '0';
+                            bubble.classList.remove('active-threshold', 'action-share');
+                            bubble.dataset.vibrated = '';
+
+                            if (diffX <= -THRESHOLD) {
+                                setTimeout(() => {
+                                    const shareBtn = target.querySelector('.share-day-btn');
+                                    if (shareBtn) shareBtn.click();
+                                }, 150);
+                            }
+                            currentTarget = null; isSwiping = false;
+                        });
+                    }
+                    initTeacherMobileSwipes();
+
+                    // Затемнение прошедших пар
+                    function dimTeacherPastPairs() {
+                        if (!generalConfig.dimPastPairs) return;
+                        const days = daysContainer.querySelectorAll('.day');
+                        const now = new Date();
+                        const todayMins = now.getHours() * 60 + now.getMinutes();
+                        const todayZero = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+
+                        days.forEach(day => {
+                            const dateEl = day.querySelector('.day-date');
+                            if (!dateEl) return;
+                            
+                            let classDateObj = new Date();
+                            const dateStr = dateEl.textContent.trim();
+                            const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
+                            
+                            if (match) {
+                                const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
+                                classDateObj.setMonth(m);
+                                classDateObj.setDate(parseInt(match[1]));
+                            }
+                            classDateObj.setHours(0,0,0,0);
+                            const classTime = classDateObj.getTime();
+
+                            const isPastDay = classTime < todayZero;
+                            const isToday = classTime === todayZero;
+
+                            day.querySelectorAll('.timetable-grid tr').forEach(row => {
+                                let isPassed = false;
+                                
+                                if (isPastDay) {
+                                    isPassed = true;
+                                } else if (isToday) {
+                                    let startMins = -1;
+                                    const timeEl = row.querySelector('.eval');
+                                    if (timeEl) {
+                                        const timeMatch = timeEl.textContent.match(/(\d{1,2}):(\d{2})/);
+                                        if (timeMatch) {
+                                            startMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+                                        }
+                                    }
+
+                                    if (startMins !== -1) {
+                                        if (todayMins >= (startMins + 90)) isPassed = true;
+                                    }
+                                }
+
+                                if (isPassed) {
+                                    row.classList.add('pair-passed');
+                                } else {
+                                    row.classList.remove('pair-passed');
+                                }
+                            });
+                        });
+                    }
+                    dimTeacherPastPairs();
+                    setInterval(dimTeacherPastPairs, 60000);
+
+                    // Лайв-индикаторы
+                    if (typeof updateLiveTimetable === 'function') {
+                        updateLiveTimetable();
+                    }
+                }
+            }
 
             // --- МЯГКАЯ ИКОНКА ПОДЕЛИТЬСЯ (SVG) ---
             const softShareSVG = `
@@ -9402,9 +10478,17 @@ button.sync-tab.active {
                         const nameText = nameDiv ? nameDiv.textContent.trim() : '';
                         const chairText = chairDiv ? chairDiv.textContent.trim() : '';
 
-                        let nameClick = '', chairClick = '';
-                        if (nameDiv && nameDiv.querySelector('img')) nameClick = nameDiv.querySelector('img').getAttribute('onclick');
-                        if (chairDiv && chairDiv.querySelector('img')) chairClick = chairDiv.querySelector('img').getAttribute('onclick');
+                        // Функция вытаскивает адрес ссылки из текста "window.open('ссылка', ...)"
+                        const extractUrl = (el) => {
+                            if (!el || !el.querySelector('img')) return '#';
+                            const onclick = el.querySelector('img').getAttribute('onclick');
+                            if (!onclick) return '#';
+                            const match = onclick.match(/window\.open\(\s*['"]([^'"]+)['"]/);
+                            return match ? match[1] : '#';
+                        };
+
+                        const nameUrl = extractUrl(nameDiv);
+                        const chairUrl = extractUrl(chairDiv);
 
                         // --- ПАРСИНГ ПРЕДМЕТОВ И ВЫДЕЛЕНИЕ МЕТОК ---
                         let subjectsHtml = '';
@@ -9423,7 +10507,6 @@ button.sync-tab.active {
                                     let subjName = match[1].trim();
                                     let typesStr = match[2].trim();
                                     typesStr.split(',').forEach(t => uniqueTypes.add(t.trim().toLowerCase()));
-                                    // Убрали &bull; (кружок)
                                     subjectsHtml += `<div style="margin-bottom: 0.6rem; line-height: 1.4; color: var(--color-text-primary); opacity: 0.9;">${subjName}</div>`;
                                 } else {
                                     subjectsHtml += `<div style="margin-bottom: 0.6rem; line-height: 1.4; color: var(--color-text-primary); opacity: 0.9;">${line}</div>`;
@@ -9493,10 +10576,10 @@ button.sync-tab.active {
                                 <img src="${img ? img.src : ''}" loading="lazy">
                             </div>
                             <div class="teacher-details">
-                                <div class="teacher-name-link" onclick="${nameClick}">${nameText.replace('Расписание преподавателя', '')}</div>
+                                <a class="teacher-name-link" href="${nameUrl}" target="_blank">${nameText.replace('Расписание преподавателя', '')}</a>
 
                                 <div class="teacher-meta-row">
-                                    <div class="teacher-dept-link" onclick="${chairClick}">${chairText.replace('Расписание кафедры', '')}</div>
+                                    <a class="teacher-dept-link" href="${chairUrl}" target="_blank">${chairText.replace('Расписание кафедры', '')}</a>
                                     <div class="teacher-badges-box">${badgesHtml}</div>
                                 </div>
 
@@ -10045,12 +11128,17 @@ button.sync-tab.active {
                         </div>
                     `;
 
-                    const closeAnalytics = () => { overlay.classList.remove('active'); modal.classList.remove('active'); };
+                    const closeAnalytics = () => { 
+                        overlay.classList.remove('active'); 
+                        modal.classList.remove('active'); 
+                        document.body.classList.remove('modal-open-body');
+                    };
                     overlay.onclick = closeAnalytics;
                     modal.querySelector('.close-analytics').onclick = closeAnalytics;
 
                     overlay.classList.add('active');
                     modal.classList.add('active');
+                    document.body.classList.add('modal-open-body');
                 });
 
                 // --- КНОПКА "ДОБАВИТЬ ПАРУ" В ТУЛБАРЕ ---
@@ -10119,11 +11207,14 @@ button.sync-tab.active {
                                     }
                                 });
 
-                                // Пересчитываем окна и нумерацию пар (которую мы написали ранее)
+                                // Пересчитываем окна и нумерацию пар
                                 if (typeof recalculateTimetable === 'function') recalculateTimetable();
                                 renderNotes();
 
                                 updateLiveTimetable();
+                                
+                                // Принудительно заново рассчитываем затемнение прошедших пар
+                                dimPastPairs();
 
                                 // 3. Плавно проявляем обновленные таблицы обратно
                                 tables.forEach(t => {
@@ -10196,7 +11287,7 @@ button.sync-tab.active {
                                 </div>
                                 
                                 <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); font-size: 1.3rem; color: var(--color-text-primary); line-height: 1.5;">
-                                    <b style="display:block; margin-bottom: 8px;">Как получить ссылку на iPhone (iCloud):</b>
+                                    <b style="display:block; margin-bottom: 8px;">Как получить ссылку на примере iPhone:</b>
                                     1. Откройте приложение «Календарь».<br>
                                     2. Нажмите «Календари» внизу экрана.<br>
                                     3. Нажмите иконку «i» справа от нужного календаря.<br>
@@ -10632,7 +11723,10 @@ button.sync-tab.active {
                         }
                         const audEl = row.querySelector('.pair_info .aud');
                         if (audEl) {
-                            let aText = audEl.textContent.replace('place', '').trim();
+                            const clone = audEl.cloneNode(true);
+                            clone.querySelectorAll('.material-icons, .note-btn-wrapper').forEach(el => el.remove());
+                            let aText = clone.textContent.trim();
+                            
                             if (aText.includes('ауд.')) {
                                 const m = aText.match(/ауд\.\s*([^,]+),\s*к\.\s*([^,]+)/i);
                                 if (m) aText = `${m[1].trim()}/${m[2].trim()}`;
@@ -10738,6 +11832,7 @@ button.sync-tab.active {
                         if (placeholderTimer) clearInterval(placeholderTimer);
                         overlay.classList.remove('active'); 
                         modal.classList.remove('active'); 
+                        document.body.classList.remove('modal-open-body');
                     };
                     overlay.onclick = closeModal;
                     modal.querySelector('.close-modal').onclick = closeModal;
@@ -10932,6 +12027,7 @@ button.sync-tab.active {
 
                     overlay.classList.add('active');
                     modal.classList.add('active');
+                    document.body.classList.add('modal-open-body');
                     if (!existingPair) setTimeout(() => smartInput.focus(), 100);
                 }
 
@@ -11660,7 +12756,11 @@ button.sync-tab.active {
                         </div>
                     `;
 
-                    const closeModal = () => { overlay.classList.remove('active'); modal.classList.remove('active'); };
+                    const closeModal = () => { 
+                        overlay.classList.remove('active'); 
+                        modal.classList.remove('active'); 
+                        document.body.classList.remove('modal-open-body');
+                    };
                     overlay.onclick = closeModal;
                     modal.querySelector('.close-notes').onclick = closeModal;
 
@@ -11787,6 +12887,7 @@ button.sync-tab.active {
 
                     overlay.classList.add('active');
                     modal.classList.add('active');
+                    document.body.classList.add('modal-open-body');
                     setTimeout(() => modal.querySelector('#cp-notes-area').focus(), 100);
                 }
 
@@ -12537,61 +13638,64 @@ button.sync-tab.active {
                     });
 
                     // 3. ДОБАВЛЯЕМ QR-КОДЫ ДЛЯ ОНЛАЙН ПАР
-                    const qrPromises =[];
-                    clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
-                        const link = tr.querySelector('.aud a[href]');
-                        const teacherCell = tr.querySelector('.pair_teacher');
-                        
-                        if (link && teacherCell && link.href) {
-                            const qrUrl = `https://quickchart.io/qr?size=150&margin=1&text=${encodeURIComponent(link.href)}`;
+                    const qrPromises = [];
+                    
+                    if (generalConfig.generateQR) {
+                        clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
+                            const link = tr.querySelector('.aud a[href]');
+                            const teacherCell = tr.querySelector('.pair_teacher');
                             
-                            const promise = new Promise((resolve) => {
-                                GM_xmlhttpRequest({
-                                    method: 'GET',
-                                    url: qrUrl,
-                                    responseType: 'blob',
-                                    onload: function(res) {
-                                        if (res.status === 200) {
-                                            const reader = new FileReader();
-                                            reader.onloadend = function() {
-                                                const img = document.createElement('img');
-                                                img.src = reader.result;
-                                                img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; mix-blend-mode: multiply;';
-                                                
-                                                const teacherText = teacherCell.innerHTML;
-                                                teacherCell.innerHTML = '';
-                                                
-                                                const wrapper = document.createElement('div');
-                                                wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
-                                                
-                                                const textWrapper = document.createElement('div');
-                                                textWrapper.innerHTML = teacherText;
-                                                textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
-                                                
-                                                textWrapper.querySelectorAll('a').forEach(a => {
-                                                    a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
-                                                    a.style.setProperty('text-decoration', 'none', 'important');
-                                                });
-                                                
-                                                wrapper.appendChild(img);
-                                                wrapper.appendChild(textWrapper);
-                                                teacherCell.appendChild(wrapper);
-                                                resolve();
-                                            };
-                                            reader.readAsDataURL(res.response);
-                                        } else {
-                                            resolve(); 
-                                        }
-                                    },
-                                    onerror: () => resolve()
+                            if (link && teacherCell && link.href) {
+                                const qrUrl = `https://quickchart.io/qr?size=150&margin=1&text=${encodeURIComponent(link.href)}`;
+                                
+                                const promise = new Promise((resolve) => {
+                                    GM_xmlhttpRequest({
+                                        method: 'GET',
+                                        url: qrUrl,
+                                        responseType: 'blob',
+                                        onload: function(res) {
+                                            if (res.status === 200) {
+                                                const reader = new FileReader();
+                                                reader.onloadend = function() {
+                                                    const img = document.createElement('img');
+                                                    img.src = reader.result;
+                                                    img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; mix-blend-mode: multiply;';
+                                                    
+                                                    const teacherText = teacherCell.innerHTML;
+                                                    teacherCell.innerHTML = '';
+                                                    
+                                                    const wrapper = document.createElement('div');
+                                                    wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
+                                                    
+                                                    const textWrapper = document.createElement('div');
+                                                    textWrapper.innerHTML = teacherText;
+                                                    textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
+                                                    
+                                                    textWrapper.querySelectorAll('a').forEach(a => {
+                                                        a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
+                                                        a.style.setProperty('text-decoration', 'none', 'important');
+                                                    });
+                                                    
+                                                    wrapper.appendChild(img);
+                                                    wrapper.appendChild(textWrapper);
+                                                    teacherCell.appendChild(wrapper);
+                                                    resolve();
+                                                };
+                                                reader.readAsDataURL(res.response);
+                                            } else {
+                                                resolve(); 
+                                            }
+                                        },
+                                        onerror: () => resolve()
+                                    });
                                 });
-                            });
-                            qrPromises.push(promise);
-                        }
-                    });
+                                qrPromises.push(promise);
+                            }
+                        });
 
-                    // Ждем, пока все QR-коды загрузятся
-                    await Promise.all(qrPromises);
+                        // Ждем, пока все QR-коды загрузятся
+                        await Promise.all(qrPromises);
+                    }
 
                     // 4. Вшиваем стили рендера
                     const exportStyles = document.createElement('style');
@@ -13228,7 +14332,36 @@ button.sync-tab.active {
                 }
 
                 case 'stu.signs': {
-                    // 1. УНИФИКАЦИЯ ПОДМЕНЮ
+                    // СТИЛИ ДЛЯ ТУЛТИПОВ В ТАБЛИЦАХ ОЦЕНОК
+                    if (!document.getElementById('etis-reborn-grades-tooltip-css')) {
+                        const css = document.createElement('style');
+                        css.id = 'etis-reborn-grades-tooltip-css';
+                        css.innerHTML = `
+                            .kt-score-capsule { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+                            .grade-cell-tooltip { 
+                                right: 0 !important; 
+                                left: auto !important;
+                                transform: translateY(10px) !important; 
+                                bottom: 140% !important; 
+                                pointer-events: none;
+                                z-index: 1000 !important; 
+                            }
+                            .grade-cell-tooltip::after { 
+                                right: 15px !important; 
+                                left: auto !important;
+                                transform: none !important; 
+                            }
+                            .kt-score-capsule:hover .grade-cell-tooltip, 
+                            .kt-score-capsule:active .grade-cell-tooltip { 
+                                transform: translateY(0) !important; 
+                                opacity: 1; 
+                                visibility: visible; 
+                            }
+                        `;
+                        document.head.appendChild(css);
+                    }
+
+                    // УНИФИКАЦИЯ ПОДМЕНЮ
                     span9.querySelectorAll('.submenu').forEach(menu => {
                         // Определяем тип периода (семестр или триместр) на основе текста вкладок
                         let termType = 'триместр';
@@ -13253,7 +14386,7 @@ button.sync-tab.active {
                         });
                     });
 
-                    // 2. ГЛОБАЛЬНАЯ ОЧИСТКА ТАБЛИЦ
+                    // ГЛОБАЛЬНАЯ ОЧИСТКА ТАБЛИЦ
                     span9.querySelectorAll('table.common').forEach(table => {
                         table.removeAttribute('width');
                         table.style.width = "100%";
@@ -13268,7 +14401,7 @@ button.sync-tab.active {
                         });
                     });
 
-                    // 3. ОБРАБОТКА "ОЦЕНКИ ЗА СЕССИИ"
+                    // ОБРАБОТКА "ОЦЕНКИ ЗА СЕССИИ"
                     if (pageMode === 'session' || !pageMode) {
                         const submenu = span9.querySelector('.submenu');
 
@@ -13390,11 +14523,31 @@ button.sync-tab.active {
                                 newTable.className = 'common session-table-v6';
                                 if (headerRow) {
                                     const thead = document.createElement('thead');
-                                    thead.appendChild(headerRow.cloneNode(true));
+                                    const clonedHeader = headerRow.cloneNode(true);
+                                    if (generalConfig.compactGrades) {
+                                        const cfg = generalConfig.compactGradesConfig;
+                                        clonedHeader.querySelectorAll('th').forEach((th, idx) => {
+                                            if (idx === 2 && !cfg.showDate) th.style.display = 'none';
+                                            if (idx === 3 && !cfg.showTeacher) th.style.display = 'none';
+                                            if (idx > 3) th.style.display = 'none';
+                                        });
+                                    }
+                                    thead.appendChild(clonedHeader);
                                     newTable.appendChild(thead);
                                 }
                                 const tbody = document.createElement('tbody');
-                                block.rows.forEach(r => tbody.appendChild(r));
+                                block.rows.forEach(r => {
+                                    if (generalConfig.compactGrades) {
+                                        const cfg = generalConfig.compactGradesConfig;
+                                        r.querySelectorAll('td').forEach((td, idx) => {
+                                            if (idx === 2 && !cfg.showDate) td.style.display = 'none';
+                                            if (idx === 3 && !cfg.showTeacher) td.style.display = 'none';
+                                            if (idx > 3) td.style.display = 'none';
+                                            if (idx === 1) { td.style.width = '1%'; td.style.whiteSpace = 'nowrap'; td.style.textAlign = 'center'; }
+                                        });
+                                    }
+                                    tbody.appendChild(r);
+                                });
                                 newTable.appendChild(tbody);
                                 wrapper.appendChild(newTable);
                                 table.parentNode.insertBefore(wrapper, table);
@@ -13525,6 +14678,7 @@ button.sync-tab.active {
                         const closeAnalytics = () => {
                             overlay.classList.remove('active');
                             modal.classList.remove('active');
+                            document.body.classList.remove('modal-open-body');
                         };
                         overlay.addEventListener('click', closeAnalytics);
                         modal.querySelector('.close-analytics').addEventListener('click', closeAnalytics);
@@ -13617,30 +14771,30 @@ button.sync-tab.active {
 
                                         if (count5 > 0) {
                                             statsHtml += `
-                                                <div style="flex: 1 1 0; min-width: 80px; background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                                    <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-green); line-height: 1;">${count5}</span>
-                                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-green); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Отлично</span>
+                                                <div style="flex: 1; min-width: 80px; background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
+                                                    <span style="font-size: 2.2rem; font-weight: 800; color: var(--color-green); line-height: 1; width: 100%;">${count5}</span>
+                                                    <span style="font-size: 1.05rem; font-weight: 700; color: var(--color-green); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Отлично</span>
                                                 </div>`;
                                         }
                                         if (count4 > 0) {
                                             statsHtml += `
-                                                <div style="flex: 1 1 0; min-width: 80px; background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                                    <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-blue); line-height: 1;">${count4}</span>
-                                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-blue); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Хорошо</span>
+                                                <div style="flex: 1; min-width: 80px; background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
+                                                    <span style="font-size: 2.2rem; font-weight: 800; color: var(--color-blue); line-height: 1; width: 100%;">${count4}</span>
+                                                    <span style="font-size: 1.05rem; font-weight: 700; color: var(--color-blue); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Хорошо</span>
                                                 </div>`;
                                         }
                                         if (count3 > 0) {
                                             statsHtml += `
-                                                <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                                    <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-warning); line-height: 1;">${count3}</span>
-                                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-warning); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Удовл.</span>
+                                                <div style="flex: 1; min-width: 80px; background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
+                                                    <span style="font-size: 2.2rem; font-weight: 800; color: var(--color-warning); line-height: 1; width: 100%;">${count3}</span>
+                                                    <span style="font-size: 1.05rem; font-weight: 700; color: var(--color-warning); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Удовл.</span>
                                                 </div>`;
                                         }
                                         if (count2 > 0) {
                                             statsHtml += `
-                                                <div style="flex: 1 1 0; min-width: 80px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: var(--radius-small); padding: 1.2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;">
-                                                    <span style="font-size: 2.4rem; font-weight: 800; color: var(--color-red); line-height: 1;">${count2}</span>
-                                                    <span style="font-size: 1.1rem; font-weight: 700; color: var(--color-red); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px;">Долги</span>
+                                                <div style="flex: 1; min-width: 80px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
+                                                    <span style="font-size: 2.2rem; font-weight: 800; color: var(--color-red); line-height: 1; width: 100%;">${count2}</span>
+                                                    <span style="font-size: 1.05rem; font-weight: 700; color: var(--color-red); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Долги</span>
                                                 </div>`;
                                         }
 
@@ -13708,6 +14862,7 @@ button.sync-tab.active {
 
                                     overlay.classList.add('active');
                                     modal.classList.add('active');
+                                    document.body.classList.add('modal-open-body');
                                 } catch (e) {
                                     alert('Ошибка в renderAnalytics:\n' + e.message);
                                     console.error(e);
@@ -13867,7 +15022,7 @@ button.sync-tab.active {
 
                     }
 
-                    // 4. ОБРАБОТКА "ОЦЕНКИ В ТРИМЕСТРЕ"
+                    // ОБРАБОТКА "ОЦЕНКИ В ТРИМЕСТРЕ"
                     if (pageMode === 'current' || (!pageMode && !span9.querySelector('.session-table-v6'))) {
 
                         const submenus = span9.querySelectorAll('.submenu');
@@ -13911,9 +15066,59 @@ button.sync-tab.active {
                             let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
 
                             rows.forEach(r => {
-                                if (r.querySelector('th') || r === totalRow) return;
+                                if (r === totalRow) return;
 
-                                const cells = r.querySelectorAll('td');
+                                const cells = r.querySelectorAll('th, td');
+                                
+                                // === ЛОГИКА: КОМПАКТНЫЕ ОЦЕНКИ ===
+                                if (generalConfig.compactGrades) {
+                                    const cfg = generalConfig.compactGradesConfig;
+                                    
+                                    // 1. Вторая строка шапки ("текущий", "максимальный")
+                                    if (cells.length === 2 && cells[0].textContent.toLowerCase().includes('текущий')) {
+                                        if (!cfg.showRating) r.style.display = 'none'; 
+                                    } 
+                                    // 2. Главная строка шапки
+                                    else if (r.querySelector('th') && cells.length >= 7) {
+                                        cells.forEach((cell) => {
+                                            const text = cell.textContent.toLowerCase();
+                                            
+                                            if (text.includes('вид работы') && !cfg.showWorkType) cell.style.display = 'none';
+                                            if (text.includes('вид контроля') && !cfg.showControlType) cell.style.display = 'none';
+                                            if (text.includes('проходной') && !cfg.showPassScore) cell.style.display = 'none';
+                                            if (text.includes('в рейтинг') && !cfg.showRating) cell.style.display = 'none';
+                                            if (text.includes('дата') && !cfg.showDate) cell.style.display = 'none';
+                                            if (text.includes('преподаватель') && !cfg.showTeacher) cell.style.display = 'none';
+
+                                            if (!cfg.showRating) {
+                                                cell.removeAttribute('rowspan');
+                                                cell.removeAttribute('colspan');
+                                            }
+                                        });
+                                    } 
+                                    // 3. Обычные строки с оценками
+                                    else if (cells.length >= 7) {
+                                        cells.forEach((cell, idx) => {
+                                            // Индексы колонок ЕТИС: 
+                                            // 0:Тема, 1:Работа, 2:Контроль, 3:Оценка, 4:Проходной, 5:БаллТек, 6:БаллМакс, 7:Дата, 8:Преподаватель
+                                            if (idx === 1 && !cfg.showWorkType) cell.style.display = 'none';
+                                            if (idx === 2 && !cfg.showControlType) cell.style.display = 'none';
+                                            if (idx === 4 && !cfg.showPassScore) cell.style.display = 'none';
+                                            if ((idx === 5 || idx === 6) && !cfg.showRating) cell.style.display = 'none';
+                                            if (idx === 7 && !cfg.showDate) cell.style.display = 'none';
+                                            if (idx === 8 && !cfg.showTeacher) cell.style.display = 'none';
+                                            
+                                            // Заужаем колонку оценки
+                                            if (idx === 3) {
+                                                cell.style.width = '1%';
+                                                cell.style.whiteSpace = 'nowrap';
+                                            }
+                                        });
+                                    }
+                                }
+                                // ========================================
+
+                                if (r.querySelector('th')) return;
 
                                 // 1. Красиво оформляем "Вид работы" (лек, практ, лаб, сам)
                                 if (cells.length > 1) {
@@ -13966,42 +15171,46 @@ button.sync-tab.active {
                                     if (gradeStr !== '') {
                                         hasAnyGrades = true;
                                         
-                                        // Прибавляем максимальный балл в знаменатель (если он больше 0), даже если стоит "н"
                                         if (maxVal > 0) {
                                             calculatedMax += maxVal;
-                                            
-                                            // А текущие баллы плюсуем только если это не "н"
                                             if (gradeStr !== 'н') {
                                                 calculatedCurrent += parseFloat(gradeStr.replace(',', '.')) || 0;
                                             }
                                         }
 
                                         if (gradeStr !== 'н') {
-                                            // Оформляем колонку "Оценка" (cells[3]) в цветную капсулу
+                                            // Оформляем колонку "Оценка" в цветную капсулу
                                             if (!cells[3].querySelector('.kt-score-capsule')) {
-                                                let bg, color;
+                                                let bg, color, mark = '';
+                                                const gradeVal = parseFloat(gradeStr.replace(',', '.')) || 0;
                                                 
                                                 if (maxVal > 0) {
-                                                    const gradeVal = parseFloat(gradeStr.replace(',', '.')) || 0;
                                                     const p = (gradeVal / maxVal) * 100;
-                                                    if (p < 41) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
-                                                    else if (p < 61) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
-                                                    else if (p < 81) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; }
-                                                    else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
+                                                    if (p < 41) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; mark = '2'; }
+                                                    else if (p < 61) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; mark = '3'; }
+                                                    else if (p < 81) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; mark = '4'; }
+                                                    else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; mark = '5'; }
                                                 } else {
                                                     // Если макс. балл 0, делаем капсулу серой
                                                     bg = 'rgba(142, 142, 147, 0.15)'; color = 'var(--color-text-secondary)';
                                                 }
 
-                                                // Сохраняем содержимое и оборачиваем в капсулу
+                                                // Генерируем всплывающую подсказку (если есть макс. балл)
+                                                let tooltipHtml = '';
+                                                if (maxVal > 0) {
+                                                    tooltipHtml = `<div class="score-tooltip grade-cell-tooltip"><span style="color: ${color}; font-size: 1.4rem;">${mark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${gradeVal} из ${maxVal}</div>`;
+                                                }
+
+                                                // Оборачиваем содержимое в капсулу и добавляем тултип внутрь
                                                 const originalContent = cells[3].innerHTML;
-                                                cells[3].innerHTML = `<span class="kt-score-capsule" style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-block; text-align: center; min-width: 24px;">${originalContent}</span>`;
+                                                cells[3].innerHTML = `<span class="kt-score-capsule" style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; min-width: 24px;">${originalContent}${tooltipHtml}</span>`;
+                                                
                                                 // Убираем подчеркивание у внутреннего спана ЕТИСа, чтобы не двоилось
                                                 const innerSpan = cells[3].querySelector('span span');
                                                 if (innerSpan) innerSpan.style.borderBottom = 'none';
                                             }
                                         } else {
-                                            // Если стоит "н", рисуем красную капсулу неявки
+                                            // Красная капсула неявки
                                             if (!cells[3].querySelector('.kt-score-capsule')) {
                                                 cells[3].innerHTML = `<span class="kt-score-capsule" style="background: rgba(255, 59, 48, 0.15); color: var(--color-red); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-block; text-align: center; min-width: 24px;">н</span>`;
                                             }
@@ -14206,6 +15415,7 @@ button.sync-tab.active {
                             const closeAnalytics = () => {
                                 overlay.classList.remove('active');
                                 modal.classList.remove('active');
+                                document.body.classList.remove('modal-open-body');
                             };
                             overlay.onclick = closeAnalytics;
                             modal.querySelector('.close-analytics').onclick = closeAnalytics;
@@ -14275,6 +15485,7 @@ button.sync-tab.active {
 
                             overlay.classList.add('active');
                             modal.classList.add('active');
+                            document.body.classList.add('modal-open-body');
                         });
                         
                         // --- ОФОРМЛЕНИЕ ПАМЯТКИ "ПОРЯДОК УТОЧНЕНИЯ ОЦЕНОК" ---
@@ -14332,7 +15543,7 @@ button.sync-tab.active {
 
                     }
 
-                    // 5. ОБРАБОТКА "ОЦЕНКИ В ДИПЛОМ"
+                    // ОБРАБОТКА "ОЦЕНКИ В ДИПЛОМ"
                     const activeSubmenu = span9.querySelector('.submenu b');
                     const isDiplom = pageMode === 'diplom' || (activeSubmenu && activeSubmenu.textContent.toLowerCase().includes('диплом'));
 
@@ -14466,7 +15677,7 @@ button.sync-tab.active {
                         }
                     }
 
-                    // 6. ОБРАБОТКА "ИТОГОВЫЙ РЕЙТИНГ"
+                    // ОБРАБОТКА "ИТОГОВЫЙ РЕЙТИНГ"
                     const allTables = span9.querySelectorAll('table.common');
                     let ratingTable = null;
 
