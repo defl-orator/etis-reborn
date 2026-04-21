@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      2.11
-// @changelog    1) Гибкая настройка компактности оценок и шеринга. 2) Фикс окон и текстовых полей на мобильных. 3) Анимация переключения вкладок и фикс отображения оригинального ЕТИСа при загрузке (Beta). 4) Оформление для расписания преподавателей (Alpha).
+// @version      2.2
+// @changelog    1) Доработка вкладки договоров, 2) REBORN расписание преподавателей, 3) Фикс поиска и уведомлений в оценках
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
@@ -4831,6 +4831,13 @@ button.search-capsule:hover {
     font-size: 20px !important;
 }
 
+.search-capsule input:focus,
+.search-capsule .search-input:focus,
+.library-search-wrap input:focus {
+    box-shadow: none !important;
+    border-bottom: none !important;
+}
+
 /* Ссылка статистики внизу */
 .stats-link-bottom {
     display: flex !important;
@@ -4899,6 +4906,15 @@ button.search-capsule:hover {
 .library-search-wrap .search-icon {
     margin-right: 10px !important;
     color: var(--color-text-secondary) !important;
+}
+
+.search-highlight {
+    background-color: var(--color-accent-active) !important;
+    color: var(--color-accent) !important;
+    border-radius: 3px;
+    padding: 0 2px;
+    font-weight: bold;
+    box-shadow: 0 0 0 1px var(--color-accent);
 }
 
 /* Фикс наслоения текста в библиотеке */
@@ -4971,8 +4987,9 @@ button.search-capsule:hover {
     width: 120px !important;
 }
 
-/* 1. Точка в сайдбаре (ПК и Мобайл меню) */
-.span3 > .nav.nav-tabs.nav-stacked > li > a .badge-point {
+/* 1. Точка в сайдбаре (ПК и Мобайл меню) и в окне Настроек */
+.span3 > .nav.nav-tabs.nav-stacked > li > a .badge-point,
+#etis-settings-modal .settings-sidebar-btn .badge-point {
     display: block !important;
     width: 8px !important;
     height: 8px !important;
@@ -6664,8 +6681,37 @@ body.modal-open-body {
     // 2. ВНЕДРЕНИЕ JS ЛОГИКИ
     // ==========================================
 
+    function highlightSearchTerm(container, term) {
+        // 1. Убираем старые подсветки
+        const oldHighlights = container.querySelectorAll('.search-highlight');
+        oldHighlights.forEach(el => {
+            const parent = el.parentNode;
+            parent.replaceChild(document.createTextNode(el.textContent), el);
+            parent.normalize();
+        });
+
+        if (!term || term.length < 2) return;
+
+        // 2. Регулярка для поиска (без учета регистра)
+        const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = new RegExp(`(${escapedTerm})`, 'gi');
+
+        // 3. Рекурсивный обход текстовых узлов
+        const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
+        const nodes = [];
+        while (walker.nextNode()) nodes.push(walker.currentNode);
+
+        nodes.forEach(node => {
+            if (node.parentNode.closest('.search-highlight')) return;
+            if (regex.test(node.nodeValue)) {
+                const span = document.createElement('span');
+                span.innerHTML = node.nodeValue.replace(regex, '<mark class="search-highlight">$1</mark>');
+                node.parentNode.replaceChild(span, node);
+            }
+        });
+    }
+
     const ACCENT_COLORS = {
-        // Базовые 25 цветов
         blue: '#007AFF', green: '#34C759', orange: '#FF9500', red: '#FF3B30', pink: '#FF2D55',
         lightblue: '#5AC8FA', mint: '#00C7BE', yellow: '#FFCC00', lightpurple: '#E58FFF', rose: '#FF94A5',
         indigo: '#5856D6', teal: '#30B0C7', lime: '#AEEA00', cyan: '#00BCD4', magenta: '#E91E63',
@@ -6801,7 +6847,7 @@ body.modal-open-body {
     // --- ФИКС ЦВЕТА БРАУЗЕРНОЙ ПАНЕЛИ НАВИГАЦИИ И СТАТУС-БАРА ---
     function updateBrowserNavColor() {
         const isDark = document.documentElement.getAttribute('theme') === 'dark';
-        const color = isDark ? '#16181A' : '#F2F2F6'; // Цвета нашего var(--color-body)
+        const color = isDark ? '#16181A' : '#F2F2F6';
         let metaTheme = document.querySelector('meta[name="theme-color"]');
         if (!metaTheme) {
             metaTheme = document.createElement('meta');
@@ -6810,6 +6856,7 @@ body.modal-open-body {
         }
         metaTheme.content = color;
     }
+
     // Следим за сменой темы и мгновенно обновляем цвет браузера
     new MutationObserver(updateBrowserNavColor).observe(document.documentElement, { attributes: true, attributeFilter: ['theme'] });
     updateBrowserNavColor();
@@ -7071,14 +7118,31 @@ body.modal-open-body {
     }
 
     function triggerUpdateIndicators() {
-        const link = document.querySelector('a[href="#version-check"]');
-        if (link && !link.querySelector('.badge-point')) {
+        // 1. Точка в главном сайдбаре
+        const settingsLink = document.querySelector('a[href="#settings"]');
+        if (settingsLink && !settingsLink.querySelector('.badge-point')) {
             const dot = document.createElement('span');
             dot.className = 'badge-point';
-            link.appendChild(dot);
+            settingsLink.appendChild(dot);
         }
+        
+        // 2. Точка на мобильной кнопке "Меню"
         const mob = document.querySelector('.mobile-menu-btn');
         if (mob) mob.classList.add('has-updates');
+
+        // 3. Точка внутри открытого окна настроек
+        const versionBtn = document.querySelector('#etis-settings-modal .settings-sidebar-btn[data-target="version"]');
+        if (versionBtn && !versionBtn.querySelector('.badge-point')) {
+            const dot = document.createElement('span');
+            dot.className = 'badge-point';
+            // Вставляем точку прямо перед иконкой шеврона
+            const chevron = versionBtn.querySelector('.chevron');
+            if (chevron) {
+                versionBtn.insertBefore(dot, chevron);
+            } else {
+                versionBtn.appendChild(dot);
+            }
+        }
     }
 
     function loadVersionHistory() {
@@ -7086,7 +7150,7 @@ body.modal-open-body {
         if (!container) return;
         container.innerHTML = '<div style="display:flex; align-items:center; gap:12px; padding: 1rem 0; color:var(--color-text-secondary); font-size:1.5rem; font-weight:600;"><span class="material-icons" style="animation:spin 1s linear infinite;">sync</span>Загрузка истории...</div>';
 
-        // Запрашиваем последние 10 коммитов для нашего файла
+        // Запрашиваем последние 10 коммитов для файла
         const apiUrl = 'https://api.github.com/repos/defl-orator/etis-reborn/commits?path=etis.user.js&per_page=10';
 
         GM_xmlhttpRequest({
@@ -7355,10 +7419,18 @@ body.modal-open-body {
     }
 
     function updateLiveTimetable() {
+        const actualWeek = localStorage.getItem('etis_actual_week');
+        
+        // 1. Проверяем параметры URL (у студентов p_week, у преподавателей P_WEEK)
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.has('p_week')) {
-            const actualWeek = localStorage.getItem('etis_actual_week');
-            if (urlParams.get('p_week') !== actualWeek) return;
+        const urlWeek = urlParams.get('p_week') || urlParams.get('P_WEEK');
+        if (urlWeek && urlWeek !== actualWeek) return;
+
+        // 2. Проверяем напрямую элемент в DOM (т.к. у преподов неделя переключается через POST запрос без смены URL)
+        const currentWeekEl = document.querySelector('.weeks .week.current');
+        if (currentWeekEl && actualWeek) {
+            const viewedWeek = currentWeekEl.textContent.replace(/\D/g, '').trim();
+            if (viewedWeek && viewedWeek !== actualWeek) return;
         }
 
         const now = new Date();
@@ -7776,7 +7848,7 @@ body.modal-open-body {
                             <span class="material-icons">palette</span><span class="sidebar-btn-text">Внешний вид</span><span class="material-icons chevron hidden-on-mobile">chevron_right</span>
                         </div>
                         <div class="settings-sidebar-btn ${currentView === 'version' || currentView === 'history' ? 'active' : ''}" data-target="version">
-                            <span class="material-icons">system_update</span><span class="sidebar-btn-text">Обновление</span><span class="material-icons chevron hidden-on-mobile">chevron_right</span>
+                            <span class="material-icons">system_update</span><span class="sidebar-btn-text">Обновление</span>${updateState.hasUpdate ? '<span class="badge-point"></span>' : ''}<span class="material-icons chevron hidden-on-mobile">chevron_right</span>
                         </div>
                     </div>
 
@@ -8154,16 +8226,25 @@ body.modal-open-body {
         const isPeoTT = document.querySelector('form#form1 input[name="P_PEO_ID"]') !== null;
         let span9 = document.querySelector('div.span9');
 
-        if (isPeoTT && !span9) {
+       if (isPeoTT && !span9) {
+            const fixStyle = document.createElement('style');
+            fixStyle.innerHTML = `
+                .span9 { margin-left: 0 !important; margin: 0 auto !important; max-width: 840px !important; }
+                .peo-container { display: flex; justify-content: center; width: 100%; box-sizing: border-box; padding: 2rem; }
+                @media (max-width: 960px) {
+                    .peo-container { padding: 0 !important; }
+                    .peo-span9 { padding: 0 1.6rem 15rem !important; }
+                }
+            `;
+            document.head.appendChild(fixStyle);
+
             const container = document.createElement('div');
-            // Используем flexbox для надежного центрирования на любых экранах
-            container.style.cssText = 'display: flex; justify-content: center; width: 100%; box-sizing: border-box; padding: 2rem;';
-            
+            container.className = 'peo-container';
+
             span9 = document.createElement('div');
-            span9.className = 'span9';
-            span9.style.cssText = 'margin: 0 !important; float: none !important; width: 100% !important; max-width: 1120px !important; padding-top: 1rem !important;';
+            span9.className = 'span9 peo-span9';
+            span9.style.cssText = 'float: none !important; width: 100% !important; padding-top: 1rem !important;';
             
-            // Перемещаем всё содержимое body внутрь нашего нового контейнера
             Array.from(document.body.childNodes).forEach(node => {
                 if (node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && node.id !== 'swipe-action-bubble' && node.id !== 'etis-push-container' && node !== container) {
                     span9.appendChild(node);
@@ -8172,7 +8253,7 @@ body.modal-open-body {
             
             container.appendChild(span9);
             document.body.appendChild(container);
-            document.body.style.backgroundColor = ''; // Сброс возможных инлайновых фонов
+            document.body.style.backgroundColor = '';
         }
 
         // Style Login Page
@@ -8550,6 +8631,7 @@ body.modal-open-body {
                 settingsLink.style.cursor = 'pointer';
                 settingsLink.href = "#settings";
                 settingsLink.textContent = 'Настройки';
+                
                 settingsLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     const side = document.querySelector('.span3');
@@ -8558,8 +8640,19 @@ body.modal-open-body {
                         document.querySelector('.mobile-overlay')?.classList.remove('active');
                         document.querySelector('.mobile-menu-btn')?.classList.remove('open');
                     }
-                    openSettingsModal('main');
+                    
+                    let targetTab = 'main'; 
+                    const currentUrl = window.location.href;
+                    
+                    if (currentUrl.includes('timetable') || currentUrl.includes('group_tt')) {
+                        targetTab = 'timetable';
+                    } else if (currentUrl.includes('signs')) {
+                        targetTab = 'grades';
+                    }
+                    
+                    openSettingsModal(targetTab);
                 });
+                
                 settingsLi.appendChild(settingsLink);
                 allListItems.push(settingsLi);
 
@@ -8850,10 +8943,19 @@ body.modal-open-body {
             if (isPeoTT) {
                 // 1. Очистка заголовка
                 const h4 = span9.querySelector('h4');
+                let dateRangeText = "";
                 if (h4) {
                     const h2 = document.createElement('h2');
                     h2.textContent = h4.textContent;
                     h2.style.marginBottom = '2.4rem';
+                    
+                    // Извлекаем даты
+                    const rangeMatch = h4.textContent.match(/\(с\s+\d{2}\.\d{2}\.\d{4}\s+по\s+\d{2}\.\d{2}\.\d{4}\)/i);
+                    if (rangeMatch) {
+                        dateRangeText = rangeMatch[0].replace(/[()]/g, '');
+                    }
+                    
+                    h2.style.display = 'none';
                     h4.replaceWith(h2);
                 }
 
@@ -8883,7 +8985,9 @@ body.modal-open-body {
                 if (terms.length > 0) {
                     const submenu = document.createElement('div');
                     submenu.className = 'submenu';
-                    submenu.style.setProperty('margin-bottom', '2.4rem', 'important');
+                    submenu.style.setProperty('margin-bottom', '1.6rem', 'important');
+                    submenu.style.setProperty('width', '100%', 'important');
+                    submenu.style.setProperty('box-sizing', 'border-box', 'important');
                     
                     terms.forEach(span => {
                         const a = document.createElement(span.classList.contains('active') ? 'b' : 'a');
@@ -8905,7 +9009,9 @@ body.modal-open-body {
                 if (weeks.length > 0) {
                     const weeksContainer = document.createElement('div');
                     weeksContainer.className = 'weeks';
-                    weeksContainer.style.setProperty('margin-bottom', '2.4rem', 'important');
+                    weeksContainer.style.setProperty('margin-bottom', '1rem', 'important'); 
+                    weeksContainer.style.setProperty('width', '100%', 'important');
+                    weeksContainer.style.setProperty('box-sizing', 'border-box', 'important');
                     
                     const actualWeekNum = localStorage.getItem('etis_actual_week');
                     
@@ -8916,22 +9022,24 @@ body.modal-open-body {
                         
                         const text = span.textContent.trim();
                         
-                        // Подсветка актуальной недели (если сейчас не она)
                         if (text === actualWeekNum && !isActive) {
                             weekDiv.classList.add('actual-week');
                         }
 
                         const a = document.createElement('a');
-                        a.textContent = text;
+                        if (isActive) {
+                            a.innerHTML = `<span style="font-weight: 800;">${text}</span>&nbsp;<span style="font-weight: 800;">Неделя</span>`;
+                        } else {
+                            a.textContent = text;
+                        }
+
                         if (span.hasAttribute('onclick')) {
                             a.href = '#';
                             a.setAttribute('onclick', span.getAttribute('onclick'));
                         }
                         
-                        // ФИКС ЦВЕТА АКТИВНОЙ НЕДЕЛИ
                         if (isActive) {
                             a.style.setProperty('color', '#fff', 'important');
-                            a.style.setProperty('font-weight', '700', 'important');
                         }
                         
                         weekDiv.appendChild(a);
@@ -8939,6 +9047,16 @@ body.modal-open-body {
                         span.remove();
                     });
                     span9.insertBefore(weeksContainer, span9.querySelector('table.slimtab_nice') || span9.firstChild);
+
+                    // Добавляем капсулу с датами под неделями
+                    if (dateRangeText) {
+                        const dateCapsule = document.createElement('div');
+                        dateCapsule.className = 'week-date-styled';
+                        const cleanDateRange = dateRangeText.replace(/\.\d{4}/g, '');
+                        dateCapsule.style.cssText = 'margin: 0 auto 1.2rem auto !important; display: table !important; font-size: 1.3rem !important;';
+                        dateCapsule.textContent = cleanDateRange;
+                        weeksContainer.after(dateCapsule);
+                    }
 
                     // Автоскролл к текущей неделе
                     setTimeout(() => {
@@ -9277,6 +9395,18 @@ body.modal-open-body {
                         clone.style.margin = '0';
 
                         clone.querySelectorAll('.share-day-btn, .share-all-btn, .live-dot, .day-status-icon').forEach(el => el.remove());
+                        
+                        // Убираем "Добавить онлайн мероприятие" и разделитель "•" перед ним
+                        clone.querySelectorAll('a').forEach(a => {
+                            if (a.textContent.includes('Добавить онлайн мероприятие')) {
+                                const prev = a.previousElementSibling;
+                                if (prev && prev.tagName === 'SPAN' && prev.textContent.includes('•')) {
+                                    prev.remove();
+                                }
+                                a.remove();
+                            }
+                        });
+
                         clone.querySelectorAll('.pair-passed, td').forEach(el => {
                             el.classList.remove('pair-passed');
                             el.style.setProperty('opacity', '1', 'important');
@@ -9356,7 +9486,7 @@ body.modal-open-body {
 
                     if (teacherInfoHtml) {
                         const tCard = document.createElement('div');
-                        tCard.style.cssText = 'background: var(--color-card); padding: 1.8rem 2.4rem; border-radius: var(--radius-large); margin-bottom: 2.4rem; font-size: 1.4rem; color: var(--color-text-primary); border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main); display: flex; justify-content: space-between; align-items: center;';
+                        tCard.style.cssText = 'width: 100%; box-sizing: border-box; background: var(--color-card); padding: 1.8rem 2.4rem; border-radius: var(--radius-large); margin-bottom: 2.4rem; font-size: 1.4rem; color: var(--color-text-primary); border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main); display: flex; justify-content: space-between; align-items: center;';
                         tCard.innerHTML = `
                             <div style="display:flex; align-items:center; gap:10px;">
                                 <span class="material-icons" style="color:var(--color-accent);">person</span>
@@ -9604,6 +9734,15 @@ body.modal-open-body {
                     // Затемнение прошедших пар
                     function dimTeacherPastPairs() {
                         if (!generalConfig.dimPastPairs) return;
+
+                        // Вычисляем, какую неделю мы сейчас смотрим
+                        const viewedWeekEl = document.querySelector('.weeks .week.current');
+                        const viewedWeek = viewedWeekEl ? parseInt(viewedWeekEl.textContent.replace(/\D/g, ''), 10) : -1;
+                        const actualWeek = parseInt(localStorage.getItem('etis_actual_week') || '-1', 10);
+
+                        const isPastWeek = (actualWeek !== -1 && viewedWeek !== -1 && viewedWeek < actualWeek);
+                        const isFutureWeek = (actualWeek !== -1 && viewedWeek !== -1 && viewedWeek > actualWeek);
+
                         const days = daysContainer.querySelectorAll('.day');
                         const now = new Date();
                         const todayMins = now.getHours() * 60 + now.getMinutes();
@@ -9631,9 +9770,14 @@ body.modal-open-body {
                             day.querySelectorAll('.timetable-grid tr').forEach(row => {
                                 let isPassed = false;
                                 
-                                if (isPastDay) {
-                                    isPassed = true;
+                                if (isPastWeek) {
+                                    isPassed = true; // Если неделя прошлая — всё темно
+                                } else if (isFutureWeek) {
+                                    isPassed = false; // Если будущая — всё ярко
+                                } else if (isPastDay) {
+                                    isPassed = true; // На этой неделе: прошлые дни
                                 } else if (isToday) {
+                                    // На этой неделе: сегодняшний день
                                     let startMins = -1;
                                     const timeEl = row.querySelector('.eval');
                                     if (timeEl) {
@@ -10447,8 +10591,18 @@ body.modal-open-body {
                 }
 
                 case 'stu.teachers': {
-                    // 1. Сохраняем ссылку на статистику и чистим span9
+                    // 1. Сохраняем ссылку на статистику
                     const statsLink = span9.querySelector('a[href="stu.dis_stat"]');
+                    
+                    // Извлекаем параметры текущего семестра из скрытого JS-кода страницы
+                    let pTyId = '2025', pTerm = '2';
+                    const scriptMatch = document.body.innerHTML.match(/P_TY_ID=(\d+)&P_TERM=(\d+)/i);
+                    if (scriptMatch) {
+                        pTyId = scriptMatch[1];
+                        pTerm = scriptMatch[2];
+                    }
+
+                    // Чистим span9 от мусора ЕТИСа
                     span9.querySelectorAll('br, script, style').forEach(el => el.remove());
 
                     // 2. Создаем капсулу поиска
@@ -10478,17 +10632,19 @@ body.modal-open-body {
                         const nameText = nameDiv ? nameDiv.textContent.trim() : '';
                         const chairText = chairDiv ? chairDiv.textContent.trim() : '';
 
-                        // Функция вытаскивает адрес ссылки из текста "window.open('ссылка', ...)"
-                        const extractUrl = (el) => {
-                            if (!el || !el.querySelector('img')) return '#';
-                            const onclick = el.querySelector('img').getAttribute('onclick');
-                            if (!onclick) return '#';
-                            const match = onclick.match(/window\.open\(\s*['"]([^'"]+)['"]/);
-                            return match ? match[1] : '#';
-                        };
+                        // === ПРАВИЛЬНЫЙ ПАРСИНГ ССЫЛОК ИЗ ФУНКЦИИ get_tt ===
+                        let nameUrl = '#';
+                        let chairUrl = '#';
 
-                        const nameUrl = extractUrl(nameDiv);
-                        const chairUrl = extractUrl(chairDiv);
+                        if (nameDiv) {
+                            const match = nameDiv.innerHTML.match(/get_tt\(\s*'?(\d+)'?\s*,/i);
+                            if (match) nameUrl = `tt_pkg.show_prep?P_TY_ID=${pTyId}&P_TERM=${pTerm}&P_PEO_ID=${match[1]}&P_SDIV_ID=&p_print=y`;
+                        }
+                        if (chairDiv) {
+                            const match = chairDiv.innerHTML.match(/get_tt\(\s*'?\d*'?\s*,\s*'?(\d+)'?\s*\)/i);
+                            if (match) chairUrl = `tt_pkg.show_prep?P_TY_ID=${pTyId}&P_TERM=${pTerm}&P_PEO_ID=&P_SDIV_ID=${match[1]}&p_print=y`;
+                        }
+                        // =================================================
 
                         // --- ПАРСИНГ ПРЕДМЕТОВ И ВЫДЕЛЕНИЕ МЕТОК ---
                         let subjectsHtml = '';
@@ -10516,7 +10672,7 @@ body.modal-open-body {
 
                         // --- ГЕНЕРАЦИЯ ЦВЕТНЫХ КАПСУЛ ---
                         let badgesHtml = '';
-                        const orderedTypes = ['экзамен', 'зачет', 'зачёт', 'лек', 'практ', 'лаб'];
+                        const orderedTypes =['экзамен', 'зачет', 'зачёт', 'лек', 'практ', 'лаб'];
                         const foundTypes = Array.from(uniqueTypes);
 
                         foundTypes.sort((a, b) => {
@@ -10529,57 +10685,33 @@ body.modal-open-body {
                             let bg = 'var(--color-highlight)';
                             let color = 'var(--color-text-secondary)';
 
-                            if (t === 'лек') {
-                                bg = 'rgba(0, 122, 255, 0.12)';
-                                color = 'var(--color-blue)';
-                            } else if (t === 'практ') {
-                                bg = 'rgba(52, 199, 89, 0.12)';
-                                color = 'var(--color-green)';
-                            } else if (t === 'лаб') {
-                                bg = 'rgba(255, 149, 0, 0.12)';
-                                color = 'var(--color-warning)';
-                            } else if (t === 'зачет' || t === 'зачёт') {
-                                bg = 'rgba(85, 197, 209, 0.15)';
-                                color = '#008B8B';
-                            } else if (t === 'экзамен') {
-                                bg = 'rgba(175, 82, 222, 0.15)';
-                                color = '#AF52DE';
-                            }
+                            if (t === 'лек') { bg = 'rgba(0, 122, 255, 0.12)'; color = 'var(--color-blue)'; }
+                            else if (t === 'практ') { bg = 'rgba(52, 199, 89, 0.12)'; color = 'var(--color-green)'; }
+                            else if (t === 'лаб') { bg = 'rgba(255, 149, 0, 0.12)'; color = 'var(--color-warning)'; }
+                            else if (t === 'зачет' || t === 'зачёт') { bg = 'rgba(85, 197, 209, 0.15)'; color = '#008B8B'; }
+                            else if (t === 'экзамен') { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; }
 
-                            badgesHtml += `
-                                <span style="
-                                    background: ${bg};
-                                    color: ${color};
-                                    padding: 0 1rem;
-                                    border-radius: 50px;
-                                    font-size: 1.05rem;
-                                    font-weight: 800;
-                                    text-transform: uppercase;
-                                    letter-spacing: 0.6px;
-                                    white-space: nowrap;
-                                    display: inline-flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    height: 2.2rem;
-                                    line-height: 1;
-                                ">${t}</span>`;
+                            badgesHtml += `<span style="background: ${bg}; color: ${color}; padding: 0 1rem; border-radius: 50px; font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; height: 2.2rem; line-height: 1;">${t}</span>`;
                         });
 
                         const card = document.createElement('div');
                         card.className = 'teacher-card';
-
+                        
                         const searchString = `${nameText} ${chairText} ${rawSubjectsText}`.toLowerCase().replace(/\s+/g, ' ');
                         card.setAttribute('data-search', searchString);
+
+                        // Умный обработчик: на ПК открывает окошко, на мобилках работает как обычная ссылка
+                        const popupScript = `if(window.innerWidth > 960 && this.href !== '#' && !this.href.endsWith('#')) { window.open(this.href, 'tt', 'width=1000,height=700,scrollbars=yes,resizable=yes'); return false; }`;
 
                         card.innerHTML = `
                             <div class="teacher-avatar-box">
                                 <img src="${img ? img.src : ''}" loading="lazy">
                             </div>
                             <div class="teacher-details">
-                                <a class="teacher-name-link" href="${nameUrl}" target="_blank">${nameText.replace('Расписание преподавателя', '')}</a>
+                                <a class="teacher-name-link" href="${nameUrl}" target="_blank" onclick="${popupScript}">${nameText.replace('Расписание преподавателя', '')}</a>
 
                                 <div class="teacher-meta-row">
-                                    <a class="teacher-dept-link" href="${chairUrl}" target="_blank">${chairText.replace('Расписание кафедры', '')}</a>
+                                    <a class="teacher-dept-link" href="${chairUrl}" target="_blank" onclick="${popupScript}">${chairText.replace('Расписание кафедры', '')}</a>
                                     <div class="teacher-badges-box">${badgesHtml}</div>
                                 </div>
 
@@ -10605,12 +10737,12 @@ body.modal-open-body {
                     input.addEventListener('input', (e) => {
                         const term = e.target.value.toLowerCase().trim();
                         let foundCount = 0;
-                        const allCards = listContainer.querySelectorAll('.teacher-card');
-                        allCards.forEach(card => {
+                        listContainer.querySelectorAll('.teacher-card').forEach(card => {
                             const content = card.getAttribute('data-search');
                             if (term === '' || content.includes(term)) {
                                 card.style.display = 'flex';
                                 foundCount++;
+                                highlightSearchTerm(card, term);
                             } else {
                                 card.style.display = 'none';
                             }
@@ -10999,7 +11131,6 @@ body.modal-open-body {
                             if (disName.includes('консультация')) { cons++; counted = true; }
                             else if (disName.includes('экзамен') || disName.includes('зачет') || disName.includes('зачёт')) { exam++; counted = true; }
                         }
-                        // Строки без этих тегов (например, физра) вообще не считаются!
                     });
 
                     // ИТОГО (Только строго учтенные лекции, практики, лабы, консультации и экзамены)
@@ -11230,7 +11361,7 @@ body.modal-open-body {
                     }
                 }
 
-                // --- 3. КНОПКА "СИНХРОНИЗАЦИЯ" (С ИМПОРТОМ) ---
+                // --- 3. КНОПКА "СИНХРОНИЗАЦИЯ" ---
                 const syncHeader = Array.from(document.querySelectorAll('h2')).find(h2 => h2.querySelector('#tb_show') || h2.textContent.includes('Синхронизация'));
                 if (syncHeader) {
                     const resourcesDiv = document.getElementById('resources');
@@ -11287,7 +11418,7 @@ body.modal-open-body {
                                 </div>
                                 
                                 <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); font-size: 1.3rem; color: var(--color-text-primary); line-height: 1.5;">
-                                    <b style="display:block; margin-bottom: 8px;">Как получить ссылку на примере iPhone:</b>
+                                    <b style="display:block; margin-bottom: 8px;">Как получить ссылку на примере Apple Calendar:</b>
                                     1. Откройте приложение «Календарь».<br>
                                     2. Нажмите «Календари» внизу экрана.<br>
                                     3. Нажмите иконку «i» справа от нужного календаря.<br>
@@ -11855,7 +11986,7 @@ body.modal-open-body {
                             smartInput.placeholder = placeholders[pIdx];
                         }, 2000);
 
-                        // Твоя логика умного парсера (без изменений)
+                        // Логика умного парсера
                         smartInput.addEventListener('input', (e) => {
                             let text = " " + e.target.value + " ";
                             if (!text.trim()) return;
@@ -13942,7 +14073,9 @@ body.modal-open-body {
                     searchWrapper.querySelector('#ann-search').addEventListener('input', (e) => {
                         const val = e.target.value.toLowerCase().trim();
                         container.querySelectorAll('.msg-card').forEach(card => {
-                            card.style.display = (val === '' || card.textContent.toLowerCase().includes(val)) ? '' : 'none';
+                            const isMatch = (val === '' || card.textContent.toLowerCase().includes(val));
+                            card.style.display = isMatch ? '' : 'none';
+                            if (isMatch) highlightSearchTerm(card, val);
                         });
                     });
 
@@ -14919,6 +15052,7 @@ body.modal-open-body {
                                     // Показываем строку, если совпал поиск
                                     if (val === "" || subject.includes(val) || teacher.includes(val)) {
                                         row.style.display = "";
+                                        highlightSearchTerm(row, val);
                                         visibleRowsCount++;
 
                                         // --- ПЕРЕСЧЕТ ОЦЕНОК НА ЛЕТУ ---
@@ -15166,6 +15300,9 @@ body.modal-open-body {
                                     const gradeStr = cells[3].textContent.trim(); // Колонка "Оценка"
                                     const maxStr = cells[6].textContent.trim();   // Колонка "Макс. балл в рейтинг"
                                     
+                                    r.setAttribute('data-raw-grade', gradeStr);
+                                    r.setAttribute('data-raw-max', maxStr);
+                                    
                                     const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
 
                                     if (gradeStr !== '') {
@@ -15293,6 +15430,14 @@ body.modal-open-body {
 
                                 rows.forEach(row => {
                                     if (row.querySelector('th')) {
+                                        // Восстанавливаем шапку, НО уважаем компактный режим
+                                        if (generalConfig.compactGrades && !generalConfig.compactGradesConfig.showRating) {
+                                            const thCells = row.querySelectorAll('th');
+                                            if (thCells.length === 2 && thCells[0].textContent.toLowerCase().includes('текущий')) {
+                                                row.style.display = 'none';
+                                                return;
+                                            }
+                                        }
                                         row.style.display = '';
                                         return;
                                     }
@@ -15307,8 +15452,8 @@ body.modal-open-body {
                                         // --- ПЕРЕСЧЕТ БАЛЛОВ НА ЛЕТУ ---
                                         const cells = row.querySelectorAll('td');
                                         if (cells.length >= 7) {
-                                            const gradeStr = cells[3].textContent.trim();
-                                            const maxStr = cells[6].textContent.trim();
+                                            const gradeStr = row.getAttribute('data-raw-grade') || cells[3].textContent.trim();
+                                            const maxStr = row.getAttribute('data-raw-max') || cells[6].textContent.trim();
                                             
                                             if (gradeStr !== '') {
                                                 hasAnyGrades = true;
@@ -15776,9 +15921,17 @@ body.modal-open-body {
                         }
                     }
 
-                    // --- ЛОГИКА УВЕДОМЛЕНИЙ ОБ ИЗМЕНЕНИИ ОЦЕНОК (PSEUDO-PUSH) ---
+                    // --- ЛОГИКА УВЕДОМЛЕНИЙ ОБ ИЗМЕНЕНИИ ОЦЕНОК ---
                     setTimeout(() => {
-                        // 1. Создаем контейнер для уведомлений, если его нет
+                        // 0. Защита от ложных срабатываний при поиске
+                        const termSearch = document.querySelector('.term-local-input');
+                        const sessionSearch = document.querySelector('.signs-local-input');
+                        if ((termSearch && termSearch.value.trim() !== '') || (sessionSearch && sessionSearch.value.trim() !== '')) {
+                            console.log('ETIS Reborn: Активен поиск, сканирование оценок пропущено.');
+                            return;
+                        }
+
+                        // 1. Создаем контейнер для уведомлений
                         let pushContainer = document.getElementById('etis-push-container');
                         if (!pushContainer) {
                             pushContainer = document.createElement('div');
@@ -15787,151 +15940,187 @@ body.modal-open-body {
                             document.body.appendChild(pushContainer);
                         }
 
-                        // Функция показа уведомления
                         const showPush = (title, subject, body, type = 'info', icon = 'notifications') => {
                             const toast = document.createElement('div');
                             toast.className = `push-toast ${type}`;
                             toast.innerHTML = `
-                                <div class="push-icon-wrap">
-                                    <span class="material-icons">${icon}</span>
-                                </div>
+                                <div class="push-icon-wrap"><span class="material-icons">${icon}</span></div>
                                 <div class="push-content">
                                     <div class="push-toast-title">${title}</div>
                                     <div class="push-subject">${subject}</div>
                                     <div class="push-detail">${body}</div>
                                 </div>
                             `;
-
-                            toast.onclick = () => {
-                                toast.classList.remove('show');
-                                setTimeout(() => toast.remove(), 400);
-                            };
-
+                            toast.onclick = () => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); };
                             pushContainer.appendChild(toast);
-                            requestAnimationFrame(() => {
-                                setTimeout(() => toast.classList.add('show'), 50);
-                            });
-
-                            setTimeout(() => {
-                                if(toast.parentNode) {
-                                    toast.classList.remove('show');
-                                    setTimeout(() => toast.remove(), 400);
-                                }
-                            }, 8000);
+                            requestAnimationFrame(() => setTimeout(() => toast.classList.add('show'), 50));
+                            setTimeout(() => { if(toast.parentNode) { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); } }, 8000);
                         };
 
                         // 2. Собираем текущее состояние оценок со страницы
                         const currentSnapshot = {};
+                        const activeSubmenu = document.querySelector('.submenu b');
+                        const activeTerm = activeSubmenu ? activeSubmenu.textContent.replace(/\s+/g, ' ').trim() : 'Текущий период';
 
-                        // Собираем данные из оберток (wrapper)
-                        const allWrappers = document.querySelectorAll('.term-subject-group, .session-term-table-group');
+                        const getTermNum = (str) => {
+                            const m = str.match(/(\d+)\s*(трим|сем)/i);
+                            return m ? parseInt(m[1], 10) : 0;
+                        };
 
-                        allWrappers.forEach(wrapper => {
-                            let name = wrapper.getAttribute('data-subject-name') || wrapper.getAttribute('data-term-name');
+                        // А) Сбор баллов в триместре
+                        document.querySelectorAll('.term-subject-group').forEach(wrapper => {
+                            let name = wrapper.getAttribute('data-subject-name');
                             if (!name) {
-                                // Фолбэк: ищем заголовок внутри
                                 const h3 = wrapper.previousElementSibling;
                                 if (h3 && (h3.tagName === 'H3' || h3.classList.contains('subject-header-flex'))) {
-                                    name = h3.textContent.replace(/\d+\s*\/\s*\d+/, '').trim(); // Убираем цифры капсулы из заголовка если попали
+                                    name = h3.textContent.replace(/\d+\s*\/\s*\d+/, '').trim();
                                 }
                             }
                             if (!name) return;
-
-                            // Чистим имя
                             name = name.replace(/\[.*?\]/g, '').trim();
 
-                            const currentScore = parseInt(wrapper.getAttribute('data-score-current')) || 0;
-                            const maxScore = parseInt(wrapper.getAttribute('data-score-max')) || 0;
+                            const currentScore = parseFloat(wrapper.getAttribute('data-score-current')) || 0;
+                            const maxScore = parseFloat(wrapper.getAttribute('data-score-max')) || 0;
 
-                            // Пытаемся найти итоговую оценку (текстом)
-                            let finalMark = null;
-
-                            // Поиск текстовой оценки (Зачет/Экзамен) в таблице
-                            const rows = wrapper.querySelectorAll('tr');
-                            rows.forEach(row => {
-                                const cells = row.querySelectorAll('td');
-                                if (cells.length > 1) {
-                                    // Проверка на зачет/экзамен в ячейке оценки (обычно 2-я колонка в сессиях)
-                                    const possibleMark = cells[1]?.textContent.trim().toLowerCase();
-                                    if (['зачет', 'зачёт', 'отлично', 'хорошо', 'удовлетворительно', 'неудовлетворительно'].some(m => possibleMark && possibleMark.includes(m))) {
-                                        finalMark = cells[1].textContent.trim();
-                                    }
-                                    // Или числовая оценка (5, 4, 3, 2)
-                                    if (['5', '4', '3', '2'].includes(possibleMark)) {
-                                        finalMark = possibleMark;
-                                    }
-                                }
-                            });
-
-                            currentSnapshot[name] = {
-                                score: currentScore,
-                                max: maxScore,
-                                mark: finalMark
+                            currentSnapshot[`${activeTerm} | ${name}`] = {
+                                subject: name, term: activeTerm, score: currentScore, max: maxScore, mark: null, type: 'term'
                             };
                         });
 
-                        // 3. Загружаем прошлое состояние
-                        const storageKey = 'etis_reborn_grades_snapshot_v1';
-                        const previousSnapshotJSON = localStorage.getItem(storageKey);
+                        // Б) Сбор итоговых оценок
+                        document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
+                            let termName = wrapper.getAttribute('data-term-name');
+                            if (!termName) return;
+                            termName = termName.replace(/\s+/g, ' ').trim();
 
-                        if (previousSnapshotJSON) {
-                            const previousSnapshot = JSON.parse(previousSnapshotJSON);
-                            let hasUpdates = false;
+                            wrapper.querySelectorAll('tbody tr').forEach(row => {
+                                const cells = row.querySelectorAll('td');
+                                if (cells.length >= 2) {
+                                    let subjName = cells[0].textContent.replace(/\[.*?\]/g, '').trim();
+                                    const mark = cells[1].textContent.trim();
 
-                            // Сравниваем
-                            for (const [subject, currData] of Object.entries(currentSnapshot)) {
-                                const prevData = previousSnapshot[subject];
-
-                                // Если предмета не было раньше — это новый предмет, не спамим (или можно поздравить с началом)
-                                if (!prevData) continue;
-
-                                // А. Если изменились баллы
-                                if (currData.score > prevData.score) {
-                                    const diff = currData.score - prevData.score;
-                                    showPush(
-                                        `Новые баллы: +${diff}`,
-                                        subject,
-                                        `Теперь у вас ${currData.score} из ${currData.max}`,
-                                        'info',
-                                        'trending_up'
-                                    );
-                                    hasUpdates = true;
-                                }
-
-                                // Б. Если изменилась оценка
-                                if (currData.mark && currData.mark !== prevData.mark) {
-                                    let statusTitle = 'Выставлена оценка';
-                                    let type = 'info';
-                                    let icon = 'assignment_turned_in';
-
-                                    if (currData.mark.toLowerCase().includes('зачет') || ['5','4'].includes(currData.mark)) {
-                                        statusTitle = 'Успех! 🎉';
-                                        type = 'success';
-                                        icon = 'emoji_events';
-                                    } else if (currData.mark === '2' || currData.mark.toLowerCase().includes('незачет')) {
-                                        statusTitle = 'Внимание';
-                                        type = 'warning';
-                                        icon = 'priority_high';
+                                    if (subjName && mark && mark !== 'н') {
+                                        currentSnapshot[`${termName} | ${subjName}`] = {
+                                            subject: subjName, term: termName, score: null, max: null, mark: mark, type: 'session'
+                                        };
                                     }
-
-                                    showPush(statusTitle, subject, `Итог: ${currData.mark}`, type, icon);
-                                    hasUpdates = true;
                                 }
+                            });
+                        });
+
+                        // 3. Загружаем базу
+                        const storageKey = 'etis_reborn_grades_snapshot_v3';
+                        let storedData = JSON.parse(localStorage.getItem(storageKey) || '{"grades":{}, "lastUpdated":null, "maxTermNum":0}');
+                        let previousGrades = storedData.grades || {};
+                        let currentMaxTerm = storedData.maxTermNum || 0;
+
+                        const scoreUpdates = [];
+                        const markUpdates =[];
+
+                        // 4. Сравниваем
+                        for (const [key, currData] of Object.entries(currentSnapshot)) {
+                            const termNum = getTermNum(currData.term);
+                            if (termNum > currentMaxTerm) currentMaxTerm = termNum;
+
+                            const prevData = previousGrades[key];
+
+                            // Если предмета вообще не было в базе — просто тихо добавляем его (без спама)
+                            if (!prevData) {
+                                previousGrades[key] = currData;
+                                continue;
                             }
 
-                            if (!hasUpdates) {
-                                console.log('ETIS Reborn: Новых оценок нет');
-                            }
+                            // Проверяем, не смотрим ли мы старый триместр
+                            const isHistorical = (termNum > 0 && termNum < currentMaxTerm);
 
-                        } else {
-                            // Первый запуск функционала
-                            console.log('ETIS Reborn: Первый запуск трекинга оценок. Сохраняем базу.');
+                            if (!isHistorical) {
+                                // Анализ баллов
+                                if (currData.type === 'term') {
+                                    if (prevData.score !== undefined && prevData.score !== null) {
+                                        if (currData.score > prevData.score) {
+                                            const diff = Math.round((currData.score - prevData.score) * 100) / 100;
+                                            scoreUpdates.push({ subj: currData.subject, diff, newScore: currData.score, max: currData.max });
+                                        }
+                                    }
+                                    prevData.score = currData.score;
+                                    prevData.max = currData.max;
+                                }
+
+                                // Анализ итоговых оценок
+                                if (currData.type === 'session') {
+                                    if (prevData.mark !== undefined && prevData.mark !== null) {
+                                        if (currData.mark && currData.mark !== prevData.mark) {
+                                            markUpdates.push({ subj: currData.subject, oldMark: prevData.mark, newMark: currData.mark });
+                                        }
+                                    }
+                                    prevData.mark = currData.mark;
+                                }
+                            } else {
+                                // Если это старый триместр — просто тихо обновляем цифры в базе на всякий случай
+                                if (currData.type === 'term') { prevData.score = currData.score; prevData.max = currData.max; }
+                                if (currData.type === 'session') { prevData.mark = currData.mark; }
+                            }
                         }
 
-                        // 4. Сохраняем текущее состояние как эталон
-                        localStorage.setItem(storageKey, JSON.stringify(currentSnapshot));
+                        storedData.maxTermNum = currentMaxTerm;
+                        storedData.grades = previousGrades;
 
-                    }, 1000); // Небольшая задержка, чтобы DOM точно отрисовался
+                        // 5. Вывод уведомлений (Группировка)
+                        const totalUpdates = scoreUpdates.length + markUpdates.length;
+
+                        if (totalUpdates > 0) {
+                            storedData.lastUpdated = Date.now();
+
+                            if (totalUpdates === 1) {
+                                // Одиночное уведомление
+                                if (scoreUpdates.length === 1) {
+                                    const u = scoreUpdates[0];
+                                    showPush(`Новые баллы: +${u.diff}`, u.subj, `Теперь у вас ${u.newScore} из ${u.max}`, 'info', 'trending_up');
+                                } else {
+                                    const u = markUpdates[0];
+                                    let statusTitle = 'Оценка изменена';
+                                    let pushType = 'info';
+                                    let icon = 'assignment_turned_in';
+
+                                    const markLow = u.newMark.toLowerCase();
+                                    if (markLow.includes('зачет') ||['5','4'].includes(u.newMark) || markLow.includes('отлично') || markLow.includes('хорошо')) {
+                                        statusTitle = 'Успех! 🎉'; pushType = 'success'; icon = 'emoji_events';
+                                    } else if (u.newMark === '2' || markLow.includes('незачет') || markLow.includes('неудовл')) {
+                                        statusTitle = 'Внимание'; pushType = 'warning'; icon = 'priority_high';
+                                    }
+                                    showPush(statusTitle, u.subj, `Итог: ${u.newMark}`, pushType, icon);
+                                }
+                            } else {
+                                // Массовое уведомление (слияние)
+                                let subjList =[];
+                                scoreUpdates.forEach(u => subjList.push(u.subj));
+                                markUpdates.forEach(u => subjList.push(u.subj));
+                                subjList =[...new Set(subjList)]; // Убираем дубликаты
+                                
+                                let bodyText = subjList.slice(0, 2).join(', ');
+                                if (subjList.length > 2) bodyText += ` и ещё ${subjList.length - 2}`;
+
+                                showPush('Обновление успеваемости', `Изменения по ${totalUpdates} предметам`, bodyText, 'info', 'dynamic_feed');
+                            }
+                        }
+
+                        localStorage.setItem(storageKey, JSON.stringify(storedData));
+
+                        // 6. Вывод аналитики в консоль
+                        console.log('--- ETIS Reborn: Отслеживание оценок ---');
+                        if (storedData.lastUpdated) {
+                            console.log(`🕒 Последнее изменение: ${new Date(storedData.lastUpdated).toLocaleString('ru-RU')}`);
+                            if (totalUpdates > 0) {
+                                console.log(`📚 Обновлены (${totalUpdates}):`);
+                                scoreUpdates.forEach(u => console.log(`  - [Баллы] ${u.subj}: +${u.diff} (стало ${u.newScore})`));
+                                markUpdates.forEach(u => console.log(`  - [Оценка] ${u.subj}: ${u.oldMark} ➔ ${u.newMark}`));
+                            }
+                        } else {
+                            console.log('🕒 База синхронизирована. Ожидание новых оценок...');
+                        }
+                        console.log('-----------------------------------------');
+
+                    }, 1000);
 
                     break;
                 }
@@ -16024,7 +16213,7 @@ body.modal-open-body {
                 resTable.remove();
                 break;
 
-                case 'stu_plus.advice':
+                case 'stu_plus.advice': {
                     const adviceList = span9.querySelector('ul');
                     if (!adviceList) break;
 
@@ -16033,29 +16222,52 @@ body.modal-open-body {
 
                     const links = adviceList.querySelectorAll('a');
                     links.forEach(link => {
+                        const href = link.href.toLowerCase();
                         const card = document.createElement('a');
                         card.className = 'advice-card';
                         card.href = link.href;
                         card.target = '_blank';
 
-                        const icon = document.createElement('span');
-                        icon.className = 'material-icons';
+                        // Определяем иконку и цвет подложки по расширению файла
+                        let iconName = 'article';
+                        let iconColor = 'var(--color-accent)'; 
+                        let bgBox = 'var(--color-accent-active)';
 
-                        const text = document.createElement('span');
-                        text.className = 'advice-label';
-                        text.textContent = link.textContent.trim();
+                        if (href.includes('.pdf')) {
+                            iconName = 'picture_as_pdf';
+                            iconColor = '#FF3B30'; // красный для PDF
+                            bgBox = 'rgba(255, 59, 48, 0.15)';
+                        } else if (href.includes('.mp4') || href.includes('.avi') || href.includes('.mov')) {
+                            iconName = 'play_circle_filled';
+                            iconColor = '#AF52DE'; // фиолетовый для видео
+                            bgBox = 'rgba(175, 82, 222, 0.15)';
+                        }
 
-                        card.appendChild(icon);
-                        card.appendChild(text);
+                        // Собираем карточку
+                        card.innerHTML = `
+                            <div class="order-icon-box" style="background: ${bgBox} !important;">
+                                <span class="material-icons" style="color: ${iconColor} !important;">${iconName}</span>
+                            </div>
+                            <div class="advice-label" style="flex-grow: 1; font-size: 1.4rem; font-weight: 500; color: var(--color-text-primary); line-height: 1.4;">
+                                ${link.textContent.trim()}
+                            </div>
+                            <span class="material-icons" style="color: var(--color-text-secondary); font-size: 1.8rem; flex-shrink: 0;">open_in_new</span>
+                        `;
+
                         container.appendChild(card);
                     });
 
                     adviceList.parentNode.replaceChild(container, adviceList);
 
+                    // Оформляем заголовок
                     const h2 = span9.querySelector('h2');
-                    if (h2) h2.style.marginBottom = '0';
+                    if (h2) h2.style.marginBottom = '2.4rem';
+
+                    // Очищаем лишние переносы строк, которые оставляет ЕТИС
+                    span9.querySelectorAll('br, p:empty').forEach(el => el.remove());
 
                     break;
+                }
 
                 case 'stu.ses':
                     const allElements = Array.from(span9.childNodes);
@@ -16485,78 +16697,305 @@ body.modal-open-body {
                     break;
 
                 case 'stu_pay.contract_list': {
-                    const h2 = span9.querySelector('h2');
-                    const contractLinks = Array.from(span9.querySelectorAll('a')); 
+                    // Проверяем, находимся ли мы на странице детализации/оплаты
+                    const isDetailedView = span9.querySelector('iframe[name="ifrmSber"]') || span9.querySelector('form[action="stu_pay.process_payment"]');
 
-                    span9.innerHTML = '';
-                    if (h2) span9.appendChild(h2);
+                    if (isDetailedView) {
+                        // === СТРАНИЦА ОПЛАТЫ И ДЕТАЛИЗАЦИИ ДОГОВОРА ===
 
-                    const mainContainer = document.createElement('div');
-                    mainContainer.className = 'contracts-container';
+                        // 0. Добавляем кнопку "Назад" на самый верх
+                        const backBtn = document.createElement('a');
+                        backBtn.href = 'stu_pay.contract_list';
+                        backBtn.className = 'answer-btn-custom';
+                        backBtn.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-bottom: 2.4rem; background: var(--color-highlight) !important; color: var(--color-text-primary) !important; box-shadow: none !important; border: 1px solid var(--color-table-border) !important;';
+                        backBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem;">arrow_back</span> Назад к договорам';
+                        span9.prepend(backBtn);
 
-                    let instructionCard = null;
+                        // 1. Красивое оформление заголовка и остатка по договору
+                        const mainH2 = span9.querySelector('h2');
+                        if (mainH2) mainH2.style.display = 'none'; // Скрываем дублирующийся "Договоры с ПГНИУ"
 
-                    contractLinks.forEach(link => {
-                        const text = link.textContent.trim();
-                        const isInstruction = text.toLowerCase().includes('инструкция');
+                        const h3s = span9.querySelectorAll('h3');
+                        if (h3s.length >= 2) {
+                            const contractName = h3s[0].textContent.trim();
+                            const balanceText = h3s[1].textContent.trim();
 
-                        if (isInstruction) {
+                            const infoCard = document.createElement('div');
+                            infoCard.style.cssText = 'background: var(--color-card); padding: 2.4rem; border-radius: var(--radius-large); box-shadow: var(--shadow-main); margin-bottom: 3rem; display: flex; flex-direction: column; gap: 1.6rem; border: 1px solid var(--color-table-border);';
+                            
+                            infoCard.innerHTML = `
+                                <div style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.4;">
+                                    ${contractName}
+                                </div>
+                                <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); background: var(--color-highlight); padding: 1.2rem 1.6rem; border-radius: var(--radius-small); display: inline-flex; width: fit-content; align-items: center; gap: 8px; border: 1px solid var(--color-table-border);">
+                                    <span class="material-icons" style="color: var(--color-text-secondary);">account_balance_wallet</span>
+                                    ${balanceText}
+                                </div>
+                            `;
+                            
+                            h3s[0].replaceWith(infoCard);
+                            h3s[1].remove();
+                        }
+
+                        // 2. Убираем висячие заголовки и br, приводим в порядок подзаголовки таблиц
+                        span9.querySelectorAll('b').forEach(b => {
+                            if (b.textContent.includes('Информация о платежах') || b.textContent.includes('Совершить платёж')) {
+                                b.style.display = 'block';
+                                b.style.fontSize = '1.6rem';
+                                b.style.fontWeight = '800';
+                                b.style.color = 'var(--color-text-primary)';
+                                b.style.marginBottom = '1.6rem';
+                                b.style.marginTop = '3rem';
+                            }
+                        });
+                        span9.querySelectorAll('br').forEach(br => br.remove());
+
+                        // 3. Оборачиваем таблицы в скролл-контейнеры
+                        span9.querySelectorAll('table.slimtab_nice').forEach(table => {
+                            table.className = 'common';
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'wide-table-wrapper';
+                            wrapper.style.marginBottom = '2rem';
+                            table.parentNode.insertBefore(wrapper, table);
+                            wrapper.appendChild(table);
+                            
+                            // Делаем красивую кнопку из текстовой ссылки "ЧЕК"
+                            table.querySelectorAll('a').forEach(a => {
+                                if (a.textContent.includes('ЧЕК')) {
+                                    a.className = 'answer-btn-custom';
+                                    a.style.padding = '6px 12px';
+                                    a.style.fontSize = '1.2rem';
+                                    a.style.display = 'inline-flex';
+                                    a.style.alignItems = 'center';
+                                    a.style.gap = '6px';
+                                    a.innerHTML = '<span class="material-icons" style="font-size: 1.6rem;">receipt_long</span>Чек';
+                                }
+                            });
+                        });
+
+                        // 4. Превращаем зеленый текст в красивую плашку
+                        const greenNotice = span9.querySelector('font[color="green"]');
+                        if (greenNotice) {
+                            const noticeDiv = document.createElement('div');
+                            noticeDiv.className = 'cert-alert-box';
+                            noticeDiv.style.cssText = 'margin-bottom: 3rem; margin-top: 1rem; display: flex; align-items: center; gap: 1.2rem;';
+                            noticeDiv.innerHTML = `<span class="material-icons" style="font-size: 2.6rem; color: var(--color-green);">info</span><div style="line-height: 1.5; font-size: 1.3rem;">${greenNotice.innerHTML}</div>`;
+                            greenNotice.replaceWith(noticeDiv);
+                        }
+
+                        // 5. Оформляем форму оплаты
+                        const payForm = span9.querySelector('form[action="stu_pay.process_payment"]');
+                        if (payForm) {
+                            // Ищем заголовок формы
+                            let formTitleText = 'Совершить платёж';
+                            span9.querySelectorAll('b').forEach(b => {
+                                if (b.textContent.includes('Совершить платёж')) {
+                                    formTitleText = b.textContent;
+                                    b.remove(); // Удаляем старый заголовок из потока
+                                }
+                            });
+
+                            // Сохраняем важные элементы формы
+                            const amountInput = payForm.querySelector('input[name="p_amount"]');
+                            const emailInput = payForm.querySelector('input[name="p_email"]');
+                            const hiddenInputs = payForm.querySelectorAll('input[type="hidden"]');
+                            const submitBtn = payForm.querySelector('input[type="submit"]');
+
+                            // Очищаем старую кривую таблицу
+                            payForm.innerHTML = '';
+
+                            // Стилизуем саму карточку формы
+                            payForm.style.cssText = 'background: var(--color-card); padding: 3rem; border-radius: var(--radius-large); box-shadow: var(--shadow-main); margin-bottom: 2.4rem; max-width: 450px; display: flex; flex-direction: column; gap: 2rem; border: 1px solid var(--color-table-border);';
+
+                            // Добавляем красивый заголовок внутрь формы
+                            const titleEl = document.createElement('div');
+                            titleEl.style.cssText = 'font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 0.5rem; display: flex; align-items: center; gap: 10px;';
+                            titleEl.innerHTML = `<span class="material-icons" style="color: var(--color-accent); font-size: 2.4rem;">payment</span>${formTitleText}`;
+                            payForm.appendChild(titleEl);
+
+                            // Поле: Сумма
+                            if (amountInput) {
+                                const group = document.createElement('div');
+                                group.style.cssText = 'display: flex; flex-direction: column; gap: 0.8rem;';
+                                
+                                const label = document.createElement('label');
+                                label.textContent = 'Сумма к оплате';
+                                label.style.cssText = 'font-size: 1.3rem; font-weight: 600; color: var(--color-text-secondary);';
+                                
+                                const inputWrap = document.createElement('div');
+                                inputWrap.style.cssText = 'display: flex; align-items: center; background: var(--color-input); border: 1px solid var(--color-table-border); border-radius: var(--radius-small); padding-right: 1.6rem; overflow: hidden; transition: border-color 0.2s;';
+                                
+                                // Сброс инлайновых стилей ЕТИСа и стилизация самого инпута
+                                amountInput.style.cssText = 'flex: 1; padding: 1.4rem 1.6rem !important; border: none !important; background: transparent !important; color: var(--color-text-primary) !important; font-size: 1.6rem !important; font-weight: 800 !important; box-shadow: none !important; outline: none !important; width: 100%; margin: 0 !important; border-radius: 0 !important;';
+                                
+                                const suffix = document.createElement('span');
+                                suffix.textContent = 'руб.';
+                                suffix.style.cssText = 'font-size: 1.4rem; font-weight: 700; color: var(--color-text-secondary); pointer-events: none;';
+
+                                inputWrap.appendChild(amountInput);
+                                inputWrap.appendChild(suffix);
+                                group.appendChild(label);
+                                group.appendChild(inputWrap);
+                                payForm.appendChild(group);
+
+                                // Фокус-эффект
+                                amountInput.addEventListener('focus', () => inputWrap.style.borderColor = 'var(--color-accent)');
+                                amountInput.addEventListener('blur', () => inputWrap.style.borderColor = 'var(--color-table-border)');
+                            }
+
+                            // Поле: Email
+                            if (emailInput) {
+                                const group = document.createElement('div');
+                                group.style.cssText = 'display: flex; flex-direction: column; gap: 0.8rem;';
+                                
+                                const label = document.createElement('label');
+                                label.textContent = 'E-mail для получения чека';
+                                label.style.cssText = 'font-size: 1.3rem; font-weight: 600; color: var(--color-text-secondary);';
+                                
+                                emailInput.style.cssText = 'padding: 1.4rem 1.6rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; font-weight: 600 !important; width: 100%; box-sizing: border-box; box-shadow: none !important; outline: none !important; transition: border-color 0.2s; margin: 0 !important;';
+                                
+                                group.appendChild(label);
+                                group.appendChild(emailInput);
+                                payForm.appendChild(group);
+
+                                emailInput.addEventListener('focus', () => emailInput.style.borderColor = 'var(--color-accent)');
+                                emailInput.addEventListener('blur', () => emailInput.style.borderColor = 'var(--color-table-border)');
+                            }
+
+                            // Возвращаем скрытые системные поля ЕТИСа
+                            hiddenInputs.forEach(hi => payForm.appendChild(hi));
+
+                            // Кнопка оплаты
+                            if (submitBtn) {
+                                submitBtn.className = 'answer-btn-custom';
+                                submitBtn.style.cssText = 'background: var(--color-accent) !important; color: #fff !important; border: none !important; padding: 1.6rem 2.4rem !important; font-size: 1.4rem !important; cursor: pointer; border-radius: 50px !important; font-weight: 800 !important; margin-top: 1rem; width: 100%; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important; transition: transform 0.2s, opacity 0.2s;';
+                                payForm.appendChild(submitBtn);
+
+                                // Эффект нажатия
+                                submitBtn.addEventListener('mousedown', () => submitBtn.style.transform = 'scale(0.98)');
+                                submitBtn.addEventListener('mouseup', () => submitBtn.style.transform = 'scale(1)');
+                                submitBtn.addEventListener('mouseleave', () => submitBtn.style.transform = 'scale(1)');
+                            }
+                            
+                            // Слушаем отправку формы, чтобы ПЛАВНО показать скрытый iframe Сбербанка
+                            payForm.addEventListener('submit', () => {
+                                const iframe = span9.querySelector('iframe[name="ifrmSber"]');
+                                if (iframe) {
+                                    iframe.style.display = 'block';
+                                    setTimeout(() => {
+                                        iframe.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    }, 300);
+                                }
+                            });
+                        }
+
+                        // 6. Оформляем iframe Сбербанка и ПРЯЧЕМ ЕГО ДО КЛИКА
+                        const iframe = span9.querySelector('iframe[name="ifrmSber"]');
+                        if (iframe) {
+                            iframe.style.cssText = 'width: 100%; max-width: 500px; height: 750px; border-radius: var(--radius-large); border: 1px solid var(--color-table-border); background: #fff; display: none; margin-top: 1rem; margin-bottom: 3rem;';
+                        }
+
+                        // 7. Оформляем PDF-инструкцию в виде карточки и ПЕРЕНОСИМ В САМЫЙ НИЗ
+                        const pdfLink = span9.querySelector('a[href*="SberPay.pdf"]');
+                        if (pdfLink) {
+                            const pdfCard = document.createElement('a');
+                            pdfCard.href = pdfLink.href;
+                            pdfCard.className = 'advice-card';
+                            pdfCard.style.cssText = 'display: inline-flex; margin-top: 3rem; width: fit-content; background: var(--color-highlight); border: 1px dashed var(--color-table-border); box-shadow: none;';
+                            pdfCard.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary);">picture_as_pdf</span><span class="advice-label">${pdfLink.textContent.trim()}</span>`;
+                            
+                            span9.appendChild(pdfCard); 
+                            pdfLink.remove(); 
+                        }
+
+                        // Финальная зачистка висячих заголовков
+                        span9.querySelectorAll('b').forEach(b => {
+                            if (b.textContent.includes('Информация о платежах')) {
+                                b.style.display = 'block';
+                                b.style.fontSize = '1.6rem';
+                                b.style.fontWeight = '800';
+                                b.style.color = 'var(--color-text-primary)';
+                                b.style.marginBottom = '1.6rem';
+                                b.style.marginTop = '3rem';
+                            }
+                        });
+                        span9.querySelectorAll('br').forEach(br => br.remove());
+
+                    } else {
+                        // === СТРАНИЦА СПИСКА ДОГОВОРОВ ===
+                        const h2 = span9.querySelector('h2');
+                        const contractLinks = Array.from(span9.querySelectorAll('a')); 
+
+                        span9.innerHTML = '';
+                        if (h2) span9.appendChild(h2);
+
+                        const mainContainer = document.createElement('div');
+                        mainContainer.className = 'contracts-container';
+
+                        let instructionCard = null;
+
+                        contractLinks.forEach(link => {
+                            const text = link.textContent.trim();
+                            const isInstruction = text.toLowerCase().includes('инструкция');
+
+                            if (isInstruction) {
+                                const card = document.createElement('a');
+                                card.href = link.href;
+                                card.className = 'contract-card instruction-footer';
+                                card.innerHTML = `
+                                    <span class="material-icons" style="color: var(--color-text-secondary)">info_outline</span>
+                                    <div class="contract-content">
+                                        <div class="contract-title" style="color: var(--color-text-secondary)">${text}</div>
+                                    </div>
+                                    <span class="material-icons" style="color: var(--color-text-secondary); font-size: 1.8rem">open_in_new</span>
+                                `;
+                                instructionCard = card;
+                                return;
+                            }
+
                             const card = document.createElement('a');
                             card.href = link.href;
-                            card.className = 'contract-card instruction-footer';
+                            card.className = 'contract-card';
+
+                            const statusMatch = text.match(/\[(.*?)\]/);
+                            const statusText = statusMatch ? statusMatch[1] : '';
+                            let cleanText = text.replace(/\[.*?\]/, '').trim();
+
+                            const splitIndex = cleanText.indexOf('№');
+                            let title = cleanText;
+                            let meta = '';
+
+                            if (splitIndex !== -1) {
+                                title = cleanText.substring(0, splitIndex).trim();
+                                meta = cleanText.substring(splitIndex).trim();
+                            }
+
+                            if (statusText.toLowerCase().includes('действует')) {
+                                card.classList.add('status-active');
+                            } else if (statusText.toLowerCase().includes('расторгнут')) {
+                                card.classList.add('status-terminated');
+                            }
+
                             card.innerHTML = `
-                                <span class="material-icons" style="color: var(--color-text-secondary)">info_outline</span>
+                                <span class="material-icons">description</span>
                                 <div class="contract-content">
-                                    <div class="contract-title" style="color: var(--color-text-secondary)">${text}</div>
+                                    <div class="contract-title">${title}</div>
+                                    <div class="contract-meta">${meta}</div>
                                 </div>
-                                <span class="material-icons" style="color: var(--color-text-secondary); font-size: 1.8rem">open_in_new</span>
+                                ${statusText ? `<div class="contract-status">${statusText}</div>` : ''}
                             `;
-                            instructionCard = card;
-                            return;
+
+                            mainContainer.appendChild(card);
+                        });
+
+                        span9.appendChild(mainContainer);
+                        if (instructionCard) {
+                            const hr = document.createElement('div');
+                            hr.style.margin = '3rem 0 1.5rem';
+                            hr.style.borderTop = '1px solid var(--color-table-border)';
+                            span9.appendChild(hr);
+                            span9.appendChild(instructionCard);
                         }
-
-                        const card = document.createElement('a');
-                        card.href = link.href;
-                        card.className = 'contract-card';
-
-                        const statusMatch = text.match(/\[(.*?)\]/);
-                        const statusText = statusMatch ? statusMatch[1] : '';
-                        let cleanText = text.replace(/\[.*?\]/, '').trim();
-
-                        const splitIndex = cleanText.indexOf('№');
-                        let title = cleanText;
-                        let meta = '';
-
-                        if (splitIndex !== -1) {
-                            title = cleanText.substring(0, splitIndex).trim();
-                            meta = cleanText.substring(splitIndex).trim();
-                        }
-
-                        if (statusText.toLowerCase().includes('действует')) {
-                            card.classList.add('status-active');
-                        } else if (statusText.toLowerCase().includes('расторгнут')) {
-                            card.classList.add('status-terminated');
-                        }
-
-                        card.innerHTML = `
-                            <span class="material-icons">description</span>
-                            <div class="contract-content">
-                                <div class="contract-title">${title}</div>
-                                <div class="contract-meta">${meta}</div>
-                            </div>
-                            ${statusText ? `<div class="contract-status">${statusText}</div>` : ''}
-                        `;
-
-                        mainContainer.appendChild(card);
-                    });
-
-                    span9.appendChild(mainContainer);
-                    if (instructionCard) {
-                        const hr = document.createElement('div');
-                        hr.style.margin = '3rem 0 1.5rem';
-                        hr.style.borderTop = '1px solid var(--color-table-border)';
-                        span9.appendChild(hr);
-                        span9.appendChild(instructionCard);
                     }
                     break;
                 }
