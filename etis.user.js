@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      2.2
-// @changelog    1) Доработка вкладки договоров, 2) REBORN расписание преподавателей, 3) Фикс поиска и уведомлений в оценках
+// @version      2.21
+// @changelog    1) Доработка вкладки договоров и тем в оценках, 2) REBORN расписание преподавателей, 3) Фикс поиска и уведомлений в оценках
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
@@ -10543,14 +10543,19 @@ body.modal-open-body {
                     break;
                 }
 
-                case 'stu.tpr': {
-                    // 1. Очищаем мусорные теги <br>, чтобы не ломали отступы
-                    span9.querySelectorAll('br').forEach(br => br.remove());
+                case 'stu.tpr':
+                case 'stu.theme': {
+                    // 0. Кнопка "Назад"
+                    const backBtn = document.createElement('a');
+                    backBtn.href = 'javascript:window.history.back()';
+                    backBtn.className = 'answer-btn-custom';
+                    backBtn.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-bottom: 2.4rem; background: var(--color-highlight) !important; color: var(--color-text-primary) !important; box-shadow: none !important; border: 1px solid var(--color-table-border) !important; cursor: pointer; text-decoration: none; padding: 0.8rem 1.6rem; height: auto;';
+                    backBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem; color: var(--color-text-secondary);">arrow_back</span> Назад';
+                    span9.prepend(backBtn);
 
-                    // 2. Красиво оформляем главный заголовок
+                    // 1. Красиво оформляем главный заголовок
                     const h2 = span9.querySelector('h2');
                     if (h2) {
-                        // Разделяем техническую надпись и название предмета
                         const parts = h2.innerHTML.split(/<br\s*\/?>/i);
                         if (parts.length > 1) {
                             h2.innerHTML = `
@@ -10561,11 +10566,27 @@ body.modal-open-body {
                                     ${parts[1].replace(/«/g, '').replace(/»/g, '')}
                                 </span>
                             `;
+                        } else {
+                            let text = h2.textContent.trim();
+                            if (text.toLowerCase().startsWith('тема')) {
+                                text = text.replace(/^Тема\s*/i, '');
+                                h2.innerHTML = `
+                                    <span style="font-size: 1.2rem; color: var(--color-accent); display: block; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.8rem;">
+                                        Тема
+                                    </span>
+                                    <span style="font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--color-text-primary);">
+                                        ${text.replace(/«/g, '').replace(/»/g, '')}
+                                    </span>
+                                `;
+                            } else {
+                                h2.style.fontSize = '2.2rem';
+                                h2.style.fontWeight = '800';
+                            }
                         }
-                        h2.style.marginBottom = '2.4rem';
+                        h2.style.marginBottom = '3rem';
                     }
 
-                    // 3. Стилизуем кнопку "Оценить" (если она есть)
+                    // 2. Стилизуем кнопку "Оценить" (если она есть)
                     const estimateLink = span9.querySelector('a[href*="cust.estimate_tpr_form"]');
                     if (estimateLink) {
                         estimateLink.className = 'icon-button icon-feedback';
@@ -10574,17 +10595,196 @@ body.modal-open-body {
                         estimateLink.innerHTML = 'Оставить отзыв';
                     }
 
-                    // 4. Оборачиваем таблицы в контейнер для скролла на мобильных
-                    const tables = span9.querySelectorAll('.tpr_part table');
-                    tables.forEach(table => {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'wide-table-wrapper';
-                        wrapper.style.boxShadow = 'none'; // Тень мы уже задали самой таблице в CSS
-                        table.parentNode.insertBefore(wrapper, table);
-                        wrapper.appendChild(table);
+                    // Очистка лишних <br> в корне контейнера
+                    span9.querySelectorAll('br').forEach(br => {
+                        if (br.parentElement === span9) br.remove();
+                    });
 
-                        // Чистим старые инлайновые стили ячеек
-                        table.querySelectorAll('td').forEach(td => td.removeAttribute('style'));
+                    // 3. Превращаем секции в красивые карточки
+                    const parts = span9.querySelectorAll('.theme_part, .tpr_part');
+                    parts.forEach(part => {
+                        const h3 = part.previousElementSibling;
+                        
+                        if (h3 && h3.tagName === 'H3') {
+                            const sectionTitle = h3.textContent.trim().toLowerCase();
+                            
+                            const card = document.createElement('div');
+                            card.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);';
+                            
+                            // Убрали иконки из заголовков по просьбе
+                            h3.style.cssText = 'margin-top: 0 !important; margin-bottom: 2.4rem !important; font-size: 1.4rem !important; font-weight: 800 !important; color: var(--color-text-secondary) !important; text-transform: uppercase; letter-spacing: 1px;';
+
+                            h3.parentNode.insertBefore(card, h3);
+                            card.appendChild(h3);
+                            card.appendChild(part);
+
+                            part.style.fontSize = '1.4rem';
+                            part.style.lineHeight = '1.6';
+                            part.style.color = 'var(--color-text-primary)';
+                            
+                            // --- ЛОГИКА ТРУДОЕМКОСТИ (Цветные метки) ---
+                            if (sectionTitle.includes('трудоемкость')) {
+                                part.style.display = 'flex';
+                                part.style.flexDirection = 'column';
+                                part.style.gap = '1rem';
+                                
+                                Array.from(part.children).forEach(child => {
+                                    if (child.tagName === 'DIV') {
+                                        const text = child.textContent.trim();
+                                        const match = text.match(/(.*?)\s*[–-]\s*(.*)/); // Ищем "Лекции – 4 часа"
+                                        if (match) {
+                                            const type = match[1].trim();
+                                            const hours = match[2].trim();
+                                            
+                                            let bg = 'var(--color-highlight)', color = 'var(--color-text-secondary)', iconName = 'circle';
+                                            
+                                            if (type.toLowerCase().includes('лекц')) { bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)'; iconName = 'menu_book'; }
+                                            else if (type.toLowerCase().includes('практ')) { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; iconName = 'engineering'; }
+                                            else if (type.toLowerCase().includes('лаб')) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; iconName = 'science'; }
+                                            else if (type.toLowerCase().includes('самост')) { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; iconName = 'person'; }
+                                            
+                                            child.innerHTML = `
+                                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.4rem 1.8rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border);">
+                                                    <div style="display: flex; align-items: center; gap: 12px; font-weight: 600;">
+                                                        <span class="material-icons" style="color: ${color}; font-size: 2.2rem;">${iconName}</span>
+                                                        ${type}
+                                                    </div>
+                                                    <span style="background: ${bg}; color: ${color}; padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 800; font-size: 1.25rem; white-space: nowrap;">${hours}</span>
+                                                </div>
+                                            `;
+                                        }
+                                    }
+                                });
+                            }
+                            // --- ЛОГИКА КОНТРОЛЯ (Виджеты баллов) ---
+                            else if (sectionTitle.includes('контроль')) {
+                                let passScore = '', maxScore = '', ratingScore = '';
+                                let passEl = null, maxEl = null, ratingEl = null;
+                                
+                                Array.from(part.children).forEach(child => {
+                                    const text = child.textContent.trim().toLowerCase();
+                                    
+                                    if (text.includes('проходной балл')) { passScore = child.textContent.split('-')[1]?.trim(); passEl = child; }
+                                    else if (text.includes('максимальный балл')) { maxScore = child.textContent.split('-')[1]?.trim(); maxEl = child; }
+                                    else if (text.includes('в рейтинг')) { ratingScore = child.textContent.split('-')[1]?.trim(); ratingEl = child; }
+                                    
+                                    // Стилизуем первый элемент (Название КМ)
+                                    if (child.tagName === 'DIV' && !child.classList.contains('ctl_hours') && child !== passEl && child !== maxEl && child !== ratingEl && !text.includes('элементы') && !text.includes('оценивания')) {
+                                        if (child.textContent.includes('-')) {
+                                            const parts = child.textContent.split('-');
+                                            child.innerHTML = `
+                                                <div style="font-weight: 800; font-size: 1.8rem; color: var(--color-text-primary); margin-bottom: 0.6rem;">${parts[1].trim()}</div>
+                                                <div style="color: var(--color-text-secondary); font-size: 1.3rem;">Контролирует: <span style="font-weight: 600; color: var(--color-accent);">${parts[0].trim()}</span></div>
+                                            `;
+                                        }
+                                    }
+                                    
+                                    // Стилизуем часы контроля
+                                    if (child.classList.contains('ctl_hours')) {
+                                        child.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.6rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; margin-top: 1.6rem; margin-bottom: 2.4rem;';
+                                        child.innerHTML = `<span class="material-icons" style="font-size: 2rem;">timer</span> ${child.textContent}`;
+                                    }
+                                });
+                                
+                                // Если нашли баллы, создаем красивую сетку
+                                if (passScore || maxScore || ratingScore) {
+                                    const statsGrid = document.createElement('div');
+                                    statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.2rem; margin: 2.4rem 0;';
+                                    
+                                    const createStat = (label, val, colorClass) => {
+                                        if (!val) return '';
+                                        let colorStyle = colorClass === 'green' ? 'color: var(--color-green);' : (colorClass === 'blue' ? 'color: var(--color-blue);' : 'color: var(--color-accent);');
+                                        let bgStyle = colorClass === 'green' ? 'background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3);' : (colorClass === 'blue' ? 'background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3);' : 'background: var(--color-accent-active); border: 1px solid var(--color-accent);');
+                                        return `
+                                            <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 1.6rem; border-radius: var(--radius-medium); ${bgStyle}">
+                                                <span style="font-size: 2.4rem; font-weight: 800; ${colorStyle} line-height: 1;">${val}</span>
+                                                <span style="font-size: 1.1rem; font-weight: 700; ${colorStyle} margin-top: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">${label}</span>
+                                            </div>
+                                        `;
+                                    };
+                                    
+                                    statsGrid.innerHTML = `
+                                        ${createStat('Максимум', maxScore, 'blue')}
+                                        ${createStat('В рейтинг', ratingScore, 'accent')}
+                                        ${createStat('Проходной', passScore, 'green')}
+                                    `;
+                                    
+                                    if (passEl) passEl.replaceWith(statsGrid);
+                                    if (maxEl) maxEl.remove();
+                                    if (ratingEl) ratingEl.remove();
+                                }
+                                
+                                // Стилизуем заголовки списков "Элементы" и "Показатель"
+                                part.querySelectorAll('div').forEach(div => {
+                                    const text = div.textContent.trim();
+                                    if (text.includes('Контролируемые элементы') || text.includes('Показатель оценивания')) {
+                                        const partsSplit = div.innerHTML.split(':');
+                                        const title = partsSplit[0];
+                                        let rest = partsSplit.slice(1).join(':');
+                                        
+                                        // Убираем старый <br>
+                                        rest = rest.replace(/<br\s*\/?>/gi, '');
+                                        
+                                        div.innerHTML = `<div style="font-weight: 800; color: var(--color-text-secondary); font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; margin: 3rem 0 1.6rem 0; opacity: 0.8;">${title}</div>${rest ? rest : ''}`;
+                                    }
+                                });
+                            }
+                            else {
+                                // Очистка лишних переносов в остальных карточках
+                                part.querySelectorAll('br').forEach(br => br.remove());
+                                Array.from(part.children).forEach(child => {
+                                    if (child.tagName === 'DIV' || child.tagName === 'P') {
+                                        child.style.marginBottom = '1.2rem';
+                                    }
+                                });
+                            }
+
+                            // 4. Оформление таблиц (переосмысление таблицы "Показатель оценивания")
+                            part.querySelectorAll('table').forEach(table => {
+                                // Создаем контейнер в виде списка
+                                const listContainer = document.createElement('div');
+                                listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 1rem; margin-top: 1.2rem; margin-bottom: 2.4rem;';
+                                
+                                // Парсим строки оригинальной таблицы
+                                table.querySelectorAll('tr').forEach(tr => {
+                                    const tds = tr.querySelectorAll('td');
+                                    if (tds.length > 0) {
+                                        const score = tds[0].textContent.trim();
+                                        // Ищем текст в последней ячейке (ЕТИС генерирует пустые td посередине)
+                                        const desc = tds[tds.length - 1].textContent.trim();
+                                        
+                                        if (score && desc) {
+                                            const item = document.createElement('div');
+                                            item.style.cssText = 'display: flex; align-items: center; gap: 1.6rem; padding: 1.4rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border);';
+                                            
+                                            item.innerHTML = `
+                                                <div style="background: var(--color-accent-active); color: var(--color-accent); font-weight: 800; font-size: 1.6rem; padding: 0.8rem; border-radius: 12px; min-width: 52px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; height: 52px; box-sizing: border-box;">
+                                                    ${score}
+                                                </div>
+                                                <div style="font-size: 1.35rem; color: var(--color-text-primary); line-height: 1.5; font-weight: 500;">
+                                                    ${desc}
+                                                </div>
+                                            `;
+                                            listContainer.appendChild(item);
+                                        }
+                                    }
+                                });
+                                
+                                // Заменяем страшную таблицу ЕТИСа на наш новый список
+                                table.replaceWith(listContainer);
+                            });
+
+                            // 5. Оформление файлов (Word, PDF и т.д.)
+                            part.querySelectorAll('.theme_file, .tpr_file').forEach(fileDiv => {
+                                const link = fileDiv.querySelector('a');
+                                if (link) {
+                                    link.className = 'file-attachment-link';
+                                    link.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-top: 2rem; margin-bottom: 1rem; text-decoration: none; background: var(--color-highlight); border: 1px solid var(--color-table-border); padding: 1rem 1.6rem; border-radius: 50px; transition: all 0.2s ease;';
+                                    link.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem;">description</span><span class="file-name" style="font-weight: 600; font-size: 1.3rem;">${link.textContent.trim()}</span>`;
+                                    fileDiv.replaceWith(link);
+                                }
+                            });
+                        }
                     });
 
                     break;
@@ -15389,21 +15589,28 @@ body.modal-open-body {
                             }
                             
                             // --- КАЛЬКУЛЯТОР БАЛЛОВ (Прогноз) ---
-                            let tooltipText = '';
                             if (finalMax > 0 && hasAnyGrades) {
+                                let tooltipText = '';
+                                let currentMark = '';
+                                let markColor = '';
+
                                 if (calculatedCurrent < 41) {
                                     tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
+                                    currentMark = '2'; markColor = 'var(--color-red)';
                                 } else if (calculatedCurrent < 61) {
                                     tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
+                                    currentMark = '3'; markColor = 'var(--color-warning)';
                                 } else if (calculatedCurrent < 81) {
                                     tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
+                                    currentMark = '4'; markColor = '#8BC34A';
                                 } else {
                                     tooltipText = `Отлично! 😎`;
+                                    currentMark = '5'; markColor = 'var(--color-green)';
                                 }
 
                                 const tooltip = document.createElement('div');
                                 tooltip.className = 'score-tooltip';
-                                tooltip.textContent = tooltipText;
+                                tooltip.innerHTML = `<span style="color: ${markColor}; font-size: 1.4rem;">${currentMark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${tooltipText}`;
                                 capsule.appendChild(tooltip);
                             }
                             headerContainer.appendChild(capsule);
@@ -15506,19 +15713,31 @@ body.modal-open-body {
                                         }
 
                                         // Динамический прогноз
-                                        let tooltipText = '';
                                         if (finalMaxFiltered > 0 && hasAnyGrades) {
-                                            if (calculatedCurrent < 41) tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
-                                            else if (calculatedCurrent < 61) tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
-                                            else if (calculatedCurrent < 81) tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
-                                            else tooltipText = `Отлично! 😎`;
+                                            let tooltipText = '';
+                                            let currentMark = '';
+                                            let markColor = '';
+
+                                            if (calculatedCurrent < 41) {
+                                                tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
+                                                currentMark = '2'; markColor = 'var(--color-red)';
+                                            } else if (calculatedCurrent < 61) {
+                                                tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
+                                                currentMark = '3'; markColor = 'var(--color-warning)';
+                                            } else if (calculatedCurrent < 81) {
+                                                tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
+                                                currentMark = '4'; markColor = '#8BC34A';
+                                            } else {
+                                                tooltipText = `Отлично! 😎`;
+                                                currentMark = '5'; markColor = 'var(--color-green)';
+                                            }
 
                                             const oldTooltip = capsule.querySelector('.score-tooltip');
                                             if (oldTooltip) oldTooltip.remove();
 
                                             const tooltip = document.createElement('div');
                                             tooltip.className = 'score-tooltip';
-                                            tooltip.textContent = tooltipText;
+                                            tooltip.innerHTML = `<span style="color: ${markColor}; font-size: 1.4rem;">${currentMark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${tooltipText}`;
                                             capsule.appendChild(tooltip);
                                         }
                                     }
