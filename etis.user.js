@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      2.21
-// @changelog    1) Доработка вкладки договоров и тем в оценках, 2) REBORN расписание преподавателей, 3) Фикс поиска и уведомлений в оценках
+// @version      2.3
+// @changelog    Возможность загрузить файл с консультациями в новое окно и отображение их в расписании (Beta).
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
@@ -18,6 +18,7 @@
 // @connect      *
 // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
 // @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
+// @require      https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js
 // ==/UserScript==
 
 (function() {
@@ -6916,7 +6917,7 @@ body.modal-open-body {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
-        init();
+        setTimeout(init, 10);
     }
 
     // Установка иконки
@@ -7634,6 +7635,653 @@ body.modal-open-body {
                 if (retry) retry.onclick = () => initAutoUpdateCheck(true);
             }
         }
+    }
+
+    // --- ЛОГИКА КОНСУЛЬТАЦИЙ (DOCX) ---
+    const CONSULTATIONS_KEY = 'etis_consultation_files_v1';
+    let consultationsFiles = JSON.parse(localStorage.getItem(CONSULTATIONS_KEY) || '[]');
+
+    function saveConsultationsState() {
+        localStorage.setItem(CONSULTATIONS_KEY, JSON.stringify(consultationsFiles));
+    }
+
+    function parseConsultationInfo(rawText, rawHtml) {
+        const info = { email: '', events:[], notes: '' };
+
+        // 1. Почта
+        const emailMatch = rawText.match(/[\w.-]+@[\w.-]+\.\w+/);
+        if (emailMatch) info.email = emailMatch[0];
+
+        // 2. Строковые исходники для регулярных выражений (защита от багов Safari и lastIndex)
+        const audRegexStr = 'кабинет\\s+декана\\s*№?\\s*\\d+\\s*корп\\.?\\s*\\d+|ауд\\.?\\s*\\d+[а-яa-z]*\\s*[\\/\\\\]\\s*\\d+[а-яa-z]*|ауд\\.?\\s*\\d+[а-яa-z]*';
+        const daysRegexStr = 'понедельник|вторник|среда|четверг|пятница|суббота|воскресенье';
+        const timeRegexStr = '(?:с\\s+)?(\\d{1,2}[:.]\\d{2})(?:\\s*(?:[-–]|до)\\s*(\\d{1,2}[:.]\\d{2}))?';
+
+        const DAYS =['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
+
+        const blockIsStrictAgreement = rawText.toLowerCase().includes('по договоренности') || rawText.toLowerCase().includes('договоренност');
+        const blockIsRecording = rawText.toLowerCase().includes('по предварительной записи') || rawText.toLowerCase().includes('запис');
+
+        // Превращаем HTML в текст, заменяя переносы на спецсимвол "|", чтобы не терять контекст
+        const safeHtml = rawHtml.replace(/<br\s*\/?>|<\/p>/gi, ' | ');
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = safeHtml;
+        const cleanText = tempDiv.textContent.replace(/\s+/g, ' ').trim();
+
+        // Разбиваем на независимые смысловые блоки
+        const chunks = cleanText.split(/(?:[,;]|\bили\b|\|)/i);
+
+        chunks.forEach(chunk => {
+            let chunkText = chunk.trim();
+            if (!chunkText) return;
+
+            // Локальные регулярки (создаются заново для каждого куска, чтобы lastIndex был равен 0)
+            const localAudRegex = new RegExp(audRegexStr, 'i');
+            const localDaysRegex = new RegExp(daysRegexStr, 'ig');
+            const localTimeRegex = new RegExp(timeRegexStr, 'ig');
+            const localLinkRegex = /(https?:\/\/\S+)/i;
+
+            const chunkAudMatch = chunkText.match(localAudRegex);
+            const chunkAud = chunkAudMatch ? chunkAudMatch[0].replace(/\s+/g, ' ').trim() : '';
+            
+            const chunkLinkMatch = chunkText.match(localLinkRegex);
+            const chunkLink = chunkLinkMatch ? chunkLinkMatch[1] : '';
+
+            let chunkDays =[];
+            
+            // Ищем диапазоны дней
+            const rangeMatch = chunkText.match(/(понедельник|вторник|среда|четверг|пятница|суббота|воскресенье)\s*(?:-|–|по)\s*(понедельник|вторник|среда|четверг|пятница|суббота|воскресенье)/i);
+            if (rangeMatch) {
+                const startIdx = DAYS.indexOf(rangeMatch[1].toLowerCase());
+                const endIdx = DAYS.indexOf(rangeMatch[2].toLowerCase());
+                if (startIdx !== -1 && endIdx !== -1 && startIdx <= endIdx) {
+                    for (let i = startIdx; i <= endIdx; i++) chunkDays.push(DAYS[i]);
+                }
+                chunkText = chunkText.replace(rangeMatch[0], '');
+            }
+
+            // Ищем одиночные дни
+            const individualDays = [...chunkText.matchAll(localDaysRegex)];
+            individualDays.forEach(d => chunkDays.push(d[0].toLowerCase()));
+            chunkDays = [...new Set(chunkDays)];
+
+            const times =[...chunkText.matchAll(localTimeRegex)];
+
+            let weekType = 'all';
+            if (chunkText.toLowerCase().includes('по нечетным') || chunkText.toLowerCase().includes('по нечётным')) weekType = 'odd';
+            else if (chunkText.toLowerCase().includes('по четным') || chunkText.toLowerCase().includes('по чётным')) weekType = 'even';
+
+            // Создание событий
+            if (chunkDays.length > 0 && times.length > 0) {
+                const t = times[0]; 
+                chunkDays.forEach(day => {
+                    info.events.push({
+                        dayName: day.charAt(0).toUpperCase() + day.slice(1).toLowerCase(),
+                        startTime: t[1].replace('.', ':'),
+                        endTime: t[2] ? t[2].replace('.', ':') : '',
+                        weekType: weekType,
+                        aud: chunkAud,
+                        link: chunkLink
+                    });
+                });
+            } else if (chunkDays.length > 0) {
+                chunkDays.forEach(day => {
+                    info.events.push({
+                        dayName: day.charAt(0).toUpperCase() + day.slice(1).toLowerCase(),
+                        startTime: 'По дог.',
+                        endTime: '',
+                        weekType: weekType,
+                        aud: chunkAud,
+                        link: chunkLink
+                    });
+                });
+            } else if (times.length > 0) {
+                const t = times[0]; 
+                info.events.push({
+                    dayName: 'По договоренности',
+                    startTime: t[1].replace('.', ':'),
+                    endTime: t[2] ? t[2].replace('.', ':') : '',
+                    weekType: weekType,
+                    aud: chunkAud,
+                    link: chunkLink
+                });
+            }
+        });
+
+        // Если не найдено конкретных событий, но есть договоренность/запись/аудитория/ссылка
+        if (info.events.length === 0) {
+            if (blockIsStrictAgreement || blockIsRecording || rawText.match(new RegExp(audRegexStr, 'i')) || rawText.match(/(https?:\/\/\S+)/i)) {
+                
+                const allAuds =[...rawText.matchAll(new RegExp(audRegexStr, 'ig'))].map(m => m[0].replace(/\s+/g, ' ').trim());
+                const allLinks =[...rawText.matchAll(/(https?:\/\/\S+)/ig)].map(m => m[1]);
+
+                info.events.push({
+                    dayName: 'По договоренности',
+                    startTime: '', 
+                    endTime: '',
+                    weekType: 'all',
+                    aud: allAuds.length > 0 ? allAuds[0] : '', 
+                    link: allLinks.length > 0 ? allLinks[0] : ''
+                });
+            }
+        } else {
+            // Фоллбек ссылок/аудиторий (только если ни в одном дне они не были найдены локально)
+            const globalAudMatch = rawText.match(new RegExp(audRegexStr, 'i'));
+            const globalAud = globalAudMatch ? globalAudMatch[0].replace(/\s+/g, ' ').trim() : '';
+
+            const globalLinkMatch = rawHtml.match(/href=["'](https?:\/\/[^"']+)["']/i) || rawText.match(/(https?:\/\/\S+)/i);
+            const globalLink = globalLinkMatch ? globalLinkMatch[1] : '';
+
+            const hasAnyLink = info.events.some(e => e.link);
+            const hasAnyAud = info.events.some(e => e.aud);
+            
+            info.events.forEach(ev => {
+                if (!hasAnyLink && !ev.link) ev.link = globalLink;
+                if (!hasAnyAud && !ev.aud) ev.aud = globalAud;
+            });
+        }
+
+        // Очистка примечаний (заметок)
+        let notesText = rawText;
+        notesText = notesText.replace(new RegExp(daysRegexStr, 'ig'), '').replace(new RegExp(timeRegexStr, 'ig'), '');
+        if (info.email) notesText = notesText.replace(new RegExp(info.email, 'gi'), '');
+        notesText = notesText.replace(/https?:\/\/[^\s]+/ig, ''); 
+        notesText = notesText.replace(new RegExp(audRegexStr, 'ig'), ''); 
+        
+        notesText = notesText.replace(/электронная почта(?: преподавателя)?\s*:?/ig, '');
+        notesText = notesText.replace(/e-?mail\s*:?/ig, '');
+        notesText = notesText.replace(/ссылка для подключения\s*:?/ig, '');
+        notesText = notesText.replace(/онлайн\s*ссылка\s*/ig, '');
+        notesText = notesText.replace(/онлайн/ig, '');
+        notesText = notesText.replace(/Идентификатор конференции[:\s]*\d+([\s-]*\d+)*\s*Код доступа[:\s]*\S+/ig, '');
+        notesText = notesText.replace(/консультаци[яи]\s*строго\s*по\s+предварительной\s+записи\s*по\s+эл\.почте:?/ig, 'По предварительной записи');
+        notesText = notesText.replace(/консультаци[яи]\s+по\s+[а-я]+/ig, '');
+        notesText = notesText.replace(/в\s+университете\s+по\s+договоренности\s+в/ig, 'По договоренности');
+        notesText = notesText.replace(/или\s+по\s+[а-я]+/ig, '');
+        notesText = notesText.replace(/по\s+договоренности/ig, '');
+        notesText = notesText.replace(/тел\.?\s*[\d-]{7,}/ig, '');
+        notesText = notesText.replace(/\s*[-–]\s*(?=\s|$)/g, ' '); 
+        
+        notesText = notesText.replace(/\(\s*\)/g, '').trim(); 
+        notesText = notesText.replace(/^[.,:;–-]\s*/g, '').trim(); 
+        notesText = notesText.replace(/\s*[.,:;–-]$/g, '').trim(); 
+
+        if (notesText.length > 2 && !/^\W+$/.test(notesText)) {
+            info.notes = notesText.replace(/\s+/g, ' ').trim();
+        }
+
+        // Дедупликация
+        const uniqueEvents =[];
+        const seen = new Set();
+        info.events.forEach(ev => {
+            const str = `${ev.dayName}_${ev.startTime}_${ev.aud}_${ev.link}_${ev.weekType}`;
+            if (!seen.has(str)) {
+                seen.add(str);
+                uniqueEvents.push(ev);
+            }
+        });
+        info.events = uniqueEvents;
+
+        return info;
+    }
+
+    function processDocxFile(file, callback, sourceUrl = null) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            mammoth.convertToHtml({arrayBuffer: event.target.result}).then(function(result) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = result.value;
+
+                let title = "Консультации";
+                const fullText = tempDiv.textContent.toLowerCase().replace(/\s+/g, ' ');
+                const seasonMatch = fullText.match(/(осенн[а-я]+|весенн[а-я]+|летн[а-я]+|зимн[а-я]+)\s*(триместр[а-я]*|семестр[а-я]*)/i);
+                const yearMatch = fullText.match(/(\d{4}\s*\/\s*\d{4}|\d{4}-\d{4})/);
+                let yearText = '';
+                if (yearMatch) yearText = ' ' + yearMatch[1].replace(/\s/g, '');
+                
+                if (seasonMatch) {
+                    let season = 'Осенний';
+                    if(seasonMatch[1].includes('весен')) season = 'Весенний';
+                    if(seasonMatch[1].includes('летн')) season = 'Летний';
+                    if(seasonMatch[1].includes('зимн')) season = 'Зимний';
+                    let term = seasonMatch[2].includes('трим') ? 'триместр' : 'семестр';
+                    title = `${season} ${term}${yearText}`;
+                } else if (yearText) {
+                    title = `Консультации${yearText}`;
+                }
+
+                const fileData = { 
+                    id: 'cons_file_' + Date.now(), 
+                    title, 
+                    isActive: false, 
+                    sourceUrl: sourceUrl,
+                    teachers:[] 
+                };
+
+                tempDiv.querySelectorAll('tr').forEach(row => {
+                    const cells = row.querySelectorAll('td');
+                    if (cells.length < 2) return;
+                    const pTags = cells[0].querySelectorAll('p');
+                    let nameLines = pTags.length > 0 ? Array.from(pTags).map(p => p.textContent.trim()).filter(Boolean) : cells[0].innerHTML.replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').split('\n').map(s => s.trim()).filter(Boolean);
+                    if (nameLines.length < 1) return;
+                    const name = nameLines[0]; 
+                    const degree = nameLines.slice(1).join(', '); 
+                    const rawDetailsText = cells[1].innerHTML.replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
+                    const parsedInfo = parseConsultationInfo(rawDetailsText, cells[1].innerHTML);
+                    if (name && (parsedInfo.events.length > 0 || parsedInfo.notes || parsedInfo.email)) {
+                        fileData.teachers.push({ name, degree, isActive: true, ...parsedInfo });
+                    }
+                });
+                consultationsFiles.push(fileData);
+                saveConsultationsState();
+                callback(true, fileData);
+            }).catch(err => callback(false));
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    document.addEventListener('click', (e) => {
+        if (e.target.classList.contains('cons-email-copy')) {
+            const email = e.target.getAttribute('data-email');
+            if (!email) return;
+            navigator.clipboard.writeText(email);
+            
+            const origText = e.target.textContent;
+            e.target.textContent = 'Скопировано!';
+            e.target.style.color = 'var(--color-green)';
+            
+            setTimeout(() => {
+                e.target.textContent = origText;
+                e.target.style.color = 'var(--color-text-link)';
+            }, 1000);
+        }
+    });
+
+    function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main_menu' : 'system_etis') {
+        let overlay = document.getElementById('etis-cons-overlay');
+        let modal = document.getElementById('etis-cons-modal');
+
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'etis-cons-overlay';
+            overlay.className = 'analytics-overlay';
+            document.body.appendChild(overlay);
+            
+            const style = document.createElement('style');
+            style.innerHTML = `
+                #etis-cons-modal .settings-sidebar-btn { display: flex !important; align-items: center !important; padding: 12px 16px !important; border-radius: var(--radius-medium) !important; cursor: pointer !important; margin-bottom: 8px !important; transition: all 0.2s ease !important; border: 1px solid transparent; box-sizing: border-box; }
+                #etis-cons-modal .settings-sidebar-btn:hover { background: var(--color-table-highlight) !important; }
+                #etis-cons-modal .settings-sidebar-btn.active { background: var(--color-accent) !important; color: var(--color-text-primary-invert) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
+                #etis-cons-modal .settings-sidebar-btn.active .material-icons, #etis-cons-modal .settings-sidebar-btn.active .sidebar-btn-text { color: var(--color-text-primary-invert) !important; }
+                #etis-cons-modal .settings-sidebar-btn.active .chevron { display: none !important; }
+                .cons-email-copy { color: var(--color-text-link); cursor: pointer; text-decoration: underline; text-decoration-style: dashed; transition: color 0.2s; }
+                .cons-email-copy:hover { color: var(--color-accent) !important; }
+                
+                .copy-word-hint {
+                    color: var(--color-accent);
+                    font-weight: 800;
+                    cursor: pointer;
+                    text-decoration: underline;
+                    text-decoration-style: dashed;
+                    transition: all 0.2s;
+                    display: inline-block;
+                }
+                
+                #etis-cons-modal { display: flex !important; flex-direction: column !important; }
+                #etis-cons-modal .settings-layout { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
+                #etis-cons-modal .settings-content-area { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
+                
+                @media (max-width: 960px) {
+                    #etis-cons-modal .hidden-on-mobile { display: none !important; }
+                }
+
+                #etis-cons-modal .settings-sidebar,
+                #etis-cons-modal .settings-content-scroll {
+                    flex: 1 1 auto !important;
+                    overflow-y: auto !important;
+                    -webkit-overflow-scrolling: touch !important;
+                    min-height: 0 !important;
+                    overscroll-behavior: contain !important;
+                    padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px) !important;
+                }
+
+                @media (min-width: 961px) {
+                    #etis-cons-modal { max-width: 850px !important; height: 60vh !important; min-height: 500px !important; }
+                    #etis-cons-modal .settings-layout { flex-direction: row !important; }
+                    #etis-cons-modal .settings-sidebar { border-right: 1px solid var(--color-table-border); padding-bottom: 2.4rem !important; }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'etis-cons-modal';
+            modal.className = 'analytics-modal';
+            document.body.appendChild(modal);
+        }
+
+        const closeAll = () => { 
+            overlay.classList.remove('active'); 
+            modal.classList.remove('active'); 
+            document.body.classList.remove('modal-open-body');
+        };
+        overlay.onclick = closeAll;
+
+        const renderView = (activeFileId) => {
+            const isMainMobile = activeFileId === 'main_menu';
+
+            let sidebarHtml = `
+                <div class="desktop-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary);">Консультации</div>
+                <div class="mobile-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary); display:flex; justify-content:space-between; align-items:center;">
+                    Консультации
+                    <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
+                </div>
+                
+                <div class="settings-sidebar-btn ${activeFileId === 'system_etis' ? 'active' : ''}" data-file-id="system_etis">
+                    <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'system_etis' ? '' : 'color: var(--color-text-secondary);'}">school</span>
+                    <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Расписание ЕТИС</span>
+                    <span class="material-icons chevron hidden-on-mobile" style="color: var(--color-text-secondary);">chevron_right</span>
+                </div>
+
+                <div class="settings-sidebar-btn ${activeFileId === 'upload_cons' ? 'active' : ''}" data-file-id="upload_cons">
+                    <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'upload_cons' ? '' : 'color: var(--color-text-secondary);'}">upload_file</span>
+                    <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Добавить файл</span>
+                    <span class="material-icons chevron hidden-on-mobile" style="color: var(--color-text-secondary);">chevron_right</span>
+                </div>
+                <hr style="border-top: 1px solid var(--color-table-border); border-bottom: none; margin: 8px 0;">
+            `;
+
+            consultationsFiles.forEach(file => {
+                const shortTitle = file.title.substring(0, 25) + (file.title.length > 25 ? '...' : '');
+                const isActiveClass = activeFileId === file.id ? 'active' : '';
+                sidebarHtml += `
+                    <div class="settings-sidebar-btn ${isActiveClass}" data-file-id="${file.id}">
+                        <span class="material-icons" style="margin-right: 12px; ${activeFileId === file.id ? '' : 'color: var(--color-text-secondary);'}">description</span>
+                        <span class="sidebar-btn-text" title="${file.title}" style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">${shortTitle}</span>
+                        <span class="material-icons chevron hidden-on-mobile" style="color: var(--color-text-secondary);">chevron_right</span>
+                    </div>
+                `;
+            });
+
+            let contentHtml = '';
+            let headerTitle = 'Информация';
+            const activeFile = consultationsFiles.find(f => f.id === activeFileId);
+
+            if (activeFileId === 'system_etis') {
+                headerTitle = 'Встроенные консультации';
+                const isSystemShow = localStorage.getItem('etis_show_consultations') !== 'false';
+                
+                contentHtml = `
+                    <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
+                        <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">За текущий период</div>
+                        <p style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 1.6rem; line-height: 1.5;">
+                            Это консультации, которые система ЕТИС автоматически добавила в ваше расписание.
+                        </p>
+                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 10px 16px; background: var(--color-card); border-radius: 12px; border: 1px solid var(--color-table-border);">
+                            <span style="font-size:1.3rem; font-weight:600; color:var(--color-text-primary);">Отображать в расписании</span>
+                            <input type="checkbox" id="system-cons-toggle" class="tumbler-checkbox" ${isSystemShow ? 'checked' : ''}>
+                        </label>
+                    </div>
+                `;
+            } else if (activeFileId === 'upload_cons') {
+                headerTitle = 'Загрузка расписания';
+                contentHtml = `
+                    <div style="background: var(--color-highlight); padding: 2rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
+                        <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">Инструкция</div>
+                        <p style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 2rem; line-height: 1.5;">
+                            Вы можете загрузить файл с расписанием консультаций, чтобы они были у вас под рукой и отображались в вашем расписании. Для этого зайдите в <a href="stu_ann.announces" style="color: var(--color-accent); font-weight: 800; text-decoration: none;">Объявления</a>, впишите в поиск <span class="copy-word-hint" title="Нажмите, чтобы скопировать" data-copy="консультаций">"консультаций"</span>, нажмите на кнопку "В расписание", либо скачайте его и загрузите сюда.
+                        </p>
+                        
+                        <div id="cons-drop-zone" style="border: 2px dashed var(--color-accent); border-radius: var(--radius-medium); padding: 4rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--color-card);">
+                            <span class="material-icons" style="font-size: 4rem; color: var(--color-accent); margin-bottom: 1rem;">cloud_upload</span>
+                            <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Нажмите или перетащите DOCX файл сюда</div>
+                            <div style="font-size: 1.2rem; color: var(--color-text-secondary);">Поддерживаются файлы .docx</div>
+                            <input type="file" id="upload-cons-docx" accept=".docx" style="display: none;">
+                        </div>
+                    </div>
+                `;
+            } else if (activeFile) {
+                headerTitle = 'Файл консультаций';
+                const isFileActive = activeFile.isActive;
+
+                contentHtml = `
+                    <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
+                        <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">${activeFile.title}</div>
+                        
+                        <div style="display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap;">
+                            <label style="flex: 1; display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 10px 16px; background: var(--color-card); border-radius: 12px; border: 1px solid var(--color-table-border);">
+                                <span style="font-size:1.3rem; font-weight:600; color:var(--color-text-primary);">Отображать в расписании</span>
+                                <input type="checkbox" class="tumbler-checkbox toggle-cons-file" data-id="${activeFile.id}" ${isFileActive ? 'checked' : ''}>
+                            </label>
+                            <button class="answer-btn-custom delete-cons-file" data-id="${activeFile.id}" style="background: rgba(255, 59, 48, 0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255, 59, 48, 0.3) !important; box-shadow: none !important;">
+                                <span class="material-icons" style="font-size: 1.8rem; margin-right: 6px;">delete</span>Удалить
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 1.6rem; position: relative;">
+                        <span class="material-icons" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary); font-size: 20px;">search</span>
+                        <input type="text" id="cons-search-input" placeholder="Поиск по ФИО преподавателя" style="width: 100%; padding: 1.2rem 1.6rem 1.2rem 42px !important; margin: 0 !important; box-sizing: border-box; background: var(--color-input) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; box-shadow: none !important;">
+                    </div>
+
+                    <div id="cons-teachers-list" style="display: flex; flex-direction: column; gap: 1.2rem;">
+                `;
+
+                activeFile.teachers.forEach((t, tIdx) => {
+                    let eventsHtml = t.events.map(ev => 
+                        `<span style="background: var(--color-accent-active); color: var(--color-accent); padding: 2px 8px; border-radius: 6px; font-size: 1.1rem; font-weight: 700; white-space: nowrap;">
+                            ${ev.weekType === 'even' ? '(Чёт) ' : ev.weekType === 'odd' ? '(Нечёт) ' : ''}${ev.dayName} ${ev.startTime}${ev.endTime ? '-' + ev.endTime : ''}
+                        </span>`
+                    ).join(' ');
+
+                    const isTeacherActive = t.isActive !== false;
+                    const cardOpacity = (!isFileActive || isTeacherActive) ? '1' : '0.5';
+
+                    const uniqueAuds =[...new Set(t.events.map(e => e.aud).filter(Boolean))].join(', ');
+                    const uniqueLinks =[...new Set(t.events.map(e => e.link).filter(Boolean))];
+
+                    contentHtml += `
+                        <div class="cons-teacher-card" data-name="${t.name.toLowerCase()}" style="background: var(--color-card); border: 1px solid var(--color-table-border); padding: 1.6rem; border-radius: var(--radius-medium); opacity: ${cardOpacity}; transition: opacity 0.2s;">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
+                                <div>
+                                    <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary);">${t.name}</div>
+                                    ${t.degree ? `<div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px; margin-bottom: 10px;">${t.degree}</div>` : '<div style="margin-bottom: 8px;"></div>'}
+                                </div>
+                                <label style="display: ${isFileActive ? 'flex' : 'none'}; align-items:center; cursor:pointer;">
+                                    <input type="checkbox" class="tumbler-checkbox toggle-cons-teacher" data-file-id="${activeFile.id}" data-teacher-idx="${tIdx}" ${isTeacherActive ? 'checked' : ''}>
+                                </label>
+                            </div>
+                            
+                            ${eventsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom: 8px;">${eventsHtml}</div>` : ''}
+                            
+                            <div style="display: flex; flex-direction: column; gap: 4px; font-size: 1.2rem; color: var(--color-text-secondary);">
+                                ${uniqueAuds ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">place</span>${uniqueAuds}</div>` : ''}
+                                ${t.email ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">email</span><span class="cons-email-copy" data-email="${t.email}">${t.email}</span></div>` : ''}
+                                ${uniqueLinks.length > 0 ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">link</span><a href="${uniqueLinks[0]}" target="_blank" style="color: var(--color-text-link);">Ссылка на онлайн-комнату</a></div>` : ''}
+                                ${t.notes ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--color-table-border);"><i>${t.notes}</i></div>` : ''}
+                            </div>
+                        </div>
+                    `;
+                });
+                contentHtml += `</div>`;
+            }
+
+            modal.innerHTML = `
+                <div class="settings-layout">
+                    <div class="settings-sidebar ${!isMainMobile ? 'hidden-on-mobile' : ''}">
+                        ${sidebarHtml}
+                    </div>
+                    <div class="settings-content-area ${isMainMobile ? 'hidden-on-mobile' : ''}">
+                        <div class="ui-widget-header" style="padding:16px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span class="material-icons back-modal-btn settings-mobile-header" data-back="main_menu" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">${headerTitle}</span>
+                            </div>
+                            <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
+                        </div>
+                        <div class="settings-content-scroll">
+                            ${contentHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            modal.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = closeAll);
+            modal.querySelectorAll('.back-modal-btn').forEach(btn => btn.onclick = () => renderView('main_menu'));
+            
+            modal.querySelectorAll('.settings-sidebar-btn[data-file-id]').forEach(btn => {
+                btn.onclick = () => renderView(btn.getAttribute('data-file-id'));
+            });
+
+            // ЛОГИКА КОПИРОВАНИЯ СЛОВА В ИНСТРУКЦИИ
+            modal.querySelectorAll('.copy-word-hint').forEach(span => {
+                span.onclick = (e) => {
+                    e.stopPropagation();
+                    const originalText = span.textContent;
+                    const textToCopy = span.getAttribute('data-copy');
+                    
+                    navigator.clipboard.writeText(textToCopy).then(() => {
+                        // Визуальный фидбек внутри текста
+                        span.textContent = '"скопировано"';
+                        span.style.color = 'var(--color-green)';
+                        
+                        setTimeout(() => {
+                            span.textContent = originalText;
+                            span.style.color = '';
+                        }, 1500);
+                    });
+                };
+            });
+
+            const searchInput = modal.querySelector('#cons-search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    const query = e.target.value.toLowerCase().trim();
+                    modal.querySelectorAll('.cons-teacher-card').forEach(card => {
+                        const name = card.getAttribute('data-name');
+                        card.style.display = name.includes(query) ? 'block' : 'none';
+                    });
+                });
+            }
+
+            const dropZone = modal.querySelector('#cons-drop-zone');
+            const fileInput = modal.querySelector('#upload-cons-docx');
+
+            if (dropZone && fileInput) {
+                dropZone.onclick = () => fileInput.click();
+                dropZone.ondragover = (e) => { e.preventDefault(); dropZone.style.background = 'var(--color-accent-active)'; };
+                dropZone.ondragleave = (e) => { e.preventDefault(); dropZone.style.background = 'var(--color-card)'; };
+                dropZone.ondrop = (e) => {
+                    e.preventDefault(); dropZone.style.background = 'var(--color-card)';
+                    if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
+                };
+
+                fileInput.onchange = (e) => {
+                    if (e.target.files.length > 0) handleFile(e.target.files[0]);
+                };
+
+                function handleFile(file) {
+                    dropZone.innerHTML = '<span class="material-icons" style="font-size:4rem; color:var(--color-accent); animation:spin 1s linear infinite;">sync</span><div style="margin-top:1rem; font-size:1.4rem; font-weight:700;">Анализ файла...</div>';
+                    dropZone.style.pointerEvents = 'none';
+                    processDocxFile(file, (success, fileData) => {
+                        if(success) {
+                            renderView(fileData.id);
+                            if (typeof window.injectConsultationPairs === 'function') {
+                                document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
+                                window.injectConsultationPairs();
+                                if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                                if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                            }
+                        } else {
+                            alert('Ошибка при чтении файла. Убедитесь, что это DOCX.');
+                            renderView('upload_cons');
+                        }
+                    });
+                }
+            }
+
+            const sysToggle = modal.querySelector('#system-cons-toggle');
+            if (sysToggle) {
+                sysToggle.onchange = (e) => {
+                    const isShow = e.target.checked;
+                    localStorage.setItem('etis_show_consultations', isShow);
+                    const span9 = document.querySelector('.span9');
+                    if(span9) {
+                        span9.querySelectorAll('.consultation-row').forEach(row => {
+                            row.style.display = isShow ? '' : 'none';
+                            if (isShow) row.classList.remove('hidden-by-filter');
+                            else row.classList.add('hidden-by-filter');
+                        });
+                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                        if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                    }
+                };
+            }
+
+            const teacherToggles = modal.querySelectorAll('.toggle-cons-teacher');
+            teacherToggles.forEach(box => {
+                box.onchange = (e) => {
+                    const fId = e.target.getAttribute('data-file-id');
+                    const tIdx = e.target.getAttribute('data-teacher-idx');
+                    const f = consultationsFiles.find(file => file.id === fId);
+                    if (f && f.teachers[tIdx]) {
+                        f.teachers[tIdx].isActive = e.target.checked;
+                        saveConsultationsState();
+                        const card = e.target.closest('.cons-teacher-card');
+                        if (card) card.style.opacity = e.target.checked ? '1' : '0.5';
+                        if (typeof window.injectConsultationPairs === 'function') {
+                            document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
+                            window.injectConsultationPairs();
+                            if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                            if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                        }
+                    }
+                };
+            });
+
+            const toggle = modal.querySelectorAll('.toggle-cons-file');
+            toggle.forEach(box => {
+                box.onchange = (e) => {
+                    const fId = e.target.getAttribute('data-id');
+                    const f = consultationsFiles.find(file => file.id === fId);
+                    if (f) { 
+                        f.isActive = e.target.checked; 
+                        saveConsultationsState(); 
+                        renderView(fId);
+                        if (typeof window.injectConsultationPairs === 'function') {
+                            document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
+                            window.injectConsultationPairs();
+                            if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                            if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                        }
+                    }
+                };
+            });
+
+            const delBtn = modal.querySelector('.delete-cons-file');
+            if (delBtn) {
+                delBtn.onclick = (e) => {
+                    if(confirm('Удалить эту вкладку консультаций?')) {
+                        consultationsFiles = consultationsFiles.filter(f => f.id !== e.target.getAttribute('data-id'));
+                        saveConsultationsState();
+                        if (typeof window.injectConsultationPairs === 'function') {
+                            document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
+                            window.injectConsultationPairs();
+                            if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                            if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                        }
+                        renderView('main_menu');
+                    }
+                };
+            }
+        };
+        
+        renderView(viewId);
+        requestAnimationFrame(() => { 
+            overlay.classList.add('active'); 
+            modal.classList.add('active'); 
+            document.body.classList.add('modal-open-body');
+        });
     }
 
     function openSettingsModal(view = 'main') {
@@ -11482,12 +12130,8 @@ body.modal-open-body {
                     openCustomPairModal(null, true);
                 });
 
-                // --- 2. ТУМБЛЕР "КОНСУЛЬТАЦИИ" (Локальная фильтрация с памятью) ---
-                const consultDiv = Array.from(span9.querySelectorAll('div')).find(div =>
-                    div.querySelector('input[type="checkbox"]') && div.textContent.includes('Консультации')
-                );
-
-                // Заранее помечаем строки с консультациями
+                // --- 2. КНОПКА "КОНСУЛЬТАЦИИ" В ТУЛБАРЕ ---
+                // Сначала помечаем строки с системными консультациями ЕТИС
                 span9.querySelectorAll('.timetable-grid tr').forEach(row => {
                     const dis = row.querySelector('.dis');
                     if (dis && dis.textContent.toLowerCase().includes('консультация')) {
@@ -11495,71 +12139,29 @@ body.modal-open-body {
                     }
                 });
 
-                if (consultDiv) {
-                    const wrapper = document.createElement('label');
-                    wrapper.className = 'toolbar-item';
-
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'tumbler-checkbox';
-
-                    // Читаем из памяти
-                    const savedState = localStorage.getItem('etis_show_consultations');
-                    checkbox.checked = savedState !== 'false';
-
-                    wrapper.appendChild(checkbox);
-                    wrapper.appendChild(document.createTextNode('Консультации'));
-                    toolbar.appendChild(wrapper);
-                    consultDiv.remove();
-
-                    // Логика фильтрации (с плавным кроссфейдом таблиц)
-                        checkbox.addEventListener('change', () => {
-                            const show = checkbox.checked;
-                            localStorage.setItem('etis_show_consultations', show);
-
-                            const tables = span9.querySelectorAll('.timetable-grid');
-
-                            // 1. Плавно скрываем все таблицы с расписанием (уменьшаем и делаем прозрачными)
-                            tables.forEach(t => {
-                                t.style.transition = 'opacity 0.15s ease, transform 0.15s ease';
-                                t.style.opacity = '0';
-                                t.style.transform = 'translateY(-5px) scale(0.99)';
-                            });
-
-                            // 2. Ждем окончания затухания (150мс), пересчитываем структуру невидимой таблицы
-                            setTimeout(() => {
-                                span9.querySelectorAll('.consultation-row').forEach(row => {
-                                    if (show) {
-                                        row.classList.remove('hidden-by-filter');
-                                        row.style.display = ''; // Возвращаем строку
-                                    } else {
-                                        row.classList.add('hidden-by-filter');
-                                        row.style.display = 'none'; // Убираем строку
-                                    }
-                                });
-
-                                // Пересчитываем окна и нумерацию пар
-                                if (typeof recalculateTimetable === 'function') recalculateTimetable();
-                                renderNotes();
-
-                                updateLiveTimetable();
-                                
-                                // Принудительно заново рассчитываем затемнение прошедших пар
-                                dimPastPairs();
-
-                                // 3. Плавно проявляем обновленные таблицы обратно
-                                tables.forEach(t => {
-                                    t.style.opacity = '1';
-                                    t.style.transform = 'translateY(0) scale(1)';
-                                });
-                            }, 150);
-                        });
-
-                    // Применяем фильтр при загрузке
-                    if (!checkbox.checked) {
-                        span9.querySelectorAll('.consultation-row').forEach(row => row.classList.add('hidden-by-filter'));
-                    }
+                // Скрываем их при загрузке страницы, если в памяти сохранено false
+                if (localStorage.getItem('etis_show_consultations') === 'false') {
+                    span9.querySelectorAll('.consultation-row').forEach(row => {
+                        row.classList.add('hidden-by-filter');
+                        row.style.display = 'none';
+                    });
                 }
+
+                const consultDiv = Array.from(span9.querySelectorAll('div')).find(div =>
+                    div.querySelector('input[type="checkbox"]') && div.textContent.includes('Консультации')
+                );
+
+                // Убираем старую надпись ЕТИС "Консультации[]" и добавляем красивую кнопку
+                if (consultDiv) consultDiv.remove();
+
+                const consultBtn = document.createElement('div');
+                consultBtn.className = 'toolbar-item';
+                consultBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">support_agent</span> Консультации';
+                toolbar.appendChild(consultBtn);
+
+                consultBtn.addEventListener('click', () => {
+                    openConsultationsModal(window.innerWidth <= 960 ? 'main_menu' : 'system_etis');
+                });
 
                 // --- 3. КНОПКА "СИНХРОНИЗАЦИЯ" ---
                 const syncHeader = Array.from(document.querySelectorAll('h2')).find(h2 => h2.querySelector('#tb_show') || h2.textContent.includes('Синхронизация'));
@@ -12016,6 +12618,117 @@ body.modal-open-body {
                         rows.forEach(r => tbody.appendChild(r));
                     });
                 }
+
+                window.injectConsultationPairs = function() {
+                    const currentWeekEl = document.querySelector('.week.current');
+                    const currentWeekNum = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 1;
+                    const isEvenWeek = currentWeekNum % 2 === 0;
+
+                    const span9 = document.querySelector('.span9');
+                    if (!span9) return;
+                    const days = span9.querySelectorAll("div.day");
+
+                    const shortenName = (fullName) => {
+                        const parts = fullName.trim().split(/\s+/);
+                        if (parts.length >= 3) return `${parts[0]} ${parts[1][0].toUpperCase()}.${parts[2][0].toUpperCase()}.`;
+                        else if (parts.length === 2) return `${parts[0]} ${parts[1][0].toUpperCase()}.`;
+                        return fullName;
+                    };
+
+                    consultationsFiles.forEach(file => {
+                        if (!file.isActive) return;
+
+                        file.teachers.forEach(teacher => {
+                            if (teacher.isActive === false) return; // Пропускаем отключенных преподов
+
+                            teacher.events.forEach(ev => {
+                                if (ev.weekType === 'even' && !isEvenWeek) return;
+                                if (ev.weekType === 'odd' && isEvenWeek) return;
+
+                                days.forEach(day => {
+                                    const dayNameEl = day.querySelector('.day-name');
+                                    if (!dayNameEl || dayNameEl.textContent.trim().toLowerCase() !== ev.dayName.toLowerCase()) return;
+
+                                    const table = day.querySelector('table');
+                                    if (!table) return;
+                                    const tbody = table.querySelector('tbody') || table;
+
+                                    Array.from(tbody.querySelectorAll('tr')).forEach(r => {
+                                        if (r.textContent.includes('0 пар') || r.textContent.includes('Выходной')) r.remove();
+                                    });
+
+                                    let audHtml = '';
+                                    if (ev.aud || ev.link) {
+                                        audHtml += `<div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">`;
+                                        
+                                        if (ev.aud) {
+                                            let displayAud = ev.aud;
+                                            const m = ev.aud.match(/(\d+[а-яa-z]*)\s*[\/\\]\s*(\d+[а-яa-z]*)/i);
+                                            if (m) {
+                                                if (generalConfig.shortAudFormat) {
+                                                    displayAud = `${m[1]}/${m[2]}`;
+                                                } else {
+                                                    const floor = m[1].charAt(0);
+                                                    displayAud = `ауд. ${m[1]}, к. ${m[2]}, э. ${floor}`;
+                                                }
+                                            }
+                                            audHtml += `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>${displayAud}</div>`;
+                                        }
+                                        
+                                        if (ev.link) {
+                                            let pName = "Онлайн";
+                                            if (ev.link.includes('zoom')) pName = "Zoom";
+                                            if (ev.link.includes('telemost')) pName = "Телемост";
+                                            audHtml += `<a href="${ev.link}" target="_blank" class="${pName === "Онлайн" ? "btn-generic-online" : ""}">${pName}</a>`;
+                                        }
+                                        audHtml += `</div>`;
+                                    }
+
+                                    const tr = document.createElement('tr');
+                                    tr.className = 'custom-pair-row docx-consultation-row';
+                                    
+                                    tr.innerHTML = `
+                                        <td class="pair_num">
+                                            <div class="pair-badge-wrapper" style="margin-bottom: 6px;">
+                                                <span class="pair-type-badge" style="color: var(--color-text-secondary); font-weight: 800; font-size: 1.05rem; letter-spacing: 0.5px;">КОНС</span>
+                                            </div>
+                                            <font class="eval" style="font-size: 1.2rem; color: var(--color-text-primary); font-weight: 500;">${ev.startTime}</font>
+                                        </td>
+                                        <td class="pair_info">
+                                            <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
+                                                <span style="font-weight: normal; font-size: 1.4rem; color: var(--color-text-primary);">Консультация</span>
+                                            </div>
+                                            ${audHtml}
+                                        </td>
+                                        <td class="pair_teacher">
+                                            <a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${shortenName(teacher.name)}</a>
+                                        </td>
+                                    `;
+
+                                    tbody.appendChild(tr);
+                                });
+                            });
+                        });
+                    });
+
+                    // Сортировка времени
+                    days.forEach(day => {
+                        const table = day.querySelector('table');
+                        if (!table) return;
+                        const tbody = table.querySelector('tbody') || table;
+                        
+                        const rows = Array.from(tbody.querySelectorAll('tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
+                        rows.sort((a, b) => {
+                            const timeAStr = a.querySelector('.eval')?.textContent.split(':') ||['23','59'];
+                            const timeBStr = b.querySelector('.eval')?.textContent.split(':') ||['23','59'];
+                            return (parseInt(timeAStr[0])*60 + parseInt(timeAStr[1])) - (parseInt(timeBStr[0])*60 + parseInt(timeBStr[1]));
+                        });
+                        rows.forEach(r => tbody.appendChild(r));
+                    });
+                };
+                
+                // Вызываем сразу после объявления
+                window.injectConsultationPairs();
 
                 // Модальное окно создания/редактирования пары (с Умным Добавлением)
                 function openCustomPairModal(dayName, isFromToolbar = false, existingPair = null) {
@@ -12608,6 +13321,9 @@ body.modal-open-body {
 
                 // --- ПАРСИНГ ТИПА ПАРЫ (ЛЕК, ПРАКТ, ЛАБ, КОНС) ---
                 span9.querySelectorAll('.timetable-grid tr').forEach(row => {
+                    // Пропускаем уже отформатированные DOCX консультации
+                    if (row.classList.contains('docx-consultation-row')) return;
+
                     const disContainer = row.querySelector('.pair_info .dis');
                     const numTd = row.querySelector('.pair_num');
 
@@ -12647,22 +13363,22 @@ body.modal-open-body {
                     }
                 });
 
+                // Вызываем инъекцию DOCX перед основным пересчетом, чтобы они появились при первой загрузке!
+                if (window.injectConsultationPairs) window.injectConsultationPairs();
+
                 // --- ЛОГИКА СКРЫТИЯ ПУСТЫХ ПАР И ОБРАБОТКИ ОКОН (УМНАЯ) ---
-                function recalculateTimetable() {
+                window.recalculateTimetable = function() {
                     const days = span9.querySelectorAll("div.day");
                     days.forEach(day => {
                         const table = day.querySelector('table');
                         if (!table) return;
 
-                        // Удаляем старые отрисованные окна и плашки "Выходной"
                         table.querySelectorAll('.timetable-gap-row, .custom-no-pairs').forEach(r => r.remove());
 
                         const rows = Array.from(table.querySelectorAll('tr')).filter(r => !r.classList.contains('timetable-gap-row') && !r.classList.contains('custom-no-pairs'));
 
-                        // Если это уже оригинальный пустой день - не трогаем
                         if (rows.length === 1 && rows[0].textContent.includes('0 пар')) return;
 
-                        // Ищем реальные пары (есть текст И не скрыты тумблером консультаций)
                         const pairData = rows.map(row => {
                             const info = row.querySelector('.pair_info');
                             const isOccupied = info &&
@@ -12674,7 +13390,6 @@ body.modal-open-body {
                         const firstRealIndex = pairData.findIndex(p => p.isOccupied);
                         const lastRealIndex = pairData.map(p => p.isOccupied).lastIndexOf(true);
 
-                        // Если пар нет вообще (всё пусто или мы скрыли все консультации тумблером)
                         if (firstRealIndex === -1) {
                             rows.forEach(r => r.style.display = 'none');
 
@@ -12700,7 +13415,6 @@ body.modal-open-body {
                             return;
                         }
 
-                        // Обработка окон (перерывов)
                         let i = 0;
                         while (i < rows.length) {
                             if (i < firstRealIndex || i > lastRealIndex) {
@@ -12721,12 +13435,9 @@ body.modal-open-body {
                                     const gapRow = document.createElement('tr');
                                     gapRow.className = 'timetable-gap-row';
 
-                                    // Собираем время начала первого скрытого ряда и время окончания последнего для "окна"
                                     const firstHiddenRow = rows[gapStart];
-                                    const lastHiddenRow = rows[i-1];
                                     const startTime = firstHiddenRow.querySelector('.eval')?.textContent || "00:00";
 
-                                    // Записываем время в дата-атрибуты, чтобы функция светофора их видела
                                     gapRow.setAttribute('data-gap-start', startTime);
                                     gapRow.setAttribute('data-gap-count', gapCount);
 
@@ -12752,38 +13463,71 @@ body.modal-open-body {
                             }
                         }
 
-                        // Сначала сбрасываем инлайновые стили у всех строк (если мы переключаем тумблер туда-сюда)
                         Array.from(table.querySelectorAll('tr')).forEach(r => r.style.removeProperty('background-image'));
 
-                        // Выбираем все фактически видимые строки (учитывая окна и консультации)
                         const visibleRows = Array.from(table.querySelectorAll('tr')).filter(r =>
                             r.style.display !== 'none' && !r.classList.contains('hidden-by-filter')
                         );
 
-                        // У самой последней убираем разделительную линию через инлайновый стиль
                         if (visibleRows.length > 0) {
                             visibleRows[visibleRows.length - 1].style.setProperty('background-image', 'none', 'important');
                         }
-                        // --- ДИНАМИЧЕСКАЯ НУМЕРАЦИЯ ПАР ДЛЯ СТУДЕНТА ---
+
+                        // --- ДИНАМИЧЕСКАЯ НУМЕРАЦИЯ, ОЧИСТКА И УНИФИКАЦИЯ ---
+                        const shortenName = (fullName) => {
+                            const parts = fullName.trim().split(/\s+/);
+                            if (parts.length >= 3) return `${parts[0]} ${parts[1][0].toUpperCase()}.${parts[2][0].toUpperCase()}.`;
+                            else if (parts.length === 2) return `${parts[0]} ${parts[1][0].toUpperCase()}.`;
+                            return fullName;
+                        };
+
                         let pairCounter = 1;
                         visibleRows.forEach(row => {
-                            // Пропускаем строки с "окнами" и выходными днями (0 пар)
                             if (row.classList.contains('timetable-gap-row') || row.classList.contains('custom-no-pairs')) return;
 
+                            const isCons = row.classList.contains('consultation-row') || row.classList.contains('docx-consultation-row');
                             const numTd = row.querySelector('.pair_num');
-                            if (numTd) {
-                                // Перебираем содержимое ячейки, чтобы изменить ТОЛЬКО текст номера пары,
-                                // не сломав при этом время (<font>) и капсулы типа (ЛЕК/ПРАКТ)
-                                Array.from(numTd.childNodes).forEach(node => {
-                                    if (node.nodeType === Node.TEXT_NODE && /пара/i.test(node.nodeValue)) {
-                                        node.nodeValue = node.nodeValue.replace(/\d+\s*пара/i, `${pairCounter} пара`);
-                                        pairCounter++;
+                            
+                            if (isCons) {
+                                // Унификация левой колонки для системных консультаций (очистка от пустого пространства и старого времени)
+                                if (row.classList.contains('consultation-row')) {
+                                    const timeEl = numTd.querySelector('.eval');
+                                    let timeText = timeEl ? (timeEl.textContent.match(/\d{1,2}:\d{2}/)?.[0] || '') : '';
+                                    numTd.innerHTML = `
+                                        <div class="pair-badge-wrapper" style="margin-bottom: 6px;">
+                                            <span class="pair-type-badge" style="color: var(--color-text-secondary); font-weight: 800; font-size: 1.05rem; letter-spacing: 0.5px;">КОНС</span>
+                                        </div>
+                                        <font class="eval" style="font-size: 1.2rem; color: var(--color-text-primary); font-weight: 500;">${timeText}</font>
+                                    `;
+
+                                    // Унификация центральной колонки (Название)
+                                    const dis = row.querySelector('.dis');
+                                    if (dis) {
+                                        dis.innerHTML = `<span style="font-weight: normal; font-size: 1.4rem; color: var(--color-text-primary);">Консультация</span>`;
                                     }
-                                });
+
+                                    // Сокращение ФИО преподавателя в системе
+                                    const teacherEl = row.querySelector('.pair_teacher a:not(.eval)');
+                                    if (teacherEl) {
+                                        teacherEl.textContent = shortenName(teacherEl.textContent);
+                                    }
+                                }
+                            } else {
+                                // Обычная нумерация для пар
+                                if (numTd) {
+                                    Array.from(numTd.childNodes).forEach(node => {
+                                        if (node.nodeType === Node.TEXT_NODE && /пара/i.test(node.nodeValue)) {
+                                            node.nodeValue = node.nodeValue.replace(/\d+\s*пара/i, `${pairCounter} пара`);
+                                        }
+                                    });
+                                }
+                                pairCounter++;
                             }
                         });
                     });
+                    
                     if (typeof window.applyHideDaysOff === 'function') window.applyHideDaysOff();
+                    if (typeof window.applyDimming === 'function') window.applyDimming(); // Сразу пересчитываем затемнение
                 }
 
                 // Экспортируем функцию скрытия дней наружу
@@ -14234,7 +14978,6 @@ body.modal-open-body {
                         }
                         let bodyHtml = parts.join('<br>').replace(/^(<br\s*\/?>|\s)+/, '');
                         
-                        // ИЩЕМ ДАТЫ И В ТЕЛЕ, И В ЗАГОЛОВКЕ
                         bodyHtml = highlightDatesInHTML(bodyHtml, titleStr || 'Объявление');
                         const highlightedTitle = titleStr ? highlightDatesInHTML(titleStr, titleStr) : '';
 
@@ -14250,9 +14993,79 @@ body.modal-open-body {
                             </div>
                             ${highlightedTitle ? `<div class="msg-subject">${highlightedTitle}</div>` : ''}
                             <div class="msg-body">${bodyHtml}</div>
-                            ${attachments.length > 0 ? `<div class="msg-footer"><div class="msg-attachments">${attachments.map(a => `<a href="${a.href}" class="file-attachment-link" target="_blank"><span class="material-icons">attach_file</span><span class="file-name">${a.name}</span></a>`).join('')}</div></div>` : ''}
+                            ${attachments.length > 0 ? `<div class="msg-footer"><div class="msg-attachments">${attachments.map(a => {
+                                let isDocx = a.name.toLowerCase().includes('.docx');
+                                let isCons = a.name.toLowerCase().includes('консультац');
+                                
+                                // Проверка, есть ли такой href в базе
+                                const isAlreadyAdded = consultationsFiles.some(f => f.sourceUrl === a.href);
+                                
+                                let btnHtml = '';
+                                if (isDocx && isCons) {
+                                    if (isAlreadyAdded) {
+
+                                        btnHtml = `<button class="answer-btn-custom import-cons-btn added" style="margin-left: 8px; background: var(--color-accent-active) !important; color: var(--color-accent) !important; padding: 4px 12px; font-size: 1.1rem; height: auto; border: 1px solid var(--color-accent) !important; box-shadow: none !important; cursor: default;"><span class="material-icons" style="font-size:1.4rem; margin-right:4px;">check</span>Добавлено</button>`;
+                                    } else {
+                                        // Если файла еще нет
+                                        btnHtml = `<button class="answer-btn-custom import-cons-btn" data-href="${a.href}" style="margin-left: 8px; background: var(--color-green) !important; color: #fff !important; padding: 4px 12px; font-size: 1.1rem; height: auto;"><span class="material-icons" style="font-size:1.4rem; margin-right:4px;">add_to_photos</span>В расписание</button>`;
+                                    }
+                                }
+                                return `<div style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:4px;"><a href="${a.href}" class="file-attachment-link" target="_blank"><span class="material-icons">attach_file</span><span class="file-name">${a.name}</span></a>${btnHtml}</div>`;
+                            }).join('')}</div></div>` : ''}
                         `;
                         container.appendChild(card);
+                    });
+
+                    // Функция импорта консультаций из Объявлений
+                    container.querySelectorAll('.import-cons-btn').forEach(btn => {
+                        // Если кнопка уже помечена как "Добавлено", ничего не делаем
+                        if (btn.classList.contains('added')) return;
+
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            const href = btn.getAttribute('data-href');
+                            const originalHTML = btn.innerHTML;
+                            btn.innerHTML = '<span class="material-icons" style="animation:spin 1s linear infinite">sync</span>Загрузка...';
+                            
+                            GM_xmlhttpRequest({
+                                method: 'GET',
+                                url: href,
+                                responseType: 'arraybuffer',
+                                onload: function(res) {
+                                    if (res.status === 200) {
+                                        const blob = new Blob([res.response], {type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+                                        const file = new File([blob], "consultations.docx");
+                                        
+                                        // передаем href как третий аргумент
+                                        processDocxFile(file, (success, data) => {
+                                             if (success) {
+                                                 btn.innerHTML = '<span class="material-icons" style="font-size:1.4rem; margin-right:4px;">check</span>Добавлено';
+                                                 btn.classList.add('added');
+                                                 btn.style.setProperty('background', 'var(--color-accent-active)', 'important');
+                                                 btn.style.setProperty('color', 'var(--color-accent)', 'important');
+                                                 btn.style.setProperty('border', '1px solid var(--color-accent)', 'important');
+                                                 btn.style.setProperty('cursor', 'default', 'important');
+                                                 
+                                                 if (window.showEtisPush) window.showEtisPush('Консультации загружены', data.title, 'Добавлено в расписание (не забудьте включить тумблер!)', 'success', 'event_available');
+                                                 
+                                                 if (typeof window.injectConsultationPairs === 'function') {
+                                                     document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
+                                                     window.injectConsultationPairs();
+                                                     if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                                                 }
+                                             } else {
+                                                 btn.innerHTML = '<span class="material-icons" style="font-size:1.4rem; margin-right:4px;">error</span>Ошибка';
+                                                 setTimeout(() => btn.innerHTML = originalHTML, 3000);
+                                             }
+                                        }, href);
+                                    }
+                                },
+                                onerror: function() {
+                                    btn.innerHTML = '<span class="material-icons" style="font-size:1.4rem; margin-right:4px;">error</span>Ошибка сети';
+                                    setTimeout(() => btn.innerHTML = originalHTML, 3000);
+                                }
+                            });
+                        };
                     });
 
                     container.querySelectorAll('.msg-card').forEach(card => {
@@ -14268,6 +15081,17 @@ body.modal-open-body {
 
                     // Инициализация свайпов для мобилок
                     initMessageSwipes(container, 'Объявление.png');
+
+                    // Автозаполнение поиска, если перешли по ссылке из Расписания
+                    const urlParamsSearch = new URLSearchParams(window.location.search);
+                    if (urlParamsSearch.has('search')) {
+                        const input = searchWrapper.querySelector('#ann-search');
+                        if (input) {
+                            input.value = urlParamsSearch.get('search');
+                            // Инициируем фильтрацию
+                            setTimeout(() => input.dispatchEvent(new Event('input')), 50);
+                        }
+                    }
 
                     // Логика фильтрации
                     searchWrapper.querySelector('#ann-search').addEventListener('input', (e) => {
