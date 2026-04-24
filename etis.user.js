@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      2.3
-// @changelog    Возможность загрузить файл с консультациями в новое окно и отображение их в расписании (Beta).
+// @version      2.31
+// @changelog    Фиксы: 1) Длины внешних событий в расписании, 2) Окна с консультациями, 3) Унификация интерфейса. Настройка "окон" в расписании. Разные цвета у событий из внешних календарей
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
@@ -348,6 +348,19 @@ table tbody tr:hover th {
 }
 table tbody tr:hover td[rowspan] {
     background-color: var(--color-card) !important;
+}
+
+/* Отступы у разделителей в таблицах оценок */
+.session-table-v6 tbody tr:not(:last-child) td,
+.term-table-v6 tbody tr:not(:last-child) td {
+    border-bottom: none !important;
+}
+.session-table-v6 tbody tr:not(:last-child),
+.term-table-v6 tbody tr:not(:last-child) {
+    background-image: linear-gradient(to right, transparent 16px, var(--color-table-border) 16px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)) !important;
+    background-position: bottom !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 1px !important;
 }
 
 .slimtab_nice, .common, .teach_plan { border: none !important; }
@@ -5261,24 +5274,28 @@ button.search-capsule:hover {
 
 /* Стили текстового поля в модалке */
 .note-modal-textarea {
-    width: 100%;
-    min-height: 140px;
-    padding: 1.4rem;
-    border-radius: var(--radius-small);
-    border: 1px solid var(--color-table-border);
-    background: var(--color-input);
-    color: var(--color-text-primary);
-    font-size: 1.4rem;
-    resize: vertical;
-    margin-top: 1rem;
-    font-family: inherit;
-    line-height: 1.5;
+    width: 100% !important;
+    min-height: 140px !important;
+    padding: 1.6rem !important;
+    border-radius: var(--radius-large) !important;
+    border: 1px solid var(--color-table-border) !important;
+    background: var(--color-input) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.4rem !important;
+    resize: vertical !important;
+    margin-top: 1rem !important;
+    font-family: inherit !important;
+    line-height: 1.5 !important;
+    box-sizing: border-box !important;
 }
 
-.note-modal-textarea:focus {
-    border-color: var(--color-accent);
-    outline: none;
-    box-shadow: 0 0 0 3px var(--color-accent-active);
+/* Убираем акцентную подсветку у ВСЕХ полей в модальном окне */
+.note-modal-textarea:focus,
+.custom-pair-input-group > input:focus,
+.custom-pair-input-group > select:focus {
+    border-color: var(--color-table-border) !important;
+    outline: none !important;
+    box-shadow: none !important;
 }
 
 /* --- Одинаковая высота для капсул тулбара и кружков недель --- */
@@ -5529,15 +5546,28 @@ button.search-capsule:hover {
 .delete-custom-pair-btn:hover { background: rgba(255, 59, 48, 0.1); }
 
 /* Инпуты в модалке */
-.custom-pair-input-group { display: flex; gap: 1rem; margin-bottom: 1.2rem; }
+.custom-pair-input-group { display: flex; gap: 1.2rem; margin-bottom: 1.2rem; }
 .custom-pair-input-group > input, .custom-pair-input-group > select {
     flex: 1;
-    padding: 1rem 1.2rem !important;
+    padding: 1.2rem 1.6rem !important;
     border: 1px solid var(--color-table-border) !important;
     background: var(--color-input) !important;
-    border-radius: var(--radius-small) !important;
+    border-radius: var(--radius-medium) !important;
     color: var(--color-text-primary) !important;
     font-size: 1.4rem !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    height: auto !important;
+    line-height: 1.4 !important;
+}
+.custom-pair-input-group > select {
+    appearance: none !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='var(--color-text-secondary)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 1.2rem center !important;
+    background-size: 1.4rem !important;
+    padding-right: 3.6rem !important;
+    cursor: pointer;
 }
 
 /* Вкладки в модальном окне редактирования */
@@ -5797,6 +5827,16 @@ button.analytics-btn {
         color: var(--color-accent) !important;
         background: transparent !important;
         transform: none !important;
+    }
+
+    .session-table-v6 tbody tr:not(:last-child),
+    .term-table-v6 tbody tr:not(:last-child) {
+        background-image: linear-gradient(to right, 
+            transparent 10px, 
+            var(--color-table-border) 10px, 
+            var(--color-table-border) calc(100% - 10px), 
+            transparent calc(100% - 10px)
+        ) !important;
     }
 }
 
@@ -6727,10 +6767,39 @@ body.modal-open-body {
         'yellow', 'orange', 'deeporange', 'coral', 'brown', 'chocolate', 'bluegrey', 'slate', 'graphite', 'black'
     ];
 
+    // Цвета для внешних календарей
+    const EXT_CAL_COLORS =[
+        { hex: '#FF2D55', bg: 'rgba(255, 45, 85, 0.15)' },   // Розовый
+        { hex: '#00BCD4', bg: 'rgba(0, 188, 212, 0.15)' },   // Голубой
+        { hex: '#A2845E', bg: 'rgba(162, 132, 94, 0.15)' },  // Коричневый
+        { hex: '#5856D6', bg: 'rgba(88, 86, 214, 0.15)' },   // Индиго
+        { hex: '#009688', bg: 'rgba(0, 150, 136, 0.15)' },   // Бирюзовый
+        { hex: '#FF5722', bg: 'rgba(255, 87, 34, 0.15)' }    // Оранжевый
+    ];
+
+    function getRandomExtColor() {
+        return EXT_CAL_COLORS[Math.floor(Math.random() * EXT_CAL_COLORS.length)].hex;
+    }
+
+    function getExtColorBg(hex) {
+        const colorObj = EXT_CAL_COLORS.find(c => c.hex === hex);
+        return colorObj ? colorObj.bg : 'rgba(175, 82, 222, 0.15)';
+    }
+
+    function migrateExternalCals() {
+        let cals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+        if (cals.length > 0 && typeof cals[0] === 'string') {
+            // Мигрируем старые календари-строки в объекты с цветом
+            cals = cals.map(url => ({ url: url, color: getRandomExtColor() }));
+            localStorage.setItem('etis_external_cals_v2', JSON.stringify(cals));
+        }
+        return cals;
+    }
+
     const GENERAL_CONFIG_KEY = 'etis_general_config';
     let savedConfig = JSON.parse(localStorage.getItem(GENERAL_CONFIG_KEY)) || {};
     const defaultCompactConfig = { showWorkType: true, showControlType: false, showPassScore: true, showRating: false, showDate: true, showTeacher: false };
-    let generalConfig = { dimPastPairs: true, shortAudFormat: false, hideDaysOff: false, showSunday: false, absoluteScores: false, compactGrades: false, watermark: true, datesLeft: false, generateQR: true, ...savedConfig };
+    let generalConfig = { dimPastPairs: true, shortAudFormat: false, hideDaysOff: false, showSunday: false, absoluteScores: false, compactGrades: false, watermark: true, datesLeft: false, generateQR: true, showGaps: true, showGapsCustom: true, ...savedConfig };
     generalConfig.compactGradesConfig = { ...defaultCompactConfig, ...(generalConfig.compactGradesConfig || {}) };
 
     function applyAccentColor() {
@@ -7458,6 +7527,7 @@ body.modal-open-body {
 
                     let startTimeStr = "";
                     let duration = 90;
+                    let explicitEndTimeStr = row.getAttribute('data-end-time');
 
                     if (row.classList.contains('timetable-gap-row')) {
                         startTimeStr = row.getAttribute('data-gap-start');
@@ -7468,12 +7538,19 @@ body.modal-open-body {
                         if (timeEl) startTimeStr = timeEl.textContent.trim();
                     }
 
-                    if (!startTimeStr || startTimeStr === "00:00") return;
+                    if (!startTimeStr || startTimeStr === "00:00" || startTimeStr === "Весь день") return;
 
                     hasRealPairs = true;
                     const parts = startTimeStr.split(':');
                     const startMins = parseInt(parts[0]) * 60 + parseInt(parts[1]);
-                    const endMins = startMins + duration;
+
+                    let endMins;
+                    if (explicitEndTimeStr) {
+                        const endParts = explicitEndTimeStr.split(':');
+                        endMins = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+                    } else {
+                        endMins = startMins + duration;
+                    }
 
                     if (startMins < firstPairStart) firstPairStart = startMins;
                     if (endMins > lastPairEnd) lastPairEnd = endMins;
@@ -7914,8 +7991,9 @@ body.modal-open-body {
                 #etis-cons-modal .settings-sidebar-btn.active { background: var(--color-accent) !important; color: var(--color-text-primary-invert) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
                 #etis-cons-modal .settings-sidebar-btn.active .material-icons, #etis-cons-modal .settings-sidebar-btn.active .sidebar-btn-text { color: var(--color-text-primary-invert) !important; }
                 #etis-cons-modal .settings-sidebar-btn.active .chevron { display: none !important; }
-                .cons-email-copy { color: var(--color-text-link); cursor: pointer; text-decoration: underline; text-decoration-style: dashed; transition: color 0.2s; }
-                .cons-email-copy:hover { color: var(--color-accent) !important; }
+                
+                .cons-email-copy { color: var(--color-text-link); cursor: pointer; text-decoration: none; transition: color 0.2s; }
+                .cons-email-copy:hover { color: var(--color-accent) !important; text-decoration: underline; }
                 
                 .copy-word-hint {
                     color: var(--color-accent);
@@ -7948,7 +8026,7 @@ body.modal-open-body {
                 @media (min-width: 961px) {
                     #etis-cons-modal { max-width: 850px !important; height: 60vh !important; min-height: 500px !important; }
                     #etis-cons-modal .settings-layout { flex-direction: row !important; }
-                    #etis-cons-modal .settings-sidebar { border-right: 1px solid var(--color-table-border); padding-bottom: 2.4rem !important; }
+                    #etis-cons-modal .settings-sidebar { width: 250px !important; min-width: 250px !important; max-width: 250px !important; border-right: 1px solid var(--color-table-border); padding-bottom: 2.4rem !important; }
                 }
             `;
             document.head.appendChild(style);
@@ -7980,13 +8058,13 @@ body.modal-open-body {
                 <div class="settings-sidebar-btn ${activeFileId === 'system_etis' ? 'active' : ''}" data-file-id="system_etis">
                     <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'system_etis' ? '' : 'color: var(--color-text-secondary);'}">school</span>
                     <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Расписание ЕТИС</span>
-                    <span class="material-icons chevron hidden-on-mobile" style="color: var(--color-text-secondary);">chevron_right</span>
+                    <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
                 </div>
 
                 <div class="settings-sidebar-btn ${activeFileId === 'upload_cons' ? 'active' : ''}" data-file-id="upload_cons">
                     <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'upload_cons' ? '' : 'color: var(--color-text-secondary);'}">upload_file</span>
                     <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Добавить файл</span>
-                    <span class="material-icons chevron hidden-on-mobile" style="color: var(--color-text-secondary);">chevron_right</span>
+                    <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
                 </div>
                 <hr style="border-top: 1px solid var(--color-table-border); border-bottom: none; margin: 8px 0;">
             `;
@@ -7998,7 +8076,7 @@ body.modal-open-body {
                     <div class="settings-sidebar-btn ${isActiveClass}" data-file-id="${file.id}">
                         <span class="material-icons" style="margin-right: 12px; ${activeFileId === file.id ? '' : 'color: var(--color-text-secondary);'}">description</span>
                         <span class="sidebar-btn-text" title="${file.title}" style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600;">${shortTitle}</span>
-                        <span class="material-icons chevron hidden-on-mobile" style="color: var(--color-text-secondary);">chevron_right</span>
+                        <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
                     </div>
                 `;
             });
@@ -8017,7 +8095,7 @@ body.modal-open-body {
                         <p style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 1.6rem; line-height: 1.5;">
                             Это консультации, которые система ЕТИС автоматически добавила в ваше расписание.
                         </p>
-                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 10px 16px; background: var(--color-card); border-radius: 12px; border: 1px solid var(--color-table-border);">
+                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 10px 20px; background: var(--color-card); border-radius: 50px; border: 1px solid var(--color-table-border);">
                             <span style="font-size:1.3rem; font-weight:600; color:var(--color-text-primary);">Отображать в расписании</span>
                             <input type="checkbox" id="system-cons-toggle" class="tumbler-checkbox" ${isSystemShow ? 'checked' : ''}>
                         </label>
@@ -8032,7 +8110,7 @@ body.modal-open-body {
                             Вы можете загрузить файл с расписанием консультаций, чтобы они были у вас под рукой и отображались в вашем расписании. Для этого зайдите в <a href="stu_ann.announces" style="color: var(--color-accent); font-weight: 800; text-decoration: none;">Объявления</a>, впишите в поиск <span class="copy-word-hint" title="Нажмите, чтобы скопировать" data-copy="консультаций">"консультаций"</span>, нажмите на кнопку "В расписание", либо скачайте его и загрузите сюда.
                         </p>
                         
-                        <div id="cons-drop-zone" style="border: 2px dashed var(--color-accent); border-radius: var(--radius-medium); padding: 4rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--color-card);">
+                        <div id="cons-drop-zone" style="border: 2px dashed var(--color-accent); border-radius: var(--radius-large); padding: 4rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--color-card);">
                             <span class="material-icons" style="font-size: 4rem; color: var(--color-accent); margin-bottom: 1rem;">cloud_upload</span>
                             <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Нажмите или перетащите DOCX файл сюда</div>
                             <div style="font-size: 1.2rem; color: var(--color-text-secondary);">Поддерживаются файлы .docx</div>
@@ -8048,20 +8126,22 @@ body.modal-open-body {
                     <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
                         <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">${activeFile.title}</div>
                         
-                        <div style="display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap;">
-                            <label style="flex: 1; display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 10px 16px; background: var(--color-card); border-radius: 12px; border: 1px solid var(--color-table-border);">
-                                <span style="font-size:1.3rem; font-weight:600; color:var(--color-text-primary);">Отображать в расписании</span>
+                        <div style="display: flex; gap: 1.2rem; align-items: center; flex-wrap: nowrap;">
+                            <label style="flex: 1; display:flex; align-items:center; justify-content:space-between; gap: 12px; cursor:pointer; padding: 12px 20px; background: var(--color-card); border-radius: 24px; border: 1px solid var(--color-table-border);">
+                                <span style="font-size:1.3rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Отображать в расписании</span>
                                 <input type="checkbox" class="tumbler-checkbox toggle-cons-file" data-id="${activeFile.id}" ${isFileActive ? 'checked' : ''}>
                             </label>
-                            <button class="answer-btn-custom delete-cons-file" data-id="${activeFile.id}" style="background: rgba(255, 59, 48, 0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255, 59, 48, 0.3) !important; box-shadow: none !important;">
-                                <span class="material-icons" style="font-size: 1.8rem; margin-right: 6px;">delete</span>Удалить
+                            <button class="answer-btn-custom delete-cons-file" data-id="${activeFile.id}" title="Удалить" style="background: rgba(255, 59, 48, 0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255, 59, 48, 0.3) !important; box-shadow: none !important; width: 48px; height: 48px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <span class="material-icons" style="font-size: 2.2rem; margin: 0;">delete_outline</span>
                             </button>
                         </div>
                     </div>
 
-                    <div style="margin-bottom: 1.6rem; position: relative;">
-                        <span class="material-icons" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-text-secondary); font-size: 20px;">search</span>
-                        <input type="text" id="cons-search-input" placeholder="Поиск по ФИО преподавателя" style="width: 100%; padding: 1.2rem 1.6rem 1.2rem 42px !important; margin: 0 !important; box-sizing: border-box; background: var(--color-input) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; box-shadow: none !important;">
+                    <div class="teacher-search-wrapper" style="margin-top: 0; margin-bottom: 1.6rem;">
+                        <div class="search-capsule" style="max-width: 100%;">
+                            <span class="material-icons search-icon">search</span>
+                            <input type="text" class="search-input" id="cons-search-input" placeholder="Поиск" style="padding-left: 44px !important;">
+                        </div>
                     </div>
 
                     <div id="cons-teachers-list" style="display: flex; flex-direction: column; gap: 1.2rem;">
@@ -8081,7 +8161,7 @@ body.modal-open-body {
                     const uniqueLinks =[...new Set(t.events.map(e => e.link).filter(Boolean))];
 
                     contentHtml += `
-                        <div class="cons-teacher-card" data-name="${t.name.toLowerCase()}" style="background: var(--color-card); border: 1px solid var(--color-table-border); padding: 1.6rem; border-radius: var(--radius-medium); opacity: ${cardOpacity}; transition: opacity 0.2s;">
+                        <div class="cons-teacher-card" data-name="${t.name.toLowerCase()}" style="background: var(--color-card); border: 1px solid var(--color-table-border); padding: 1.6rem; border-radius: var(--radius-large); opacity: ${cardOpacity}; transition: opacity 0.2s;">
                             <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
                                 <div>
                                     <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary);">${t.name}</div>
@@ -8346,6 +8426,22 @@ body.modal-open-body {
                     <div style="margin: 0;">
                         <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
                             <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Окна</span>
+                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Отображение количества свободных пар между занятиями</span>
+                            </div>
+                            <input type="checkbox" id="setting-show-gaps" class="tumbler-checkbox" ${generalConfig.showGaps ? 'checked' : ''}>
+                        </label>
+                        <div id="gaps-custom-wrapper" style="display: ${generalConfig.showGaps ? 'block' : 'none'};">
+                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Окна между своими парами</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Рассчитывать окна для консультаций и внешних календарей</span>
+                                </div>
+                                <input type="checkbox" id="setting-show-gaps-custom" class="tumbler-checkbox" ${generalConfig.showGapsCustom ? 'checked' : ''}>
+                            </label>
+                        </div>
+                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                            <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Скрывать выходные дни</span>
                                 <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Убирает из расписания пустые дни без пар</span>
                             </div>
@@ -8484,19 +8580,19 @@ body.modal-open-body {
                         </div>
 
                         <div class="settings-sidebar-btn ${currentView === 'general' ? 'active' : ''}" data-target="general">
-                            <span class="material-icons">settings</span><span class="sidebar-btn-text">Общие</span><span class="material-icons chevron hidden-on-mobile">chevron_right</span>
+                            <span class="material-icons">settings</span><span class="sidebar-btn-text">Общие</span><span class="material-icons chevron">chevron_right</span>
                         </div>
                         <div class="settings-sidebar-btn ${currentView === 'timetable' ? 'active' : ''}" data-target="timetable">
-                            <span class="material-icons">calendar_today</span><span class="sidebar-btn-text">Расписание</span><span class="material-icons chevron hidden-on-mobile">chevron_right</span>
+                            <span class="material-icons">calendar_today</span><span class="sidebar-btn-text">Расписание</span><span class="material-icons chevron">chevron_right</span>
                         </div>
                         <div class="settings-sidebar-btn ${currentView === 'grades' ? 'active' : ''}" data-target="grades">
-                            <span class="material-icons">analytics</span><span class="sidebar-btn-text">Оценки</span><span class="material-icons chevron hidden-on-mobile">chevron_right</span>
+                            <span class="material-icons">analytics</span><span class="sidebar-btn-text">Оценки</span><span class="material-icons chevron">chevron_right</span>
                         </div>
                         <div class="settings-sidebar-btn ${currentView === 'appearance' ? 'active' : ''}" data-target="appearance">
-                            <span class="material-icons">palette</span><span class="sidebar-btn-text">Внешний вид</span><span class="material-icons chevron hidden-on-mobile">chevron_right</span>
+                            <span class="material-icons">palette</span><span class="sidebar-btn-text">Внешний вид</span><span class="material-icons chevron">chevron_right</span>
                         </div>
                         <div class="settings-sidebar-btn ${currentView === 'version' || currentView === 'history' ? 'active' : ''}" data-target="version">
-                            <span class="material-icons">system_update</span><span class="sidebar-btn-text">Обновление</span>${updateState.hasUpdate ? '<span class="badge-point"></span>' : ''}<span class="material-icons chevron hidden-on-mobile">chevron_right</span>
+                            <span class="material-icons">system_update</span><span class="sidebar-btn-text">Обновление</span>${updateState.hasUpdate ? '<span class="badge-point"></span>' : ''}<span class="material-icons chevron">chevron_right</span>
                         </div>
                     </div>
 
@@ -8544,6 +8640,18 @@ body.modal-open-body {
                     localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                 };
             } else if (currentView === 'timetable') {
+                modal.querySelector('#setting-show-gaps').onchange = (e) => { 
+                    generalConfig.showGaps = e.target.checked; 
+                    const wrap = modal.querySelector('#gaps-custom-wrapper');
+                    if (wrap) wrap.style.display = e.target.checked ? 'block' : 'none';
+                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); 
+                    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable(); 
+                };
+                modal.querySelector('#setting-show-gaps-custom').onchange = (e) => { 
+                    generalConfig.showGapsCustom = e.target.checked; 
+                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); 
+                    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable(); 
+                };
                 modal.querySelector('#setting-hide-days').onchange = (e) => { generalConfig.hideDaysOff = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyHideDaysOff) window.applyHideDaysOff(); };
                 modal.querySelector('#setting-dim-pairs').onchange = (e) => { generalConfig.dimPastPairs = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyDimming) window.applyDimming(); };
                 modal.querySelector('#setting-short-aud').onchange = (e) => { generalConfig.shortAudFormat = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
@@ -10427,16 +10535,24 @@ body.modal-open-body {
                                 } else if (isToday) {
                                     // На этой неделе: сегодняшний день
                                     let startMins = -1;
+                                    let endMins = -1;
                                     const timeEl = row.querySelector('.eval');
                                     if (timeEl) {
                                         const timeMatch = timeEl.textContent.match(/(\d{1,2}):(\d{2})/);
                                         if (timeMatch) {
                                             startMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+                                            const explicitEndTime = row.getAttribute('data-end-time');
+                                            if (explicitEndTime) {
+                                                const ep = explicitEndTime.split(':');
+                                                endMins = parseInt(ep[0]) * 60 + parseInt(ep[1]);
+                                            } else {
+                                                endMins = startMins + 90;
+                                            }
                                         }
                                     }
 
-                                    if (startMins !== -1) {
-                                        if (todayMins >= (startMins + 90)) isPassed = true;
+                                    if (startMins !== -1 && endMins !== -1) {
+                                        if (todayMins >= endMins) isPassed = true;
                                     }
                                 }
 
@@ -12270,13 +12386,15 @@ body.modal-open-body {
                         let oldLink = localStorage.getItem('etis_external_cal_link');
                         if (oldLink) {
                             let arr = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
-                            if (!arr.includes(oldLink)) arr.push(oldLink);
+                            if (!arr.some(c => c.url === oldLink || c === oldLink)) {
+                                arr.push({ url: oldLink, color: getRandomExtColor() });
+                            }
                             localStorage.setItem('etis_external_cals_v2', JSON.stringify(arr));
                             localStorage.removeItem('etis_external_cal_link');
                         }
 
                         const renderCalsList = () => {
-                            let cals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+                            let cals = migrateExternalCals();
                             calsListContainer.innerHTML = '';
                             
                             if (cals.length === 0) {
@@ -12285,29 +12403,83 @@ body.modal-open-body {
                             }
                             calsListContainer.style.display = 'flex';
                             
-                            cals.forEach((calUrl, idx) => {
+                            cals.forEach((calObj, idx) => {
+                                const calUrl = calObj.url;
+                                const calColor = calObj.color || '#AF52DE';
+                                const shortUrl = calUrl.length > 40 ? calUrl.substring(0, 25) + '...' + calUrl.substring(calUrl.length - 10) : calUrl;
+                                
                                 const item = document.createElement('div');
                                 item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.4rem; background: var(--color-card); border: 1px solid var(--color-table-border); border-radius: var(--radius-small); gap: 1rem; box-shadow: var(--shadow-main);';
                                 
-                                const shortUrl = calUrl.length > 40 ? calUrl.substring(0, 25) + '...' + calUrl.substring(calUrl.length - 10) : calUrl;
-                                
+                                // Иконка календаря и текст — слева, выбор цвета и удаление — справа
                                 item.innerHTML = `
                                     <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
                                         <span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem; flex-shrink: 0;">event</span>
                                         <span style="font-size: 1.3rem; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${calUrl}">${shortUrl}</span>
                                     </div>
-                                    <button class="delete-cal-btn" data-idx="${idx}">
-                                        <span class="material-icons" style="font-size: 2rem;">delete_outline</span>
-                                    </button>
+                                    <div style="display: flex; align-items: center; gap: 1.6rem; flex-shrink: 0; padding-right: 0.4rem;">
+                                        <div class="ext-cal-color-picker" data-idx="${idx}" style="width: 18px; height: 18px; border-radius: 50%; background: ${calColor}; cursor: pointer; box-shadow: 0 0 0 2px var(--color-card), 0 0 0 4px ${calColor}; transition: transform 0.2s;" title="Изменить цвет"></div>
+                                        <button class="delete-cal-btn" data-idx="${idx}" title="Удалить" style="margin: 0; padding: 4px;">
+                                            <span class="material-icons" style="font-size: 2rem;">delete_outline</span>
+                                        </button>
+                                    </div>
                                 `;
                                 calsListContainer.appendChild(item);
+                            });
+
+                            // Логика выбора цвета
+                            calsListContainer.querySelectorAll('.ext-cal-color-picker').forEach(picker => {
+                                picker.addEventListener('click', (e) => {
+                                    e.stopPropagation();
+                                    document.querySelectorAll('.ext-color-popup').forEach(p => p.remove());
+
+                                    const idx = e.target.getAttribute('data-idx');
+                                    const popup = document.createElement('div');
+                                    popup.className = 'ext-color-popup';
+                                    
+                                    // Сетка 3x2 (3 колонки, автоматически перенесется на 2 строки)
+                                    popup.style.cssText = 'position: absolute; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: var(--color-card); padding: 16px; border-radius: var(--radius-medium); box-shadow: var(--shadow-dialog); border: 1px solid var(--color-table-border); z-index: 100000;';
+
+                                    EXT_CAL_COLORS.forEach(c => {
+                                        const circle = document.createElement('div');
+                                        circle.style.cssText = `width: 28px; height: 28px; border-radius: 50%; background: ${c.hex}; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.15);`;
+                                        circle.onmouseenter = () => circle.style.transform = 'scale(1.2)';
+                                        circle.onmouseleave = () => circle.style.transform = 'scale(1)';
+                                        circle.onclick = (ev) => {
+                                            ev.stopPropagation();
+                                            let currentCals = migrateExternalCals();
+                                            if(currentCals[idx]) {
+                                                currentCals[idx].color = c.hex;
+                                                localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
+                                                popup.remove();
+                                                picker.style.background = c.hex;
+                                                picker.style.boxShadow = `0 0 0 2px var(--color-card), 0 0 0 4px ${c.hex}`;
+                                                window.location.reload(); 
+                                            }
+                                        };
+                                        popup.appendChild(circle);
+                                    });
+
+                                    const rect = e.target.getBoundingClientRect();
+                                    popup.style.top = `${rect.bottom + window.scrollY + 12}px`;
+                                    popup.style.left = `${rect.left + window.scrollX - 50}px`;
+                                    document.body.appendChild(popup);
+
+                                    const closePopup = (ev) => {
+                                        if (!popup.contains(ev.target) && ev.target !== e.target) {
+                                            popup.remove();
+                                            document.removeEventListener('click', closePopup);
+                                        }
+                                    };
+                                    setTimeout(() => document.addEventListener('click', closePopup), 0);
+                                });
                             });
 
                             // Навешиваем события на кнопки удаления
                             calsListContainer.querySelectorAll('.delete-cal-btn').forEach(btn => {
                                 btn.addEventListener('click', (e) => {
                                     const idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
-                                    let currentCals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
+                                    let currentCals = migrateExternalCals();
                                     
                                     if (confirm('Удалить этот календарь из расписания?')) {
                                         currentCals.splice(idx, 1);
@@ -12324,9 +12496,9 @@ body.modal-open-body {
                             const val = extInput.value.trim();
                             if (!val) return;
                             
-                            let cals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
-                            if (!cals.includes(val)) {
-                                cals.push(val);
+                            let cals = migrateExternalCals();
+                            if (!cals.some(c => c.url === val)) {
+                                cals.push({ url: val, color: getRandomExtColor() });
                                 localStorage.setItem('etis_external_cals_v2', JSON.stringify(cals));
                             }
                             
@@ -12542,12 +12714,17 @@ body.modal-open-body {
                                 });
 
                                 let typeClass = 'type-badge-lek';
+                                let typeColor = '';
                                 if (pair.type === 'практ') typeClass = 'type-badge-pract';
                                 else if (pair.type === 'лаб') typeClass = 'type-badge-lab';
+                                else if (pair.type === 'экз' || pair.type === 'зач') typeClass = 'type-badge-exam';
+                                else if (pair.type === 'конс') typeClass = 'type-badge-cons';
+                                else if (pair.type === 'лич') { typeClass = ''; typeColor = 'color: #AF52DE;'; }
 
                                 const tr = document.createElement('tr');
                                 tr.className = 'custom-pair-row';
                                 tr.setAttribute('data-custom-id', pair.id);
+                                if (pair.endTime) tr.setAttribute('data-end-time', pair.endTime);
 
                                 // Умное форматирование аудитории перед отрисовкой
                                 let displayAud = pair.aud;
@@ -12566,7 +12743,7 @@ body.modal-open-body {
                                 tr.innerHTML = `
                                     <td class="pair_num">
                                         <div class="pair-badge-wrapper">
-                                            <span class="pair-type-badge ${typeClass}">${pair.type}</span>
+                                            <span class="pair-type-badge ${typeClass}" ${typeColor ? `style="${typeColor}"` : ''}>${pair.type === 'лич' ? 'ЛИЧ' : pair.type}</span>
                                         </div>
                                         1 пара<br><font class="eval">${pair.startTime}</font>
                                     </td>
@@ -12686,6 +12863,7 @@ body.modal-open-body {
 
                                     const tr = document.createElement('tr');
                                     tr.className = 'custom-pair-row docx-consultation-row';
+                                    if (ev.endTime) tr.setAttribute('data-end-time', ev.endTime);
                                     
                                     tr.innerHTML = `
                                         <td class="pair_num">
@@ -12829,40 +13007,44 @@ body.modal-open-body {
                                 ${!existingPair ? `
                                 <div style="display: flex; align-items: center; position: relative; margin-bottom: 2rem;">
                                     <span class="material-icons" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-accent); font-size: 22px; pointer-events: none; z-index: 2;">auto_awesome</span>
-                                    <input type="text" id="cp-smart-add" placeholder="${placeholders[0]}" style="width: 100%; padding: 1.2rem 1.6rem 1.2rem 44px !important; margin: 0 !important; box-sizing: border-box; background: var(--color-accent-active) !important; border: 1px solid transparent !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; box-shadow: none !important;">
+                                    <input type="text" id="cp-smart-add" placeholder="${placeholders[0]}" style="width: 100%; padding: 1.2rem 1.6rem 1.2rem 44px !important; margin: 0 !important; box-sizing: border-box; background: var(--color-accent-active) !important; border: 1px solid transparent !important; border-radius: var(--radius-medium) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; box-shadow: none !important;">
                                 </div>
                                 ` : ''}
 
-                                <div class="custom-pair-input-group" style="margin-bottom: 1.2rem;">
-                                    <input type="text" id="cp-subject" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}" style="box-shadow: none !important; width: 100%; box-sizing: border-box; margin: 0 !important; padding: 1rem 1.2rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important;">
+                                <div class="custom-pair-input-group">
+                                    <input type="text" id="cp-subject" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}">
                                 </div>
 
-                                <div class="custom-pair-input-group" style="margin-bottom: 1.2rem; display: flex; gap: 1rem;">
+                                <div class="custom-pair-input-group">
                                     ${isFromToolbar ? `
-                                        <input type="text" id="cp-date-input" placeholder="${todayNamePlaceholder}" value="${existingPair ? existingPair.dayName : ''}" style="flex: 0.8; box-shadow: none !important; margin: 0 !important; padding: 1rem 1.2rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important;">
+                                        <input type="text" id="cp-date-input" placeholder="${todayNamePlaceholder}" value="${existingPair ? existingPair.dayName : ''}" style="flex: 0.8;">
                                     ` : `
                                         <input type="hidden" id="cp-date-input" value="${dayName}">
                                     `}
-                                    <input type="time" id="cp-start" value="${defStart}" required title="Время начала" style="flex: 1; box-shadow: none !important; margin: 0 !important; padding: 1rem 1.2rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important;">
-                                    <input type="time" id="cp-end" value="${defEnd}" required title="Время окончания" style="flex: 1; box-shadow: none !important; margin: 0 !important; padding: 1rem 1.2rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important;">
+                                    <input type="time" id="cp-start" value="${defStart}" required title="Время начала">
+                                    <input type="time" id="cp-end" value="${defEnd}" required title="Время окончания">
                                 </div>
 
-                                <div class="custom-pair-input-group" style="margin-bottom: 1.2rem; display: flex; gap: 1rem;">
-                                    <select id="cp-type" style="flex: 1; box-shadow: none !important; margin: 0 !important; padding: 1rem 1.2rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important;">
+                                <div class="custom-pair-input-group">
+                                    <select id="cp-type" style="flex: 0.8;">
                                         <option value="лек" ${existingPair?.type === 'лек' ? 'selected' : ''}>Лекция</option>
                                         <option value="практ" ${existingPair?.type === 'практ' ? 'selected' : ''}>Практика</option>
                                         <option value="лаб" ${existingPair?.type === 'лаб' ? 'selected' : ''}>Лабораторная</option>
+                                        <option value="экз" ${existingPair?.type === 'экз' ? 'selected' : ''}>Экзамен</option>
+                                        <option value="зач" ${existingPair?.type === 'зач' ? 'selected' : ''}>Зачет</option>
+                                        <option value="конс" ${existingPair?.type === 'конс' ? 'selected' : ''}>Консультация</option>
+                                        <option value="лич" ${existingPair?.type === 'лич' || !existingPair?.type ? 'selected' : ''}>Личное</option>
                                     </select>
-                                    <select id="cp-recurrence" style="flex: 1; box-shadow: none !important; margin: 0 !important; padding: 1rem 1.2rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important;">
+                                    <select id="cp-recurrence">
                                         <option value="once" ${existingPair?.recurrence === 'once' ? 'selected' : ''}>Только на этой неделе</option>
                                         <option value="every" ${existingPair?.recurrence === 'every' ? 'selected' : ''}>Каждую неделю</option>
                                         <option value="biweekly" ${existingPair?.recurrence === 'biweekly' ? 'selected' : ''}>Раз в 2 недели</option>
                                     </select>
                                 </div>
 
-                                <div class="custom-pair-input-group" style="margin-bottom: 1.2rem; display: flex; gap: 1rem;">
-                                    <input type="text" id="cp-aud" placeholder="${randomAud}" value="${existingPair ? existingPair.aud : ''}" style="flex: 1; box-shadow: none !important; margin: 0 !important; padding: 1rem 1.2rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important;">
-                                    <input type="text" id="cp-teacher" placeholder="${randomTeacher}" value="${existingPair ? existingPair.teacher : ''}" style="flex: 1; box-shadow: none !important; margin: 0 !important; padding: 1rem 1.2rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important;">
+                                <div class="custom-pair-input-group">
+                                    <input type="text" id="cp-aud" placeholder="Аудитория / Ссылка" value="${existingPair ? existingPair.aud : ''}">
+                                    <input type="text" id="cp-teacher" placeholder="Преподаватель" value="${existingPair ? existingPair.teacher : ''}">
                                 </div>
                                 <div style="display: flex; justify-content: flex-end; margin-top: 2.4rem;">
                                     <button class="answer-btn-custom save-cp-btn">${existingPair ? 'Сохранить' : 'Добавить'}</button>
@@ -13058,8 +13240,8 @@ body.modal-open-body {
                             endTime: timeEndInput.value,
                             type: typeInput.value,
                             recurrence: modal.querySelector('#cp-recurrence').value,
-                            aud: audInput.value.trim() || randomAud,
-                            teacher: teacherInput.value.trim() || randomTeacher
+                            aud: audInput.value.trim() || '',
+                            teacher: teacherInput.value.trim() || ''
                         };
 
                         let cp = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
@@ -13321,8 +13503,8 @@ body.modal-open-body {
 
                 // --- ПАРСИНГ ТИПА ПАРЫ (ЛЕК, ПРАКТ, ЛАБ, КОНС) ---
                 span9.querySelectorAll('.timetable-grid tr').forEach(row => {
-                    // Пропускаем уже отформатированные DOCX консультации
-                    if (row.classList.contains('docx-consultation-row')) return;
+                    // Пропускаем уже отформатированные DOCX консультации, кастомные и внешние события
+                    if (row.classList.contains('docx-consultation-row') || row.classList.contains('custom-pair-row') || row.classList.contains('external-event-row')) return;
 
                     const disContainer = row.querySelector('.pair_info .dis');
                     const numTd = row.querySelector('.pair_num');
@@ -13331,16 +13513,22 @@ body.modal-open-body {
                         const targetEl = disContainer.querySelector('a') || disContainer;
                         const text = targetEl.textContent;
 
-                        // Ищем (лек), (практ), (лаб), (зач), (экз) в самом конце строки
                         const match = text.match(/\s*\((лек|практ|лаб|зач|экз)\)\s*$/i);
                         let type = '';
                         let typeClass = 'type-badge-lek';
+                        
+                        const overType = row.getAttribute('data-ext-disp-type');
 
-                        if (match) {
-                            type = match[1].toLowerCase();
-                            targetEl.textContent = text.replace(match[0], '');
-                        } else if (text.toLowerCase().includes('консультация')) {
-                            type = 'конс';
+                        if (overType !== null) {
+                            type = overType;
+                            if (match) targetEl.textContent = text.replace(match[0], '');
+                        } else {
+                            if (match) {
+                                type = match[1].toLowerCase();
+                                targetEl.textContent = text.replace(match[0], '');
+                            } else if (text.toLowerCase().includes('консультация')) {
+                                type = 'конс';
+                            }
                         }
 
                         if (type) {
@@ -13349,16 +13537,25 @@ body.modal-open-body {
                             else if (type === 'лаб') typeClass = 'type-badge-lab';
                             else if (type === 'зач' || type === 'экз') typeClass = 'type-badge-exam';
                             else if (type === 'конс') typeClass = 'type-badge-cons';
+                            else if (type === 'лич') typeClass = '';
 
-                            const badge = document.createElement('span');
-                            badge.className = `pair-type-badge ${typeClass}`;
-                            badge.textContent = type;
+                            const existingBadge = row.querySelector('.pair-type-badge');
+                            if (existingBadge) {
+                                existingBadge.className = `pair-type-badge ${typeClass}`;
+                                if (type === 'лич') { existingBadge.style.color = '#AF52DE'; existingBadge.textContent = 'ЛИЧ'; }
+                                else { existingBadge.style.color = ''; existingBadge.textContent = type; }
+                            } else {
+                                const badge = document.createElement('span');
+                                badge.className = `pair-type-badge ${typeClass}`;
+                                if (type === 'лич') { badge.style.color = '#AF52DE'; type = 'ЛИЧ'; }
+                                badge.textContent = type;
 
-                            const badgeWrapper = document.createElement('div');
-                            badgeWrapper.className = 'pair-badge-wrapper';
-                            badgeWrapper.appendChild(badge);
+                                const badgeWrapper = document.createElement('div');
+                                badgeWrapper.className = 'pair-badge-wrapper';
+                                badgeWrapper.appendChild(badge);
 
-                            numTd.prepend(badgeWrapper);
+                                numTd.prepend(badgeWrapper);
+                            }
                         }
                     }
                 });
@@ -13373,27 +13570,27 @@ body.modal-open-body {
                         const table = day.querySelector('table');
                         if (!table) return;
 
+                        // Сначала удаляем все старые окна и плашки выходных
                         table.querySelectorAll('.timetable-gap-row, .custom-no-pairs').forEach(r => r.remove());
 
-                        const rows = Array.from(table.querySelectorAll('tr')).filter(r => !r.classList.contains('timetable-gap-row') && !r.classList.contains('custom-no-pairs'));
-
+                        const rows = Array.from(table.querySelectorAll('tr'));
                         if (rows.length === 1 && rows[0].textContent.includes('0 пар')) return;
 
-                        const pairData = rows.map(row => {
+                        // Отбираем только "занятые" строки
+                        const occupiedRows = rows.filter(row => {
                             const info = row.querySelector('.pair_info');
-                            const isOccupied = info &&
-                                               info.textContent.replace(/\u00a0/g, ' ').trim().length > 0 &&
-                                               !row.classList.contains('hidden-by-filter');
-                            return { row, isOccupied };
+                            return info && info.textContent.replace(/\u00a0/g, ' ').trim().length > 0 && !row.classList.contains('hidden-by-filter');
                         });
 
-                        const firstRealIndex = pairData.findIndex(p => p.isOccupied);
-                        const lastRealIndex = pairData.map(p => p.isOccupied).lastIndexOf(true);
+                        // Скрываем все пустые "системные" строки ЕТИСа
+                        rows.forEach(r => {
+                            if (!occupiedRows.includes(r)) r.style.display = 'none';
+                            else r.style.display = '';
+                        });
 
-                        if (firstRealIndex === -1) {
-                            rows.forEach(r => r.style.display = 'none');
+                        const tbody = table.querySelector('tbody') || table;
 
-                            const tbody = table.querySelector('tbody') || table;
+                        if (occupiedRows.length === 0) {
                             const tr = document.createElement('tr');
                             tr.className = 'custom-no-pairs';
                             tr.innerHTML = `
@@ -13415,51 +13612,88 @@ body.modal-open-body {
                             return;
                         }
 
-                        let i = 0;
-                        while (i < rows.length) {
-                            if (i < firstRealIndex || i > lastRealIndex) {
-                                rows[i].style.display = 'none';
-                                i++;
-                            }
-                            else if (!pairData[i].isOccupied) {
-                                let gapCount = 0;
-                                let gapStart = i;
+                        // Сортируем занятые строки по времени (на случай кастомных вставок)
+                        occupiedRows.sort((a, b) => {
+                            const timeA = a.querySelector('.eval')?.textContent || '';
+                            const timeB = b.querySelector('.eval')?.textContent || '';
+                            if (timeA === "Весь день") return -1;
+                            if (timeB === "Весь день") return 1;
+                            const pA = timeA.split(':');
+                            const pB = timeB.split(':');
+                            return (parseInt(pA[0]||0)*60 + parseInt(pA[1]||0)) - (parseInt(pB[0]||0)*60 + parseInt(pB[1]||0));
+                        });
+                        
+                        // Перевставляем в правильном порядке
+                        occupiedRows.forEach(r => tbody.appendChild(r));
 
-                                while (i <= lastRealIndex && !pairData[i].isOccupied) {
-                                    rows[i].style.display = 'none';
-                                    gapCount++;
-                                    i++;
+                        // --- ЛОГИКА РАСЧЕТА ОКОН ПО ВРЕМЕНИ ---
+                        if (generalConfig.showGaps) {
+                            for (let i = 1; i < occupiedRows.length; i++) {
+                                const prevRow = occupiedRows[i - 1];
+                                const currRow = occupiedRows[i];
+
+                                const prevEval = prevRow.querySelector('.eval')?.textContent || '';
+                                const currEval = currRow.querySelector('.eval')?.textContent || '';
+                                
+                                if (prevEval === "Весь день" || currEval === "Весь день") continue;
+
+                                let prevStartMins = 0, prevEndMins = 0;
+                                const prevMatch = prevEval.match(/(\d{1,2}):(\d{2})/);
+                                if (prevMatch) {
+                                    prevStartMins = parseInt(prevMatch[1]) * 60 + parseInt(prevMatch[2]);
+                                    const explicitEnd = prevRow.getAttribute('data-end-time');
+                                    if (explicitEnd) {
+                                        const ep = explicitEnd.split(':');
+                                        prevEndMins = parseInt(ep[0]) * 60 + parseInt(ep[1]);
+                                    } else {
+                                        prevEndMins = prevStartMins + 90;
+                                    }
                                 }
 
-                                if (gapCount > 0) {
-                                    const gapRow = document.createElement('tr');
-                                    gapRow.className = 'timetable-gap-row';
-
-                                    const firstHiddenRow = rows[gapStart];
-                                    const startTime = firstHiddenRow.querySelector('.eval')?.textContent || "00:00";
-
-                                    gapRow.setAttribute('data-gap-start', startTime);
-                                    gapRow.setAttribute('data-gap-count', gapCount);
-
-                                    let pairWord = 'пар';
-                                    if (gapCount === 1) pairWord = 'пара';
-                                    else if (gapCount >= 2 && gapCount <= 4) pairWord = 'пары';
-
-                                    gapRow.innerHTML = `
-                                        <td class="pair_num"></td>
-                                        <td class="pair_info">
-                                            <div class="timetable-gap-capsule">
-                                                <span class="material-icons" style="font-size: 14px;">hourglass_empty</span>
-                                                Окно: ${gapCount} ${pairWord}
-                                            </div>
-                                        </td>
-                                        <td class="pair_teacher"></td>
-                                    `;
-                                    rows[gapStart].parentNode.insertBefore(gapRow, rows[gapStart]);
+                                let currStartMins = 0;
+                                const currMatch = currEval.match(/(\d{1,2}):(\d{2})/);
+                                if (currMatch) {
+                                    currStartMins = parseInt(currMatch[1]) * 60 + parseInt(currMatch[2]);
                                 }
-                            } else {
-                                rows[i].style.display = '';
-                                i++;
+
+                                if (prevEndMins > 0 && currStartMins > 0) {
+                                    const gapMins = currStartMins - prevEndMins;
+                                    
+                                    // 80 минут = минимальное время для образования "окна"
+                                    if (gapMins >= 80) { 
+                                        const gapCount = Math.round(gapMins / 100);
+                                        
+                                        if (gapCount > 0) {
+                                            const isPrevCustom = prevRow.classList.contains('custom-pair-row') || prevRow.classList.contains('external-event-row') || prevRow.classList.contains('docx-consultation-row');
+                                            const isCurrCustom = currRow.classList.contains('custom-pair-row') || currRow.classList.contains('external-event-row') || currRow.classList.contains('docx-consultation-row');
+
+                                            if ((isPrevCustom || isCurrCustom) && !generalConfig.showGapsCustom) {
+                                                continue; // Пропускаем окно, если отключено в настройках
+                                            }
+
+                                            const gapRow = document.createElement('tr');
+                                            gapRow.className = 'timetable-gap-row';
+                                            gapRow.setAttribute('data-gap-start', `${String(Math.floor(prevEndMins/60)).padStart(2,'0')}:${String(prevEndMins%60).padStart(2,'0')}`);
+                                            gapRow.setAttribute('data-gap-count', gapCount);
+
+                                            let pairWord = 'пар';
+                                            if (gapCount === 1) pairWord = 'пара';
+                                            else if (gapCount >= 2 && gapCount <= 4) pairWord = 'пары';
+
+                                            gapRow.innerHTML = `
+                                                <td class="pair_num"></td>
+                                                <td class="pair_info">
+                                                    <div class="timetable-gap-capsule">
+                                                        <span class="material-icons" style="font-size: 14px;">hourglass_empty</span>
+                                                        Окно: ${gapCount} ${pairWord}
+                                                    </div>
+                                                </td>
+                                                <td class="pair_teacher"></td>
+                                            `;
+                                            currRow.parentNode.insertBefore(gapRow, currRow);
+                                        }
+                                    }
+                                }
                             }
                         }
 
@@ -13485,12 +13719,21 @@ body.modal-open-body {
                         visibleRows.forEach(row => {
                             if (row.classList.contains('timetable-gap-row') || row.classList.contains('custom-no-pairs')) return;
 
-                            const isCons = row.classList.contains('consultation-row') || row.classList.contains('docx-consultation-row');
                             const numTd = row.querySelector('.pair_num');
-                            
+                            const typeBadge = row.querySelector('.pair-type-badge');
+                            const typeText = typeBadge ? typeBadge.textContent.toLowerCase() : '';
+                            const disText = row.querySelector('.dis')?.textContent.toLowerCase() || '';
+
+                            const isCons = row.classList.contains('consultation-row') || 
+                                           row.classList.contains('docx-consultation-row') || 
+                                           typeText.includes('конс') || 
+                                           disText.includes('консультация');
+                                           
+                            const isPersonal = row.classList.contains('external-event-row') || typeText.includes('лич');
+
                             if (isCons) {
-                                // Унификация левой колонки для системных консультаций (очистка от пустого пространства и старого времени)
-                                if (row.classList.contains('consultation-row')) {
+                                // Унификация левой колонки для системных консультаций
+                                if (row.classList.contains('consultation-row') && numTd) {
                                     const timeEl = numTd.querySelector('.eval');
                                     let timeText = timeEl ? (timeEl.textContent.match(/\d{1,2}:\d{2}/)?.[0] || '') : '';
                                     numTd.innerHTML = `
@@ -13500,20 +13743,20 @@ body.modal-open-body {
                                         <font class="eval" style="font-size: 1.2rem; color: var(--color-text-primary); font-weight: 500;">${timeText}</font>
                                     `;
 
-                                    // Унификация центральной колонки (Название)
                                     const dis = row.querySelector('.dis');
                                     if (dis) {
                                         dis.innerHTML = `<span style="font-weight: normal; font-size: 1.4rem; color: var(--color-text-primary);">Консультация</span>`;
                                     }
 
-                                    // Сокращение ФИО преподавателя в системе
                                     const teacherEl = row.querySelector('.pair_teacher a:not(.eval)');
                                     if (teacherEl) {
                                         teacherEl.textContent = shortenName(teacherEl.textContent);
                                     }
                                 }
+                            } else if (isPersonal) {
+                                // Ничего не делаем, счетчик пар не увеличиваем (Личное событие из календаря)
                             } else {
-                                // Обычная нумерация для пар
+                                // Обычная нумерация для учебных пар (Лекции, Практики, и т.д.)
                                 if (numTd) {
                                     Array.from(numTd.childNodes).forEach(node => {
                                         if (node.nodeType === Node.TEXT_NODE && /пара/i.test(node.nodeValue)) {
@@ -13528,6 +13771,7 @@ body.modal-open-body {
                     
                     if (typeof window.applyHideDaysOff === 'function') window.applyHideDaysOff();
                     if (typeof window.applyDimming === 'function') window.applyDimming(); // Сразу пересчитываем затемнение
+                    if (typeof updateLiveTimetable === 'function') updateLiveTimetable(); // Сразу восстанавливаем лайв-точки
                 }
 
                 // Экспортируем функцию скрытия дней наружу
@@ -13618,11 +13862,17 @@ body.modal-open-body {
                                         if (tTd) tTd.innerHTML = `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${activeOverride.teacher}</a>` + tTd.innerHTML;
                                     }
                                 }
+                                if (activeOverride.type !== undefined) {
+                                    row.setAttribute('data-ext-disp-type', activeOverride.type);
+                                }
                             }
                             row.setAttribute('data-ext-is-series', isSeriesOverride);
                         }
 
-                        const cleanSubjectName = targetEl.textContent.trim();
+                        // Чистим название предмета от текста иконок (чтобы не прилипало "edit")
+                        let tempSubjEl = targetEl.cloneNode(true);
+                        tempSubjEl.querySelectorAll('.material-icons, .note-btn-wrapper, .delete-custom-pair-btn').forEach(el => el.remove());
+                        const cleanSubjectName = tempSubjEl.textContent.trim();
                         const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
 
                         // Логика переноса непривязанных заметок
@@ -13756,12 +14006,18 @@ body.modal-open-body {
                         clone.querySelectorAll('.material-icons, .note-btn-wrapper').forEach(el => el.remove());
                         return clone.textContent.trim();
                     };
+
+                    let currentType = '';
+                    const badgeEl = row.querySelector('.pair-type-badge');
+                    if (badgeEl) currentType = badgeEl.textContent.toLowerCase();
+                    if (currentType === 'лич') currentType = 'лич';
                     
                     if (isExternal) {
                         origSubject = row.getAttribute('data-ext-orig-title') || origSubject;
                         currentLoc = row.getAttribute('data-ext-disp-loc') || '';
                         currentTeacher = row.getAttribute('data-ext-disp-teacher') || '';
                         isSeries = row.getAttribute('data-ext-is-series') === 'true';
+                        currentType = row.getAttribute('data-ext-disp-type') || 'лич';
                     } else if (isPureCustom) {
                         currentLoc = extractCleanLocation(row);
                         const tEl = row.querySelector('.pair_teacher a:not(.eval)');
@@ -13771,11 +14027,13 @@ body.modal-open-body {
                         const tEl = row.querySelector('.pair_teacher a:not(.eval)');
                         currentTeacher = tEl ? tEl.textContent.trim() : '';
                         isSeries = row.getAttribute('data-ext-is-series') === 'true';
+                        const overType = row.getAttribute('data-ext-disp-type');
+                        if (overType !== null) currentType = overType;
                     }
 
                     modal.innerHTML = `
                         <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
-                            <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${dispSubject}</span>
+                            <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${dispSubject.replace(/edit$/i, '').trim()}</span>
                             <button class="close-notes" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
                         </div>
                         <div class="ui-dialog-content" style="padding: 2.4rem;">
@@ -13804,11 +14062,24 @@ body.modal-open-body {
                             <div class="tab-content" id="tab-edit">
                                 ${(!isPureCustom) ? `<div style="margin-bottom: 1.5rem; color: var(--color-text-secondary); font-size: 1.2rem;">Оригинальное название: <b>${origSubject}</b></div>` : ''}
 
-                                <input type="text" id="cp-subject" class="custom-pair-input-group" placeholder="Название предмета *" value="${dispSubject}" style="width: 100%; box-sizing:border-box;">
+                                <div class="custom-pair-input-group">
+                                    <input type="text" id="cp-subject-edit" placeholder="Название предмета *" value="${dispSubject}">
+                                </div>
 
                                 <div class="custom-pair-input-group">
-                                    <input type="text" id="cp-aud" placeholder="Аудитория / Ссылка" value="${currentLoc}">
-                                    <input type="text" id="cp-teacher" placeholder="Преподаватель" value="${currentTeacher}">
+                                    <select id="cp-type-edit" style="flex: 0.6;">
+                                        <option value="лек" ${currentType === 'лек' ? 'selected' : ''}>Лекция</option>
+                                        <option value="практ" ${currentType === 'практ' ? 'selected' : ''}>Практика</option>
+                                        <option value="лаб" ${currentType === 'лаб' ? 'selected' : ''}>Лабораторная</option>
+                                        <option value="экз" ${currentType === 'экз' ? 'selected' : ''}>Экзамен</option>
+                                        <option value="зач" ${currentType === 'зач' ? 'selected' : ''}>Зачет</option>
+                                        <option value="конс" ${currentType === 'конс' ? 'selected' : ''}>Консультация</option>
+                                        <option value="лич" ${currentType === 'лич' || !currentType ? 'selected' : ''}>Личное</option>
+                                    </select>
+                                    <input type="text" id="cp-teacher-edit" placeholder="Преподаватель" value="${currentTeacher}">
+                                </div>
+                                <div class="custom-pair-input-group">
+                                    <input type="text" id="cp-aud-edit" placeholder="Аудитория / Ссылка" value="${currentLoc}">
                                 </div>
 
                                 ${!isPureCustom ? `
@@ -13902,13 +14173,13 @@ body.modal-open-body {
 
                     // --- ЛОГИКА НАСТРОЕК (ПЕРЕОПРЕДЕЛЕНИЕ) ---
                     modal.querySelector('.save-edit-btn').onclick = () => {
-                        const newTitle = document.getElementById('cp-subject').value.trim();
-                        const newLoc = document.getElementById('cp-aud').value.trim();
-                        const newTeacher = document.getElementById('cp-teacher').value.trim();
+                        const newTitle = modal.querySelector('#cp-subject-edit').value.trim();
+                        const newLoc = modal.querySelector('#cp-aud-edit').value.trim();
+                        const newTeacher = modal.querySelector('#cp-teacher-edit').value.trim();
+                        const newType = modal.querySelector('#cp-type-edit').value.trim();
                         if (!newTitle) return alert('Введите название!');
 
                         if (isPureCustom) {
-                            // Если это полностью кастомная пара (через +)
                             let customPairs = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
                             const cpId = row.getAttribute('data-custom-id');
                             const cpIndex = customPairs.findIndex(p => p.id === cpId);
@@ -13916,11 +14187,11 @@ body.modal-open-body {
                                 customPairs[cpIndex].subject = newTitle;
                                 customPairs[cpIndex].aud = newLoc;
                                 customPairs[cpIndex].teacher = newTeacher;
+                                customPairs[cpIndex].type = newType;
                                 localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(customPairs));
                                 window.location.reload();
                             }
                         } else {
-                            // Если это ЕТИС пара или Импортированная пара
                             const applyAll = document.getElementById('ext-apply-all').checked;
                             let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
                             
@@ -13935,10 +14206,10 @@ body.modal-open-body {
                             const seriesKey = `SERIES_ALL_${origSubject}`;
 
                             if (applyAll) {
-                                overrides[seriesKey] = { title: newTitle, loc: newLoc, teacher: newTeacher };
+                                overrides[seriesKey] = { title: newTitle, loc: newLoc, teacher: newTeacher, type: newType };
                                 delete overrides[singleKey];
                             } else {
-                                overrides[singleKey] = { title: newTitle, loc: newLoc, teacher: newTeacher };
+                                overrides[singleKey] = { title: newTitle, loc: newLoc, teacher: newTeacher, type: newType };
                             }
                             localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
                             window.location.reload();
@@ -14243,20 +14514,13 @@ body.modal-open-body {
 
                 // --- 10. ИМПОРТ И ПАРСИНГ ВНЕШНЕГО КАЛЕНДАРЯ (iCloud / Google) ---
                 function loadExternalCalendar() {
-                    // Авто-миграция (на случай, если пользователь еще не заходил во вкладку Синхронизация)
-                    let oldUrl = localStorage.getItem('etis_external_cal_link');
-                    if (oldUrl) {
-                        let arr = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
-                        if (!arr.includes(oldUrl)) arr.push(oldUrl);
-                        localStorage.setItem('etis_external_cals_v2', JSON.stringify(arr));
-                        localStorage.removeItem('etis_external_cal_link');
-                    }
+                    let cals = migrateExternalCals();
+                    if (cals.length === 0) return;
 
-                    let urls = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
-                    if (urls.length === 0) return;
+                    cals.forEach(cal => {
+                        let fetchUrl = cal.url.trim();
+                        const calColor = cal.color || '#AF52DE';
 
-                    urls.forEach(url => {
-                        let fetchUrl = url.trim();
                         if (fetchUrl.startsWith('webcal://')) {
                             fetchUrl = fetchUrl.replace(/^webcal:\/\//i, 'https://');
                         } else if (!fetchUrl.startsWith('http')) {
@@ -14283,7 +14547,7 @@ body.modal-open-body {
                                     try {
                                         const events = parseICS(res.responseText);
                                         console.log(`[ETIS Calendar] Успешно распарсено событий: ${events.length}`);
-                                        injectExternalEvents(events);
+                                        injectExternalEvents(events, calColor);
                                     } catch (e) {
                                         console.error("[ETIS Calendar] Ошибка при парсинге календаря:", e);
                                     }
@@ -14426,7 +14690,7 @@ body.modal-open-body {
                     return false;
                 }
 
-                function injectExternalEvents(parsedEvents) {
+                function injectExternalEvents(parsedEvents, calColor) {
                     let injectedAnything = false;
                     const days = span9.querySelectorAll("div.day");
 
@@ -14511,6 +14775,7 @@ body.modal-open-body {
                             const displayTitle = activeOverride && activeOverride.title ? activeOverride.title : originalTitle;
                             const displayLoc = activeOverride && activeOverride.loc !== undefined ? activeOverride.loc : originalLoc;
                             const displayTeacher = activeOverride && activeOverride.teacher ? activeOverride.teacher : '';
+                            const displayType = activeOverride && activeOverride.type !== undefined ? activeOverride.type : 'лич';
 
                             // ИЗВЛЕЧЕНИЕ ССЫЛОК ИЗ КАЛЕНДАРЯ
                             let extractedUrl = ev.url || '';
@@ -14544,11 +14809,12 @@ body.modal-open-body {
 
                             // Форматируем время вывода
                             let timeHtml = '';
+                            let endStr = '';
                             if (isAllDay) {
                                 timeHtml = `<font class="eval" style="font-size: inherit !important; color: inherit !important;">Весь день</font>`;
                             } else {
                                 const startStr = timeKey;
-                                const endStr = ev.end ? `${String(ev.end.getHours()).padStart(2, '0')}:${String(ev.end.getMinutes()).padStart(2, '0')}` : '';
+                                endStr = ev.end ? `${String(ev.end.getHours()).padStart(2, '0')}:${String(ev.end.getMinutes()).padStart(2, '0')}` : '';
                                 
                                 timeHtml = `<font class="eval" style="font-size: inherit !important; color: inherit !important; display: inline-flex !important; align-items: center !important; gap: 4px !important; line-height: 1.2 !important;">${startStr}</font>`;
                                 if (endStr) {
@@ -14567,11 +14833,42 @@ body.modal-open-body {
                             tr.setAttribute('data-ext-disp-loc', displayLoc.replace(/"/g, '&quot;'));
                             tr.setAttribute('data-ext-disp-teacher', displayTeacher.replace(/"/g, '&quot;'));
                             tr.setAttribute('data-ext-is-series', isSeries);
+                            tr.setAttribute('data-ext-disp-type', displayType);
+
+                            let typeColor = '';
+                            let typeClass = '';
+                            if (displayType === 'лек') typeClass = 'type-badge-lek';
+                            else if (displayType === 'практ') typeClass = 'type-badge-pract';
+                            else if (displayType === 'лаб') typeClass = 'type-badge-lab';
+                            else if (displayType === 'зач' || displayType === 'экз') typeClass = 'type-badge-exam';
+                            else if (displayType === 'конс') typeClass = 'type-badge-cons';
+                            else if (displayType === 'лич') { typeColor = `color: ${calColor};`; }
 
                             tr.innerHTML = `
                                 <td class="pair_num">
                                     <div class="pair-badge-wrapper">
-                                        <span class="pair-type-badge" style="color: #AF52DE;">ЛИЧ</span>
+                                        <span class="pair-type-badge ${typeClass}" style="${typeColor}">${displayType === 'лич' ? 'ЛИЧ' : displayType}</span>
+                                    </div>
+                                    ${timeHtml}
+                                </td>
+                                <td class="pair_info">
+                                    <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
+                                        <span style="font-weight:700; color:${displayType === 'лич' ? calColor : 'var(--color-text-primary)'}; pointer-events:none;">${displayTitle}</span>
+                                    </div>
+                                    ${audContent ? `
+                                    <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">
+                                        ${audContent}
+                                    </div>` : ''}
+                                </td>
+                                <td class="pair_teacher">
+                                    ${displayTeacher ? `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${displayTeacher}</a>` : ''}
+                                </td>
+                            `;
+
+                            tr.innerHTML = `
+                                <td class="pair_num">
+                                    <div class="pair-badge-wrapper">
+                                        <span class="pair-type-badge ${typeClass}" style="${typeColor}">${displayType === 'лич' ? 'ЛИЧ' : displayType}</span>
                                     </div>
                                     ${timeHtml}
                                 </td>
@@ -14663,18 +14960,18 @@ body.modal-open-body {
                                 isPassed = true;
                             } else if (isToday) {
                                 let startMins = -1;
-                                let duration = 90;
+                                let endMins = -1;
 
                                 if (row.classList.contains('timetable-gap-row')) {
                                     const startStr = row.getAttribute('data-gap-start');
                                     const count = parseInt(row.getAttribute('data-gap-count') || "1");
-                                    duration = (count * 90) + ((count - 1) * 10);
+                                    const duration = (count * 90) + ((count - 1) * 10);
                                     if (startStr && startStr !== "00:00") {
                                         const p = startStr.split(':');
                                         startMins = parseInt(p[0]) * 60 + parseInt(p[1]);
+                                        endMins = startMins + duration;
                                     }
                                 } else if (row.classList.contains('custom-no-pairs')) {
-                                    // Выходной день сегодня не закрашиваем тусклым, пока он не закончится совсем
                                     isPassed = false;
                                 } else {
                                     const timeEl = row.querySelector('.eval');
@@ -14682,12 +14979,20 @@ body.modal-open-body {
                                         const timeMatch = timeEl.textContent.match(/(\d{1,2}):(\d{2})/);
                                         if (timeMatch) {
                                             startMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
+                                            
+                                            const explicitEndTime = row.getAttribute('data-end-time');
+                                            if (explicitEndTime) {
+                                                const ep = explicitEndTime.split(':');
+                                                endMins = parseInt(ep[0]) * 60 + parseInt(ep[1]);
+                                            } else {
+                                                endMins = startMins + 90; // Стандартная пара ЕТИС
+                                            }
                                         }
                                     }
                                 }
 
-                                if (startMins !== -1) {
-                                    if (todayMins >= (startMins + duration)) isPassed = true;
+                                if (startMins !== -1 && endMins !== -1) {
+                                    if (todayMins >= endMins) isPassed = true;
                                 }
                             }
 
