@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
-// @version      2.31
-// @changelog    Фиксы: 1) Длины внешних событий в расписании, 2) Окна с консультациями, 3) Унификация интерфейса. Настройка "окон" в расписании. Разные цвета у событий из внешних календарей
+// @version      2.4
+// @changelog    Обновлённая боковая панель. Умные таблицы. Обновлённая подвкладка с рейтингом факультетов и кафедр во вкладке "Обратная связь". Фиксы для шеринга и индикации событий. Множество доработанных вкладок с бюрократией.
 // @description  Глобальный редизайн ЕТИСа
 // @author       dya_dya
 // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
@@ -71,23 +71,25 @@
     // НАСТРОЙКИ ОБНОВЛЕНИЯ И ТЕСТИРОВАНИЯ
     // ==========================================
     const IS_TEST_MODE = false;
-    
+
     const BASE_REPO_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/';
     const UPDATE_URL = IS_TEST_MODE ? BASE_REPO_URL + 'etis-test.user.js' : BASE_REPO_URL + 'etis.user.js';
 
     // Детектор iOS устройств
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+    // Детектор Safari на macOS
+    const isMacSafari = navigator.userAgent.includes('Mac OS X') && navigator.userAgent.includes('Safari') && !navigator.userAgent.includes('Chrome');
+
+    // Если это Safari на Mac, вешаем класс на html
+    if (isMacSafari) document.documentElement.classList.add('mac-safari');
+
     // ==========================================
     // 1. ВНЕДРЕНИЕ CSS СТИЛЕЙ
     // ==========================================
     const styles = `
-@font-face {
-	font-family: 'Material Icons Outlined';
-	font-style: normal;
-	font-weight: 400;
-	src: url(https://fonts.gstatic.com/s/materialiconsoutlined/v38/gok-H7zzDkdnRel8-DQ6KAXJ69wP1tGnf4ZGhUce.woff2) format('woff2');
-}
+
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0');
 
 :root {
 	--font-family: 'PT Sans Caption', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -108,7 +110,7 @@
     /* Акцент: ГОЛУБОЙ */
 	--color-accent: #007AFF;
 	--color-accent-dark: #0056b3;
-	--color-accent-active: #E3F2FD; 
+	--color-accent-active: #E3F2FD;
     --color-text-link: #007AFF;
 
     /* Элементы */
@@ -200,6 +202,14 @@ body {
     min-height: 100dvh !important;
 }
 
+/* Скрытие шеринга для macOS Safari из-за бага html2canvas */
+html.mac-safari .share-day-btn,
+html.mac-safari .share-all-btn,
+html.mac-safari .share-week-btn,
+html.mac-safari .share-msg-wrap {
+    display: none !important;
+}
+
 /* ПК версия скроллбара и layout */
 @media (min-width: 961px) {
     html, body {
@@ -256,12 +266,12 @@ body {
 *, *:before, *:after { box-sizing: border-box !important; }
 
 /* Scrollbar */
-::-webkit-scrollbar { 
-    display: none !important; 
-    width: 0 !important; 
-    height: 0 !important; 
+::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
 }
-* { 
+* {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
 }
@@ -350,13 +360,15 @@ table tbody tr:hover td[rowspan] {
     background-color: var(--color-card) !important;
 }
 
-/* Отступы у разделителей в таблицах оценок */
-.session-table-v6 tbody tr:not(:last-child) td,
-.term-table-v6 tbody tr:not(:last-child) td {
+/* Отступы у разделителей во всех таблицах (кроме расписания) */
+.span9 table:not(.timetable-grid) tbody tr:not(:last-child) td,
+.wide-table-wrapper table:not(.timetable-grid) tbody tr:not(:last-child) td,
+.ui-dialog table tbody tr:not(:last-child) td {
     border-bottom: none !important;
 }
-.session-table-v6 tbody tr:not(:last-child),
-.term-table-v6 tbody tr:not(:last-child) {
+.span9 table:not(.timetable-grid) tbody tr:not(:last-child),
+.wide-table-wrapper table:not(.timetable-grid) tbody tr:not(:last-child),
+.ui-dialog table tbody tr:not(:last-child) {
     background-image: linear-gradient(to right, transparent 16px, var(--color-table-border) 16px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)) !important;
     background-position: bottom !important;
     background-repeat: no-repeat !important;
@@ -475,7 +487,7 @@ font[color="blue"], span[style*="color:blue"] { color: var(--color-blue) !import
 .ui-widget-overlay { background: var(--color-dialog-fade) !important; opacity: 1 !important; }
 .ui-dialog .ui-dialog-titlebar-close { border: none !important; background: none !important; color: var(--color-text-secondary) !important; }
 .ui-dialog .ui-dialog-titlebar-close > .ui-button-icon-primary { display: none !important; }
-.ui-dialog .ui-dialog-titlebar-close:before { content: 'close' !important; font-family: 'Material Icons Outlined' !important; font-size: 18px !important; }
+.ui-dialog .ui-dialog-titlebar-close:before { content: 'close' !important; font-family: 'Material Symbols Rounded' !important; font-size: 18px !important; }
 
 /* Inputs & Buttons */
 input, select, textarea, button { font-family: inherit !important; }
@@ -489,7 +501,7 @@ input[type="text"], input[type="password"], input[type="email"] {
     box-shadow: inset 0 -1px 0 0 var(--color-text-secondary) !important;
     width: 100% !important;
     padding: 0.8rem 0 !important;
-    margin-bottom: 1.6rem !important; 
+    margin-bottom: 1.6rem !important;
 }
 input[type="text"]:focus, input[type="password"]:focus, input[type="email"]:focus {
     box-shadow: inset 0 -2px 0 0 var(--color-accent) !important;
@@ -506,8 +518,8 @@ button:hover { background: var(--color-highlight-light) !important; }
 .button_gray button { color: var(--color-text-primary-invert) !important; background: var(--color-accent) !important; }
 .button.blue { background: var(--color-accent) !important; }
 .icon-button { display: flex !important; align-items: center !important; background: var(--color-card) !important; color: var(--color-text-primary) !important; font-size: 1.2rem !important; padding: 0.4rem 0.8rem !important; border-radius: var(--radius-small) !important; width: fit-content !important; box-shadow: var(--shadow-main) !important; text-decoration: none !important; }
-.icon-button2 { margin-left: 0.4rem !important; font-family: 'Material Icons Outlined' !important; font-size: 2rem !important; cursor: pointer !important; text-decoration: none !important; color: var(--color-text-secondary) !important; }
-.icon-button:before { margin-right: 0.6rem !important; font-family: 'Material Icons Outlined' !important; font-size: 1.8rem !important; }
+.icon-button2 { margin-left: 0.4rem !important; font-family: 'Material Symbols Rounded' !important; font-size: 2rem !important; cursor: pointer !important; text-decoration: none !important; color: var(--color-text-secondary) !important; }
+.icon-button:before { margin-right: 0.6rem !important; font-family: 'Material Symbols Rounded' !important; font-size: 1.8rem !important; }
 .icon-button.icon-feedback:before { content: 'feedback' !important; }
 .icon-button.icon-analytics:before { content: 'analytics' !important; }
 .icon-button.icon-today:before { content: 'today' !important; }
@@ -552,8 +564,29 @@ form.que_form { margin-top: 1rem !important; }
 }
 
 .span3 > .nav.nav-tabs.nav-stacked > li > a > .badge { background-color: var(--color-accent) !important; padding: 0.2rem 0 !important; color: var(--color-text-primary-invert) !important; border-radius: var(--radius-small) !important; margin: -1.2rem 0 !important; width: 2.4rem !important; font-weight: normal !important; }
-.material-icons { font-family: 'Material Icons Outlined' !important; font-size: 20px !important; font-weight: normal !important; }
-.span3 > .nav.nav-tabs.nav-stacked > li > a > .material-icons { margin-right: 10px !important; }
+
+.material-icons {
+    font-family: 'Material Symbols Rounded' !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    font-size: 24px !important;
+    line-height: 1 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    display: inline-block !important;
+    white-space: nowrap !important;
+    word-wrap: normal !important;
+    direction: ltr !important;
+    -webkit-font-smoothing: antialiased !important;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+}
+
+.span3 > .nav.nav-tabs.nav-stacked > li > a > .material-icons {
+    margin-right: 12px !important;
+    width: 24px !important;
+    text-align: center !important;
+    flex-shrink: 0 !important;
+}
 
 .material-icons.icon-load-doc-new {
     pointer-events: auto !important;
@@ -568,7 +601,7 @@ form.que_form { margin-top: 1rem !important; }
 .week-select { margin: 0 auto 1.5rem !important; margin-top: 0 !important; margin-bottom: 1.5rem !important; width: 100% !important; clear: both !important; }
 .week-select h3 { display: none !important; }
 
-.timetable-toolbar + br, 
+.timetable-toolbar + br,
 .span9 > br {
     display: none !important;
 }
@@ -737,7 +770,7 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
     position: relative !important;
     z-index: 0 !important;
 }
-.pair_info .aud > a:before { margin-right: 0.6rem !important; font-family: 'Material Icons Outlined' !important; content: 'videocam' !important; font-size: 1.8rem !important; }
+.pair_info .aud > a:before { margin-right: 0.6rem !important; font-family: 'Material Symbols Rounded' !important; content: 'videocam' !important; font-size: 1.8rem !important; }
 .pair_info .aud > a > img { display: none !important; }
 
 /* --- TEACHERS --- */
@@ -748,7 +781,7 @@ span.holiday { background-color: var(--color-green) !important; color: var(--col
     background: var(--color-card) !important;
     border-radius: var(--radius-large) !important;
     box-shadow: var(--shadow-main) !important;
-    margin-bottom: 2.4rem !important;
+    margin-bottom: 0 !important;
     padding: 2.4rem !important;
     gap: 2.4rem !important;
     align-items: flex-start !important;
@@ -838,7 +871,7 @@ a[href="stu.dis_stat"] {
 }
 a[href="stu.dis_stat"]:before {
     content: 'insights';
-    font-family: 'Material Icons Outlined';
+    font-family: 'Material Symbols Rounded';
     font-size: 2rem;
     margin-right: 1rem;
     color: var(--color-accent);
@@ -1005,7 +1038,7 @@ html[theme="dark"] .psu-logo::before {
     .login form {
         flex-direction: row !important;
         width: 840px !important;
-        min-height: 400px !important; 
+        min-height: 400px !important;
         padding: 48px 48px 40px 48px !important;
         display: flex !important;
         align-items: stretch !important;
@@ -1016,7 +1049,7 @@ html[theme="dark"] .psu-logo::before {
         margin-bottom: 0 !important;
         display: flex !important;
         flex-direction: column !important;
-        align-items: flex-start !important; 
+        align-items: flex-start !important;
         justify-content: flex-start !important;
         padding-right: 40px !important;
     }
@@ -1339,19 +1372,19 @@ html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
         background: var(--color-card) !important;
         z-index: 1000000 !important;
         transform: translateX(-105%) !important;
-        
-        transition: none !important; 
-        
+
+        transition: none !important;
+
         overflow-y: auto !important;
         border-radius: 0 24px 24px 0 !important;
         visibility: visible !important;
         overscroll-behavior: contain !important;
     }
-    
-    .span3.ready-to-animate { 
-        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important; 
+
+    .span3.ready-to-animate {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     }
-    
+
     .span3.mobile-active { transform: translateX(0) !important; box-shadow: 100px 0 100px rgba(0,0,0,0.5) !important; }
 
     .mobile-menu-btn {
@@ -1408,20 +1441,20 @@ html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
         z-index: 999999 !important;
         opacity: 0;
         visibility: hidden;
-        
+
         transition: none !important;
-        
+
         backdrop-filter: blur(4px) !important;
         -webkit-backdrop-filter: blur(4px) !important;
     }
-    
+
     .mobile-overlay.ready-to-animate {
         transition: opacity 0.3s ease, visibility 0.3s ease !important;
     }
-    
-    .mobile-overlay.active { 
-        opacity: 1; 
-        visibility: visible; 
+
+    .mobile-overlay.active {
+        opacity: 1;
+        visibility: visible;
     }
 
     .teach_plan, .slimtab_nice {
@@ -1540,9 +1573,10 @@ html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
 
     .term-table-v6, .session-table-v6 {
         display: table !important;
-        width: auto !important;
-        min-width: 650px !important;
+        width: 100% !important;
+        min-width: 100% !important;
         margin-bottom: 0 !important;
+        table-layout: auto !important;
     }
 
     .container, .container .row {
@@ -1606,6 +1640,7 @@ html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
 .span3 > .nav.nav-tabs.nav-stacked > li.active > a .material-icons {
     color: var(--color-text-primary-invert) !important;
     opacity: 1 !important;
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
 }
 
 .span3 > .nav.nav-tabs.nav-stacked > .active:before {
@@ -1725,7 +1760,7 @@ html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
 }
 .pair_info .aud a[href*="zoom"]:before {
     content: 'public' !important;
-    font-family: 'Material Icons Outlined' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 1.8rem !important;
     display: block !important;
 }
@@ -1743,7 +1778,7 @@ html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
 }
 .pair_info .aud a[href*="telemost"]:before {
     content: 'public' !important;
-    font-family: 'Material Icons Outlined' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 1.8rem !important;
     display: block !important;
 }
@@ -1760,7 +1795,7 @@ html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
 }
 .pair_info .aud a.btn-generic-online:before {
     content: 'public' !important;
-    font-family: 'Material Icons Outlined' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 1.8rem !important;
     display: block !important;
 }
@@ -1850,7 +1885,7 @@ input::placeholder {
     display: flex !important;
     align-items: center !important;
     padding: 2.2rem 2.2rem 0.5rem 2.2rem !important;
-    gap: 10px !important;
+    gap: 16px !important;
     margin-bottom: 2.4rem !important;
     position: relative !important;
     transition: transform 0.5s cubic-bezier(0.68, -0.6, 0.32, 1.6) !important;
@@ -2255,6 +2290,14 @@ div[id^="frm_"] textarea:focus {
     margin-bottom: 2.4rem !important;
 }
 
+/* Убираем "подбородок" и двойные тени у таблиц ресурсов */
+.resource-block .wide-table-wrapper {
+    margin-bottom: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+}
+
 .electr-description a {
     font-weight: bold !important;
 }
@@ -2392,7 +2435,7 @@ div[id^="frm_"] textarea:focus {
 
 /* Иконка PDF и Видео */
 .advice-card[href*=".pdf"] .material-icons::before { content: "picture_as_pdf"; }
-.advice-card[href*=".mp4"] .material-icons::before { content: "play_circle_outline"; }
+.advice-card[href*=".mp4"] .material-icons::before { content: "play_circle"; }
 .advice-card:not([href*=".pdf"]):not([href*=".mp4"]) .material-icons::before { content: "article"; }
 
 /* Специальный блок для правил выдачи справок */
@@ -2440,8 +2483,8 @@ div[id^="frm_"] textarea:focus {
 
 /* Стрелочка только для опросов */
 .survey-card > li:first-child::after {
-    content: 'expand_more' !important;
-    font-family: 'Material Icons Outlined' !important;
+    content: 'arrow_drop_down' !important;
+    font-family: 'Material Symbols Rounded' !important;
     position: absolute !important;
     right: 2rem !important;
     top: 50% !important;
@@ -2678,14 +2721,14 @@ form.form input:focus {
     background: var(--color-card) !important;
     border-radius: var(--radius-large) !important;
     box-shadow: var(--shadow-main) !important;
-    padding: 4rem !important; 
+    padding: 4rem !important;
     margin-bottom: 3rem !important;
     max-width: 900px !important;
 }
 
 .about-card p {
-    font-size: 1.5rem !important;
-    line-height: 1.8 !important;
+    font-size: 1.4rem !important;
+    line-height: 1.6 !important;
     color: var(--color-text-primary) !important;
     margin-bottom: 2.4rem !important;
     text-align: left !important;
@@ -2706,10 +2749,10 @@ form.form input:focus {
 
 /* Красивый акцент для первого абзаца */
 .about-card p:first-of-type {
-    font-size: 1.6rem !important;
+    font-size: 1.4rem !important;
     color: var(--color-text-secondary) !important;
     font-style: italic !important;
-    border-left: 4px solid var(--color-accent);
+    border-left: 3px solid var(--color-accent);
     padding-left: 2rem;
     margin-bottom: 4rem !important;
 }
@@ -2776,8 +2819,8 @@ form.form input:focus {
 
 /* Иконка стрелочки в конце */
 .portfolio-header::after {
-    content: 'expand_more' !important;
-    font-family: 'Material Icons Outlined' !important;
+    content: 'arrow_drop_down' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 2.2rem !important;
     color: var(--color-text-secondary) !important;
     margin-left: 1.5rem !important;
@@ -2809,7 +2852,7 @@ div[id] table.common {
 
 /* Иконка загрузки файла в таблице */
 .icon-load-doc-new {
-    font-family: 'Material Icons Outlined' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 2.2rem !important;
     color: var(--color-accent) !important;
     cursor: pointer !important;
@@ -2886,7 +2929,7 @@ span[id$="_cnt"] {
 
 .ui-dialog .ui-dialog-titlebar-close::after {
     content: 'close' !important;
-    font-family: 'Material Icons Outlined' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 20px !important;
     color: var(--color-text-secondary) !important;
 
@@ -2920,7 +2963,7 @@ span[id$="_cnt"] {
 
 .ui-dialog .ui-dialog-titlebar-close::before {
     content: '\e5cd' !important;
-    font-family: 'Material Icons Outlined' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 20px !important;
     color: var(--color-text-secondary) !important;
     display: block !important;
@@ -2930,7 +2973,7 @@ span[id$="_cnt"] {
 
 .ui-dialog .ui-dialog-titlebar-close:before {
     content: 'close' !important;
-    font-family: 'Material Icons Outlined' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 2.2rem !important;
     color: var(--color-text-secondary) !important;
 }
@@ -2942,7 +2985,7 @@ span[id$="_cnt"] {
 
 .ui-dialog .ui-dialog-titlebar-close:after {
     content: 'close' !important;
-    font-family: 'Material Icons Outlined' !important;
+    font-family: 'Material Symbols Rounded' !important;
     font-size: 20px !important;
     color: var(--color-text-secondary) !important;
     display: block !important;
@@ -3350,7 +3393,9 @@ span[id$="_cnt"] {
 .wide-table-wrapper table {
     margin-bottom: 0 !important;
     box-shadow: none !important;
-    min-width: 800px !important;
+    width: 100% !important;
+    min-width: 100% !important;
+    table-layout: auto !important;
 }
 
 .teach_plan td font[color="red"] {
@@ -3598,8 +3643,8 @@ td.empty {
 .msg-container {
     display: flex !important;
     flex-direction: column !important;
-    gap: 2rem !important;
-    margin-top: 1rem !important;
+    gap: 2.4rem !important;
+    margin-top: 0 !important;
 }
 
 .msg-card {
@@ -3608,7 +3653,11 @@ td.empty {
     box-shadow: var(--shadow-main) !important;
     padding: 2.4rem !important;
     border: none !important;
-    margin-bottom: 2rem !important;
+    margin-bottom: 0 !important;
+}
+
+.nav.msg.message-card, .nav.msg.msg-card {
+    margin-bottom: 0 !important;
 }
 
 .msg-header {
@@ -3673,10 +3722,6 @@ td.empty {
     flex-wrap: wrap !important;
     gap: 1rem !important;
     flex-grow: 1 !important;
-}
-
-.nav.msg.message-card, .nav.msg.msg-card {
-    margin-bottom: 2rem !important;
 }
 
 /* Пагинация сообщений */
@@ -3967,7 +4012,7 @@ table.question_table td.answer_cell input[type="radio"] {
 /* --- РЕЙТИНГ ПРЕПОДАВАТЕЛЕЙ --- */
 #rating {
     width: auto !important;
-    min-width: 1500px !important; 
+    min-width: 1500px !important;
     border-collapse: separate !important;
     border-spacing: 0 !important;
     table-layout: auto !important;
@@ -3988,12 +4033,12 @@ table.question_table td.answer_cell input[type="radio"] {
 /* Первая колонка (Названия кафедр) */
 #rating td:first-child, #rating th:first-child {
     text-align: left !important;
-    min-width: 300px !important; 
+    min-width: 300px !important;
     max-width: 400px !important;
     position: sticky !important;
     left: 0;
     z-index: 2;
-    background-color: var(--color-card) !important; 
+    background-color: var(--color-card) !important;
     border-right: 1px solid var(--color-table-border) !important;
 }
 
@@ -4288,7 +4333,7 @@ table.question_table td.answer_cell input[type="radio"] {
 .span9 table.common.absence-table {
     table-layout: auto !important;
     width: 100% !important;
-    min-width: 700px !important; 
+    min-width: 700px !important;
     border-collapse: separate !important;
 }
 
@@ -4301,11 +4346,14 @@ table.question_table td.answer_cell input[type="radio"] {
     vertical-align: middle !important;
 }
 
-/* Развешиваем ширину колонок в процентах (в сумме 100%) */
+/* Развешиваем ширину колонок */
 .span9 table.common.absence-table tr > th:nth-child(1),
 .span9 table.common.absence-table tr > td:nth-child(1) {
-    width: 5% !important;
+    width: 1% !important;
+    min-width: 40px !important;
+    white-space: nowrap !important;
     text-align: center !important;
+    padding: 1.2rem 1rem !important;
 }
 
 .span9 table.common.absence-table tr > th:nth-child(2),
@@ -4878,7 +4926,7 @@ button.search-capsule:hover {
 .teachers-list {
     display: flex !important;
     flex-direction: column !important;
-    gap: 1.6rem !important;
+    gap: 2.4rem !important;
 }
 
 .no-results-msg {
@@ -5187,7 +5235,7 @@ button.search-capsule:hover {
 .score-tooltip {
     position: absolute;
     bottom: 130%;
-    right: 0; 
+    right: 0;
     transform: translateY(10px);
     background: #2A2C2F;
     color: #fff;
@@ -5745,7 +5793,7 @@ button.analytics-btn {
     .pair_info .aud {
         display: flex !important;
         flex-direction: row !important;
-        flex-wrap: wrap !important; 
+        flex-wrap: wrap !important;
         align-items: center !important;
         gap: 6px !important;
         max-width: none !important;
@@ -5829,12 +5877,13 @@ button.analytics-btn {
         transform: none !important;
     }
 
-    .session-table-v6 tbody tr:not(:last-child),
-    .term-table-v6 tbody tr:not(:last-child) {
-        background-image: linear-gradient(to right, 
-            transparent 10px, 
-            var(--color-table-border) 10px, 
-            var(--color-table-border) calc(100% - 10px), 
+    .span9 table:not(.timetable-grid) tbody tr:not(:last-child),
+    .wide-table-wrapper table:not(.timetable-grid) tbody tr:not(:last-child),
+    .ui-dialog table tbody tr:not(:last-child) {
+        background-image: linear-gradient(to right,
+            transparent 10px,
+            var(--color-table-border) 10px,
+            var(--color-table-border) calc(100% - 10px),
             transparent calc(100% - 10px)
         ) !important;
     }
@@ -6152,9 +6201,9 @@ button.sync-tab.active {
     background: var(--color-highlight-light) !important;
 }
 .sync-tab-content { display: none; }
-.sync-tab-content.active { 
-    display: block; 
-    animation: fadeIn 0.2s ease; 
+.sync-tab-content.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
 }
 
 /* Цвет бейджа для консультаций */
@@ -6242,7 +6291,7 @@ button.sync-tab.active {
     position: relative !important; /* Возвращаем в общий поток */
     width: 0 !important; /* Скрыто по умолчанию */
     margin-right: 0 !important;
-    
+
     cursor: pointer !important;
     background: transparent !important;
     border: none !important;
@@ -6253,7 +6302,7 @@ button.sync-tab.active {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    
+
     opacity: 0 !important;
     visibility: hidden !important;
     overflow: hidden !important; /* Чтобы иконка не торчала при сужении */
@@ -6313,7 +6362,7 @@ button.sync-tab.active {
     font-size: 1.8rem !important;
     color: var(--color-text-secondary);
     cursor: pointer;
-    
+
     opacity: 0;
     visibility: hidden;
     width: 0;
@@ -6335,8 +6384,8 @@ button.sync-tab.active {
 
 /* Ховеры только для ПК (мышь) */
 @media (hover: hover) and (pointer: fine) {
-    .timetable-grid tr.pair-passed:hover td { 
-        opacity: 0.9; 
+    .timetable-grid tr.pair-passed:hover td {
+        opacity: 0.9 !important;
     }
     .span9 .day h3:hover .share-day-btn {
         opacity: 1;
@@ -6351,9 +6400,9 @@ button.sync-tab.active {
 /* --- SETTINGS MODAL --- */
 .settings-menu-list { display: flex; flex-direction: column; gap: 8px; }
 .settings-menu-btn {
-    display: flex; align-items: center; width: 100%; padding: 16px; 
-    background: var(--color-highlight); border: none; border-radius: var(--radius-medium); 
-    color: var(--color-text-primary); font-size: 1.4rem; font-weight: 600; 
+    display: flex; align-items: center; width: 100%; padding: 16px;
+    background: var(--color-highlight); border: none; border-radius: var(--radius-medium);
+    color: var(--color-text-primary); font-size: 1.4rem; font-weight: 600;
     cursor: pointer; transition: all 0.2s ease; font-family: inherit;
 }
 .settings-menu-btn:hover { background: var(--color-highlight-light); transform: translateY(-2px); }
@@ -6424,7 +6473,7 @@ button.sync-tab.active {
         opacity: 1 !important; visibility: visible !important;
         transform: translateY(0) !important;
     }
-    
+
     /* Индикатор свайпа (полоска сверху) */
     #etis-settings-modal::before, .analytics-modal::before, #etis-reviews-modal::before {
         content: '';
@@ -6438,9 +6487,9 @@ button.sync-tab.active {
         border-radius: 4px;
         z-index: 10;
     }
-    
-    #etis-settings-modal .ui-widget-header, 
-    .analytics-modal .ui-widget-header, 
+
+    #etis-settings-modal .ui-widget-header,
+    .analytics-modal .ui-widget-header,
     #etis-reviews-modal .ui-widget-header {
         padding-top: 24px !important; /* Отступ под полоску */
         border-radius: 24px 24px 0 0 !important;
@@ -6464,7 +6513,7 @@ button.sync-tab.active {
     #etis-settings-modal .ui-dialog-content::-webkit-scrollbar,
     .analytics-modal .ui-dialog-content::-webkit-scrollbar,
     #etis-reviews-modal .ui-dialog-content::-webkit-scrollbar {
-        display: none !important; 
+        display: none !important;
     }
 }
 
@@ -6511,22 +6560,31 @@ button.sync-tab.active {
     .settings-layout {
         display: flex;
         flex-direction: column;
-        height: 100%;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
     }
     .settings-sidebar {
         padding: 2.4rem;
         display: flex;
         flex-direction: column;
         gap: 8px;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
     }
     .settings-content-area {
         display: flex;
         flex-direction: column;
-        height: 100%;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
     }
     .settings-content-scroll {
         padding: 2.4rem;
-        overflow-y: auto;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
     }
     .hidden-on-mobile { display: none !important; }
     .desktop-main-title { display: none !important; }
@@ -6534,30 +6592,30 @@ button.sync-tab.active {
 
 /* Кнопки сайдбара настроек */
 #etis-settings-modal .settings-sidebar-btn {
-    display: flex !important; 
+    display: flex !important;
     flex-direction: row !important;
-    align-items: center !important; 
+    align-items: center !important;
     justify-content: flex-start !important;
-    width: 100% !important; 
+    width: 100% !important;
     max-width: 100% !important;
     padding: 12px 16px !important;
     margin: 0 0 8px 0 !important;
-    background: transparent !important; 
-    border: none !important; 
+    background: transparent !important;
+    border: none !important;
     border-radius: var(--radius-medium) !important;
-    color: var(--color-text-primary) !important; 
-    font-size: 1.4rem !important; 
+    color: var(--color-text-primary) !important;
+    font-size: 1.4rem !important;
     font-weight: 600 !important;
-    cursor: pointer !important; 
-    transition: all 0.2s ease !important; 
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
     font-family: inherit !important;
     box-shadow: none !important;
     box-sizing: border-box !important;
     height: 48px !important;
 }
 
-#etis-settings-modal .settings-sidebar-btn:hover { 
-    background: var(--color-table-highlight) !important; 
+#etis-settings-modal .settings-sidebar-btn:hover {
+    background: var(--color-table-highlight) !important;
 }
 
 /* Защита внутренних спанов от глобальных стилей */
@@ -6567,32 +6625,32 @@ button.sync-tab.active {
     padding: 0 !important;
 }
 
-#etis-settings-modal .settings-sidebar-btn .sidebar-btn-text { 
-    flex-grow: 1 !important; 
-    text-align: left !important; 
+#etis-settings-modal .settings-sidebar-btn .sidebar-btn-text {
+    flex-grow: 1 !important;
+    text-align: left !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     color: inherit !important;
 }
 
-#etis-settings-modal .settings-sidebar-btn .material-icons { 
+#etis-settings-modal .settings-sidebar-btn .material-icons {
     flex-shrink: 0 !important;
-    margin-right: 12px !important; 
-    font-size: 2.2rem !important; 
-    color: var(--color-text-secondary) !important; 
+    margin-right: 12px !important;
+    font-size: 2.2rem !important;
+    color: var(--color-text-secondary) !important;
 }
 
-#etis-settings-modal .settings-sidebar-btn .chevron { 
+#etis-settings-modal .settings-sidebar-btn .chevron {
     flex-shrink: 0 !important;
-    margin-right: 0 !important; 
-    margin-left: auto !important; 
+    margin-right: 0 !important;
+    margin-left: auto !important;
 }
 
-#etis-settings-modal .settings-sidebar-btn.active { 
-    background: var(--color-accent) !important; 
-    color: var(--color-text-primary-invert) !important; 
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; 
+#etis-settings-modal .settings-sidebar-btn.active {
+    background: var(--color-accent) !important;
+    color: var(--color-text-primary-invert) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
 }
 
 #etis-settings-modal .settings-sidebar-btn.active .material-icons {
@@ -6600,7 +6658,7 @@ button.sync-tab.active {
 }
 
 #etis-settings-modal .settings-sidebar-btn.active .chevron {
-    display: none !important; 
+    display: none !important;
 }
 
 .appearance-section {
@@ -6658,8 +6716,8 @@ body.modal-open-body {
 }
 
 /* 4. Шапкам окон тоже запрещаем скроллить фон при смахивании */
-#etis-settings-modal .ui-widget-header, 
-.analytics-modal .ui-widget-header, 
+#etis-settings-modal .ui-widget-header,
+.analytics-modal .ui-widget-header,
 #etis-reviews-modal .ui-widget-header {
     touch-action: none !important;
 }
@@ -6670,9 +6728,9 @@ body.modal-open-body {
 #etis-reviews-modal .ui-dialog-content,
 .settings-content-scroll {
     overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important; 
+    -webkit-overflow-scrolling: touch !important;
     flex: 1 1 auto !important;
-    min-height: 0 !important; 
+    min-height: 0 !important;
     overscroll-behavior: contain !important;
 }
 
@@ -6698,6 +6756,30 @@ body.modal-open-body {
     .note-modal-textarea {
         font-size: 16px !important;
     }
+}
+
+/* Заливка иконок активных вкладок в окнах настроек и консультаций */
+#etis-settings-modal .settings-sidebar-btn.active .material-icons,
+#etis-cons-modal .settings-sidebar-btn.active .material-icons {
+    font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+}
+
+/* Плавное появление событий из внешних календарей */
+.external-event-row td {
+    opacity: 0;
+    animation: cellScaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    animation-delay: var(--ext-anim-delay, 0s);
+}
+
+/* Специальная анимация для УЖЕ прошедших внешних событий */
+@keyframes cellScaleInDim {
+    0% { opacity: 0; transform: scale(0.95) translateY(10px); }
+    100% { opacity: 0.45; transform: scale(1) translateY(0); }
+}
+
+/* Если пара уже прошла, подменяем анимацию на тусклую */
+.timetable-grid tr.pair-passed.external-event-row td {
+    animation-name: cellScaleInDim;
 }
     `;
 
@@ -6964,7 +7046,7 @@ body.modal-open-body {
         addViewport();
         setIcon();
         stylePages();
-        
+
         requestAnimationFrame(() => {
             requestAnimationFrame(() => {
                 if (document.body) {
@@ -6972,13 +7054,13 @@ body.modal-open-body {
                     document.body.style.removeProperty('opacity');
                     document.body.style.removeProperty('visibility');
                     document.body.style.removeProperty('background-color');
-                    
+
                     // Запускаем плавную CSS-анимацию проявления
                     document.body.classList.add('etis-reborn-loaded');
                 }
             });
         });
-        
+
         // Запуск через секунду, чтобы страница прогрузилась
         setTimeout(initAutoUpdateCheck, 1500);
     }
@@ -7114,7 +7196,7 @@ body.modal-open-body {
                     container.innerHTML = '<div style="color:var(--color-red); text-align:center;">Не удалось загрузить историю.</div>';
                     return;
                 }
-                
+
                 const commits = JSON.parse(res.responseText);
                 const history = [];
                 const seenVersions = new Set();
@@ -7162,11 +7244,11 @@ body.modal-open-body {
                 let html = '';
                 history.forEach(item => {
                     const isCurrent = item.version === GM_info.script.version;
-                    
+
                     html += `
                         <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); display: flex; flex-direction: column; gap: 1rem; border: 1px solid ${isCurrent ? 'var(--color-accent)' : 'transparent'}; position: relative;">
                             ${isCurrent ? '<div style="position:absolute; top:-10px; right:16px; background:var(--color-accent); color:#fff; font-size:1rem; font-weight:800; padding:2px 8px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.2);">УСТАНОВЛЕНА</div>' : ''}
-                            
+
                             <div style="display: flex; justify-content: space-between; align-items: center;">
                                 <div>
                                     <div style="font-weight: 800; font-size: 1.6rem; color: var(--color-text-primary); line-height: 1;">v${item.version}</div>
@@ -7195,7 +7277,7 @@ body.modal-open-body {
             dot.className = 'badge-point';
             settingsLink.appendChild(dot);
         }
-        
+
         // 2. Точка на мобильной кнопке "Меню"
         const mob = document.querySelector('.mobile-menu-btn');
         if (mob) mob.classList.add('has-updates');
@@ -7231,7 +7313,7 @@ body.modal-open-body {
                     container.innerHTML = '<div style="color:var(--color-red); text-align:left; padding: 1rem 0; font-size: 1.4rem;">Не удалось загрузить историю версий. Попробуйте позже.</div>';
                     return;
                 }
-                
+
                 const commits = JSON.parse(res.responseText);
                 const history = [];
                 const seenVersions = new Set();
@@ -7282,7 +7364,7 @@ body.modal-open-body {
                     // Выделяем текущую версию, если она совпадает
                     const isCurrent = item.version === GM_info.script.version;
                     const borderStyle = isCurrent ? 'border: 2px solid var(--color-accent);' : 'border: 1px solid var(--color-table-border);';
-                    
+
                     html += `
                         <div style="background:var(--color-card); padding:1.6rem; border-radius:12px; margin-bottom:1.2rem; text-align:left; ${borderStyle}">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
@@ -7308,9 +7390,9 @@ body.modal-open-body {
 
     function getUpdateHTML() {
         const cur = GM_info.script.version;
-        
+
         if (updateState.status === 'loading') return `<div style="padding:2rem 0;text-align:left;display:flex;align-items:center;gap:12px;"><span class="material-icons" style="font-size:32px;color:var(--color-accent);animation:spin 1s linear infinite;">sync</span><div style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Проверка обновлений...</div></div><style>@keyframes spin{100%{transform:rotate(360deg)}}</style>`;
-        
+
         if (updateState.status === 'error') return `<div style="text-align:left;"><div style="display:flex;align-items:center;gap:12px;margin-bottom:1.5rem;"><span class="material-icons" style="font-size:36px;color:var(--color-red);">error_outline</span><div style="font-size:1.6rem;font-weight:700;color:var(--color-text-primary);">Ошибка: ${updateState.details}</div></div><button id="retry-update" class="answer-btn-custom" style="width:100%;justify-content:center;">Повторить</button></div>`;
 
         let mainHtml = '';
@@ -7490,7 +7572,7 @@ body.modal-open-body {
 
     function updateLiveTimetable() {
         const actualWeek = localStorage.getItem('etis_actual_week');
-        
+
         // 1. Проверяем параметры URL (у студентов p_week, у преподавателей P_WEEK)
         const urlParams = new URLSearchParams(window.location.search);
         const urlWeek = urlParams.get('p_week') || urlParams.get('P_WEEK');
@@ -7570,7 +7652,7 @@ body.modal-open-body {
                             const targetEl = disContainer.querySelector('a') || disContainer;
                             const cleanSubjectName = targetEl.textContent.trim();
                             const dayDateStr = dayBlock.querySelector('.day-date')?.textContent.trim() || 'UnknownDate';
-                            
+
                             let rawPairNum = "";
                             Array.from(numTd.childNodes).forEach(n => {
                                 if (n.nodeType === Node.TEXT_NODE && /пара/i.test(n.nodeValue)) {
@@ -7578,13 +7660,13 @@ body.modal-open-body {
                                 }
                             });
                             if (!rawPairNum) rawPairNum = numTd.textContent.trim().split(' ')[0] + ' пара';
-                            
+
                             const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
                             let imp = JSON.parse(localStorage.getItem('etis_important_pairs_v1') || '[]');
                             if (imp.includes(pairId)) {
                                 imp = imp.filter(id => id !== pairId);
                                 localStorage.setItem('etis_important_pairs_v1', JSON.stringify(imp));
-                                
+
                                 // Мгновенно убираем стили
                                 row.classList.remove('is-important');
                                 const impBtn = numTd.querySelector('.pair-important-btn');
@@ -7614,7 +7696,7 @@ body.modal-open-body {
                 });
 
                 // --- Умная индикация для заголовка текущего дня ---
-                
+
                 // 1. Всегда добавляем статичный зеленый кружок
                 const dayDot = document.createElement('span');
                 dayDot.className = 'day-status-icon';
@@ -7637,7 +7719,7 @@ body.modal-open-body {
                     iconTitle = 'Скоро пары';
                     iconColor = 'var(--color-yellow)';
                 } else {
-                    iconName = 'play_circle_outline';
+                    iconName = 'play_circle';
                     iconTitle = 'Пары идут';
                     iconColor = 'var(--color-accent)';
                 }
@@ -7647,10 +7729,10 @@ body.modal-open-body {
                 icon.style.cssText = `font-size: 1.8rem; color: ${iconColor}; flex-shrink: 0;`;
                 icon.textContent = iconName;
                 icon.title = iconTitle;
-                
+
                 // Находим обертку текста, чтобы иконка статуса ставилась после всей фразы (с датой)
                 let targetEl = dayHeaderName.closest('.day-title-text-wrap') || dayHeaderName;
-                
+
                 targetEl.after(icon);
                 targetEl.after(dayDot);
             }
@@ -7672,7 +7754,7 @@ body.modal-open-body {
                 const historyBtn = wrapper.querySelector('#open-history-btn');
                 if (historyBtn) {
                     historyBtn.onclick = () => {
-                        openSettingsModal('history'); 
+                        openSettingsModal('history');
                     };
                 }
 
@@ -7760,12 +7842,12 @@ body.modal-open-body {
 
             const chunkAudMatch = chunkText.match(localAudRegex);
             const chunkAud = chunkAudMatch ? chunkAudMatch[0].replace(/\s+/g, ' ').trim() : '';
-            
+
             const chunkLinkMatch = chunkText.match(localLinkRegex);
             const chunkLink = chunkLinkMatch ? chunkLinkMatch[1] : '';
 
             let chunkDays =[];
-            
+
             // Ищем диапазоны дней
             const rangeMatch = chunkText.match(/(понедельник|вторник|среда|четверг|пятница|суббота|воскресенье)\s*(?:-|–|по)\s*(понедельник|вторник|среда|четверг|пятница|суббота|воскресенье)/i);
             if (rangeMatch) {
@@ -7790,7 +7872,7 @@ body.modal-open-body {
 
             // Создание событий
             if (chunkDays.length > 0 && times.length > 0) {
-                const t = times[0]; 
+                const t = times[0];
                 chunkDays.forEach(day => {
                     info.events.push({
                         dayName: day.charAt(0).toUpperCase() + day.slice(1).toLowerCase(),
@@ -7813,7 +7895,7 @@ body.modal-open-body {
                     });
                 });
             } else if (times.length > 0) {
-                const t = times[0]; 
+                const t = times[0];
                 info.events.push({
                     dayName: 'По договоренности',
                     startTime: t[1].replace('.', ':'),
@@ -7828,16 +7910,16 @@ body.modal-open-body {
         // Если не найдено конкретных событий, но есть договоренность/запись/аудитория/ссылка
         if (info.events.length === 0) {
             if (blockIsStrictAgreement || blockIsRecording || rawText.match(new RegExp(audRegexStr, 'i')) || rawText.match(/(https?:\/\/\S+)/i)) {
-                
+
                 const allAuds =[...rawText.matchAll(new RegExp(audRegexStr, 'ig'))].map(m => m[0].replace(/\s+/g, ' ').trim());
                 const allLinks =[...rawText.matchAll(/(https?:\/\/\S+)/ig)].map(m => m[1]);
 
                 info.events.push({
                     dayName: 'По договоренности',
-                    startTime: '', 
+                    startTime: '',
                     endTime: '',
                     weekType: 'all',
-                    aud: allAuds.length > 0 ? allAuds[0] : '', 
+                    aud: allAuds.length > 0 ? allAuds[0] : '',
                     link: allLinks.length > 0 ? allLinks[0] : ''
                 });
             }
@@ -7851,7 +7933,7 @@ body.modal-open-body {
 
             const hasAnyLink = info.events.some(e => e.link);
             const hasAnyAud = info.events.some(e => e.aud);
-            
+
             info.events.forEach(ev => {
                 if (!hasAnyLink && !ev.link) ev.link = globalLink;
                 if (!hasAnyAud && !ev.aud) ev.aud = globalAud;
@@ -7862,9 +7944,9 @@ body.modal-open-body {
         let notesText = rawText;
         notesText = notesText.replace(new RegExp(daysRegexStr, 'ig'), '').replace(new RegExp(timeRegexStr, 'ig'), '');
         if (info.email) notesText = notesText.replace(new RegExp(info.email, 'gi'), '');
-        notesText = notesText.replace(/https?:\/\/[^\s]+/ig, ''); 
-        notesText = notesText.replace(new RegExp(audRegexStr, 'ig'), ''); 
-        
+        notesText = notesText.replace(/https?:\/\/[^\s]+/ig, '');
+        notesText = notesText.replace(new RegExp(audRegexStr, 'ig'), '');
+
         notesText = notesText.replace(/электронная почта(?: преподавателя)?\s*:?/ig, '');
         notesText = notesText.replace(/e-?mail\s*:?/ig, '');
         notesText = notesText.replace(/ссылка для подключения\s*:?/ig, '');
@@ -7877,11 +7959,11 @@ body.modal-open-body {
         notesText = notesText.replace(/или\s+по\s+[а-я]+/ig, '');
         notesText = notesText.replace(/по\s+договоренности/ig, '');
         notesText = notesText.replace(/тел\.?\s*[\d-]{7,}/ig, '');
-        notesText = notesText.replace(/\s*[-–]\s*(?=\s|$)/g, ' '); 
-        
-        notesText = notesText.replace(/\(\s*\)/g, '').trim(); 
-        notesText = notesText.replace(/^[.,:;–-]\s*/g, '').trim(); 
-        notesText = notesText.replace(/\s*[.,:;–-]$/g, '').trim(); 
+        notesText = notesText.replace(/\s*[-–]\s*(?=\s|$)/g, ' ');
+
+        notesText = notesText.replace(/\(\s*\)/g, '').trim();
+        notesText = notesText.replace(/^[.,:;–-]\s*/g, '').trim();
+        notesText = notesText.replace(/\s*[.,:;–-]$/g, '').trim();
 
         if (notesText.length > 2 && !/^\W+$/.test(notesText)) {
             info.notes = notesText.replace(/\s+/g, ' ').trim();
@@ -7915,7 +7997,7 @@ body.modal-open-body {
                 const yearMatch = fullText.match(/(\d{4}\s*\/\s*\d{4}|\d{4}-\d{4})/);
                 let yearText = '';
                 if (yearMatch) yearText = ' ' + yearMatch[1].replace(/\s/g, '');
-                
+
                 if (seasonMatch) {
                     let season = 'Осенний';
                     if(seasonMatch[1].includes('весен')) season = 'Весенний';
@@ -7927,12 +8009,12 @@ body.modal-open-body {
                     title = `Консультации${yearText}`;
                 }
 
-                const fileData = { 
-                    id: 'cons_file_' + Date.now(), 
-                    title, 
-                    isActive: false, 
+                const fileData = {
+                    id: 'cons_file_' + Date.now(),
+                    title,
+                    isActive: false,
                     sourceUrl: sourceUrl,
-                    teachers:[] 
+                    teachers:[]
                 };
 
                 tempDiv.querySelectorAll('tr').forEach(row => {
@@ -7941,8 +8023,8 @@ body.modal-open-body {
                     const pTags = cells[0].querySelectorAll('p');
                     let nameLines = pTags.length > 0 ? Array.from(pTags).map(p => p.textContent.trim()).filter(Boolean) : cells[0].innerHTML.replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').split('\n').map(s => s.trim()).filter(Boolean);
                     if (nameLines.length < 1) return;
-                    const name = nameLines[0]; 
-                    const degree = nameLines.slice(1).join(', '); 
+                    const name = nameLines[0];
+                    const degree = nameLines.slice(1).join(', ');
                     const rawDetailsText = cells[1].innerHTML.replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
                     const parsedInfo = parseConsultationInfo(rawDetailsText, cells[1].innerHTML);
                     if (name && (parsedInfo.events.length > 0 || parsedInfo.notes || parsedInfo.email)) {
@@ -7962,11 +8044,11 @@ body.modal-open-body {
             const email = e.target.getAttribute('data-email');
             if (!email) return;
             navigator.clipboard.writeText(email);
-            
+
             const origText = e.target.textContent;
             e.target.textContent = 'Скопировано!';
             e.target.style.color = 'var(--color-green)';
-            
+
             setTimeout(() => {
                 e.target.textContent = origText;
                 e.target.style.color = 'var(--color-text-link)';
@@ -7983,7 +8065,7 @@ body.modal-open-body {
             overlay.id = 'etis-cons-overlay';
             overlay.className = 'analytics-overlay';
             document.body.appendChild(overlay);
-            
+
             const style = document.createElement('style');
             style.innerHTML = `
                 #etis-cons-modal .settings-sidebar-btn { display: flex !important; align-items: center !important; padding: 12px 16px !important; border-radius: var(--radius-medium) !important; cursor: pointer !important; margin-bottom: 8px !important; transition: all 0.2s ease !important; border: 1px solid transparent; box-sizing: border-box; }
@@ -7991,10 +8073,10 @@ body.modal-open-body {
                 #etis-cons-modal .settings-sidebar-btn.active { background: var(--color-accent) !important; color: var(--color-text-primary-invert) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
                 #etis-cons-modal .settings-sidebar-btn.active .material-icons, #etis-cons-modal .settings-sidebar-btn.active .sidebar-btn-text { color: var(--color-text-primary-invert) !important; }
                 #etis-cons-modal .settings-sidebar-btn.active .chevron { display: none !important; }
-                
+
                 .cons-email-copy { color: var(--color-text-link); cursor: pointer; text-decoration: none; transition: color 0.2s; }
                 .cons-email-copy:hover { color: var(--color-accent) !important; text-decoration: underline; }
-                
+
                 .copy-word-hint {
                     color: var(--color-accent);
                     font-weight: 800;
@@ -8004,11 +8086,11 @@ body.modal-open-body {
                     transition: all 0.2s;
                     display: inline-block;
                 }
-                
+
                 #etis-cons-modal { display: flex !important; flex-direction: column !important; }
                 #etis-cons-modal .settings-layout { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
                 #etis-cons-modal .settings-content-area { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
-                
+
                 @media (max-width: 960px) {
                     #etis-cons-modal .hidden-on-mobile { display: none !important; }
                 }
@@ -8038,9 +8120,9 @@ body.modal-open-body {
             document.body.appendChild(modal);
         }
 
-        const closeAll = () => { 
-            overlay.classList.remove('active'); 
-            modal.classList.remove('active'); 
+        const closeAll = () => {
+            overlay.classList.remove('active');
+            modal.classList.remove('active');
             document.body.classList.remove('modal-open-body');
         };
         overlay.onclick = closeAll;
@@ -8054,7 +8136,7 @@ body.modal-open-body {
                     Консультации
                     <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
                 </div>
-                
+
                 <div class="settings-sidebar-btn ${activeFileId === 'system_etis' ? 'active' : ''}" data-file-id="system_etis">
                     <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'system_etis' ? '' : 'color: var(--color-text-secondary);'}">school</span>
                     <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Расписание ЕТИС</span>
@@ -8088,7 +8170,7 @@ body.modal-open-body {
             if (activeFileId === 'system_etis') {
                 headerTitle = 'Встроенные консультации';
                 const isSystemShow = localStorage.getItem('etis_show_consultations') !== 'false';
-                
+
                 contentHtml = `
                     <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
                         <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">За текущий период</div>
@@ -8109,7 +8191,7 @@ body.modal-open-body {
                         <p style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 2rem; line-height: 1.5;">
                             Вы можете загрузить файл с расписанием консультаций, чтобы они были у вас под рукой и отображались в вашем расписании. Для этого зайдите в <a href="stu_ann.announces" style="color: var(--color-accent); font-weight: 800; text-decoration: none;">Объявления</a>, впишите в поиск <span class="copy-word-hint" title="Нажмите, чтобы скопировать" data-copy="консультаций">"консультаций"</span>, нажмите на кнопку "В расписание", либо скачайте его и загрузите сюда.
                         </p>
-                        
+
                         <div id="cons-drop-zone" style="border: 2px dashed var(--color-accent); border-radius: var(--radius-large); padding: 4rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--color-card);">
                             <span class="material-icons" style="font-size: 4rem; color: var(--color-accent); margin-bottom: 1rem;">cloud_upload</span>
                             <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Нажмите или перетащите DOCX файл сюда</div>
@@ -8125,7 +8207,7 @@ body.modal-open-body {
                 contentHtml = `
                     <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
                         <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">${activeFile.title}</div>
-                        
+
                         <div style="display: flex; gap: 1.2rem; align-items: center; flex-wrap: nowrap;">
                             <label style="flex: 1; display:flex; align-items:center; justify-content:space-between; gap: 12px; cursor:pointer; padding: 12px 20px; background: var(--color-card); border-radius: 24px; border: 1px solid var(--color-table-border);">
                                 <span style="font-size:1.3rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Отображать в расписании</span>
@@ -8148,7 +8230,7 @@ body.modal-open-body {
                 `;
 
                 activeFile.teachers.forEach((t, tIdx) => {
-                    let eventsHtml = t.events.map(ev => 
+                    let eventsHtml = t.events.map(ev =>
                         `<span style="background: var(--color-accent-active); color: var(--color-accent); padding: 2px 8px; border-radius: 6px; font-size: 1.1rem; font-weight: 700; white-space: nowrap;">
                             ${ev.weekType === 'even' ? '(Чёт) ' : ev.weekType === 'odd' ? '(Нечёт) ' : ''}${ev.dayName} ${ev.startTime}${ev.endTime ? '-' + ev.endTime : ''}
                         </span>`
@@ -8171,9 +8253,9 @@ body.modal-open-body {
                                     <input type="checkbox" class="tumbler-checkbox toggle-cons-teacher" data-file-id="${activeFile.id}" data-teacher-idx="${tIdx}" ${isTeacherActive ? 'checked' : ''}>
                                 </label>
                             </div>
-                            
+
                             ${eventsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom: 8px;">${eventsHtml}</div>` : ''}
-                            
+
                             <div style="display: flex; flex-direction: column; gap: 4px; font-size: 1.2rem; color: var(--color-text-secondary);">
                                 ${uniqueAuds ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">place</span>${uniqueAuds}</div>` : ''}
                                 ${t.email ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">email</span><span class="cons-email-copy" data-email="${t.email}">${t.email}</span></div>` : ''}
@@ -8208,7 +8290,7 @@ body.modal-open-body {
 
             modal.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = closeAll);
             modal.querySelectorAll('.back-modal-btn').forEach(btn => btn.onclick = () => renderView('main_menu'));
-            
+
             modal.querySelectorAll('.settings-sidebar-btn[data-file-id]').forEach(btn => {
                 btn.onclick = () => renderView(btn.getAttribute('data-file-id'));
             });
@@ -8219,12 +8301,12 @@ body.modal-open-body {
                     e.stopPropagation();
                     const originalText = span.textContent;
                     const textToCopy = span.getAttribute('data-copy');
-                    
+
                     navigator.clipboard.writeText(textToCopy).then(() => {
                         // Визуальный фидбек внутри текста
                         span.textContent = '"скопировано"';
                         span.style.color = 'var(--color-green)';
-                        
+
                         setTimeout(() => {
                             span.textContent = originalText;
                             span.style.color = '';
@@ -8324,9 +8406,9 @@ body.modal-open-body {
                 box.onchange = (e) => {
                     const fId = e.target.getAttribute('data-id');
                     const f = consultationsFiles.find(file => file.id === fId);
-                    if (f) { 
-                        f.isActive = e.target.checked; 
-                        saveConsultationsState(); 
+                    if (f) {
+                        f.isActive = e.target.checked;
+                        saveConsultationsState();
                         renderView(fId);
                         if (typeof window.injectConsultationPairs === 'function') {
                             document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
@@ -8355,11 +8437,11 @@ body.modal-open-body {
                 };
             }
         };
-        
+
         renderView(viewId);
-        requestAnimationFrame(() => { 
-            overlay.classList.add('active'); 
-            modal.classList.add('active'); 
+        requestAnimationFrame(() => {
+            overlay.classList.add('active');
+            modal.classList.add('active');
             document.body.classList.add('modal-open-body');
         });
     }
@@ -8380,11 +8462,11 @@ body.modal-open-body {
             document.body.appendChild(modal);
         }
 
-        const closeAll = () => { 
-            overlay.classList.remove('active'); 
-            modal.classList.remove('active'); 
+        const closeAll = () => {
+            overlay.classList.remove('active');
+            modal.classList.remove('active');
             document.body.classList.remove('modal-open-body');
-            
+
             if (requiresReloadOnClose) {
                 setTimeout(() => window.location.reload(), 300);
             }
@@ -8606,7 +8688,7 @@ body.modal-open-body {
                             </div>
                             <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
                         </div>
-                        
+
                         <!-- Сам контент -->
                         <div class="settings-content-scroll">
                             ${contentHTML}
@@ -8640,17 +8722,17 @@ body.modal-open-body {
                     localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                 };
             } else if (currentView === 'timetable') {
-                modal.querySelector('#setting-show-gaps').onchange = (e) => { 
-                    generalConfig.showGaps = e.target.checked; 
+                modal.querySelector('#setting-show-gaps').onchange = (e) => {
+                    generalConfig.showGaps = e.target.checked;
                     const wrap = modal.querySelector('#gaps-custom-wrapper');
                     if (wrap) wrap.style.display = e.target.checked ? 'block' : 'none';
-                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); 
-                    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable(); 
+                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                 };
-                modal.querySelector('#setting-show-gaps-custom').onchange = (e) => { 
-                    generalConfig.showGapsCustom = e.target.checked; 
-                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); 
-                    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable(); 
+                modal.querySelector('#setting-show-gaps-custom').onchange = (e) => {
+                    generalConfig.showGapsCustom = e.target.checked;
+                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                 };
                 modal.querySelector('#setting-hide-days').onchange = (e) => { generalConfig.hideDaysOff = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyHideDaysOff) window.applyHideDaysOff(); };
                 modal.querySelector('#setting-dim-pairs').onchange = (e) => { generalConfig.dimPastPairs = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyDimming) window.applyDimming(); };
@@ -8658,13 +8740,13 @@ body.modal-open-body {
                 modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
                 modal.querySelector('#setting-show-sunday').onchange = (e) => { generalConfig.showSunday = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
             } else if (currentView === 'grades') {
-                modal.querySelector('#setting-abs-scores').onchange = (e) => { 
-                    generalConfig.absoluteScores = e.target.checked; 
-                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); 
-                    requiresReloadOnClose = true; 
+                modal.querySelector('#setting-abs-scores').onchange = (e) => {
+                    generalConfig.absoluteScores = e.target.checked;
+                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                    requiresReloadOnClose = true;
                 };
-                modal.querySelector('#setting-compact-grades').onchange = (e) => { 
-                    generalConfig.compactGrades = e.target.checked; 
+                modal.querySelector('#setting-compact-grades').onchange = (e) => {
+                    generalConfig.compactGrades = e.target.checked;
                     const wrapper = modal.querySelector('#compact-settings-btn-wrapper');
                     if (e.target.checked) {
                         wrapper.style.display = 'block';
@@ -8673,8 +8755,8 @@ body.modal-open-body {
                         wrapper.style.display = 'none';
                         wrapper.previousElementSibling.style.marginBottom = '0';
                     }
-                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); 
-                    requiresReloadOnClose = true; 
+                    localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                    requiresReloadOnClose = true;
                 };
             } else if (currentView === 'compact_grades_settings') {
                 modal.querySelectorAll('.compact-col-toggle').forEach(checkbox => {
@@ -8740,9 +8822,9 @@ body.modal-open-body {
         };
 
         renderView(view);
-        requestAnimationFrame(() => { 
-            overlay.classList.add('active'); 
-            modal.classList.add('active'); 
+        requestAnimationFrame(() => {
+            overlay.classList.add('active');
+            modal.classList.add('active');
             document.body.classList.add('modal-open-body');
         });
     }
@@ -8790,7 +8872,7 @@ body.modal-open-body {
 
         // --- ПАРСЕР ДАТ И УМНОЕ ДОБАВЛЕНИЕ В РАСПИСАНИЕ ---
         const monthsDict = { 'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11 };
-        
+
         function highlightDatesInHTML(html, msgTitle) {
             const temp = document.createElement('div');
             temp.innerHTML = html;
@@ -8829,7 +8911,7 @@ body.modal-open-body {
             const walker = document.createTreeWalker(temp, NodeFilter.SHOW_TEXT, null, false);
             const nodesToReplace =[];
             let node;
-            
+
             while (node = walker.nextNode()) {
                 // Пропускаем уже обработанные ссылки
                 if (node.parentNode && (node.parentNode.tagName === 'A' || node.parentNode.classList.contains('msg-event-link'))) continue;
@@ -8863,7 +8945,7 @@ body.modal-open-body {
         function createEventTag(match, d, m, hr, min, title, aud) {
             // ОЧИСТКА НАЗВАНИЯ от даты, времени и номера аудитории
             let cleanTitle = (title || 'Объявление');
-            
+
             // 1. Убираем время (в 11:00, 11.00, с 10:00, до 12.00)
             cleanTitle = cleanTitle.replace(/(?:^|\s+)(?:в\s+|с\s+|до\s+|по\s+)?\d{1,2}[:.]\d{2}(?=\s|$|[.,])/ig, ' ');
 
@@ -8889,7 +8971,7 @@ body.modal-open-body {
             // Защита от HTML-инъекций в атрибутах
             cleanTitle = cleanTitle.replace(/"/g, '&quot;');
             const cleanAud = (aud || '').replace(/"/g, '&quot;');
-            
+
             const hash = `evt_${d}_${m}_${hr}_${min}_${cleanTitle.substring(0,8)}`.replace(/\s+/g, '');
             return `<span class="msg-event-link" data-hash="${hash}" data-d="${d}" data-m="${m}" data-hr="${hr}" data-min="${min}" data-title="${cleanTitle}" data-aud="${cleanAud}">${match}</span>`;
         }
@@ -8897,13 +8979,13 @@ body.modal-open-body {
         function initEventLinks() {
             document.querySelectorAll('.msg-event-link').forEach(el => {
                 const hash = el.getAttribute('data-hash');
-                
+
                 // Функция проверки, добавлено ли событие
                 const checkAdded = () => {
                     const added = JSON.parse(localStorage.getItem('etis_added_msg_events') || '[]');
                     return added.includes(hash);
                 };
-                
+
                 // Проверяем статус при загрузке страницы
                 if (checkAdded()) el.classList.add('added');
 
@@ -8916,24 +8998,24 @@ body.modal-open-body {
 
                     if (isAdded) {
                         // --- ЛОГИКА УДАЛЕНИЯ ---
-                        
+
                         // Удаляем саму пару из расписания
                         cp = cp.filter(p => p.msgHash !== hash);
                         localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
-                        
+
                         // Удаляем хэш из списка добавленных
                         addedMsgs = addedMsgs.filter(h => h !== hash);
                         localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
-                        
+
                         // Меняем визуал
                         el.classList.remove('added');
-                        
+
                         // Показываем уведомление
                         if (window.showEtisPush) window.showEtisPush('Удалено', title, `Событие убрано из расписания`, 'info', 'event_busy');
-                        
+
                     } else {
                         // --- ЛОГИКА ДОБАВЛЕНИЯ ---
-                        
+
                         const d = parseInt(el.dataset.d), m = parseInt(el.dataset.m), hr = el.dataset.hr.padStart(2,'0'), min = el.dataset.min.padStart(2,'0');
                         const aud = el.dataset.aud;
 
@@ -8945,30 +9027,30 @@ body.modal-open-body {
                         const targetWeek = parseInt(localStorage.getItem('etis_actual_week') || '1') + weekDiff;
 
                         let eM = parseInt(min) + 90, eH = parseInt(hr) + Math.floor(eM/60);
-                        const pair = { 
-                            id: 'cp_' + Date.now(), 
-                            addedWeek: targetWeek, 
+                        const pair = {
+                            id: 'cp_' + Date.now(),
+                            addedWeek: targetWeek,
                             dayName:["Воскресенье","Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"][targetDate.getDay()],
-                            subject: title, 
-                            startTime: `${hr}:${min}`, 
+                            subject: title,
+                            startTime: `${hr}:${min}`,
                             endTime: `${(eH%24).toString().padStart(2,'0')}:${(eM%60).toString().padStart(2,'0')}`,
                             type: 'лаб',
-                            recurrence: 'once', 
-                            aud: aud, 
+                            recurrence: 'once',
+                            aud: aud,
                             teacher: '',
                             msgHash: hash
                         };
 
                         // Сохраняем в память
-                        cp.push(pair); 
+                        cp.push(pair);
                         localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
-                        
-                        addedMsgs.push(hash); 
+
+                        addedMsgs.push(hash);
                         localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
 
                         // Меняем визуал
                         el.classList.add('added');
-                        
+
                         // Показываем уведомление
                         if (window.showEtisPush) window.showEtisPush('Добавлено в расписание', title, `${targetWeek} неделя, ${pair.dayName}`, 'success', 'event_available');
                     }
@@ -9000,13 +9082,13 @@ body.modal-open-body {
             span9 = document.createElement('div');
             span9.className = 'span9 peo-span9';
             span9.style.cssText = 'float: none !important; width: 100% !important; padding-top: 1rem !important;';
-            
+
             Array.from(document.body.childNodes).forEach(node => {
                 if (node.tagName !== 'SCRIPT' && node.tagName !== 'STYLE' && node.id !== 'swipe-action-bubble' && node.id !== 'etis-push-container' && node !== container) {
                     span9.appendChild(node);
                 }
             });
-            
+
             container.appendChild(span9);
             document.body.appendChild(container);
             document.body.style.backgroundColor = '';
@@ -9135,7 +9217,7 @@ body.modal-open-body {
                     let labelText = label.textContent.trim();
                     // Меняем текст плейсхолдера
                     if (labelText === 'Фамилия / email') labelText = 'Email';
-                    
+
                     input.placeholder = labelText;
                     label.remove();
                 }
@@ -9311,13 +9393,13 @@ body.modal-open-body {
                     logoImg.addEventListener('click', () => {
                         // 1. Поворот
                         clearTimeout(rotateTimer);
-                        
+
                         const angle = isRotateLeft ? -30 : 30;
-                        logoImg.style.transform = `rotate(${angle}deg) scale(1.1)`; 
+                        logoImg.style.transform = `rotate(${angle}deg) scale(1.1)`;
 
                         rotateTimer = setTimeout(() => {
                             logoImg.style.transform = 'rotate(0deg) scale(1)';
-                        }, 250); 
+                        }, 250);
 
                         isRotateLeft = !isRotateLeft;
 
@@ -9387,7 +9469,7 @@ body.modal-open-body {
                 settingsLink.style.cursor = 'pointer';
                 settingsLink.href = "#settings";
                 settingsLink.textContent = 'Настройки';
-                
+
                 settingsLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     const side = document.querySelector('.span3');
@@ -9396,19 +9478,19 @@ body.modal-open-body {
                         document.querySelector('.mobile-overlay')?.classList.remove('active');
                         document.querySelector('.mobile-menu-btn')?.classList.remove('open');
                     }
-                    
-                    let targetTab = 'main'; 
+
+                    let targetTab = 'main';
                     const currentUrl = window.location.href;
-                    
+
                     if (currentUrl.includes('timetable') || currentUrl.includes('group_tt')) {
                         targetTab = 'timetable';
                     } else if (currentUrl.includes('signs')) {
                         targetTab = 'grades';
                     }
-                    
+
                     openSettingsModal(targetTab);
                 });
-                
+
                 settingsLi.appendChild(settingsLink);
                 allListItems.push(settingsLi);
 
@@ -9419,16 +9501,16 @@ body.modal-open-body {
                     if (href === '#report-bug') return 'bug_report';
                     if (href === '#settings') return 'settings';
                     if (href.includes('teach_plan')) return 'school';
-                    if (href.includes('timetable')) return 'calendar_today';
-                    if (href.includes('signs')) return 'assignment_turned_in';
-                    if (href.includes('absence')) return 'event_busy';
-                    if (href.includes('stu_phs.show_slots')) return 'directions_run';
+                    if (href.includes('timetable')) return 'calendar_month';
+                    if (href.includes('signs')) return 'workspace_premium';
+                    if (href.includes('absence')) return 'auto_stories_off';
+                    if (href.includes('stu_phs.show_slots')) return 'steps';
                     if (href.includes('orders')) return 'assignment';
-                    if (href.includes('library')) return 'local_library';
+                    if (href.includes('library')) return 'book_2';
                     if (href.includes('teachers')) return 'people';
                     if (href.includes('est_pkg.show_list')) return 'forum';
                     if (href.includes('group_tt')) return 'playlist_add_check';
-                    if (href.includes('announces')) return 'announcement';
+                    if (href.includes('announces')) return 'record_voice_over';
                     if (href.includes('teacher_notes')) return 'mail';
                     if (href.includes('ses')) return 'account_balance';
                     if (href.includes('advice')) return 'lightbulb';
@@ -9520,10 +9602,11 @@ body.modal-open-body {
 
                 const groupsOrder = [
                     ['teach_plan'],
-                    ['timetable', 'signs', 'absence', 'stu_phs.show_slots'],
+                    ['timetable', 'signs'],
                     ['announces', 'teacher_notes', 'teachers', 'est_pkg.show_list'],
-                    ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'group_tt'],
+                    ['absence', 'group_tt', 'stu_phs.show_slots'],
                     ['library', 'electr', 'advice', 'ses', 'about'],
+                    ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'портфолио'],
                     ['term_test', 'special_est_list', 'оцените дистанционное'],
                     ['#settings', 'change_pass', 'change_email', 'change_pr_page', 'logout']
                 ];
@@ -9550,7 +9633,7 @@ body.modal-open-body {
                         const separator = document.createElement('div');
                         separator.style.height = '1px';
                         separator.style.background = 'var(--color-table-border)';
-                        separator.style.margin = '1rem 1.6rem 1.4rem 1.6rem';
+                        separator.style.margin = '1rem 1.2rem 1.4rem 1.2rem';
                         mainNav.appendChild(separator);
                     }
                 });
@@ -9560,7 +9643,7 @@ body.modal-open-body {
                      const separator = document.createElement('div');
                      separator.style.height = '1px';
                      separator.style.background = 'var(--color-table-border)';
-                     separator.style.margin = '1rem 1.6rem 1.4rem 1.6rem';
+                     separator.style.margin = '1rem 1.2rem 1.4rem 1.2rem';
                      mainNav.appendChild(separator);
                      remaining.forEach(li => mainNav.appendChild(li));
                 }
@@ -9704,13 +9787,13 @@ body.modal-open-body {
                     const h2 = document.createElement('h2');
                     h2.textContent = h4.textContent;
                     h2.style.marginBottom = '2.4rem';
-                    
+
                     // Извлекаем даты
                     const rangeMatch = h4.textContent.match(/\(с\s+\d{2}\.\d{2}\.\d{4}\s+по\s+\d{2}\.\d{2}\.\d{4}\)/i);
                     if (rangeMatch) {
                         dateRangeText = rangeMatch[0].replace(/[()]/g, '');
                     }
-                    
+
                     h2.style.display = 'none';
                     h4.replaceWith(h2);
                 }
@@ -9719,18 +9802,18 @@ body.modal-open-body {
                 const spans = Array.from(span9.querySelectorAll('span.fl, span.active'));
                 const terms =[];
                 const weeks =[];
-                
+
                 spans.forEach(span => {
                     const text = span.textContent.trim();
                     const onclick = span.getAttribute('onclick');
-                    
+
                     if (/^\d+$/.test(text) || (onclick && onclick.includes("'',"))) {
                         weeks.push(span);
                     } else {
                         terms.push(span);
                     }
                 });
-                
+
                 // Удаляем висячие <br> и &nbsp;
                 Array.from(span9.childNodes).forEach(node => {
                     if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '') node.remove();
@@ -9744,7 +9827,7 @@ body.modal-open-body {
                     submenu.style.setProperty('margin-bottom', '1.6rem', 'important');
                     submenu.style.setProperty('width', '100%', 'important');
                     submenu.style.setProperty('box-sizing', 'border-box', 'important');
-                    
+
                     terms.forEach(span => {
                         const a = document.createElement(span.classList.contains('active') ? 'b' : 'a');
                         a.textContent = span.textContent;
@@ -9760,24 +9843,24 @@ body.modal-open-body {
                     });
                     span9.insertBefore(submenu, span9.querySelector('table.slimtab_nice') || span9.firstChild);
                 }
-                
+
                 // 4. Создание Weeks (Недели)
                 if (weeks.length > 0) {
                     const weeksContainer = document.createElement('div');
                     weeksContainer.className = 'weeks';
-                    weeksContainer.style.setProperty('margin-bottom', '1rem', 'important'); 
+                    weeksContainer.style.setProperty('margin-bottom', '1rem', 'important');
                     weeksContainer.style.setProperty('width', '100%', 'important');
                     weeksContainer.style.setProperty('box-sizing', 'border-box', 'important');
-                    
+
                     const actualWeekNum = localStorage.getItem('etis_actual_week');
-                    
+
                     weeks.forEach(span => {
                         const isActive = span.classList.contains('active');
                         const weekDiv = document.createElement('div');
                         weekDiv.className = 'week ' + (isActive ? 'current' : '');
-                        
+
                         const text = span.textContent.trim();
-                        
+
                         if (text === actualWeekNum && !isActive) {
                             weekDiv.classList.add('actual-week');
                         }
@@ -9793,11 +9876,11 @@ body.modal-open-body {
                             a.href = '#';
                             a.setAttribute('onclick', span.getAttribute('onclick'));
                         }
-                        
+
                         if (isActive) {
                             a.style.setProperty('color', '#fff', 'important');
                         }
-                        
+
                         weekDiv.appendChild(a);
                         weeksContainer.appendChild(weekDiv);
                         span.remove();
@@ -9823,7 +9906,7 @@ body.modal-open-body {
                         }
                     }, 200);
                 }
-                
+
                 // 5. Оформление таблицы (Парсинг сетки в карточки дней)
                 const table = span9.querySelector('table.slimtab_nice');
                 if (table) {
@@ -9951,7 +10034,7 @@ body.modal-open-body {
 
                                 let subject = "Пара";
                                 let type = "";
-                                
+
                                 const allDivs = tempDiv.querySelectorAll(':scope > div');
                                 if (allDivs.length === 0) return;
 
@@ -9986,15 +10069,15 @@ body.modal-open-body {
                                     let visibleEntries =[];
                                     let hiddenEntries =[];
                                     const tooltipEl = infoDiv.querySelector('.tooltip');
-                                    
+
                                     let rawText = infoDiv.innerHTML.replace(/\.\d{4}/g, '')
                                         .replace(/<font[^>]*>/g, '').replace(/<\/font>/g, '')
                                         .replace(/<img[^>]*>/ig, '')
                                         .replace(/&nbsp;/g, ' ')
-                                        .replace(/<span[^>]*>.*?online.*?<\/span>/ig, 'online'); 
+                                        .replace(/<span[^>]*>.*?online.*?<\/span>/ig, 'online');
 
                                     let parts = rawText.split(/<br\s*\/?>/i).map(s => s.trim().replace(/<[^>]+>/g, '')).filter(s => s);
-                                    
+
                                     for (let j = 0; j < parts.length; j++) {
                                         let text = parts[j];
                                         if (text.toLowerCase() === titleText.toLowerCase() || text.toLowerCase() === subject.toLowerCase()) continue;
@@ -10037,9 +10120,9 @@ body.modal-open-body {
                                         if (audStr.toLowerCase() === 'online') {
                                             return `<span style="display:inline-flex; align-items:center; gap:4px; color:var(--color-text-secondary); font-weight:500; font-size:1.3rem;"><span class="material-icons" style="font-size:1.5rem;">public</span>Онлайн</span>`;
                                         }
-                                        
+
                                         if (strType === 'info') {
-                                            return `<div style="display:flex; align-items:flex-start; gap:8px; color:var(--color-text-secondary); font-weight:400; font-size:1.2rem; line-height:1.4; text-align:left; width:100%;"><span class="material-icons" style="font-size:1.5rem; opacity:0.7; flex-shrink:0; transform: translateY(-1px);">info_outline</span><span>${audStr}</span></div>`;
+                                            return `<div style="display:flex; align-items:flex-start; gap:8px; color:var(--color-text-secondary); font-weight:400; font-size:1.2rem; line-height:1.4; text-align:left; width:100%;"><span class="material-icons" style="font-size:1.5rem; opacity:0.7; flex-shrink:0; transform: translateY(-1px);">info</span><span>${audStr}</span></div>`;
                                         }
 
                                         let displayAud = audStr;
@@ -10058,7 +10141,7 @@ body.modal-open-body {
                                             ${formatAud(first.text, first.type)}
                                             ${first.date ? `<span style="font-size:1.15rem; color:var(--color-accent); opacity:0.8; font-weight:600;">${first.date}</span>` : ''}
                                         </div>`;
-                                        
+
                                         let hiddenHtml = '';
                                         const listToHide = hiddenEntries.length > 0 ? hiddenEntries : visibleEntries.slice(1);
 
@@ -10084,7 +10167,7 @@ body.modal-open-body {
                                 if (groupsDiv) {
                                     let groupsArr =[];
                                     const aTags = groupsDiv.querySelectorAll('a');
-                                    
+
                                     if (aTags.length > 0) {
                                         groupsArr = Array.from(aTags).map(a => a.textContent.trim()).filter(Boolean);
                                     } else {
@@ -10092,18 +10175,18 @@ body.modal-open-body {
                                             .map(g => g.replace(/<[^>]*>/g, '').trim())
                                             .filter(g => g.length > 1);
                                     }
-                                    
+
                                     if (groupsArr.length > 0) {
                                         const visibleCount = 2;
                                         const visibleGroups = groupsArr.slice(0, visibleCount).join(', ');
-                                        
+
                                         if (groupsArr.length > visibleCount) {
                                             const extraCount = groupsArr.length - visibleCount;
                                             const safeGroups = encodeURIComponent(JSON.stringify(groupsArr));
-                                            
+
                                             groupsHtml = `
                                                 <div style="color:var(--color-text-secondary); font-weight:500; font-size:1.2rem; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
-                                                    <span>${visibleGroups}</span> 
+                                                    <span>${visibleGroups}</span>
                                                     <span class="groups-more-btn modal-groups-trigger" data-groups="${safeGroups}">+${extraCount} групп</span>
                                                 </div>`;
                                         } else {
@@ -10130,7 +10213,7 @@ body.modal-open-body {
                         const renderWidth = isMobile ? 540 : 1000;
 
                         const exportContainer = document.createElement('div');
-                        exportContainer.style.cssText = `position:absolute; top:0; left:-9999px; width:${renderWidth}px; padding:${isMobile ? '24px 24px 12px' : '40px 40px 20px'}; background:var(--color-body); z-index:-9999; box-sizing:border-box;`;
+                        exportContainer.style.cssText = `position:fixed; top:0px; left:0px; pointer-events:none; width:${renderWidth}px; padding:${isMobile ? '24px 24px 12px' : '40px 40px 20px'}; background:var(--color-body); z-index:-9999; box-sizing:border-box;`;
 
                         if (targetEl.classList.contains('teacher-days-container')) {
                             const title = document.createElement('h2');
@@ -10149,9 +10232,10 @@ body.modal-open-body {
 
                         const clone = targetEl.cloneNode(true);
                         clone.style.margin = '0';
-
+                        clone.querySelectorAll('script').forEach(s => s.remove());
+                        clone.querySelectorAll('[loading="lazy"]').forEach(el => el.removeAttribute('loading'));
                         clone.querySelectorAll('.share-day-btn, .share-all-btn, .live-dot, .day-status-icon').forEach(el => el.remove());
-                        
+
                         // Убираем "Добавить онлайн мероприятие" и разделитель "•" перед ним
                         clone.querySelectorAll('a').forEach(a => {
                             if (a.textContent.includes('Добавить онлайн мероприятие')) {
@@ -10182,7 +10266,7 @@ body.modal-open-body {
                         `;
                         clone.appendChild(exportStyles);
                         span9Wrapper.appendChild(clone);
-                        
+
                         if (generalConfig.watermark) {
                             const watermark = document.createElement('div');
                             watermark.style.cssText = 'text-align: right; margin-top: 16px; font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.3; letter-spacing: 0.5px;';
@@ -10194,12 +10278,14 @@ body.modal-open-body {
                         document.body.appendChild(exportContainer);
 
                         try {
+                            await new Promise(r => setTimeout(r, 150));
                             const canvas = await h2c(exportContainer, {
-                                scale: 2, 
-                                useCORS: true, 
-                                windowWidth: renderWidth, 
+                                scale: 2,
+                                useCORS: true,
+                                windowWidth: renderWidth,
                                 scrollY: 0,
-                                backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim()
+                                backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim(),
+                                ignoreElements: (node) => node.nodeName === 'SCRIPT' || node.nodeName === 'IFRAME'
                             });
                             canvas.toBlob(blob => {
                                 const file = new File([blob], fileName, { type: 'image/png' });
@@ -10276,7 +10362,7 @@ body.modal-open-body {
 
                         let leftDateHTML = '';
                         let rightDateHTML = '';
-                        
+
                         if (datePart) {
                             if (generalConfig.datesLeft) {
                                 leftDateHTML = `<span>,</span>&nbsp;<span class="day-date" style="font-size: 1.4rem; color: var(--color-text-secondary); font-weight: 500;">${datePart}</span>`;
@@ -10311,12 +10397,12 @@ body.modal-open-body {
                         });
 
                         const gridTable = document.createElement('table');
-                        gridTable.className = 'timetable timetable-grid'; 
+                        gridTable.className = 'timetable timetable-grid';
                         const tbody = document.createElement('tbody');
 
                         day.pairs.forEach((pair, idx) => {
                             const tr = document.createElement('tr');
-                            
+
                             let typeClass = 'type-badge-lek';
                             if (pair.type === 'практ') typeClass = 'type-badge-pract';
                             else if (pair.type === 'лаб') typeClass = 'type-badge-lab';
@@ -10354,7 +10440,7 @@ body.modal-open-body {
                         btn.addEventListener('click', (e) => {
                             e.stopPropagation();
                             const groups = JSON.parse(decodeURIComponent(btn.getAttribute('data-groups')));
-                            
+
                             let overlay = document.querySelector('.analytics-overlay');
                             let modal = document.querySelector('.analytics-modal');
 
@@ -10380,9 +10466,9 @@ body.modal-open-body {
                                 </div>
                             `;
 
-                            const closeAnalytics = () => { 
-                                overlay.classList.remove('active'); 
-                                modal.classList.remove('active'); 
+                            const closeAnalytics = () => {
+                                overlay.classList.remove('active');
+                                modal.classList.remove('active');
                                 document.body.classList.remove('modal-open-body');
                             };
                             overlay.onclick = closeAnalytics;
@@ -10445,9 +10531,9 @@ body.modal-open-body {
                                 swipeDir = 'left';
                                 let moveX = diffX;
                                 if (Math.abs(moveX) > THRESHOLD) moveX = -THRESHOLD - (Math.abs(moveX) - THRESHOLD) * 0.25;
-                                
+
                                 currentTarget.style.transform = `translateX(${moveX}px)`;
-                                
+
                                 bubble.style.top = `${originalRect.top + originalRect.height / 2 - 12}px`;
                                 bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
                                 bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
@@ -10468,10 +10554,10 @@ body.modal-open-body {
                             if (!currentTarget || !isSwiping) return;
                             const diffX = e.changedTouches[0].clientX - startX;
                             const target = currentTarget;
-                            
+
                             currentTarget.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                             currentTarget.style.transform = 'translateX(0px)';
-                            
+
                             bubble.style.opacity = '0';
                             bubble.classList.remove('active-threshold', 'action-share');
                             bubble.dataset.vibrated = '';
@@ -10507,11 +10593,11 @@ body.modal-open-body {
                         days.forEach(day => {
                             const dateEl = day.querySelector('.day-date');
                             if (!dateEl) return;
-                            
+
                             let classDateObj = new Date();
                             const dateStr = dateEl.textContent.trim();
                             const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
-                            
+
                             if (match) {
                                 const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
                                 classDateObj.setMonth(m);
@@ -10525,7 +10611,7 @@ body.modal-open-body {
 
                             day.querySelectorAll('.timetable-grid tr').forEach(row => {
                                 let isPassed = false;
-                                
+
                                 if (isPastWeek) {
                                     isPassed = true; // Если неделя прошлая — всё темно
                                 } else if (isFutureWeek) {
@@ -10608,15 +10694,7 @@ body.modal-open-body {
                     const renderWidth = 540;
 
                     const exportContainer = document.createElement('div');
-                    exportContainer.style.position = 'fixed';
-                    exportContainer.style.top = '100vh';
-                    exportContainer.style.left = '0';
-                    exportContainer.style.width = renderWidth + 'px';
-                    exportContainer.style.padding = isMobile ? '24px 24px 12px 24px' : '40px 40px 20px 40px';
-                    exportContainer.style.boxSizing = 'border-box';
-                    exportContainer.style.background = getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6';
-                    exportContainer.style.fontFamily = getComputedStyle(document.body).fontFamily;
-                    exportContainer.style.zIndex = '-9999';
+                    exportContainer.style.cssText = `position: fixed; top: 0px; left: 0px; pointer-events: none; width: ${renderWidth}px; padding: ${isMobile ? '24px 24px 12px 24px' : '40px 40px 20px 40px'}; box-sizing: border-box; background: ${getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'}; font-family: ${getComputedStyle(document.body).fontFamily}; z-index: -9999;`;
 
                     const span9Wrapper = document.createElement('div');
                     span9Wrapper.className = 'span9';
@@ -10626,6 +10704,10 @@ body.modal-open-body {
 
                     // Клонируем карточку
                     const clone = cardElement.cloneNode(true);
+
+                    // Удаляем скрипты, чтобы избежать краша от расширений браузера
+                    clone.querySelectorAll('script').forEach(s => s.remove());
+                    clone.querySelectorAll('[loading="lazy"]').forEach(el => el.removeAttribute('loading'));
 
                     // Получаем текущий цвет из конфига, чтобы скриншот был в цвет темы
                     const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { colors: ['blue'] };
@@ -10642,7 +10724,7 @@ body.modal-open-body {
                         el.style.setProperty('background-clip', 'unset', 'important');
                         el.style.setProperty('-webkit-text-fill-color', currentAccentHex, 'important');
                         el.style.setProperty('color', currentAccentHex, 'important');
-                        
+
                         // Возвращаем правильный display, чтобы иконка и текст не слипались
                         if (el.classList.contains('msg-sender')) {
                             el.style.setProperty('display', 'flex', 'important');
@@ -10667,11 +10749,11 @@ body.modal-open-body {
                     let dynamicFileName = defaultFileName;
                     if (defaultFileName.includes('.png')) {
                         const base = defaultFileName.replace('.png', '').toLowerCase();
-                        
+
                         // Достаем отправителя (очищаем от иконок и берем первое слово, например "Деканат")
                         const senderRaw = clone.querySelector('.msg-sender')?.textContent.replace(/campaign|person/g, '').trim() || '';
                         const sender = senderRaw.split('/')[0].trim().replace(/\s+/g, '-').toLowerCase();
-                        
+
                         // Достаем дату и превращаем "25 марта 10:41" в "25.03"
                         const dateRaw = clone.querySelector('.msg-date-text')?.textContent.trim() || '';
                         let dateShort = '';
@@ -10707,8 +10789,10 @@ body.modal-open-body {
                     h2c(exportContainer, {
                         scale: 2,
                         useCORS: true,
+                        scrollY: 0,
                         windowWidth: renderWidth,
-                        backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'
+                        backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6',
+                        ignoreElements: (node) => node.nodeName === 'SCRIPT' || node.nodeName === 'IFRAME'
                     }).then(canvas => {
                         canvas.toBlob(blob => {
                             if (!blob) throw new Error('Blob creation failed');
@@ -10748,11 +10832,11 @@ body.modal-open-body {
                 if (!h2cObj) {
                     const script = document.createElement('script');
                     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-                    
+
                     script.onload = () => {
                         renderScreenshot();
                     };
-                    
+
                     script.onerror = () => {
                         if (originalBtnContainer) {
                             originalBtnContainer.innerHTML = '<span class="material-icons" style="font-size:18px; color:var(--color-red);">error</span>';
@@ -10787,7 +10871,7 @@ body.modal-open-body {
                     startX = touch.clientX; startY = touch.clientY;
                     isSwiping = false; isScrollDetermined = false;
                     currentCard = e.target.closest('.msg-card');
-                    
+
                     if (currentCard) {
                         originalRect = currentCard.getBoundingClientRect();
                         currentCard.style.transition = 'none';
@@ -10804,8 +10888,8 @@ body.modal-open-body {
                         if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) return;
                         isScrollDetermined = true;
                         // Разрешаем только свайп ВЛЕВО (diffX < 0). Скролл вниз игнорируем
-                        if (Math.abs(diffY) > Math.abs(diffX) || diffX > 0) { 
-                            currentCard = null; return; 
+                        if (Math.abs(diffY) > Math.abs(diffX) || diffX > 0) {
+                            currentCard = null; return;
                         }
                         isSwiping = true;
                         bubble.className = '';
@@ -10818,7 +10902,7 @@ body.modal-open-body {
                         if (Math.abs(moveX) > THRESHOLD) moveX = -THRESHOLD - (Math.abs(moveX) - THRESHOLD) * 0.25;
 
                         currentCard.style.transform = `translateX(${moveX}px)`;
-                        
+
                         bubble.style.top = `${originalRect.top + originalRect.height / 2 - 12}px`;
                         bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
                         bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
@@ -10839,10 +10923,10 @@ body.modal-open-body {
                     if (!currentCard || !isSwiping) return;
                     const diffX = e.changedTouches[0].clientX - startX;
                     const cardToShare = currentCard;
-                    
+
                     currentCard.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
                     currentCard.style.transform = 'translateX(0px)';
-                    
+
                     bubble.style.opacity = '0';
                     bubble.classList.remove('active-threshold', 'action-share');
                     bubble.dataset.vibrated = '';
@@ -11086,7 +11170,7 @@ body.modal-open-body {
                 }
 
                 case 'stu_phs.show_slots': {
-                    // 1. Меняем главный заголовок 
+                    // 1. Меняем главный заголовок
                     const h2 = span9.querySelector('h2');
                     if (h2 && h2.textContent.includes('Прикладная')) {
                         h2.textContent = 'Учебный период и количество занятий';
@@ -11105,7 +11189,7 @@ body.modal-open-body {
 
                         const wrapper = document.createElement('div');
                         wrapper.className = 'wide-table-wrapper';
-                        
+
                         wrapper.style.marginBottom = '3rem';
 
                         table.parentNode.insertBefore(wrapper, table);
@@ -11114,18 +11198,19 @@ body.modal-open-body {
                         // Убираем дефолтные рамки
                         table.style.boxShadow = 'none';
                         table.style.border = 'none';
-                        table.style.minWidth = '600px'; 
+                        table.style.minWidth = '600px';
 
                         // Перебиваем глобальные стили ширины и выравнивания первой колонки
                         table.querySelectorAll('th, td').forEach(cell => {
                             cell.style.setProperty('text-align', 'center', 'important');
-                            cell.style.setProperty('min-width', 'auto', 'important');
+                            cell.style.setProperty('min-width', 'max-content', 'important'); 
+                            cell.style.setProperty('white-space', 'nowrap', 'important');
+                            cell.style.setProperty('word-break', 'normal', 'important');
                             cell.style.verticalAlign = 'middle';
                             cell.style.padding = '2rem 1rem';
                             cell.style.fontSize = '1.3rem';
-                            cell.style.borderBottom = 'none'; 
-                            
-                            // Заменяем <br> в шапке (например 1<br>трим) на пробел (1 ТРИМ)
+                            cell.style.borderBottom = 'none';
+
                             if (cell.tagName === 'TH') {
                                 cell.innerHTML = cell.innerHTML.replace(/<br\s*\/?>/gi, ' ').toUpperCase();
                                 cell.style.color = 'var(--color-text-secondary)';
@@ -11139,12 +11224,12 @@ body.modal-open-body {
                             if (text && text !== '-') {
                                 let bg = 'var(--color-highlight)';
                                 let color = 'var(--color-text-primary)';
-                                
+
                                 const match = text.match(/(\d+)\/(\d+)/);
                                 if (match) {
                                     const current = parseInt(match[1], 10);
                                     const total = parseInt(match[2], 10);
-                                    
+
                                     if (current === 0) {
                                         bg = 'var(--color-highlight)';
                                         color = 'var(--color-text-primary)';
@@ -11156,9 +11241,9 @@ body.modal-open-body {
                                         color = 'var(--color-blue)';
                                     }
                                 }
-                                
-                                td.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.8rem 1.6rem; border-radius: 50px; font-weight: 800; display: inline-block; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none;">${text}</span>`;
-                                
+
+                                td.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.8rem 1.6rem; border-radius: 50px; font-weight: 800; display: inline-block; white-space: nowrap; word-break: normal; transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none;">${text}</span>`;
+
                                 td.addEventListener('mouseenter', () => {
                                     const span = td.querySelector('span');
                                     if(span) span.style.transform = 'scale(1.1)';
@@ -11198,13 +11283,13 @@ body.modal-open-body {
                             padding: 2.4rem;
                             margin-bottom: 2.4rem;
                         `;
-                        
+
                         const ul = rulesDiv.querySelector('ul');
                         if (ul) {
                             ul.style.listStyle = 'none';
                             ul.style.padding = '0';
                             ul.style.margin = '0';
-                            
+
                             ul.querySelectorAll('li').forEach((li, index, array) => {
                                 li.style.position = 'relative';
                                 li.style.paddingLeft = '3.6rem';
@@ -11212,10 +11297,10 @@ body.modal-open-body {
                                 li.style.lineHeight = '1.6';
                                 li.style.fontSize = '1.35rem';
                                 li.style.color = 'var(--color-text-primary)';
-                                
+
                                 const icon = document.createElement('span');
                                 icon.className = 'material-icons';
-                                icon.textContent = 'info_outline';
+                                icon.textContent = 'info';
                                 icon.style.cssText = `
                                     position: absolute;
                                     left: 0;
@@ -11233,7 +11318,7 @@ body.modal-open-body {
                     if (formDiv && formDiv.querySelector('form')) {
                         formDiv.removeAttribute('style');
                         const form = formDiv.querySelector('form');
-                        
+
                         form.style.cssText = `
                             background: var(--color-card);
                             border: 1px solid var(--color-table-border);
@@ -11260,7 +11345,7 @@ body.modal-open-body {
                                 label.style.cursor = 'pointer';
                                 label.style.fontWeight = '500';
                             }
-                            
+
                             const select = div.querySelector('select');
                             if (select) {
                                 select.style.padding = '0.8rem 3.5rem 0.8rem 1.6rem';
@@ -11277,7 +11362,7 @@ body.modal-open-body {
                         if (btnWrap) {
                             btnWrap.className = '';
                             btnWrap.style.marginTop = '1.6rem';
-                            
+
                             const btn = btnWrap.querySelector('button');
                             if (btn) {
                                 btn.className = 'answer-btn-custom';
@@ -11368,13 +11453,13 @@ body.modal-open-body {
                     const parts = span9.querySelectorAll('.theme_part, .tpr_part');
                     parts.forEach(part => {
                         const h3 = part.previousElementSibling;
-                        
+
                         if (h3 && h3.tagName === 'H3') {
                             const sectionTitle = h3.textContent.trim().toLowerCase();
-                            
+
                             const card = document.createElement('div');
                             card.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);';
-                            
+
                             // Убрали иконки из заголовков по просьбе
                             h3.style.cssText = 'margin-top: 0 !important; margin-bottom: 2.4rem !important; font-size: 1.4rem !important; font-weight: 800 !important; color: var(--color-text-secondary) !important; text-transform: uppercase; letter-spacing: 1px;';
 
@@ -11385,13 +11470,13 @@ body.modal-open-body {
                             part.style.fontSize = '1.4rem';
                             part.style.lineHeight = '1.6';
                             part.style.color = 'var(--color-text-primary)';
-                            
+
                             // --- ЛОГИКА ТРУДОЕМКОСТИ (Цветные метки) ---
                             if (sectionTitle.includes('трудоемкость')) {
                                 part.style.display = 'flex';
                                 part.style.flexDirection = 'column';
                                 part.style.gap = '1rem';
-                                
+
                                 Array.from(part.children).forEach(child => {
                                     if (child.tagName === 'DIV') {
                                         const text = child.textContent.trim();
@@ -11399,14 +11484,14 @@ body.modal-open-body {
                                         if (match) {
                                             const type = match[1].trim();
                                             const hours = match[2].trim();
-                                            
+
                                             let bg = 'var(--color-highlight)', color = 'var(--color-text-secondary)', iconName = 'circle';
-                                            
+
                                             if (type.toLowerCase().includes('лекц')) { bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)'; iconName = 'menu_book'; }
                                             else if (type.toLowerCase().includes('практ')) { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; iconName = 'engineering'; }
                                             else if (type.toLowerCase().includes('лаб')) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; iconName = 'science'; }
                                             else if (type.toLowerCase().includes('самост')) { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; iconName = 'person'; }
-                                            
+
                                             child.innerHTML = `
                                                 <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.4rem 1.8rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border);">
                                                     <div style="display: flex; align-items: center; gap: 12px; font-weight: 600;">
@@ -11424,14 +11509,14 @@ body.modal-open-body {
                             else if (sectionTitle.includes('контроль')) {
                                 let passScore = '', maxScore = '', ratingScore = '';
                                 let passEl = null, maxEl = null, ratingEl = null;
-                                
+
                                 Array.from(part.children).forEach(child => {
                                     const text = child.textContent.trim().toLowerCase();
-                                    
+
                                     if (text.includes('проходной балл')) { passScore = child.textContent.split('-')[1]?.trim(); passEl = child; }
                                     else if (text.includes('максимальный балл')) { maxScore = child.textContent.split('-')[1]?.trim(); maxEl = child; }
                                     else if (text.includes('в рейтинг')) { ratingScore = child.textContent.split('-')[1]?.trim(); ratingEl = child; }
-                                    
+
                                     // Стилизуем первый элемент (Название КМ)
                                     if (child.tagName === 'DIV' && !child.classList.contains('ctl_hours') && child !== passEl && child !== maxEl && child !== ratingEl && !text.includes('элементы') && !text.includes('оценивания')) {
                                         if (child.textContent.includes('-')) {
@@ -11442,19 +11527,19 @@ body.modal-open-body {
                                             `;
                                         }
                                     }
-                                    
+
                                     // Стилизуем часы контроля
                                     if (child.classList.contains('ctl_hours')) {
                                         child.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.6rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; margin-top: 1.6rem; margin-bottom: 2.4rem;';
                                         child.innerHTML = `<span class="material-icons" style="font-size: 2rem;">timer</span> ${child.textContent}`;
                                     }
                                 });
-                                
+
                                 // Если нашли баллы, создаем красивую сетку
                                 if (passScore || maxScore || ratingScore) {
                                     const statsGrid = document.createElement('div');
                                     statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.2rem; margin: 2.4rem 0;';
-                                    
+
                                     const createStat = (label, val, colorClass) => {
                                         if (!val) return '';
                                         let colorStyle = colorClass === 'green' ? 'color: var(--color-green);' : (colorClass === 'blue' ? 'color: var(--color-blue);' : 'color: var(--color-accent);');
@@ -11466,18 +11551,18 @@ body.modal-open-body {
                                             </div>
                                         `;
                                     };
-                                    
+
                                     statsGrid.innerHTML = `
                                         ${createStat('Максимум', maxScore, 'blue')}
                                         ${createStat('В рейтинг', ratingScore, 'accent')}
                                         ${createStat('Проходной', passScore, 'green')}
                                     `;
-                                    
+
                                     if (passEl) passEl.replaceWith(statsGrid);
                                     if (maxEl) maxEl.remove();
                                     if (ratingEl) ratingEl.remove();
                                 }
-                                
+
                                 // Стилизуем заголовки списков "Элементы" и "Показатель"
                                 part.querySelectorAll('div').forEach(div => {
                                     const text = div.textContent.trim();
@@ -11485,10 +11570,10 @@ body.modal-open-body {
                                         const partsSplit = div.innerHTML.split(':');
                                         const title = partsSplit[0];
                                         let rest = partsSplit.slice(1).join(':');
-                                        
+
                                         // Убираем старый <br>
                                         rest = rest.replace(/<br\s*\/?>/gi, '');
-                                        
+
                                         div.innerHTML = `<div style="font-weight: 800; color: var(--color-text-secondary); font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; margin: 3rem 0 1.6rem 0; opacity: 0.8;">${title}</div>${rest ? rest : ''}`;
                                     }
                                 });
@@ -11508,7 +11593,7 @@ body.modal-open-body {
                                 // Создаем контейнер в виде списка
                                 const listContainer = document.createElement('div');
                                 listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 1rem; margin-top: 1.2rem; margin-bottom: 2.4rem;';
-                                
+
                                 // Парсим строки оригинальной таблицы
                                 table.querySelectorAll('tr').forEach(tr => {
                                     const tds = tr.querySelectorAll('td');
@@ -11516,11 +11601,11 @@ body.modal-open-body {
                                         const score = tds[0].textContent.trim();
                                         // Ищем текст в последней ячейке (ЕТИС генерирует пустые td посередине)
                                         const desc = tds[tds.length - 1].textContent.trim();
-                                        
+
                                         if (score && desc) {
                                             const item = document.createElement('div');
                                             item.style.cssText = 'display: flex; align-items: center; gap: 1.6rem; padding: 1.4rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border);';
-                                            
+
                                             item.innerHTML = `
                                                 <div style="background: var(--color-accent-active); color: var(--color-accent); font-weight: 800; font-size: 1.6rem; padding: 0.8rem; border-radius: 12px; min-width: 52px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; height: 52px; box-sizing: border-box;">
                                                     ${score}
@@ -11533,7 +11618,7 @@ body.modal-open-body {
                                         }
                                     }
                                 });
-                                
+
                                 // Заменяем страшную таблицу ЕТИСа на наш новый список
                                 table.replaceWith(listContainer);
                             });
@@ -11557,7 +11642,7 @@ body.modal-open-body {
                 case 'stu.teachers': {
                     // 1. Сохраняем ссылку на статистику
                     const statsLink = span9.querySelector('a[href="stu.dis_stat"]');
-                    
+
                     // Извлекаем параметры текущего семестра из скрытого JS-кода страницы
                     let pTyId = '2025', pTerm = '2';
                     const scriptMatch = document.body.innerHTML.match(/P_TY_ID=(\d+)&P_TERM=(\d+)/i);
@@ -11660,7 +11745,7 @@ body.modal-open-body {
 
                         const card = document.createElement('div');
                         card.className = 'teacher-card';
-                        
+
                         const searchString = `${nameText} ${chairText} ${rawSubjectsText}`.toLowerCase().replace(/\s+/g, ' ');
                         card.setAttribute('data-search', searchString);
 
@@ -11717,7 +11802,18 @@ body.modal-open-body {
                     break;
                 }
 
-                case 'stu.sc_portfolio':
+                case 'stu.sc_portfolio': {
+                    while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
+                        span9.firstChild.remove();
+                    }
+                    
+                    // Обнуляем отступ у главного заголовка "Результаты..."
+                    const mainH3 = span9.querySelector('h3');
+                    if (mainH3 && !mainH3.querySelector('a.dashed')) {
+                        mainH3.style.setProperty('margin-top', '0', 'important');
+                        mainH3.style.setProperty('margin-bottom', '2.4rem', 'important');
+                    }
+
                     const portfolioLinks = span9.querySelectorAll('h3 > a.dashed');
 
                     portfolioLinks.forEach(link => {
@@ -11813,6 +11909,7 @@ body.modal-open-body {
                     dialogObserver.observe(document.body, { childList: true });
 
                     break;
+                }
 
                 case 'stu.timetable':
                 // --- ГЕНЕРАЦИЯ ВОСКРЕСЕНЬЯ ---
@@ -11821,12 +11918,12 @@ body.modal-open-body {
                     if (days.length > 0) {
                         const lastDay = days[days.length - 1];
                         const lastH3 = lastDay.querySelector('h3');
-                        
+
                         // Проверяем, нет ли уже Воскресенья (на всякий случай)
                         if (lastH3 && !lastH3.textContent.includes('Воскресенье')) {
                             const text = lastH3.textContent.trim();
                             let nextDateStr = "";
-                            
+
                             // Ищем дату в формате "Суббота, 18 мая 2024" или "Суббота, 18.05.2024"
                             const matchText = text.match(/,\s*(\d{1,2})\s+([а-яА-Я]+)(?:\s+(\d{4}))?/i);
                             const matchNum = text.match(/,\s*(\d{2})\.(\d{2})(?:\.(\d{4}))?/);
@@ -11838,7 +11935,7 @@ body.modal-open-body {
                                 const monthsArr = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
                                 const m = monthsMap[mStr];
                                 let y = matchText[3] ? parseInt(matchText[3], 10) : new Date().getFullYear();
-                                
+
                                 if (m !== undefined) {
                                     let dateObj = new Date(y, m, d);
                                     dateObj.setDate(dateObj.getDate() + 1); // Прибавляем 1 день
@@ -11848,7 +11945,7 @@ body.modal-open-body {
                                 const d = parseInt(matchNum[1], 10);
                                 const m = parseInt(matchNum[2], 10) - 1;
                                 let y = matchNum[3] ? parseInt(matchNum[3], 10) : new Date().getFullYear();
-                                
+
                                 let dateObj = new Date(y, m, d);
                                 dateObj.setDate(dateObj.getDate() + 1);
                                 nextDateStr = `${String(dateObj.getDate()).padStart(2, '0')}.${String(dateObj.getMonth()+1).padStart(2, '0')}${matchNum[3] ? '.' + dateObj.getFullYear() : ''}`;
@@ -11866,7 +11963,7 @@ body.modal-open-body {
                 // --- ОФОРМЛЕНИЕ ВЫХОДНЫХ ДНЕЙ (0 ПАР) ---
                 span9.querySelectorAll('.no_pairs').forEach(el => {
                     const table = document.createElement('table');
-                    table.className = 'timetable-grid'; 
+                    table.className = 'timetable-grid';
 
                     table.innerHTML = `
                         <tbody>
@@ -11878,8 +11975,8 @@ body.modal-open-body {
                                     0 пар<br><font class="eval">00:00</font>
                                 </td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
-                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
-                                        <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
+                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; line-height: 1;">
+                                        <span class="material-icons" style="font-size: 1.8rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;">free_breakfast</span>
                                         Выходной
                                     </div>
                                 </td>
@@ -11898,7 +11995,7 @@ body.modal-open-body {
 
                 // --- 1. КНОПКА "ПОДЕЛИТЬСЯ" ---
                 const shareBtn = document.createElement('div');
-                shareBtn.className = 'toolbar-item';
+                shareBtn.className = 'toolbar-item share-week-btn';
                 shareBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">ios_share</span> Поделиться';
                 toolbar.appendChild(shareBtn);
 
@@ -11919,15 +12016,7 @@ body.modal-open-body {
                         const renderWidth = isMobile ? 540 : 1000;
 
                         const exportContainer = document.createElement('div');
-                        exportContainer.style.position = 'fixed';
-                        exportContainer.style.top = '100vh';
-                        exportContainer.style.left = '0';
-                        exportContainer.style.width = renderWidth + 'px';
-                        exportContainer.style.padding = isMobile ? '24px 24px 12px 24px' : '40px 40px 20px 40px';
-                        exportContainer.style.boxSizing = 'border-box';
-                        exportContainer.style.background = getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6';
-                        exportContainer.style.fontFamily = getComputedStyle(document.body).fontFamily;
-                        exportContainer.style.zIndex = '-9999';
+                        exportContainer.style.cssText = `position: absolute; top: ${window.scrollY}px; left: 0px; pointer-events: none; width: ${renderWidth}px; padding: ${isMobile ? '24px 24px 12px 24px' : '40px 40px 20px 40px'}; box-sizing: border-box; background: ${getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'}; font-family: ${getComputedStyle(document.body).fontFamily}; z-index: -9999;`;
 
                         if (isMobile) exportContainer.style.minHeight = (renderWidth * 16 / 9) + 'px';
 
@@ -11955,7 +12044,12 @@ body.modal-open-body {
                         span9Wrapper.style.setProperty('padding', '0', 'important');
                         span9Wrapper.style.setProperty('width', '100%', 'important');
 
-                        const timetableClone = document.querySelector('.timetable').cloneNode(true);
+                        const timetableClone = document.createElement('div');
+                        document.querySelectorAll('.span9 .day').forEach(dayEl => {
+                            if (dayEl.style.display !== 'none') {
+                                timetableClone.appendChild(dayEl.cloneNode(true));
+                            }
+                        });
 
                         // ДОЖИДАЕМСЯ ПОДГОТОВКИ (В ТОМ ЧИСЛЕ ЗАГРУЗКИ QR-КОДОВ ИЗ API)
                         await cleanTimetableForExport(timetableClone);
@@ -11982,8 +12076,10 @@ body.modal-open-body {
                         h2c(exportContainer, {
                             scale: 2,
                             useCORS: true,
-                            windowWidth: isMobile ? renderWidth : 1200,
-                            backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'
+                            scrollY: 0,
+                            windowWidth: renderWidth,
+                            backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim(),
+                            ignoreElements: (node) => node.nodeName === 'SCRIPT' || node.nodeName === 'IFRAME'
                         }).then(canvas => {
                             canvas.toBlob(blob => {
                                 if (!blob) throw new Error('Blob creation failed');
@@ -12046,7 +12142,7 @@ body.modal-open-body {
                             if (row.style.display !== 'none' && !row.classList.contains('hidden-by-filter')) {
                                 const typeBadge = row.querySelector('.pair-type-badge');
                                 const disName = row.querySelector('.dis') ? row.querySelector('.dis').textContent.toLowerCase() : '';
-                                
+
                                 let isCountable = false;
                                 if (typeBadge) {
                                     const t = typeBadge.textContent.toLowerCase();
@@ -12057,7 +12153,7 @@ body.modal-open-body {
                                 } else if (disName.includes('консультация') || disName.includes('экзамен') || disName.includes('зачет') || disName.includes('зачёт')) {
                                     isCountable = true;
                                 }
-                                
+
                                 if (isCountable) totalCount++;
                             }
                         });
@@ -12089,8 +12185,8 @@ body.modal-open-body {
                             else if (t.includes('практ')) { pract++; counted = true; }
                             else if (t.includes('лаб')) { lab++; counted = true; }
                             else if (t.includes('экз') || t.includes('зач')) { exam++; counted = true; }
-                        } 
-                        
+                        }
+
                         if (!counted) {
                             if (disName.includes('консультация')) { cons++; counted = true; }
                             else if (disName.includes('экзамен') || disName.includes('зачет') || disName.includes('зачёт')) { exam++; counted = true; }
@@ -12223,9 +12319,9 @@ body.modal-open-body {
                         </div>
                     `;
 
-                    const closeAnalytics = () => { 
-                        overlay.classList.remove('active'); 
-                        modal.classList.remove('active'); 
+                    const closeAnalytics = () => {
+                        overlay.classList.remove('active');
+                        modal.classList.remove('active');
                         document.body.classList.remove('modal-open-body');
                     };
                     overlay.onclick = closeAnalytics;
@@ -12302,7 +12398,7 @@ body.modal-open-body {
                                 <button class="sync-tab active" data-tab="export">Экспорт в календарь</button>
                                 <button class="sync-tab" data-tab="import">Импорт из календаря</button>
                             </div>
-                            
+
                             <div class="sync-tab-content active" id="sync-tab-export">
                                 <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); font-size: 1.3rem; line-height: 1.5; color: var(--color-text-primary); margin-bottom: 1.6rem;">
                                     <b>Чтобы подключить своё расписание к различным сервисам календарей, Вам необходимо (на примере Google Calendar):</b><br><br>
@@ -12324,17 +12420,17 @@ body.modal-open-body {
 
                             <div class="sync-tab-content" id="sync-tab-import">
                                 <p style="color: var(--color-text-secondary); margin-bottom: 1.2rem; font-size: 1.3rem; line-height: 1.5;">Вставьте ссылку на ваш публичный календарь в формате <b>.ics</b> (iCloud, Google), чтобы видеть личные события прямо в расписании ЕТИС. Можно добавить несколько!</p>
-                                
+
                                 <div id="ext-cals-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.2rem;"></div>
 
                                 <div style="display: flex; gap: 1rem; margin-bottom: 1.6rem; flex-wrap: wrap; align-items: stretch;">
                                     <input type="text" id="ext-cal-input" placeholder="webcal://... или https://..." style="flex: 1; min-width: 250px; padding: 1.2rem 1.6rem !important; border-radius: var(--radius-small) !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; box-shadow: none !important; margin: 0 !important;">
-                                    
+
                                     <button class="answer-btn-custom" id="ext-cal-add" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important; height: auto !important; margin: 0 !important;">
                                         <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">add</span>Добавить
                                     </button>
                                 </div>
-                                
+
                                 <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-medium); font-size: 1.3rem; color: var(--color-text-primary); line-height: 1.5;">
                                     <b style="display:block; margin-bottom: 8px;">Как получить ссылку на примере Apple Calendar:</b>
                                     1. Откройте приложение «Календарь».<br>
@@ -12396,21 +12492,21 @@ body.modal-open-body {
                         const renderCalsList = () => {
                             let cals = migrateExternalCals();
                             calsListContainer.innerHTML = '';
-                            
+
                             if (cals.length === 0) {
                                 calsListContainer.style.display = 'none';
                                 return;
                             }
                             calsListContainer.style.display = 'flex';
-                            
+
                             cals.forEach((calObj, idx) => {
                                 const calUrl = calObj.url;
                                 const calColor = calObj.color || '#AF52DE';
                                 const shortUrl = calUrl.length > 40 ? calUrl.substring(0, 25) + '...' + calUrl.substring(calUrl.length - 10) : calUrl;
-                                
+
                                 const item = document.createElement('div');
                                 item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.4rem; background: var(--color-card); border: 1px solid var(--color-table-border); border-radius: var(--radius-small); gap: 1rem; box-shadow: var(--shadow-main);';
-                                
+
                                 // Иконка календаря и текст — слева, выбор цвета и удаление — справа
                                 item.innerHTML = `
                                     <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
@@ -12436,7 +12532,7 @@ body.modal-open-body {
                                     const idx = e.target.getAttribute('data-idx');
                                     const popup = document.createElement('div');
                                     popup.className = 'ext-color-popup';
-                                    
+
                                     // Сетка 3x2 (3 колонки, автоматически перенесется на 2 строки)
                                     popup.style.cssText = 'position: absolute; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: var(--color-card); padding: 16px; border-radius: var(--radius-medium); box-shadow: var(--shadow-dialog); border: 1px solid var(--color-table-border); z-index: 100000;';
 
@@ -12454,7 +12550,7 @@ body.modal-open-body {
                                                 popup.remove();
                                                 picker.style.background = c.hex;
                                                 picker.style.boxShadow = `0 0 0 2px var(--color-card), 0 0 0 4px ${c.hex}`;
-                                                window.location.reload(); 
+                                                window.location.reload();
                                             }
                                         };
                                         popup.appendChild(circle);
@@ -12480,11 +12576,11 @@ body.modal-open-body {
                                 btn.addEventListener('click', (e) => {
                                     const idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
                                     let currentCals = migrateExternalCals();
-                                    
+
                                     if (confirm('Удалить этот календарь из расписания?')) {
                                         currentCals.splice(idx, 1);
                                         localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
-                                        window.location.reload(); 
+                                        window.location.reload();
                                     }
                                 });
                             });
@@ -12495,13 +12591,13 @@ body.modal-open-body {
                         addExtBtn.addEventListener('click', () => {
                             const val = extInput.value.trim();
                             if (!val) return;
-                            
+
                             let cals = migrateExternalCals();
                             if (!cals.some(c => c.url === val)) {
                                 cals.push({ url: val, color: getRandomExtColor() });
                                 localStorage.setItem('etis_external_cals_v2', JSON.stringify(cals));
                             }
-                            
+
                             extInput.value = '';
                             addExtBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">check</span>Добавлено!';
                             setTimeout(() => { window.location.reload(); }, 600);
@@ -12576,7 +12672,7 @@ body.modal-open-body {
                     if (dateDiv) {
                         const holidayEl = dateDiv.querySelector('.holiday');
                         let holidayText = '';
-                        
+
                         if (holidayEl) {
                             holidayText = holidayEl.textContent.trim();
                             holidayEl.remove();
@@ -12602,12 +12698,12 @@ body.modal-open-body {
 
                             if (holidayText) {
                                 holidayText = holidayText.replace(/\.\d{4}/g, '');
-                                
+
                                 const holidayCapsule = document.createElement('div');
                                 holidayCapsule.className = 'week-date-styled';
                                 holidayCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 3.4rem !important; padding: 0 1.6rem !important; box-sizing: border-box !important; background: rgba(52, 199, 89, 0.15) !important; color: var(--color-green) !important; font-weight: 800 !important; border: 1px solid rgba(52, 199, 89, 0.3) !important;';
                                 holidayCapsule.innerHTML = `<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px; line-height: 1;">celebration</span>${holidayText}`;
-                                
+
                                 dateDiv.appendChild(holidayCapsule);
                             }
                         }
@@ -12769,7 +12865,7 @@ body.modal-open-body {
                                     e.stopPropagation();
                                     if(confirm(`Удалить пару "${pair.subject}"?`)) {
                                         removeCustomPair(pair.id);
-                                        
+
                                         if (pair.msgHash) {
                                             let addedMsgs = JSON.parse(localStorage.getItem('etis_added_msg_events') || '[]');
                                             addedMsgs = addedMsgs.filter(h => h !== pair.msgHash);
@@ -12837,7 +12933,7 @@ body.modal-open-body {
                                     let audHtml = '';
                                     if (ev.aud || ev.link) {
                                         audHtml += `<div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">`;
-                                        
+
                                         if (ev.aud) {
                                             let displayAud = ev.aud;
                                             const m = ev.aud.match(/(\d+[а-яa-z]*)\s*[\/\\]\s*(\d+[а-яa-z]*)/i);
@@ -12851,7 +12947,7 @@ body.modal-open-body {
                                             }
                                             audHtml += `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>${displayAud}</div>`;
                                         }
-                                        
+
                                         if (ev.link) {
                                             let pName = "Онлайн";
                                             if (ev.link.includes('zoom')) pName = "Zoom";
@@ -12864,7 +12960,7 @@ body.modal-open-body {
                                     const tr = document.createElement('tr');
                                     tr.className = 'custom-pair-row docx-consultation-row';
                                     if (ev.endTime) tr.setAttribute('data-end-time', ev.endTime);
-                                    
+
                                     tr.innerHTML = `
                                         <td class="pair_num">
                                             <div class="pair-badge-wrapper" style="margin-bottom: 6px;">
@@ -12894,7 +12990,7 @@ body.modal-open-body {
                         const table = day.querySelector('table');
                         if (!table) return;
                         const tbody = table.querySelector('tbody') || table;
-                        
+
                         const rows = Array.from(tbody.querySelectorAll('tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
                         rows.sort((a, b) => {
                             const timeAStr = a.querySelector('.eval')?.textContent.split(':') ||['23','59'];
@@ -12904,7 +13000,7 @@ body.modal-open-body {
                         rows.forEach(r => tbody.appendChild(r));
                     });
                 };
-                
+
                 // Вызываем сразу после объявления
                 window.injectConsultationPairs();
 
@@ -12948,7 +13044,7 @@ body.modal-open-body {
                             const clone = audEl.cloneNode(true);
                             clone.querySelectorAll('.material-icons, .note-btn-wrapper').forEach(el => el.remove());
                             let aText = clone.textContent.trim();
-                            
+
                             if (aText.includes('ауд.')) {
                                 const m = aText.match(/ауд\.\s*([^,]+),\s*к\.\s*([^,]+)/i);
                                 if (m) aText = `${m[1].trim()}/${m[2].trim()}`;
@@ -13054,10 +13150,10 @@ body.modal-open-body {
                     `;
 
                     // Закрытие модалки
-                    const closeModal = () => { 
+                    const closeModal = () => {
                         if (placeholderTimer) clearInterval(placeholderTimer);
-                        overlay.classList.remove('active'); 
-                        modal.classList.remove('active'); 
+                        overlay.classList.remove('active');
+                        modal.classList.remove('active');
                         document.body.classList.remove('modal-open-body');
                     };
                     overlay.onclick = closeModal;
@@ -13112,7 +13208,7 @@ body.modal-open-body {
                                 timeEndInput.value = `${String(Math.floor(totalM/60)%24).padStart(2,'0')}:${String(totalM%60).padStart(2,'0')}`;
                                 text = text.replace(naturalTimeMatch[0], ' ');
                                 timeParsed = true;
-                            } 
+                            }
                             if (!timeParsed) {
                                 let strictTimeMatch = text.match(/\s(?:в|на|к)?\s*(\d{1,2})[:.-](\d{2})\s/i);
                                 if (strictTimeMatch) {
@@ -13273,7 +13369,7 @@ body.modal-open-body {
 
                     let leftDateHTML = '';
                     let rightDateHTML = '';
-                    
+
                     if (datePart) {
                         if (generalConfig.datesLeft) {
                             leftDateHTML = `<span>,</span>&nbsp;<span class="day-date" style="font-size: 1.4rem; color: var(--color-text-secondary); font-weight: 500;">${datePart}</span>`;
@@ -13297,20 +13393,20 @@ body.modal-open-body {
 
                     header.querySelector('.add-custom-pair-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
-                        openCustomPairModal(dayOfWeek, false); 
+                        openCustomPairModal(dayOfWeek, false);
                     });
 
                     header.querySelector('.share-day-btn').addEventListener('click', (e) => {
                         e.stopPropagation();
                         const btn = e.currentTarget;
                         btn.textContent = 'hourglass_empty';
-                        
+
                         const dayBlock = header.closest('.day');
                         const fileName = `Расписание (${datePart || dayOfWeek}).png`;
 
                         const renderScreenshot = async () => {
                             let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
-                            
+
                             if (!h2c) {
                                 btn.textContent = 'error';
                                 setTimeout(() => btn.textContent = 'ios_share', 2000);
@@ -13321,20 +13417,23 @@ body.modal-open-body {
                             const renderWidth = 540;
 
                             const exportContainer = document.createElement('div');
-                            exportContainer.style.cssText = `position:fixed; top:100vh; left:0; width:${renderWidth}px; padding:24px; background:var(--color-body); z-index:-9999; box-sizing:border-box;`;
-                            
+                            exportContainer.style.cssText = `position: absolute; top: ${window.scrollY}px; left: 0px; pointer-events: none; width: ${renderWidth}px; padding: 24px; background: var(--color-body); z-index: -9999; box-sizing: border-box;`;
+
                             const span9Wrapper = document.createElement('div');
                             span9Wrapper.className = 'span9';
                             span9Wrapper.style.cssText = 'margin:0 !important; padding:0 !important; width:100% !important; display:block;';
 
                             const clone = dayBlock.cloneNode(true);
                             clone.style.margin = '0';
-                            
+                            clone.querySelectorAll('script').forEach(s => s.remove());
+                            clone.querySelectorAll('[loading="lazy"]').forEach(el => el.removeAttribute('loading'));
+                            span9Wrapper.appendChild(clone);
+
                             // ДОЖИДАЕМСЯ ПОДГОТОВКИ (В ТОМ ЧИСЛЕ ЗАГРУЗКИ QR-КОДОВ ИЗ API)
                             await cleanTimetableForExport(clone);
 
                             span9Wrapper.appendChild(clone);
-                            
+
                             if (generalConfig.watermark) {
                                 const watermark = document.createElement('div');
                                 watermark.style.cssText = 'text-align: right; margin-top: 12px; font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.4;';
@@ -13346,10 +13445,12 @@ body.modal-open-body {
                             document.body.appendChild(exportContainer);
 
                             h2c(exportContainer, {
-                                scale: 2, 
-                                useCORS: true, 
-                                windowWidth: renderWidth, 
-                                backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim()
+                                scale: 2,
+                                useCORS: true,
+                                scrollY: 0,
+                                windowWidth: isMobile ? renderWidth : 1200,
+                                backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6',
+                                ignoreElements: (node) => node.nodeName === 'SCRIPT' || node.nodeName === 'IFRAME'
                             }).then(canvas => {
                                 canvas.toBlob(blob => {
                                     const file = new File([blob], fileName, { type: 'image/png' });
@@ -13516,7 +13617,7 @@ body.modal-open-body {
                         const match = text.match(/\s*\((лек|практ|лаб|зач|экз)\)\s*$/i);
                         let type = '';
                         let typeClass = 'type-badge-lek';
-                        
+
                         const overType = row.getAttribute('data-ext-disp-type');
 
                         if (overType !== null) {
@@ -13601,8 +13702,8 @@ body.modal-open-body {
                                     0 пар<br><font class="eval">00:00</font>
                                 </td>
                                 <td class="pair_info" style="border-bottom: none !important; border-left: none !important;">
-                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem;">
-                                        <span class="material-icons" style="font-size: 1.8rem;">free_breakfast</span>
+                                    <div style="display: inline-flex; align-items: center; gap: 0.6rem; background: rgba(52, 199, 89, 0.12); color: var(--color-green); padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; line-height: 1;">
+                                        <span class="material-icons" style="font-size: 1.8rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;">free_breakfast</span>
                                         Выходной
                                     </div>
                                 </td>
@@ -13622,7 +13723,7 @@ body.modal-open-body {
                             const pB = timeB.split(':');
                             return (parseInt(pA[0]||0)*60 + parseInt(pA[1]||0)) - (parseInt(pB[0]||0)*60 + parseInt(pB[1]||0));
                         });
-                        
+
                         // Перевставляем в правильном порядке
                         occupiedRows.forEach(r => tbody.appendChild(r));
 
@@ -13634,7 +13735,7 @@ body.modal-open-body {
 
                                 const prevEval = prevRow.querySelector('.eval')?.textContent || '';
                                 const currEval = currRow.querySelector('.eval')?.textContent || '';
-                                
+
                                 if (prevEval === "Весь день" || currEval === "Весь день") continue;
 
                                 let prevStartMins = 0, prevEndMins = 0;
@@ -13658,11 +13759,11 @@ body.modal-open-body {
 
                                 if (prevEndMins > 0 && currStartMins > 0) {
                                     const gapMins = currStartMins - prevEndMins;
-                                    
+
                                     // 80 минут = минимальное время для образования "окна"
-                                    if (gapMins >= 80) { 
+                                    if (gapMins >= 80) {
                                         const gapCount = Math.round(gapMins / 100);
-                                        
+
                                         if (gapCount > 0) {
                                             const isPrevCustom = prevRow.classList.contains('custom-pair-row') || prevRow.classList.contains('external-event-row') || prevRow.classList.contains('docx-consultation-row');
                                             const isCurrCustom = currRow.classList.contains('custom-pair-row') || currRow.classList.contains('external-event-row') || currRow.classList.contains('docx-consultation-row');
@@ -13724,11 +13825,11 @@ body.modal-open-body {
                             const typeText = typeBadge ? typeBadge.textContent.toLowerCase() : '';
                             const disText = row.querySelector('.dis')?.textContent.toLowerCase() || '';
 
-                            const isCons = row.classList.contains('consultation-row') || 
-                                           row.classList.contains('docx-consultation-row') || 
-                                           typeText.includes('конс') || 
+                            const isCons = row.classList.contains('consultation-row') ||
+                                           row.classList.contains('docx-consultation-row') ||
+                                           typeText.includes('конс') ||
                                            disText.includes('консультация');
-                                           
+
                             const isPersonal = row.classList.contains('external-event-row') || typeText.includes('лич');
 
                             if (isCons) {
@@ -13768,7 +13869,7 @@ body.modal-open-body {
                             }
                         });
                     });
-                    
+
                     if (typeof window.applyHideDaysOff === 'function') window.applyHideDaysOff();
                     if (typeof window.applyDimming === 'function') window.applyDimming(); // Сразу пересчитываем затемнение
                     if (typeof updateLiveTimetable === 'function') updateLiveTimetable(); // Сразу восстанавливаем лайв-точки
@@ -13779,10 +13880,10 @@ body.modal-open-body {
                     document.querySelectorAll('.span9 .day').forEach(day => {
                         // Находим все видимые строки в дне
                         const visibleRows = Array.from(day.querySelectorAll('.timetable-grid tr')).filter(r => r.style.display !== 'none' && !r.classList.contains('hidden-by-filter'));
-                        
+
                         // Если единственная видимая строка — это "Выходной" (0 пар), значит день пустой
                         const isDayOff = visibleRows.length === 1 && visibleRows[0].classList.contains('custom-no-pairs');
-                        
+
                         if (generalConfig.hideDaysOff && isDayOff) {
                             day.style.display = 'none'; // Прячем весь день
                         } else {
@@ -13806,7 +13907,7 @@ body.modal-open-body {
                         if (!disContainer || !numTd) return;
 
                         const targetEl = disContainer.querySelector('a') || disContainer;
-                        
+
                         // 1. Запоминаем оригинальные данные (для отката и поиска)
                         let origSubject = row.getAttribute('data-orig-subject');
                         if (!origSubject) {
@@ -13835,7 +13936,7 @@ body.modal-open-body {
                             const overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
                             const singleKey = `SINGLE_${dayDateStr}_${rawPairNum}_${origSubject}`;
                             const seriesKey = `SERIES_ALL_${origSubject}`; // Глобальное переопределение по имени
-                            
+
                             let activeOverride = overrides[singleKey];
                             if (!activeOverride && overrides[seriesKey]) {
                                 activeOverride = overrides[seriesKey];
@@ -13906,7 +14007,7 @@ body.modal-open-body {
                             }
                             classDate.setHours(0,0,0,0);
                             const today = new Date(); today.setHours(0,0,0,0);
-                            
+
                             if (classDate.getTime() < today.getTime()) isPassed = true;
                             else if (classDate.getTime() === today.getTime()) {
                                 const timeEl = numTd.querySelector('.eval');
@@ -14011,7 +14112,7 @@ body.modal-open-body {
                     const badgeEl = row.querySelector('.pair-type-badge');
                     if (badgeEl) currentType = badgeEl.textContent.toLowerCase();
                     if (currentType === 'лич') currentType = 'лич';
-                    
+
                     if (isExternal) {
                         origSubject = row.getAttribute('data-ext-orig-title') || origSubject;
                         currentLoc = row.getAttribute('data-ext-disp-loc') || '';
@@ -14102,9 +14203,9 @@ body.modal-open-body {
                         </div>
                     `;
 
-                    const closeModal = () => { 
-                        overlay.classList.remove('active'); 
-                        modal.classList.remove('active'); 
+                    const closeModal = () => {
+                        overlay.classList.remove('active');
+                        modal.classList.remove('active');
                         document.body.classList.remove('modal-open-body');
                     };
                     overlay.onclick = closeModal;
@@ -14131,7 +14232,7 @@ body.modal-open-body {
                         const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 0;
 
                         if (!val || isNext) delete notesData.specific[pairId];
-                        
+
                         if (val) {
                             if (isNext) {
                                 let nextPairId = null;
@@ -14194,7 +14295,7 @@ body.modal-open-body {
                         } else {
                             const applyAll = document.getElementById('ext-apply-all').checked;
                             let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
-                            
+
                             let timeKey = rawPairNum;
                             let dateKey = dayDateStr;
                             if (isExternal) {
@@ -14223,7 +14324,7 @@ body.modal-open-body {
                             let dateKey = isExternal ? row.getAttribute('data-ext-date') : dayDateStr;
                             const singleKey = `SINGLE_${dateKey}_${timeKey}_${origSubject}`;
                             const seriesKey = `SERIES_ALL_${origSubject}`;
-                            
+
                             delete overrides[singleKey];
                             delete overrides[seriesKey];
                             localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
@@ -14286,7 +14387,7 @@ body.modal-open-body {
                             evalLink = row.querySelector('.pair_teacher .eval');
                             hasEval = !!evalLink;
                         } else if (dayHeader) {
-                            currentTarget = dayHeader.closest('.day'); 
+                            currentTarget = dayHeader.closest('.day');
                             targetElements = [currentTarget];
                             targetType = 'day';
                         }
@@ -14365,7 +14466,7 @@ body.modal-open-body {
                                         classDate.setHours(0,0,0,0);
                                         const today = new Date();
                                         today.setHours(0,0,0,0);
-                                        
+
                                         if (classDate.getTime() < today.getTime()) {
                                             isPassed = true;
                                         } else if (classDate.getTime() === today.getTime()) {
@@ -14565,7 +14666,7 @@ body.modal-open-body {
                 function parseICS(icsString) {
                     const unfolded = icsString.replace(/\r?\n[ \t]/g, '');
                     const lines = unfolded.split(/\r?\n/);
-                    
+
                     const events = [];
                     let currentEvent = null;
 
@@ -14582,9 +14683,9 @@ body.modal-open-body {
                             if (colonIdx > -1) {
                                 let key = line.substring(0, colonIdx);
                                 const value = line.substring(colonIdx + 1);
-                                
+
                                 if (key.includes(';')) key = key.split(';')[0];
-                                
+
                                 if (key === 'SUMMARY') currentEvent.summary = value.replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '');
                                 else if (key === 'LOCATION') currentEvent.location = value.replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '');
                                 else if (key === 'DESCRIPTION') currentEvent.description = value.replace(/\\,/g, ',').replace(/\\n/g, ' ').replace(/\\/g, '');
@@ -14617,12 +14718,12 @@ body.modal-open-body {
                         const m = parseInt(str.substring(4, 6), 10) - 1;
                         const d = parseInt(str.substring(6, 8), 10);
                         const tIdx = str.indexOf('T');
-                        
+
                         if (tIdx > -1) {
                             const h = parseInt(str.substring(tIdx + 1, tIdx + 3), 10);
                             const min = parseInt(str.substring(tIdx + 3, tIdx + 5), 10);
                             const s = parseInt(str.substring(tIdx + 5, tIdx + 7), 10);
-                            
+
                             if (str.endsWith('Z')) return new Date(Date.UTC(y, m, d, h, min, s));
                             return new Date(y, m, d, h, min, s);
                         }
@@ -14674,7 +14775,7 @@ body.modal-open-body {
                     if (ev.rrule.includes('FREQ=WEEKLY')) {
                         const getMon = (d) => { const nd = new Date(d); nd.setDate(nd.getDate() - (nd.getDay() || 7) + 1); return nd.setHours(0,0,0,0); };
                         const diffWeeks = Math.round((getMon(targetDateObj) - getMon(evStartZero)) / (7 * 24 * 3600 * 1000));
-                        
+
                         if (diffWeeks % interval !== 0) return false;
 
                         const byDayMatch = ev.rrule.match(/BYDAY=([^;]+)/);
@@ -14699,36 +14800,36 @@ body.modal-open-body {
                     days.forEach(day => {
                         const dateSpan = day.querySelector('.day-date');
                         if (!dateSpan) return;
-                        
+
                         const dateStr = dateSpan.textContent.trim();
                         let targetDate = null;
-                        
+
                         const dateMatch = dateStr.match(/(\d{2})\.(\d{2})\.(\d{4})/);
                         if (dateMatch) {
                             targetDate = new Date(parseInt(dateMatch[3], 10), parseInt(dateMatch[2], 10)-1, parseInt(dateMatch[1], 10));
                         } else {
                             const monthsMap = { 'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11 };
                             const textMatch = dateStr.match(/(\d{1,2})\s+([а-я]+)(?:\s+(\d{4}))?/i);
-                            
+
                             if (textMatch && monthsMap[textMatch[2].toLowerCase()] !== undefined) {
                                 const d = parseInt(textMatch[1], 10);
                                 const m = monthsMap[textMatch[2].toLowerCase()];
                                 let y;
-                                
+
                                 if (textMatch[3]) {
                                     y = parseInt(textMatch[3], 10);
                                 } else {
                                     const now = new Date();
                                     y = now.getFullYear();
                                     const curM = now.getMonth();
-                                    
+
                                     if (curM >= 9 && m <= 5) y++;
                                     else if (curM <= 2 && m >= 7) y--;
                                 }
                                 targetDate = new Date(y, m, d);
                             }
                         }
-                        
+
                         if (!targetDate) {
                             console.warn("[ETIS Calendar] Не удалось распознать дату из заголовка ЕТИС:", dateStr);
                             return;
@@ -14742,7 +14843,7 @@ body.modal-open-body {
                         if (!table) return;
                         const tbody = table.querySelector('tbody') || table;
 
-                        dayEvents.forEach(ev => {
+                        dayEvents.forEach((ev, idx) => {
                             injectedAnything = true;
 
                             Array.from(tbody.querySelectorAll('tr')).forEach(r => {
@@ -14750,20 +14851,20 @@ body.modal-open-body {
                             });
 
                             const isAllDay = ev.start.getHours() === 0 && ev.start.getMinutes() === 0 && (!ev.end || (ev.end.getHours() === 0 && ev.end.getMinutes() === 0));
-                            
+
                             // Подготавливаем ключи для системы переопределений (Overrides)
                             const originalTitle = ev.summary || 'Личное событие';
                             const originalLoc = ev.location || '';
                             const timeKey = isAllDay ? "Весь день" : `${String(ev.start.getHours()).padStart(2, '0')}:${String(ev.start.getMinutes()).padStart(2, '0')}`;
                             const dateKey = `${targetDate.getFullYear()}${String(targetDate.getMonth()+1).padStart(2,'0')}${String(targetDate.getDate()).padStart(2,'0')}`;
-                            
+
                             const overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
                             const singleKey = `SINGLE_${dateKey}_${timeKey}_${originalTitle}`;
                             const seriesKey = `SERIES_${timeKey}_${originalTitle}`;
-                            
+
                             let activeOverride = null;
                             let isSeries = false;
-                            
+
                             if (overrides[singleKey]) {
                                 activeOverride = overrides[singleKey];
                             } else if (overrides[seriesKey]) {
@@ -14800,10 +14901,10 @@ body.modal-open-body {
                                 // Формируем красивую капсулу-кнопку для ссылки
                                 let platformName = "Онлайн";
                                 let linkClass = "btn-generic-online";
-                                
+
                                 if (extractedUrl.includes('zoom.us')) { platformName = "Zoom"; linkClass = ""; }
                                 else if (extractedUrl.includes('telemost')) { platformName = "Телемост"; linkClass = ""; }
-                                
+
                                 audContent += `<a href="${extractedUrl}" target="_blank" class="${linkClass}">${platformName}</a>`;
                             }
 
@@ -14811,20 +14912,21 @@ body.modal-open-body {
                             let timeHtml = '';
                             let endStr = '';
                             if (isAllDay) {
-                                timeHtml = `<font class="eval" style="font-size: inherit !important; color: inherit !important;">Весь день</font>`;
+                                timeHtml = `<font class="eval" style="display: flex !important; justify-content: center !important; font-size: 1.25rem !important; font-weight: 600 !important; color: var(--color-text-primary) !important; line-height: 1.2 !important; width: 100% !important;">Весь день</font>`;
                             } else {
                                 const startStr = timeKey;
                                 endStr = ev.end ? `${String(ev.end.getHours()).padStart(2, '0')}:${String(ev.end.getMinutes()).padStart(2, '0')}` : '';
-                                
-                                timeHtml = `<font class="eval" style="font-size: inherit !important; color: inherit !important; display: inline-flex !important; align-items: center !important; gap: 4px !important; line-height: 1.2 !important;">${startStr}</font>`;
+
+                                timeHtml = `<font class="eval" style="display: flex !important; justify-content: center !important; font-size: 1.25rem !important; font-weight: 600 !important; color: var(--color-text-primary) !important; margin-bottom: 2px !important; line-height: 1.2 !important; width: 100% !important;">${startStr}</font>`;
                                 if (endStr) {
-                                    timeHtml += `<br><span style="font-size: 1.1rem; color: var(--color-text-secondary); line-height: 1.4;">${endStr}</span>`;
+                                    timeHtml += `<span style="display: block !important; text-align: center !important; font-size: 1.1rem !important; color: var(--color-text-secondary) !important; line-height: 1.2 !important; width: 100% !important;">${endStr}</span>`;
                                 }
                             }
 
                             // Создаем строку, зашивая в data-атрибуты оригинальные данные (для редактора)
                             const tr = document.createElement('tr');
                             tr.className = 'custom-pair-row external-event-row';
+                            tr.style.setProperty('--ext-anim-delay', `${idx * 0.06}s`);
                             tr.setAttribute('data-ext-orig-title', originalTitle.replace(/"/g, '&quot;'));
                             tr.setAttribute('data-ext-orig-loc', originalLoc.replace(/"/g, '&quot;'));
                             tr.setAttribute('data-ext-time', timeKey);
@@ -14835,6 +14937,11 @@ body.modal-open-body {
                             tr.setAttribute('data-ext-is-series', isSeries);
                             tr.setAttribute('data-ext-disp-type', displayType);
 
+                            // Передаем спарсенное время окончания системным функциям скрипта
+                            if (endStr) {
+                                tr.setAttribute('data-end-time', endStr);
+                            }
+
                             let typeColor = '';
                             let typeClass = '';
                             if (displayType === 'лек') typeClass = 'type-badge-lek';
@@ -14843,27 +14950,6 @@ body.modal-open-body {
                             else if (displayType === 'зач' || displayType === 'экз') typeClass = 'type-badge-exam';
                             else if (displayType === 'конс') typeClass = 'type-badge-cons';
                             else if (displayType === 'лич') { typeColor = `color: ${calColor};`; }
-
-                            tr.innerHTML = `
-                                <td class="pair_num">
-                                    <div class="pair-badge-wrapper">
-                                        <span class="pair-type-badge ${typeClass}" style="${typeColor}">${displayType === 'лич' ? 'ЛИЧ' : displayType}</span>
-                                    </div>
-                                    ${timeHtml}
-                                </td>
-                                <td class="pair_info">
-                                    <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
-                                        <span style="font-weight:700; color:${displayType === 'лич' ? calColor : 'var(--color-text-primary)'}; pointer-events:none;">${displayTitle}</span>
-                                    </div>
-                                    ${audContent ? `
-                                    <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">
-                                        ${audContent}
-                                    </div>` : ''}
-                                </td>
-                                <td class="pair_teacher">
-                                    ${displayTeacher ? `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${displayTeacher}</a>` : ''}
-                                </td>
-                            `;
 
                             tr.innerHTML = `
                                 <td class="pair_num">
@@ -14892,16 +14978,16 @@ body.modal-open-body {
                         rows.sort((a, b) => {
                             const timeA = a.querySelector('.eval')?.textContent || '';
                             const timeB = b.querySelector('.eval')?.textContent || '';
-                            
+
                             if (timeA === "Весь день") return -1;
                             if (timeB === "Весь день") return 1;
 
                             const timeAStr = timeA.split(':');
                             const timeBStr = timeB.split(':');
-                            
+
                             const valA = (parseInt(timeAStr[0], 10) || 0) * 60 + (parseInt(timeAStr[1], 10) || 0);
                             const valB = (parseInt(timeBStr[0], 10) || 0) * 60 + (parseInt(timeBStr[1], 10) || 0);
-                            
+
                             return valA - valB;
                         });
                         rows.forEach(r => tbody.appendChild(r));
@@ -14930,11 +15016,11 @@ body.modal-open-body {
                     days.forEach(day => {
                         const dateEl = day.querySelector('.day-date');
                         if (!dateEl) return;
-                        
+
                         let classDateObj = new Date();
                         const dateStr = dateEl.textContent.trim();
                         const match = dateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
-                        
+
                         if (match) {
                             const m = {'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11}[match[2].toLowerCase()];
                             classDateObj.setMonth(m);
@@ -14955,7 +15041,7 @@ body.modal-open-body {
                         // захватываем и строки выходных
                         day.querySelectorAll('.timetable-grid tr').forEach(row => {
                             let isPassed = false;
-                            
+
                             if (isPastDay) {
                                 isPassed = true;
                             } else if (isToday) {
@@ -14979,7 +15065,7 @@ body.modal-open-body {
                                         const timeMatch = timeEl.textContent.match(/(\d{1,2}):(\d{2})/);
                                         if (timeMatch) {
                                             startMins = parseInt(timeMatch[1]) * 60 + parseInt(timeMatch[2]);
-                                            
+
                                             const explicitEndTime = row.getAttribute('data-end-time');
                                             if (explicitEndTime) {
                                                 const ep = explicitEndTime.split(':');
@@ -15006,11 +15092,12 @@ body.modal-open-body {
                 }
                 window.applyDimming = dimPastPairs;
 
-                // --- УНИВЕРСАЛЬНАЯ ОЧИСТКА РАСПИСАНИЯ ДЛЯ HTML2CANVAS ---
+                // --- УНИВЕРСАЛЬНАЯ ОЧИСТКА РАСПИСАНИЯ ДЛЯ html2canvas ---
                 const cleanTimetableForExport = async (clone) => {
-                    // 1. Удаляем UI-мусор
-                    clone.querySelectorAll('.share-day-btn, .add-custom-pair-btn, .live-dot, .day-status-icon, .pair_teacher .eval, .pair-important-btn, .subject-note-btn, .delete-custom-pair-btn, .hidden-by-filter').forEach(el => el.remove());
-                    
+                    // 1. Удаляем UI-мусор, скрипты и ленивую загрузку
+                    clone.querySelectorAll('.share-day-btn, .add-custom-pair-btn, .live-dot, .day-status-icon, .pair_teacher .eval, .pair-important-btn, .subject-note-btn, .delete-custom-pair-btn, .hidden-by-filter, script').forEach(el => el.remove());
+                    clone.querySelectorAll('[loading="lazy"]').forEach(el => el.removeAttribute('loading'));
+
                     // 2. Убираем эффект "прошедших пар"
                     clone.querySelectorAll('.pair-passed, td').forEach(el => {
                         el.classList.remove('pair-passed');
@@ -15019,15 +15106,15 @@ body.modal-open-body {
 
                     // 3. ДОБАВЛЯЕМ QR-КОДЫ ДЛЯ ОНЛАЙН ПАР
                     const qrPromises = [];
-                    
+
                     if (generalConfig.generateQR) {
                         clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
                             const link = tr.querySelector('.aud a[href]');
                             const teacherCell = tr.querySelector('.pair_teacher');
-                            
+
                             if (link && teacherCell && link.href) {
                                 const qrUrl = `https://quickchart.io/qr?size=150&margin=1&text=${encodeURIComponent(link.href)}`;
-                                
+
                                 const promise = new Promise((resolve) => {
                                     GM_xmlhttpRequest({
                                         method: 'GET',
@@ -15039,23 +15126,23 @@ body.modal-open-body {
                                                 reader.onloadend = function() {
                                                     const img = document.createElement('img');
                                                     img.src = reader.result;
-                                                    img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; mix-blend-mode: multiply;';
-                                                    
+                                                    img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; border-radius: 8px; background: #fff;';
+
                                                     const teacherText = teacherCell.innerHTML;
                                                     teacherCell.innerHTML = '';
-                                                    
+
                                                     const wrapper = document.createElement('div');
                                                     wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
-                                                    
+
                                                     const textWrapper = document.createElement('div');
                                                     textWrapper.innerHTML = teacherText;
                                                     textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
-                                                    
+
                                                     textWrapper.querySelectorAll('a').forEach(a => {
                                                         a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
                                                         a.style.setProperty('text-decoration', 'none', 'important');
                                                     });
-                                                    
+
                                                     wrapper.appendChild(img);
                                                     wrapper.appendChild(textWrapper);
                                                     teacherCell.appendChild(wrapper);
@@ -15063,7 +15150,7 @@ body.modal-open-body {
                                                 };
                                                 reader.readAsDataURL(res.response);
                                             } else {
-                                                resolve(); 
+                                                resolve();
                                             }
                                         },
                                         onerror: () => resolve()
@@ -15129,7 +15216,7 @@ body.modal-open-body {
                         tr.style.removeProperty('background');
                         tr.style.setProperty('background-color', 'transparent', 'important');
                     });
-                    
+
                     clone.querySelectorAll('*').forEach(el => el.style.boxSizing = 'border-box');
                 };
 
@@ -15282,7 +15369,7 @@ body.modal-open-body {
                             }
                         }
                         let bodyHtml = parts.join('<br>').replace(/^(<br\s*\/?>|\s)+/, '');
-                        
+
                         bodyHtml = highlightDatesInHTML(bodyHtml, titleStr || 'Объявление');
                         const highlightedTitle = titleStr ? highlightDatesInHTML(titleStr, titleStr) : '';
 
@@ -15301,10 +15388,10 @@ body.modal-open-body {
                             ${attachments.length > 0 ? `<div class="msg-footer"><div class="msg-attachments">${attachments.map(a => {
                                 let isDocx = a.name.toLowerCase().includes('.docx');
                                 let isCons = a.name.toLowerCase().includes('консультац');
-                                
+
                                 // Проверка, есть ли такой href в базе
                                 const isAlreadyAdded = consultationsFiles.some(f => f.sourceUrl === a.href);
-                                
+
                                 let btnHtml = '';
                                 if (isDocx && isCons) {
                                     if (isAlreadyAdded) {
@@ -15331,7 +15418,7 @@ body.modal-open-body {
                             const href = btn.getAttribute('data-href');
                             const originalHTML = btn.innerHTML;
                             btn.innerHTML = '<span class="material-icons" style="animation:spin 1s linear infinite">sync</span>Загрузка...';
-                            
+
                             GM_xmlhttpRequest({
                                 method: 'GET',
                                 url: href,
@@ -15340,7 +15427,7 @@ body.modal-open-body {
                                     if (res.status === 200) {
                                         const blob = new Blob([res.response], {type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
                                         const file = new File([blob], "consultations.docx");
-                                        
+
                                         // передаем href как третий аргумент
                                         processDocxFile(file, (success, data) => {
                                              if (success) {
@@ -15350,9 +15437,9 @@ body.modal-open-body {
                                                  btn.style.setProperty('color', 'var(--color-accent)', 'important');
                                                  btn.style.setProperty('border', '1px solid var(--color-accent)', 'important');
                                                  btn.style.setProperty('cursor', 'default', 'important');
-                                                 
+
                                                  if (window.showEtisPush) window.showEtisPush('Консультации загружены', data.title, 'Добавлено в расписание (не забудьте включить тумблер!)', 'success', 'event_available');
-                                                 
+
                                                  if (typeof window.injectConsultationPairs === 'function') {
                                                      document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
                                                      window.injectConsultationPairs();
@@ -15450,13 +15537,13 @@ body.modal-open-body {
                         }
                         const teacherNode = cloneContent.querySelector('b i');
                         const teacherName = teacherNode ? teacherNode.textContent.trim() : 'Преподаватель';
-                        
+
                         const bTag = cloneContent.querySelector('b');
                         if (bTag && bTag.contains(teacherNode)) bTag.remove();
                         const dateNode = cloneContent.querySelector('font[color="#808080"]');
                         const dateStr = dateNode ? formatEtisDate(dateNode.textContent.trim()) : '';
                         if (dateNode) dateNode.remove();
-                        
+
                         const subjects = [];
                         cloneContent.querySelectorAll('font').forEach(f => { subjects.push(f.textContent.trim()); f.remove(); });
 
@@ -15475,9 +15562,9 @@ body.modal-open-body {
                                 </div>
                             </div>
                             ${highlightedSubjects.length ? `<div class="msg-subject">${highlightedSubjects.join('<br>')}</div>` : ''}
-                            <div class="msg-body">${highlightedBody}</div> 
+                            <div class="msg-body">${highlightedBody}</div>
                         `;
-                        
+
                         container.appendChild(card);
                     });
 
@@ -15582,14 +15669,12 @@ body.modal-open-body {
 
                     if (action === 'NEW' || action === 'VIEW') {
                         // --- СТРАНИЦА ЗАКАЗА ИЛИ ПРОСМОТРА КОНКРЕТНОЙ СПРАВКИ ---
-
-                        // 1. Стилизация заголовка
-                        const h3 = span9.querySelector('h3');
-                        if (h3) {
-                            h3.style.fontSize = '2.2rem';
-                            h3.style.fontWeight = '800';
-                            h3.style.marginBottom = '2.4rem';
+                        while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
+                            span9.firstChild.remove();
                         }
+
+                        // 1. Удаление заголовка
+                        span9.querySelectorAll('h2, h3').forEach(h => h.remove());
 
                         // 2. Стилизация "листа бумаги" (превью справки)
                         const paper = span9.querySelector('.bgprj');
@@ -15691,12 +15776,9 @@ body.modal-open-body {
                         // 1. Заголовок и Новые справки
                         const headNew = allHeaders.find(h => h.textContent.includes('Заказать'));
                         if (headNew && allLists[0]) {
-                            const h = document.createElement('h2');
-                            h.textContent = headNew.textContent;
-                            span9.appendChild(h);
-
                             const container = document.createElement('div');
                             container.className = 'advice-container';
+                            container.style.setProperty('margin-top', '0', 'important');
                             allLists[0].querySelectorAll('a').forEach(link => {
                                 const card = document.createElement('a');
                                 card.className = 'advice-card';
@@ -15712,16 +15794,11 @@ body.modal-open-body {
                         const historyList = allLists.length > 1 ? allLists[1] : (allLists[0] && !headNew ? allLists[0] : null);
 
                         if (headHistory && historyList) {
-                            const h = document.createElement('h2');
-                            h.textContent = headHistory.textContent;
-                            h.style.marginTop = '4rem';
-                            span9.appendChild(h);
-
                             const container = document.createElement('div');
                             container.style.display = 'flex';
                             container.style.flexDirection = 'column';
                             container.style.gap = '1.4rem';
-                            container.style.marginTop = '1.5rem';
+                            container.style.setProperty('margin-top', (headNew && allLists[0]) ? '4rem' : '0', 'important');
 
                             historyList.querySelectorAll('a').forEach(link => {
                             const fullText = link.textContent.trim();
@@ -15800,24 +15877,24 @@ body.modal-open-body {
                         css.id = 'etis-reborn-grades-tooltip-css';
                         css.innerHTML = `
                             .kt-score-capsule { position: relative; cursor: pointer; -webkit-tap-highlight-color: transparent; }
-                            .grade-cell-tooltip { 
-                                right: 0 !important; 
+                            .grade-cell-tooltip {
+                                right: 0 !important;
                                 left: auto !important;
-                                transform: translateY(10px) !important; 
-                                bottom: 140% !important; 
+                                transform: translateY(10px) !important;
+                                bottom: 140% !important;
                                 pointer-events: none;
-                                z-index: 1000 !important; 
+                                z-index: 1000 !important;
                             }
-                            .grade-cell-tooltip::after { 
-                                right: 15px !important; 
+                            .grade-cell-tooltip::after {
+                                right: 15px !important;
                                 left: auto !important;
-                                transform: none !important; 
+                                transform: none !important;
                             }
-                            .kt-score-capsule:hover .grade-cell-tooltip, 
-                            .kt-score-capsule:active .grade-cell-tooltip { 
-                                transform: translateY(0) !important; 
-                                opacity: 1; 
-                                visibility: visible; 
+                            .kt-score-capsule:hover .grade-cell-tooltip,
+                            .kt-score-capsule:active .grade-cell-tooltip {
+                                transform: translateY(0) !important;
+                                opacity: 1;
+                                visibility: visible;
                             }
                         `;
                         document.head.appendChild(css);
@@ -15916,7 +15993,7 @@ body.modal-open-body {
                                         else if (gText.includes('зач')) { hasPass = true; sum += 5; count++; }
                                         else if (!isNaN(num) && num >= 3 && num <= 5) { sum += num; count++; }
                                     }
-                                    
+
                                     const gradeCell = r.cells[1];
                                     const dateCell = r.cells[2];
                                     if (gradeCell) {
@@ -15939,7 +16016,7 @@ body.modal-open-body {
                                 // Парсинг (Только Номер, Тип периода и Курс)
                                 const trimM = block.headerRaw.match(/(\d+)\s+(триместр|семестр)/i);
                                 const courseM = block.headerRaw.match(/(\d+)\s+курс/i);
-                                
+
                                 const typePart = trimM ? trimM[2].toUpperCase() : "ТРИМЕСТР";
                                 const numPart = trimM ? trimM[1] : "";
                                 const coursePart = courseM ? `${courseM[1]} КУРС` : "";
@@ -15963,7 +16040,7 @@ body.modal-open-body {
                                     gpaCapsule.className = 'subject-score-capsule';
                                     gpaCapsule.style.cssText = 'margin: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 80px; height: 32px; font-weight: 800; font-size: 1.4rem; color: #fff;';
                                     gpaCapsule.textContent = hasFail ? 'ДОЛГИ' : `${avg} / 5`;
-                                    
+
                                     if (hasFail) { gpaCapsule.style.background = 'var(--color-red)'; }
                                     else {
                                         const p = (avg / 5) * 100;
@@ -15973,7 +16050,7 @@ body.modal-open-body {
                                     }
                                     headerContainer.appendChild(gpaCapsule);
                                 }
-                                
+
                                 table.parentNode.insertBefore(headerContainer, table);
 
                                 const wrapper = document.createElement('div');
@@ -16424,7 +16501,7 @@ body.modal-open-body {
                                     // --- ОБНОВЛЕНИЕ КАПСУЛЫ ---
                                     const capsules = header.querySelectorAll('.subject-score-capsule');
                                     // Берем последнюю капсулу (чтобы не перезаписывать левую капсулу с курсом/триместром)
-                                    const capsule = capsules[capsules.length - 1]; 
+                                    const capsule = capsules[capsules.length - 1];
 
                                     if (capsule && capsules.length > 0) {
                                         const avg = count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
@@ -16532,20 +16609,20 @@ body.modal-open-body {
                                 if (r === totalRow) return;
 
                                 const cells = r.querySelectorAll('th, td');
-                                
+
                                 // === ЛОГИКА: КОМПАКТНЫЕ ОЦЕНКИ ===
                                 if (generalConfig.compactGrades) {
                                     const cfg = generalConfig.compactGradesConfig;
-                                    
+
                                     // 1. Вторая строка шапки ("текущий", "максимальный")
                                     if (cells.length === 2 && cells[0].textContent.toLowerCase().includes('текущий')) {
-                                        if (!cfg.showRating) r.style.display = 'none'; 
-                                    } 
+                                        if (!cfg.showRating) r.style.display = 'none';
+                                    }
                                     // 2. Главная строка шапки
                                     else if (r.querySelector('th') && cells.length >= 7) {
                                         cells.forEach((cell) => {
                                             const text = cell.textContent.toLowerCase();
-                                            
+
                                             if (text.includes('вид работы') && !cfg.showWorkType) cell.style.display = 'none';
                                             if (text.includes('вид контроля') && !cfg.showControlType) cell.style.display = 'none';
                                             if (text.includes('проходной') && !cfg.showPassScore) cell.style.display = 'none';
@@ -16558,11 +16635,11 @@ body.modal-open-body {
                                                 cell.removeAttribute('colspan');
                                             }
                                         });
-                                    } 
+                                    }
                                     // 3. Обычные строки с оценками
                                     else if (cells.length >= 7) {
                                         cells.forEach((cell, idx) => {
-                                            // Индексы колонок ЕТИС: 
+                                            // Индексы колонок ЕТИС:
                                             // 0:Тема, 1:Работа, 2:Контроль, 3:Оценка, 4:Проходной, 5:БаллТек, 6:БаллМакс, 7:Дата, 8:Преподаватель
                                             if (idx === 1 && !cfg.showWorkType) cell.style.display = 'none';
                                             if (idx === 2 && !cfg.showControlType) cell.style.display = 'none';
@@ -16570,7 +16647,7 @@ body.modal-open-body {
                                             if ((idx === 5 || idx === 6) && !cfg.showRating) cell.style.display = 'none';
                                             if (idx === 7 && !cfg.showDate) cell.style.display = 'none';
                                             if (idx === 8 && !cfg.showTeacher) cell.style.display = 'none';
-                                            
+
                                             // Заужаем колонку оценки
                                             if (idx === 3) {
                                                 cell.style.width = '1%';
@@ -16628,15 +16705,15 @@ body.modal-open-body {
                                 if (cells.length >= 7) {
                                     const gradeStr = cells[3].textContent.trim(); // Колонка "Оценка"
                                     const maxStr = cells[6].textContent.trim();   // Колонка "Макс. балл в рейтинг"
-                                    
+
                                     r.setAttribute('data-raw-grade', gradeStr);
                                     r.setAttribute('data-raw-max', maxStr);
-                                    
+
                                     const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
 
                                     if (gradeStr !== '') {
                                         hasAnyGrades = true;
-                                        
+
                                         if (maxVal > 0) {
                                             calculatedMax += maxVal;
                                             if (gradeStr !== 'н') {
@@ -16649,7 +16726,7 @@ body.modal-open-body {
                                             if (!cells[3].querySelector('.kt-score-capsule')) {
                                                 let bg, color, mark = '';
                                                 const gradeVal = parseFloat(gradeStr.replace(',', '.')) || 0;
-                                                
+
                                                 if (maxVal > 0) {
                                                     const p = (gradeVal / maxVal) * 100;
                                                     if (p < 41) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; mark = '2'; }
@@ -16670,7 +16747,7 @@ body.modal-open-body {
                                                 // Оборачиваем содержимое в капсулу и добавляем тултип внутрь
                                                 const originalContent = cells[3].innerHTML;
                                                 cells[3].innerHTML = `<span class="kt-score-capsule" style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; min-width: 24px;">${originalContent}${tooltipHtml}</span>`;
-                                                
+
                                                 // Убираем подчеркивание у внутреннего спана ЕТИСа, чтобы не двоилось
                                                 const innerSpan = cells[3].querySelector('span span');
                                                 if (innerSpan) innerSpan.style.borderBottom = 'none';
@@ -16716,7 +16793,7 @@ body.modal-open-body {
                                 else capsule.style.background = 'var(--color-green)';
                                 if (p < 41 || p >= 61) capsule.style.color = '#fff';
                             }
-                            
+
                             // --- КАЛЬКУЛЯТОР БАЛЛОВ (Прогноз) ---
                             if (finalMax > 0 && hasAnyGrades) {
                                 let tooltipText = '';
@@ -16790,14 +16867,14 @@ body.modal-open-body {
                                         if (cells.length >= 7) {
                                             const gradeStr = row.getAttribute('data-raw-grade') || cells[3].textContent.trim();
                                             const maxStr = row.getAttribute('data-raw-max') || cells[6].textContent.trim();
-                                            
+
                                             if (gradeStr !== '') {
                                                 hasAnyGrades = true;
                                                 const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
-                                                
+
                                                 if (maxVal > 0) {
                                                     calculatedMax += maxVal;
-                                                    
+
                                                     if (gradeStr !== 'н') {
                                                         calculatedCurrent += parseFloat(gradeStr.replace(',', '.')) || 0;
                                                     }
@@ -16820,9 +16897,9 @@ body.modal-open-body {
                                     // --- ОБНОВЛЕНИЕ КАПСУЛЫ И ТУЛТИПА ---
                                     const capsule = header.querySelector('.subject-score-capsule');
                                     if (capsule) {
-                                        wrapper.setAttribute('data-score-current', calculatedCurrent); 
+                                        wrapper.setAttribute('data-score-current', calculatedCurrent);
                                         wrapper.setAttribute('data-score-max', calculatedMax);
-                                        
+
                                         // Применяем логику "Из 100"
                                         const finalMaxFiltered = generalConfig.absoluteScores ? 100 : calculatedMax;
 
@@ -16980,7 +17057,7 @@ body.modal-open-body {
                             modal.classList.add('active');
                             document.body.classList.add('modal-open-body');
                         });
-                        
+
                         // --- ОФОРМЛЕНИЕ ПАМЯТКИ "ПОРЯДОК УТОЧНЕНИЯ ОЦЕНОК" ---
                         const currentFooterP = span9.querySelector('p');
                         if (currentFooterP && currentFooterP.textContent.includes('Показанные здесь оценки являются официальными')) {
@@ -17010,7 +17087,7 @@ body.modal-open-body {
                                             <span style="position: absolute; left: 0; font-weight: 800; color: var(--color-accent);">${line.charAt(0)}</span>
                                             ${line.substring(2)}
                                         </div>`;
-                                } 
+                                }
                                 // Заголовок "Порядок уточнения:"
                                 else if (line.toLowerCase().includes('порядок уточнения')) {
                                     processedContent += `<div style="font-weight: 800; margin: 20px 0 15px; font-size: 1.4rem; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 0.5px;">${line}</div>`;
@@ -17079,12 +17156,12 @@ body.modal-open-body {
                                         } else if (text.includes('неуд') || text.includes('незач') || text === '2') {
                                             bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)';
                                         }
-                                        
+
                                         gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">${gradeCell.textContent.trim()}</span>`;
                                     } else if (text.includes('нет итоговой оценки')) {
                                         gradeCell.innerHTML = `<span style="color: var(--color-text-secondary); font-size: 1.2rem;">Нет оценки</span>`;
                                     }
-                                    
+
                                     // Убираем старый шрифт из первой колонки (элективы)
                                     const nameCell = cells[0];
                                     if (nameCell && nameCell.querySelector('i')) {
@@ -17111,10 +17188,10 @@ body.modal-open-body {
 
                             const capsule = document.createElement('div');
                             capsule.className = 'subject-score-capsule';
-                            if (hasFail) { 
-                                capsule.textContent = 'ЕСТЬ ДОЛГИ'; 
-                                capsule.style.background = 'var(--color-red)'; 
-                                capsule.style.color = '#fff'; 
+                            if (hasFail) {
+                                capsule.textContent = 'ЕСТЬ ДОЛГИ';
+                                capsule.style.background = 'var(--color-red)';
+                                capsule.style.color = '#fff';
                             } else if (count > 0) {
                                 const avg = Math.round((sum / count) * 100) / 100;
                                 capsule.textContent = `${avg} / 5`;
@@ -17124,8 +17201,8 @@ body.modal-open-body {
                                 else { capsule.style.background = 'var(--color-green)'; capsule.style.color = '#fff'; }
                                 if (avg >= 4.75) capsule.style.boxShadow = '0 0 0 2px #FFD700'; // Красивый бордер для красного диплома
                             } else {
-                                capsule.textContent = 'Нет оценок'; 
-                                capsule.style.background = 'var(--color-highlight)'; 
+                                capsule.textContent = 'Нет оценок';
+                                capsule.style.background = 'var(--color-highlight)';
                                 capsule.style.color = 'var(--color-text-secondary)';
                             }
                             headerContainer.appendChild(capsule);
@@ -17187,7 +17264,7 @@ body.modal-open-body {
                             ratingTable.parentNode.insertBefore(wrapper, ratingTable);
                             wrapper.appendChild(ratingTable);
                         }
-                        
+
                         // Принудительно растягиваем таблицу и убираем артефакты display: block
                         ratingTable.style.setProperty('display', 'table', 'important');
                         ratingTable.style.setProperty('width', '100%', 'important');
@@ -17204,15 +17281,15 @@ body.modal-open-body {
                                 if (match) {
                                     const current = parseInt(match[1], 10);
                                     const total = parseInt(match[2], 10);
-                                    
+
                                     let bg = 'rgba(142, 142, 147, 0.15)'; // Дефолтный серый
                                     let color = 'var(--color-text-secondary)';
-                                    
+
                                     if (current > 0) {
                                         // Чем ближе к 1 месту, тем "зеленее" процент
                                         // 1 место из 22 => 100%. 22 место из 22 => 0%.
                                         const p = total > 1 ? ((total - current) / (total - 1)) * 100 : 100;
-                                        
+
                                         if (p < 30) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
                                         else if (p < 60) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
                                         else if (p < 85) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; }
@@ -17231,7 +17308,7 @@ body.modal-open-body {
                         const footerP = span9.querySelector('p');
                         if (footerP && footerP.textContent.includes('Показанные здесь оценки')) {
                             const infoBox = document.createElement('div');
-                            
+
                             infoBox.style.cssText = `
                                 background: var(--color-card);
                                 border-radius: var(--radius-large) !important;
@@ -17242,19 +17319,19 @@ body.modal-open-body {
                                 color: var(--color-text-primary);
                                 border: 1px solid var(--color-table-border);
                             `;
-                            
+
                             // Очистка текста от мусора ЕТИСа
                             let rawHTML = footerP.innerHTML
                                 .replace(/&nbsp;/g, '')
                                 .trim();
-                            
+
                             // Превращаем старые переносы в аккуратные абзацы
                             let cleanHTML = rawHTML.split(/<br\s*\/?>/i)
                                 .map(line => line.trim())
                                 .filter(line => line.length > 0)
                                 .map(line => `<p style="margin-bottom: 12px; line-height: 1.6; opacity: 0.9; font-size: 1.35rem;">${line}</p>`)
                                 .join('');
-                            
+
                             infoBox.innerHTML = `
                                 <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;">
                                     <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">info</span>
@@ -17264,7 +17341,7 @@ body.modal-open-body {
                                     ${cleanHTML}
                                 </div>
                             `;
-                            
+
                             footerP.replaceWith(infoBox);
                         }
                     }
@@ -17444,7 +17521,7 @@ body.modal-open-body {
                                 scoreUpdates.forEach(u => subjList.push(u.subj));
                                 markUpdates.forEach(u => subjList.push(u.subj));
                                 subjList =[...new Set(subjList)]; // Убираем дубликаты
-                                
+
                                 let bodyText = subjList.slice(0, 2).join(', ');
                                 if (subjList.length > 2) bodyText += ` и ещё ${subjList.length - 2}`;
 
@@ -17473,100 +17550,146 @@ body.modal-open-body {
                     break;
                 }
 
-                case 'stu.electr':
-                const resTable = document.getElementById('resources');
-                if (!resTable) break;
+                case 'stu.electr': {
+                    const resTable = document.getElementById('resources');
+                    if (!resTable) break;
 
-                // 1. Убираем описание в подвал
-                const introText = span9.querySelector('p[style*="font-size:11pt"]');
-                if (introText) {
-                    introText.className = 'electr-description';
-                    introText.removeAttribute('style');
-                    introText.querySelectorAll('br').forEach(br => br.remove());
-                    span9.appendChild(introText);
+                    // 1. Убираем лишние заголовки
+                    span9.querySelectorAll('h3').forEach(h => {
+                        const text = h.textContent.toLowerCase();
+                        if (text.includes('электронные ресурсы пгниу') || text.includes('ресурсы, доступ к которым')) {
+                            h.remove();
+                        }
+                    });
+
+                    // 2. Оформляем инфо-блок (памятка от научной библиотеки)
+                    const introText = span9.querySelector('p[style*="font-size:11pt"]');
+                    if (introText) {
+                        const infoBox = document.createElement('div');
+                        infoBox.style.cssText = `
+                            background: var(--color-card);
+                            border-radius: var(--radius-large) !important;
+                            box-shadow: var(--shadow-main);
+                            padding: 2.4rem !important;
+                            margin-bottom: 2.4rem;
+                            text-align: left !important;
+                            color: var(--color-text-primary);
+                            border: 1px solid var(--color-table-border);
+                            line-height: 1.6;
+                            font-size: 1.35rem;
+                        `;
+
+                        // Убираем переносы строк для красивого заполнения
+                        let cleanHTML = introText.innerHTML.replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
+
+                        infoBox.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;">
+                                <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">local_library</span>
+                                Научная библиотека
+                            </div>
+                            <div style="opacity: 0.9;">
+                                ${cleanHTML}
+                            </div>
+                        `;
+                        introText.replaceWith(infoBox);
+                    }
+
+                    // 3. Парсинг таблицы и исправление скролла/разделителей
+                    const rows = Array.from(resTable.querySelectorAll('tr'));
+                    let currentTbody = null;
+
+                    const addCopyLogic = (cell) => {
+                        const text = cell.textContent.trim();
+                        if (!text || text.includes('от личного кабинета') || text.toLowerCase().includes('код доступа') || text.includes('Логин')) return;
+
+                        cell.style.cursor = 'pointer';
+                        cell.classList.add('copy-pass');
+
+                        cell.addEventListener('click', () => {
+                            navigator.clipboard.writeText(text).then(() => {
+                                const originalHTML = cell.innerHTML;
+                                cell.textContent = 'Скопировано!';
+                                cell.style.color = 'var(--color-green)';
+                                setTimeout(() => {
+                                    cell.innerHTML = originalHTML;
+                                    cell.style.color = '';
+                                }, 800);
+                            });
+                        });
+                    };
+
+                    rows.forEach((row) => {
+                        const catHeader = row.querySelector('th[colspan="3"]');
+                        const rowText = row.textContent.toLowerCase();
+
+                        if (catHeader && rowText.includes('ldap/campus')) { row.remove(); return; }
+                        if (rowText.includes('логин / пароль') && rowText.includes('личного кабинета') && !rowText.includes('bbb')) { row.remove(); return; }
+
+                        if (catHeader) {
+                            let titleText = catHeader.textContent.trim();
+                            if (titleText.toLowerCase() === 'видеоресурс') {
+                                titleText = 'ВИДЕОРЕСУРС и LDAP/CAMPUS';
+                            }
+
+                            const block = document.createElement('div');
+                            block.className = 'day resource-block';
+
+                            const title = document.createElement('h3');
+                            title.textContent = titleText;
+                            block.appendChild(title);
+
+                            // Оборачиваем в контейнер для скролла
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'wide-table-wrapper';
+
+                            const table = document.createElement('table');
+                            table.className = 'common resource-table';
+                            table.style.minWidth = '650px'; // Заставляем скроллиться на мобильных
+
+                            // Добавляем tbody, чтобы заработали стили градиентных разделителей
+                            currentTbody = document.createElement('tbody');
+                            table.appendChild(currentTbody);
+
+                            wrapper.appendChild(table);
+                            block.appendChild(wrapper);
+
+                            // Вставляем блок перед старой таблицей
+                            resTable.parentNode.insertBefore(block, resTable);
+                            row.remove();
+                        } else if (currentTbody) {
+                            if (row.querySelector('th') || (rowText.includes('логин') && rowText.includes('пароль'))) {
+                                row.remove();
+                                return;
+                            }
+
+                            const cells = row.querySelectorAll('td');
+                            if (cells.length === 3) {
+                                addCopyLogic(cells[1]);
+                                addCopyLogic(cells[2]);
+                            } else if (cells.length === 2) {
+                                addCopyLogic(cells[1]);
+                            }
+
+                            currentTbody.appendChild(row);
+                        }
+                    });
+
+                    resTable.remove();
+                    break;
                 }
 
-                // 2. Очистка лишнего
-                const accessHeader = Array.from(span9.querySelectorAll('h3')).find(h => h.textContent.includes('Ресурсы, доступ к которым'));
-                if (accessHeader) accessHeader.remove();
-
-                const rows = Array.from(resTable.querySelectorAll('tr'));
-                let currentTable = null;
-
-                // Функция для добавления эффекта копирования
-                const addCopyLogic = (cell) => {
-                    const text = cell.textContent.trim();
-                    if (!text || text.includes('от личного кабинета') || text.toLowerCase().includes('код доступа') || text.includes('Логин')) return;
-
-                    cell.style.cursor = 'pointer';
-                    cell.classList.add('copy-pass');
-
-                    cell.addEventListener('click', () => {
-                        navigator.clipboard.writeText(text).then(() => {
-                            const originalHTML = cell.innerHTML;
-                            cell.textContent = 'Скопировано!';
-                            cell.style.color = 'var(--color-green)';
-                            setTimeout(() => {
-                                cell.innerHTML = originalHTML;
-                                cell.style.color = '';
-                            }, 800);
-                        });
-                    });
-                };
-
-                rows.forEach((row) => {
-                    const catHeader = row.querySelector('th[colspan="3"]');
-                    const rowText = row.textContent.toLowerCase();
-
-                    if (catHeader && rowText.includes('ldap/campus')) { row.remove(); return; }
-                    if (rowText.includes('логин / пароль') && rowText.includes('личного кабинета') && !rowText.includes('bbb')) { row.remove(); return; }
-
-                    if (catHeader) {
-                        let titleText = catHeader.textContent.trim();
-                        if (titleText.toLowerCase() === 'видеоресурс') {
-                            titleText = 'ВИДЕОРЕСУРС и LDAP/CAMPUS';
-                        }
-
-                        const block = document.createElement('div');
-                        block.className = 'day resource-block';
-
-                        const title = document.createElement('h3');
-                        title.textContent = titleText;
-                        block.appendChild(title);
-
-                        currentTable = document.createElement('table');
-                        currentTable.className = 'common resource-table';
-                        block.appendChild(currentTable);
-
-                        span9.insertBefore(block, introText);
-                        row.remove();
-                    } else if (currentTable) {
-                        if (row.querySelector('th') || (rowText.includes('логин') && rowText.includes('пароль'))) {
-                            row.remove();
-                            return;
-                        }
-
-                        const cells = row.querySelectorAll('td');
-                        if (cells.length === 3) {
-                            addCopyLogic(cells[1]); 
-                            addCopyLogic(cells[2]); 
-                        } else if (cells.length === 2) {
-                            addCopyLogic(cells[1]);
-                        }
-
-                        currentTable.appendChild(row);
-                    }
-                });
-
-                resTable.remove();
-                break;
-
                 case 'stu_plus.advice': {
+                    span9.querySelectorAll('h3').forEach(h => h.remove());
                     const adviceList = span9.querySelector('ul');
                     if (!adviceList) break;
 
+                    // Вычищаем невидимые переносы строк ЕТИСа в самом верху
+                    while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
+                        span9.firstChild.remove();
+                    }
                     const container = document.createElement('div');
                     container.className = 'advice-container';
+                    container.style.setProperty('margin-top', '0', 'important');
 
                     const links = adviceList.querySelectorAll('a');
                     links.forEach(link => {
@@ -17578,7 +17701,7 @@ body.modal-open-body {
 
                         // Определяем иконку и цвет подложки по расширению файла
                         let iconName = 'article';
-                        let iconColor = 'var(--color-accent)'; 
+                        let iconColor = 'var(--color-accent)';
                         let bgBox = 'var(--color-accent-active)';
 
                         if (href.includes('.pdf')) {
@@ -17586,7 +17709,7 @@ body.modal-open-body {
                             iconColor = '#FF3B30'; // красный для PDF
                             bgBox = 'rgba(255, 59, 48, 0.15)';
                         } else if (href.includes('.mp4') || href.includes('.avi') || href.includes('.mov')) {
-                            iconName = 'play_circle_filled';
+                            iconName = 'play_circle';
                             iconColor = '#AF52DE'; // фиолетовый для видео
                             bgBox = 'rgba(175, 82, 222, 0.15)';
                         }
@@ -17607,9 +17730,8 @@ body.modal-open-body {
 
                     adviceList.parentNode.replaceChild(container, adviceList);
 
-                    // Оформляем заголовок
-                    const h2 = span9.querySelector('h2');
-                    if (h2) h2.style.marginBottom = '2.4rem';
+                    // Удаляем заголовки
+                    span9.querySelectorAll('h2, h3').forEach(h => h.remove());
 
                     // Очищаем лишние переносы строк, которые оставляет ЕТИС
                     span9.querySelectorAll('br, p:empty').forEach(el => el.remove());
@@ -17635,7 +17757,8 @@ body.modal-open-body {
                             const card = document.createElement('div');
                             card.className = 'day resource-block';
 
-                            const cardTitle = document.createElement('h3');
+                            const cardTitle = document.createElement('div');
+                            cardTitle.style.cssText = 'display: block; padding: 1.6rem 2rem; background: var(--color-table-header); border-bottom: 1px solid var(--color-table-border); margin: 0; font-size: 1.6rem; font-weight: 700; color: var(--color-text-primary); border-radius: 16px 16px 0 0;';
                             cardTitle.textContent = title;
                             card.appendChild(cardTitle);
 
@@ -17657,13 +17780,10 @@ body.modal-open-body {
                     });
 
                     span9.innerHTML = '';
-
-                    const mainTitle = document.createElement('h2');
-                    mainTitle.textContent = 'Компетенции выпускника';
-                    mainTitle.style.marginBottom = '2.4rem';
-                    span9.appendChild(mainTitle);
-
-                    competencyBlocks.forEach(block => span9.appendChild(block));
+                    competencyBlocks.forEach((block, index) => {
+                        if (index === 0) block.style.setProperty('margin-top', '0', 'important');
+                        span9.appendChild(block);
+                    });
 
                     if (majorName || pdfHTML) {
                         const footer = document.createElement('div');
@@ -17697,9 +17817,44 @@ body.modal-open-body {
 
                     const libIntro = Array.from(span9.querySelectorAll('p')).find(p => p.textContent.includes('Для чтения полных текстов'));
                     if (libIntro) {
-                        libIntro.className = 'electr-description';
-                        libIntro.style.marginTop = '30px';
-                        span9.appendChild(libIntro);
+                        const infoBox = document.createElement('div');
+                        // Используем стиль карточки-памятки
+                        infoBox.style.cssText = `
+                            background: var(--color-card);
+                            border-radius: var(--radius-large) !important;
+                            box-shadow: var(--shadow-main);
+                            padding: 2.4rem !important;
+                            margin-top: 4rem;
+                            margin-bottom: 2rem;
+                            text-align: left !important;
+                            color: var(--color-text-primary);
+                            border: 1px solid var(--color-table-border);
+                            line-height: 1.6;
+                            font-size: 1.35rem;
+                            width: 100%;
+                            box-sizing: border-box;
+                        `;
+
+                        // Чистим текст внутри от лишних пробелов и переносов
+                        let cleanHTML = libIntro.innerHTML.replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+
+                        infoBox.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;">
+                                <span class="material-icons" style="color:var(--color-accent); font-size: 26px;">info</span>
+                                Электронные издания
+                            </div>
+                            <div style="opacity: 0.9;">
+                                ${cleanHTML}
+                            </div>
+                        `;
+
+                        // Удаляем оригинал сверху
+                        libIntro.remove();
+
+                        // Откладываем добавление в конец, чтобы блок оказался ПОД всеми таблицами
+                        setTimeout(() => {
+                            span9.appendChild(infoBox);
+                        }, 0);
                     }
 
                     const createSearchCapsule = (placeholder, inputClass) => {
@@ -17753,14 +17908,70 @@ body.modal-open-body {
                             if (table && table.tagName === 'TABLE') {
                                 const block = document.createElement('div');
                                 block.className = 'library-subject-block';
+                                block.style.marginBottom = '4rem'; // Добавляем отступ между предметами
                                 h3.parentNode.insertBefore(block, h3);
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'wide-table-wrapper';
                                 block.appendChild(h3);
-                                block.appendChild(wrapper);
-                                wrapper.appendChild(table);
-                                table.classList.add('resource-table');
-                                table.style.minWidth = "800px";
+
+                                const tbody = table.querySelector('tbody') || table;
+                                const rows = Array.from(tbody.querySelectorAll('tr'));
+                                let mainHeaderRow = null;
+
+                                // Ищем главную шапку таблицы (Литература | Доступно книг | Место хранения)
+                                for (let row of rows) {
+                                    if (row.querySelector('th') && !row.querySelector('.subheader')) {
+                                        mainHeaderRow = row;
+                                        break;
+                                    }
+                                }
+
+                                let currentTableBody = null;
+                                let currentWrapper = null;
+
+                                rows.forEach(row => {
+                                    if (row === mainHeaderRow) return;
+
+                                    const subheader = row.querySelector('.subheader');
+                                    if (subheader) {
+                                        const categoryName = subheader.textContent.trim(); // "Обязательная" или "Дополнительная"
+
+                                        currentWrapper = document.createElement('div');
+                                        currentWrapper.className = 'wide-table-wrapper';
+
+                                        // Добавляем отступ сверху, если это уже вторая таблица (например, Дополнительная)
+                                        if (block.querySelectorAll('.wide-table-wrapper').length > 0) {
+                                            currentWrapper.style.marginTop = '2.4rem';
+                                        }
+
+                                        block.appendChild(currentWrapper);
+
+                                        const newTable = document.createElement('table');
+                                        newTable.className = 'common resource-table';
+                                        newTable.style.minWidth = "800px";
+
+                                        currentTableBody = document.createElement('tbody');
+                                        newTable.appendChild(currentTableBody);
+
+                                        // Клонируем главную шапку и меняем текст в первой колонке
+                                        if (mainHeaderRow) {
+                                            const clonedHeader = mainHeaderRow.cloneNode(true);
+                                            const firstTh = clonedHeader.querySelector('th');
+
+                                            // Заменяем "Литература" на "Обязательная литература"
+                                            if (firstTh && firstTh.textContent.includes('Литература')) {
+                                                firstTh.textContent = categoryName + ' литература';
+                                            }
+                                            currentTableBody.appendChild(clonedHeader);
+                                        }
+
+                                        currentWrapper.appendChild(newTable);
+                                    } else if (currentTableBody) {
+                                        // Защита от пустых строк
+                                        if (row.children.length === 0) return;
+                                        currentTableBody.appendChild(row);
+                                    }
+                                });
+
+                                table.remove(); // Удаляем старую смешанную таблицу
                             }
                         });
 
@@ -17769,15 +17980,31 @@ body.modal-open-body {
                             const val = e.target.value.toLowerCase().trim();
                             document.querySelectorAll('.library-subject-block').forEach(block => {
                                 const h3Text = block.querySelector('h3').textContent.toLowerCase();
-                                const rows = Array.from(block.querySelectorAll('tr'));
-                                let hasVisible = false;
-                                rows.forEach(row => {
-                                    if (row.querySelector('th')) return;
-                                    const match = val === "" || row.textContent.toLowerCase().includes(val) || h3Text.includes(val);
-                                    row.style.display = match ? "" : "none";
-                                    if (match) hasVisible = true;
+                                let blockHasVisible = false;
+
+                                // Фильтруем каждую из созданных таблиц внутри предмета
+                                block.querySelectorAll('.wide-table-wrapper').forEach(wrapper => {
+                                    const rows = Array.from(wrapper.querySelectorAll('tbody tr'));
+                                    let wrapperHasVisible = false;
+
+                                    rows.forEach((row, idx) => {
+                                        if (idx === 0 && row.querySelector('th')) return; // Пропускаем шапку
+                                        const match = val === "" || row.textContent.toLowerCase().includes(val) || h3Text.includes(val);
+                                        row.style.display = match ? "" : "none";
+                                        if (match) wrapperHasVisible = true;
+                                    });
+
+                                    // Скрываем или показываем подкатегорию целиком
+                                    if (wrapperHasVisible) {
+                                        wrapper.style.display = '';
+                                        blockHasVisible = true;
+                                    } else {
+                                        wrapper.style.display = 'none';
+                                    }
                                 });
-                                block.style.display = hasVisible ? "block" : "none";
+
+                                // Скрываем или показываем предмет целиком
+                                block.style.display = blockHasVisible ? "block" : "none";
                             });
                         });
                     }
@@ -17810,14 +18037,10 @@ body.modal-open-body {
                 }
 
                 case 'stu.special_est_list': {
+                    span9.querySelectorAll('h3').forEach(h => h.remove());
                     span9.querySelectorAll('script, style').forEach(el => el.remove());
 
-                    if (!span9.querySelector('h2')) {
-                        const pageTitle = document.createElement('h2');
-                        pageTitle.textContent = 'Опросы и анкетирование';
-                        pageTitle.style.marginBottom = '2.4rem';
-                        span9.prepend(pageTitle);
-                    }
+                    span9.querySelectorAll('h2, h3').forEach(h => h.remove());
 
                     let currentNode = span9.firstChild;
                     while (currentNode) {
@@ -18013,17 +18236,12 @@ body.modal-open-body {
                         emptySubmenu.remove();
                     }
 
-                    const reviewH3 = reviewContainer.querySelector('h3');
-                    if (reviewH3) {
-                        reviewH3.style.margin = '2.4rem 0 1.2rem 0.5rem';
-                        reviewH3.style.fontSize = '1.3rem';
-                        reviewH3.style.color = 'var(--color-text-secondary)';
-                        reviewH3.style.textTransform = 'uppercase';
-                        reviewH3.style.letterSpacing = '1px';
-                    }
+                    reviewContainer.querySelectorAll('h2, h3').forEach(h => h.remove());
+
                     break;
 
                 case 'stu.about':
+                    span9.querySelectorAll('h3').forEach(h => h.remove());
                     const aboutContainer = span9.querySelector('.text');
                     if (aboutContainer) {
                         aboutContainer.className = 'about-card';
@@ -18032,15 +18250,7 @@ body.modal-open-body {
                             el.removeAttribute('style');
                         });
 
-                        if (!span9.querySelector('h2.page-title')) {
-                            const mainTitle = document.createElement('h2');
-                            mainTitle.textContent = 'О ресурсе';
-                            mainTitle.className = 'page-title';
-                            mainTitle.style.marginBottom = '2.4rem';
-                            mainTitle.style.fontWeight = '800';
-                            mainTitle.style.fontSize = '2.8rem';
-                            span9.prepend(mainTitle);
-                        }
+                        span9.querySelectorAll('h2, h3').forEach(h => h.remove());
                     }
                     break;
 
@@ -18070,7 +18280,7 @@ body.modal-open-body {
 
                             const infoCard = document.createElement('div');
                             infoCard.style.cssText = 'background: var(--color-card); padding: 2.4rem; border-radius: var(--radius-large); box-shadow: var(--shadow-main); margin-bottom: 3rem; display: flex; flex-direction: column; gap: 1.6rem; border: 1px solid var(--color-table-border);';
-                            
+
                             infoCard.innerHTML = `
                                 <div style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.4;">
                                     ${contractName}
@@ -18080,7 +18290,7 @@ body.modal-open-body {
                                     ${balanceText}
                                 </div>
                             `;
-                            
+
                             h3s[0].replaceWith(infoCard);
                             h3s[1].remove();
                         }
@@ -18106,7 +18316,7 @@ body.modal-open-body {
                             wrapper.style.marginBottom = '2rem';
                             table.parentNode.insertBefore(wrapper, table);
                             wrapper.appendChild(table);
-                            
+
                             // Делаем красивую кнопку из текстовой ссылки "ЧЕК"
                             table.querySelectorAll('a').forEach(a => {
                                 if (a.textContent.includes('ЧЕК')) {
@@ -18165,17 +18375,17 @@ body.modal-open-body {
                             if (amountInput) {
                                 const group = document.createElement('div');
                                 group.style.cssText = 'display: flex; flex-direction: column; gap: 0.8rem;';
-                                
+
                                 const label = document.createElement('label');
                                 label.textContent = 'Сумма к оплате';
                                 label.style.cssText = 'font-size: 1.3rem; font-weight: 600; color: var(--color-text-secondary);';
-                                
+
                                 const inputWrap = document.createElement('div');
                                 inputWrap.style.cssText = 'display: flex; align-items: center; background: var(--color-input); border: 1px solid var(--color-table-border); border-radius: var(--radius-small); padding-right: 1.6rem; overflow: hidden; transition: border-color 0.2s;';
-                                
+
                                 // Сброс инлайновых стилей ЕТИСа и стилизация самого инпута
                                 amountInput.style.cssText = 'flex: 1; padding: 1.4rem 1.6rem !important; border: none !important; background: transparent !important; color: var(--color-text-primary) !important; font-size: 1.6rem !important; font-weight: 800 !important; box-shadow: none !important; outline: none !important; width: 100%; margin: 0 !important; border-radius: 0 !important;';
-                                
+
                                 const suffix = document.createElement('span');
                                 suffix.textContent = 'руб.';
                                 suffix.style.cssText = 'font-size: 1.4rem; font-weight: 700; color: var(--color-text-secondary); pointer-events: none;';
@@ -18195,13 +18405,13 @@ body.modal-open-body {
                             if (emailInput) {
                                 const group = document.createElement('div');
                                 group.style.cssText = 'display: flex; flex-direction: column; gap: 0.8rem;';
-                                
+
                                 const label = document.createElement('label');
                                 label.textContent = 'E-mail для получения чека';
                                 label.style.cssText = 'font-size: 1.3rem; font-weight: 600; color: var(--color-text-secondary);';
-                                
+
                                 emailInput.style.cssText = 'padding: 1.4rem 1.6rem !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; border-radius: var(--radius-small) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; font-weight: 600 !important; width: 100%; box-sizing: border-box; box-shadow: none !important; outline: none !important; transition: border-color 0.2s; margin: 0 !important;';
-                                
+
                                 group.appendChild(label);
                                 group.appendChild(emailInput);
                                 payForm.appendChild(group);
@@ -18224,7 +18434,7 @@ body.modal-open-body {
                                 submitBtn.addEventListener('mouseup', () => submitBtn.style.transform = 'scale(1)');
                                 submitBtn.addEventListener('mouseleave', () => submitBtn.style.transform = 'scale(1)');
                             }
-                            
+
                             // Слушаем отправку формы, чтобы ПЛАВНО показать скрытый iframe Сбербанка
                             payForm.addEventListener('submit', () => {
                                 const iframe = span9.querySelector('iframe[name="ifrmSber"]');
@@ -18251,9 +18461,9 @@ body.modal-open-body {
                             pdfCard.className = 'advice-card';
                             pdfCard.style.cssText = 'display: inline-flex; margin-top: 3rem; width: fit-content; background: var(--color-highlight); border: 1px dashed var(--color-table-border); box-shadow: none;';
                             pdfCard.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary);">picture_as_pdf</span><span class="advice-label">${pdfLink.textContent.trim()}</span>`;
-                            
-                            span9.appendChild(pdfCard); 
-                            pdfLink.remove(); 
+
+                            span9.appendChild(pdfCard);
+                            pdfLink.remove();
                         }
 
                         // Финальная зачистка висячих заголовков
@@ -18271,14 +18481,12 @@ body.modal-open-body {
 
                     } else {
                         // === СТРАНИЦА СПИСКА ДОГОВОРОВ ===
-                        const h2 = span9.querySelector('h2');
-                        const contractLinks = Array.from(span9.querySelectorAll('a')); 
-
+                        const contractLinks = Array.from(span9.querySelectorAll('a'));
                         span9.innerHTML = '';
-                        if (h2) span9.appendChild(h2);
 
                         const mainContainer = document.createElement('div');
                         mainContainer.className = 'contracts-container';
+                        mainContainer.style.setProperty('margin-top', '0', 'important');
 
                         let instructionCard = null;
 
@@ -18291,7 +18499,7 @@ body.modal-open-body {
                                 card.href = link.href;
                                 card.className = 'contract-card instruction-footer';
                                 card.innerHTML = `
-                                    <span class="material-icons" style="color: var(--color-text-secondary)">info_outline</span>
+                                    <span class="material-icons" style="color: var(--color-text-secondary)">info</span>
                                     <div class="contract-content">
                                         <div class="contract-title" style="color: var(--color-text-secondary)">${text}</div>
                                     </div>
@@ -18349,18 +18557,17 @@ body.modal-open-body {
                 }
 
                 case 'stu.orders': {
+                    span9.querySelectorAll('h3').forEach(h => h.remove());
                     const ordersList = span9.querySelector('ul.orders');
                     if (!ordersList) break;
 
                     const orders = Array.from(ordersList.querySelectorAll('li.ord'));
 
-                    const h2 = span9.querySelector('h2') || document.createElement('h2');
-                    if (!h2.parentNode) h2.textContent = 'Приказы';
                     span9.innerHTML = '';
-                    span9.appendChild(h2);
 
                     const container = document.createElement('div');
                     container.className = 'orders-container';
+                    container.style.setProperty('margin-top', '0', 'important');
 
                     orders.forEach(ord => {
                         const link = ord.querySelector('a');
@@ -18381,7 +18588,7 @@ body.modal-open-body {
                         else if (lowerTitle.includes('зачислить')) { icon = 'school'; }
                         else if (lowerTitle.includes('перевести')) { icon = 'swap_horiz'; }
                         else if (lowerTitle.includes('академический отпуск')) { icon = 'pause_circle_filled'; }
-                        else if (lowerTitle.includes('вышедшим из')) { icon = 'play_circle_filled'; }
+                        else if (lowerTitle.includes('вышедшим из')) { icon = 'play_circle'; }
                         else if (lowerTitle.includes('командиров')) { icon = 'flight_takeoff'; }
                         else if (lowerTitle.includes('руководителя')) { icon = 'history_edu'; }
                         else if (lowerTitle.includes('дубликат')) { icon = 'content_copy'; }
@@ -18430,10 +18637,12 @@ body.modal-open-body {
                     });
 
                     span9.innerHTML = '';
-                    if (pageTitle) span9.appendChild(pageTitle);
 
-                    data.forEach(item => {
-                        span9.appendChild(item.header);
+                    data.forEach((item, index) => {
+                    const sectionTitle = document.createElement('div');
+                    sectionTitle.style.cssText = `font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary); margin: ${index === 0 ? '0' : '3rem'} 0 1.6rem 0;`;
+                        sectionTitle.textContent = item.header.textContent;
+                        span9.appendChild(sectionTitle);
 
                         const grid = document.createElement('div');
                         grid.className = 'forms-grid';
@@ -18708,24 +18917,235 @@ body.modal-open-body {
                         else span9.appendChild(container);
                     }
 
+                    // --- Оформление заголовка и добавление инструкции ---
+                    const ratingH4 = span9.querySelector('h4');
+                    if (ratingH4 && ratingH4.textContent.includes('Индекс удовлетворенности')) {
+                        // Делаем заголовок аккуратнее
+                        const newTitle = document.createElement('h3');
+                        newTitle.textContent = ratingH4.textContent;
+                        newTitle.style.marginBottom = '2rem';
+                        newTitle.style.fontSize = '1.6rem';
+                        newTitle.style.fontWeight = '800';
+                        newTitle.style.color = 'var(--color-text-primary)';
+                        newTitle.style.lineHeight = '1.4';
+                        
+                        // Создаем карточку-пояснение
+                        const infoBlock = document.createElement('div');
+                        infoBlock.style.cssText = `
+                            background: var(--color-card);
+                            border-radius: var(--radius-large);
+                            box-shadow: var(--shadow-main);
+                            padding: 2.4rem;
+                            margin-bottom: 3rem;
+                            border: 1px solid var(--color-table-border);
+                            color: var(--color-text-primary);
+                            line-height: 1.6;
+                            font-size: 1.35rem;
+                        `;
+                        
+                        // Используем flex-сетку для идеального выравнивания иконки и пунктов меню
+                        infoBlock.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-weight:800; font-size:1.6rem; color:var(--color-text-primary);">
+                                <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">help_outline</span>
+                                Как читать таблицы?
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 10px; color: var(--color-text-secondary);">
+                                <div style="display: flex; gap: 10px;">
+                                    <span style="color: var(--color-accent); font-weight: 800;">•</span>
+                                    <div><b style="color: var(--color-text-primary);">Строки</b> — кафедры и факультеты, работу которых оценивали.</div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <span style="color: var(--color-accent); font-weight: 800;">•</span>
+                                    <div><b style="color: var(--color-text-primary);">Столбцы (аббревиатуры)</b> — факультеты студентов, которые оставляли отзыв. Например, ЭК — студенты эконома. Столбец <b style="color: var(--color-text-primary);">«Все»</b> — средний балл от студентов со всего университета.</div>
+                                </div>
+                                <div style="display: flex; gap: 10px;">
+                                    <span style="color: var(--color-accent); font-weight: 800;">•</span>
+                                    <div><b style="color: var(--color-text-primary);">Оценки</b> — средний индекс (максимум 5.0). <span style="background: rgba(255, 59, 48, 0.1); color: var(--color-red); padding: 2px 6px; border-radius: 6px; font-weight: 800; font-size: 1.2rem; display: inline-block; line-height: 1;">Красным</span> выделены оценки ниже 4.0. Прочерк означает, что студенты данного факультета не оценивали эту кафедру.</div>
+                                </div>
+                            </div>
+                        `;
+
+                        ratingH4.replaceWith(newTitle);
+                        newTitle.after(infoBlock);
+                        
+                        // Убираем мусорные переносы строк ЕТИСа, чтобы отступы были ровными
+                        let nextSibling = infoBlock.nextSibling;
+                        while (nextSibling && nextSibling.tagName === 'BR') {
+                            const toRemove = nextSibling;
+                            nextSibling = nextSibling.nextSibling;
+                            toRemove.remove();
+                        }
+                    }
+
                     const ratingTable = document.getElementById('rating');
 
                     if (ratingTable) {
-                        const wrapper = document.createElement('div');
-                        wrapper.className = 'wide-table-wrapper';
-                        ratingTable.parentNode.insertBefore(wrapper, ratingTable);
-                        wrapper.appendChild(ratingTable);
-                        ratingTable.removeAttribute('width');
-                        ratingTable.classList.add('common');
+                        // 1. Ищем строку с аббревиатурами факультетов (заголовки колонок)
+                        let headerThs =[];
                         ratingTable.querySelectorAll('tr').forEach(tr => {
-                            tr.style.backgroundColor = '';
+                            const ths = tr.querySelectorAll('th');
+                            // Нам нужна строка, где много th без colspan (это "Все", "ММ", "ФЗ" и т.д.)
+                            if (ths.length > 5 && !ths[0].hasAttribute('colspan')) {
+                                headerThs = Array.from(ths).map(th => th.textContent.trim());
+                            }
                         });
+
+                        if (headerThs.length > 0) {
+                            const groups =[];
+                            let currentGroup = null;
+
+                            // 2. Группируем данные (Факультет -> Кафедры)
+                            ratingTable.querySelectorAll('tr.lvl1, tr.lvl2').forEach(tr => {
+                                if (tr.classList.contains('lvl1')) {
+                                    currentGroup = {
+                                        name: tr.cells[0].textContent.trim(),
+                                        overallData: Array.from(tr.cells).slice(1),
+                                        departments:[]
+                                    };
+                                    groups.push(currentGroup);
+                                } else if (tr.classList.contains('lvl2') && currentGroup) {
+                                    currentGroup.departments.push({
+                                        name: tr.cells[0].textContent.trim(),
+                                        data: Array.from(tr.cells).slice(1)
+                                    });
+                                }
+                            });
+
+                            const newContainer = document.createElement('div');
+                            newContainer.className = 'rating-split-container';
+
+                            // 3. Создаем отдельные таблицы для каждого факультета
+                            groups.forEach(group => {
+                                // Находим индексы непустых колонок ТОЛЬКО для этого факультета (убираем лишний пустой скролл)
+                                const activeColIndices =[];
+                                for (let i = 0; i < headerThs.length; i++) {
+                                    let hasData = false;
+                                    if (group.overallData[i] && group.overallData[i].textContent.trim() !== '') hasData = true;
+                                    if (!hasData) {
+                                        for (let dep of group.departments) {
+                                            if (dep.data[i] && dep.data[i].textContent.trim() !== '') {
+                                                hasData = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (hasData) activeColIndices.push(i);
+                                }
+
+                                if (activeColIndices.length === 0 && group.departments.length === 0) return;
+
+                                const wrapper = document.createElement('div');
+                                wrapper.className = 'wide-table-wrapper';
+                                wrapper.style.marginBottom = '3rem';
+
+                                const table = document.createElement('table');
+                                table.className = 'common rating-split-table';
+                                table.style.width = '100%';
+
+                                // --- ШАПКА ТАБЛИЦЫ ---
+                                const thead = document.createElement('thead');
+                                const hTr = document.createElement('tr');
+                                const thName = document.createElement('th');
+                                thName.textContent = group.name; // Название факультета слева сверху
+                                thName.style.textAlign = 'left';
+                                hTr.appendChild(thName);
+
+                                activeColIndices.forEach(idx => {
+                                    const th = document.createElement('th');
+                                    th.textContent = headerThs[idx];
+                                    th.style.textAlign = 'center';
+                                    hTr.appendChild(th);
+                                });
+                                thead.appendChild(hTr);
+                                table.appendChild(thead);
+
+                                // --- ТЕЛО ТАБЛИЦЫ ---
+                                const tbody = document.createElement('tbody');
+
+                                // Функция переноса и стилизации ячейки с оценкой
+                                const processCell = (origTd) => {
+                                    const td = document.createElement('td');
+                                    td.style.textAlign = 'center';
+                                    td.style.verticalAlign = 'middle';
+                                    
+                                    if (!origTd) {
+                                        td.innerHTML = '<span style="color: var(--color-table-border);">-</span>';
+                                        return td;
+                                    }
+
+                                    td.innerHTML = origTd.innerHTML;
+
+                                    // Сохраняем тултипы (родные от ЕТИС)
+                                    if (origTd.classList.contains('tooltip')) {
+                                        td.classList.add('tooltip');
+                                        if (origTd.title) td.title = origTd.title;
+                                        if (origTd.hasAttribute('data-val')) td.setAttribute('data-val', origTd.getAttribute('data-val'));
+                                    }
+
+                                    if (td.textContent.trim() === '') {
+                                        td.innerHTML = '<span style="color: var(--color-table-border);">-</span>';
+                                    } else {
+                                        // Оформление красных оценок в капсулы
+                                        const font = td.querySelector('font[color="#d00"], font[style*="color:#d00"]');
+                                        if (font) {
+                                            font.style.cssText = 'color: var(--color-red) !important; font-weight: 800 !important; background: rgba(255, 59, 48, 0.1) !important; padding: 0.4rem 0.8rem !important; border-radius: 6px !important; display: inline-block !important;';
+                                        }
+                                    }
+                                    return td;
+                                };
+
+                                // 1. Строка "В целом по факультету"
+                                const overallTr = document.createElement('tr');
+                                overallTr.style.background = 'var(--color-highlight)';
+                                const overallTdName = document.createElement('td');
+                                overallTdName.innerHTML = '<b>В целом по факультету</b>';
+                                overallTr.appendChild(overallTdName);
+
+                                activeColIndices.forEach(idx => {
+                                    overallTr.appendChild(processCell(group.overallData[idx]));
+                                });
+                                tbody.appendChild(overallTr);
+
+                                // 2. Строки кафедр
+                                group.departments.forEach(dep => {
+                                    const tr = document.createElement('tr');
+                                    const tdName = document.createElement('td');
+                                    tdName.textContent = dep.name.replace(/^[\-—]\s*/, ''); // Убираем возможные тире в начале
+                                    tr.appendChild(tdName);
+
+                                    activeColIndices.forEach(idx => {
+                                        tr.appendChild(processCell(dep.data[idx]));
+                                    });
+                                    tbody.appendChild(tr);
+                                });
+
+                                table.appendChild(tbody);
+                                wrapper.appendChild(table);
+                                newContainer.appendChild(wrapper);
+                            });
+
+                            ratingTable.parentNode.replaceChild(newContainer, ratingTable);
+                        } else {
+                            // Фолбэк, если таблица не распарсилась
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'wide-table-wrapper';
+                            ratingTable.parentNode.insertBefore(wrapper, ratingTable);
+                            wrapper.appendChild(ratingTable);
+                            ratingTable.removeAttribute('width');
+                            ratingTable.classList.add('common');
+                        }
                     }
 
                     break;
                 }
 
                 case 'stu.absence': {
+                    span9.querySelectorAll('h2, h3').forEach(h => h.remove());
+                    
+                    while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
+                        span9.firstChild.remove();
+                    }
+                    
                     const table = span9.querySelector('table.slimtab_nice');
                     if (table) {
                         table.className = 'common absence-table';
@@ -18820,30 +19240,13 @@ body.modal-open-body {
 
             const queForms = document.querySelectorAll('form.que_form, form[name="estimate"]');
             queForms.forEach(form => {
-                if (!span9.querySelector('h2')) {
-                    const pageTitle = document.createElement('h2');
-                    
-                    if (form.getAttribute('name') === 'estimate') {
-                        const origH3 = span9.querySelector('h3');
-                        if (origH3) {
-                            pageTitle.textContent = origH3.textContent.trim();
-                            origH3.remove();
-                        } else {
-                            pageTitle.textContent = 'Оценить занятие';
-                        }
-                    } else {
-                        pageTitle.textContent = 'Оставить отзыв';
-                    }
-                    
-                    pageTitle.style.marginBottom = '2.4rem';
-                    span9.insertBefore(pageTitle, form.closest('.review') || form);
-                }
+                span9.querySelectorAll('h2, h3').forEach(h => h.remove());
 
                 const sendBtn = form.querySelector('#send_btn');
                 if (sendBtn && !sendBtn.querySelector('.material-icons')) {
                     sendBtn.innerHTML = '<span class="material-icons" style="font-size: 2rem; margin-right: 0.8rem;">send</span>' + sendBtn.textContent;
                 }
-                
+
                 const qTable = form.querySelector('table.question_table');
                 if (qTable && !qTable.parentElement.classList.contains('question-table-wrapper')) {
                     const wrapper = document.createElement('div');
