@@ -104,129 +104,116 @@
 
             /* --- КНОПКИ --- */
             .btn {
-                display: inline-flex; align-items: center; justify-content: center;
+                display: inline-flex; align-items: center; justify-content: center; gap: 10px;
                 background-color: var(--primary); color: #fff !important;
                 padding: 14px 40px; border-radius: 50px; font-weight: 600; font-size: 1.1rem;
-                transition: all 0.2s ease; border: none; cursor: pointer;
+                
+                transition: transform 0.2s ease, filter 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+                
+                border: none; cursor: pointer;
                 box-shadow: 0 4px 15px rgba(52, 120, 246, 0.3);
             }
-            .btn:hover { background-color: var(--primary-hover); transform: translateY(-2px); }
+
+            .btn:hover { 
+                transform: translateY(-2px); 
+                filter: brightness(1.1);
+                box-shadow: 0 6px 20px rgba(52, 120, 246, 0.4);
+            }
+
+            .btn svg { width: 22px; height: 22px; }
+
+            .btn-flow {
+                background-image: linear-gradient(90deg, #3478F6 0%, #78C6F5 50%, #3478F6 100%) !important;
+                background-size: 200% auto !important;
+                animation: btnGradientFlow 2.5s linear infinite !important;
+            }
+
+            @keyframes btnGradientFlow {
+                0% { background-position: 0% center; }
+                100% { background-position: 200% center; }
+            }
+
+            .download-btn { 
+                flex: 2; 
+                background-color: var(--primary) !important; 
+                color: white !important; 
+                animation: none !important;
+            }
 
             /* --- ШАПКА --- */
+            :root {
+                --scroll-progress: 0;
+            }
+
             header {
                 position: fixed;
                 top: 0;
                 left: 0;
                 width: 100%;
                 z-index: 1000;
-                height: 160px; 
+                height: 100px;
                 display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-                background: transparent;
-                pointer-events: none; 
-                -webkit-perspective: 1000;
-                perspective: 1000;
-            }
-
-            body.is-scrolled header {
-                height: 90px;
-                background: transparent;
+                align-items: flex-start;
+                padding-top: calc(24px * (1 - var(--scroll-progress, 0)) + 15px * var(--scroll-progress, 0));
+                pointer-events: none;
             }
 
             .header-content {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
                 width: 100%;
+                padding: 0 calc(30px * (1 - var(--scroll-progress, 0)) + 20px * var(--scroll-progress, 0));
+                display: flex;
+                justify-content: center;
                 pointer-events: auto;
             }
 
             .logo {
                 display: flex;
                 align-items: center;
-                flex-direction: row;
-                gap: 0; 
-                transform: scale(3.5); 
-                transform-origin: center center;
-                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                justify-content: space-between;
                 
-                padding: 0;
+                flex-grow: calc(1 - var(--scroll-progress, 0));
+                gap: calc(12px * var(--scroll-progress, 0));
+                padding: calc(10px * var(--scroll-progress, 0)) calc(24px * var(--scroll-progress, 0));
+                
+                background: rgba(255, 255, 255, calc(0.7 * var(--scroll-progress, 0)));
+                border: 1px solid rgba(255, 255, 255, calc(0.4 * var(--scroll-progress, 0)));
+                box-shadow: 0 10px 30px rgba(0, 0, 0, calc(0.08 * var(--scroll-progress, 0)));
+                
+                backdrop-filter: blur(calc(15px * var(--scroll-progress, 0))) saturate(calc(100% + 80% * var(--scroll-progress, 0)));
+                -webkit-backdrop-filter: blur(calc(15px * var(--scroll-progress, 0))) saturate(calc(100% + 80% * var(--scroll-progress, 0)));
+                
                 border-radius: 50px;
-                background: transparent;
-                border: 1px solid transparent;
                 cursor: pointer;
-                will-change: transform, background-color;
-                -webkit-font-smoothing: antialiased;
-
-                -webkit-backface-visibility: hidden;
-                backface-visibility: hidden;
-                -webkit-transform-style: preserve-3d;
-                transform-style: preserve-3d;
+                text-decoration: none;
+                color: inherit;
+                isolation: isolate;
             }
 
-            body.is-scrolled .logo {
-                transform: scale(1);
-                -webkit-transform: scale(1) translateZ(0); 
-                -webkit-backdrop-filter: blur(15px) saturate(180%);
-                backdrop-filter: blur(15px) saturate(180%);
-                
-                gap: 12px; 
-                padding: 10px 24px; 
-                background: rgba(255, 255, 255, 0.7); 
-                border: 1px solid rgba(255, 255, 255, 0.4); 
-                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
-                
-                isolation: isolate; 
+            body.dark-mode .logo {
+                background: rgba(31, 33, 36, calc(0.7 * var(--scroll-progress, 0)));
+                border: 1px solid rgba(255, 255, 255, calc(0.1 * var(--scroll-progress, 0)));
             }
 
-            body.dark-mode.is-scrolled .logo {
-                background: rgba(31, 33, 36, 0.7);
-                backdrop-filter: blur(15px) saturate(180%);
-                -webkit-backdrop-filter: blur(15px) saturate(180%);
-                border: 1px solid rgba(255, 255, 255, 0.1);
+            .logo-img-wrapper { display: flex; align-items: center; flex-shrink: 0; }
+            .logo-img-wrapper img {
+                height: calc(36px + 12px * (1 - var(--scroll-progress, 0)));
+                width: auto; display: block;
             }
 
-            .modal-footer-stats {
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 12px;
-                font-size: 0.8rem;
-                color: var(--text-secondary);
-                margin-top: 25px;
-                opacity: 0.7;
-            }
-            .stats-divider {
-                opacity: 0.5;
-            }
-            
-            .logo img { height: 36px; width: auto; display: block; }
-
-            .logo span {
-                font-size: 1.5rem;
-                font-weight: 900;
-                letter-spacing: 1px;
-                white-space: nowrap; 
-                
-                max-width: 0;
-                opacity: 0;
-                overflow: hidden;
-                transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            .logo-text-wrapper {
+                font-weight: 900; letter-spacing: 1px; white-space: nowrap; flex-shrink: 0;
+                font-size: calc(1.5rem + 0.3rem * (1 - var(--scroll-progress, 0)));
+                color: var(--text-color);
             }
 
-            body.is-scrolled .logo span {
-                max-width: 250px;
-                opacity: 1;
-            }
+            .modal-footer-stats { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: var(--text-secondary); margin-top: 25px; opacity: 0.7; }
+            .stats-divider { opacity: 0.5; }
 
             @media (max-width: 768px) {
-                .logo { transform: scale(2.8); }
-                body.is-scrolled .logo { transform: scale(0.9); padding: 8px 20px;}
-                .logo span { font-size: 1.3rem; }
+                .header-content { padding: 0 calc(20px * (1 - var(--scroll-progress, 0)) + 15px * var(--scroll-progress, 0)); }
+                .logo { padding: calc(8px * var(--scroll-progress, 0)) calc(16px * var(--scroll-progress, 0)); }
+                .logo-img-wrapper img { height: calc(28px + 8px * (1 - var(--scroll-progress, 0))); }
+                .logo-text-wrapper { font-size: calc(1.1rem + 0.3rem * (1 - var(--scroll-progress, 0))); }
             }
 
             /* --- HERO --- */
@@ -285,7 +272,9 @@
                 box-shadow: 0 20px 50px var(--shadow); border: 1px solid var(--border-color);
                 line-height: 0; background: var(--card-bg); transition: transform 0.3s ease;
             }
-            .phone-frame:hover { transform: translateY(-10px); }
+            @media (hover: hover) {
+                .phone-frame:hover { transform: translateY(-10px); }
+            }
             .phone-frame img { width: 100%; height: auto; display: block; }
             .phone-label { margin-bottom: 20px; font-size: 1.2rem; font-weight: 800; letter-spacing: 0.5px; }
             .label-text-new { color: var(--primary); }
@@ -314,10 +303,12 @@
                 transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
             }
 
-            .bf-item:hover {
-                border-color: var(--primary);
-                transform: translateY(-5px);
-                box-shadow: 0 15px 35px rgba(52, 120, 246, 0.15);
+            @media (hover: hover) {
+                .bf-item:hover {
+                    border-color: var(--primary);
+                    transform: translateY(-5px);
+                    box-shadow: 0 15px 35px rgba(52, 120, 246, 0.15);
+                }
             }
 
             .bf-title {
@@ -364,8 +355,10 @@
                 transition: transform 0.3s ease;
                 line-height: 0;
             }
-            .analytics-frame:hover {
-                transform: translateY(-10px);
+            @media (hover: hover) {
+                .analytics-frame:hover {
+                    transform: translateY(-10px);
+                }
             }
             .analytics-frame img {
                 width: 100%;
@@ -499,10 +492,12 @@
                 grid-template-rows: auto 0fr;
             }
 
-            .faq-item:hover {
-                border-color: var(--primary);
-                box-shadow: 0 15px 35px rgba(52, 120, 246, 0.15);
-                transform: translateY(-3px);
+            @media (hover: hover) {
+                .faq-item:hover {
+                    border-color: var(--primary);
+                    box-shadow: 0 15px 35px rgba(52, 120, 246, 0.15);
+                    transform: translateY(-3px);
+                }
             }
 
             .faq-item.active {
@@ -651,10 +646,12 @@
                 transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
             }
 
-            .landing-review-card:hover {
-                border-color: var(--primary);
-                transform: translateY(-5px);
-                box-shadow: 0 15px 35px rgba(52, 120, 246, 0.15);
+            @media (hover: hover) {
+                .landing-review-card:hover {
+                    border-color: var(--primary);
+                    transform: translateY(-5px);
+                    box-shadow: 0 15px 35px rgba(52, 120, 246, 0.15);
+                }
             }
 
             .l-rev-header { 
@@ -858,19 +855,26 @@
     <body>
 
         <header>
-            <div class="container header-content">
-                <a class="logo" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;">
+        <div class="header-content">
+            <a class="logo" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;">
+                <div class="logo-img-wrapper">
                     <img src="img/logo.png" alt="ETIS Reborn Logo">
-                    <span>ЕТИС REBORN</span>
-                </a>
-            </div>
-        </header>
-        <div class="container">
-            <section class="hero">
-                <h1><span>Сделай ЕТИС великим снова</span></h1>
-                <p>Преврати свой кабинет в современный сайт с мобильной адаптацией и тёмной темой</p>
-                <button class="btn" onclick="openModal()">Установить расширение</button>
-            </section>
+                </div>
+                <div class="logo-text-wrapper">
+                    ЕТИС REBORN
+                </div>
+            </a>
+        </div>
+    </header>
+    <div class="container">
+        <section class="hero">
+            <h1><span>Сделай ЕТИС великим снова</span></h1>
+            <p>Преврати свой кабинет в современный сайт с мобильной адаптацией и тёмной темой</p>
+            <button class="btn btn-flow" onclick="openModal()">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Установить расширение
+            </button>
+        </section>
 
             <section class="features">
 
@@ -923,8 +927,8 @@
                                 <div class="bf-desc">Управляй с помощью привычных свайпов — смахни влево для добавления заметки или шеринга, или вправо для добавления новой пары или оценки предмета.</div>
                             </div>
                             <div class="bf-item">
-                                <div class="bf-title">🎯 Умный скролл</div>
-                                <div class="bf-desc">Автоматическое центрирование текущей недели и активных вкладок при загрузке.</div>
+                                <div class="bf-title">🍔 Боковое меню</div>
+                                <div class="bf-desc">Все вкладки скрываются в боковом меню, и открываются при нажатии на плавающую кнопку снизу.</div>
                             </div>
                         </div>
 
@@ -974,7 +978,7 @@
                         </div>
                         <div class="bf-item">
                             <div class="bf-title">📅 Интеграция календарей</div>
-                            <div class="bf-desc">Подключи свой Apple или Google календарь по ссылке. События в из них отобразятся прямо в расписании ЕТИСа.</div>
+                            <div class="bf-desc">Подключи свой Apple или Google календарь по ссылке. События из них отобразятся прямо в расписании ЕТИСа.</div>
                         </div>
                         <div class="bf-item">
                             <div class="bf-title">✍️ Свои занятия</div>
@@ -989,8 +993,8 @@
                             <div class="bf-desc">Кнопка «Поделиться» создает аккуратный скриншот расписания для отправки одногруппникам.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title">👻 Пройденные пары</div>
-                            <div class="bf-desc">Прошедшие пары становятся тусклыми, чтобы ты не обращал на них внимание.</div>
+                            <div class="bf-title">💼 Интеграция консультаций</div>
+                            <div class="bf-desc">Загрузи файл с консультациями, чтобы они были у тебя под рукой и отображались в расписании.</div>
                         </div>
                         <div class="bf-item">
                             <div class="bf-title">⭐️ Важные пары</div>
@@ -1068,7 +1072,7 @@
                             <div class="bf-desc">Наведи курсор на баллы, и калькулятор подскажет, сколько именно не хватает до ближайшей оценки.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title">🔔 Уведомления (Beta)</div>
+                            <div class="bf-title">🔔 Уведомления</div>
                             <div class="bf-desc">Получай при входе уведомления, если преподаватель выставил баллы.</div>
                         </div>
                         <div class="bf-item">
@@ -1104,7 +1108,7 @@
                             <div class="bf-desc">Найди нужного преподавателя по его ФИО или предмету.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title">🗓️ Расписание (Beta)</div>
+                            <div class="bf-title">🗓️ Расписание</div>
                             <div class="bf-desc">Нажми по имени преподавателя, чтобы посмотреть его расписание в REBORN стиле</div>
                         </div>
                     </div>
@@ -1284,10 +1288,11 @@
 
         <footer>
             <div class="container footer-content">
-                <!-- Кнопка -->
-                <button class="btn" onclick="openModal()">Установить расширение</button>
+                <button class="btn btn-flow" onclick="openModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Установить расширение
+                </button>
                 
-                <!-- Инфо-строка -->
                 <div class="footer-info-row">
                     <span>&copy; 2026 ЕТИС REBORN</span>
                     <a href="https://github.com/defl-orator/etis-reborn" target="_blank">GitHub</a>
@@ -2025,20 +2030,68 @@
                 targets.forEach(target => observer.observe(target));
             }
 
+            // --- ЛОГИКА ДЛЯ ПРУЖИННОЙ ШАПКИ ---
+            let targetProgress = 0;
+            let currentProgress = 0;
+            let velocity = 0;
+            let isAnimating = false;
+
+            const tension = 0.05;   
+            const friction = 0.80; 
+
+            const maxVelocity = 0.06; 
+
+            function updatePhysics() {
+                const diff = targetProgress - currentProgress;
+                
+                velocity += diff * tension;
+                velocity *= friction;
+
+                if (velocity > maxVelocity) velocity = maxVelocity;
+                if (velocity < -maxVelocity) velocity = -maxVelocity;
+
+                currentProgress += velocity;
+
+                document.documentElement.style.setProperty('--scroll-progress', currentProgress);
+
+                if (Math.abs(diff) < 0.001 && Math.abs(velocity) < 0.001) {
+                    currentProgress = targetProgress;
+                    document.documentElement.style.setProperty('--scroll-progress', currentProgress);
+                    isAnimating = false;
+                } else {
+                    requestAnimationFrame(updatePhysics);
+                }
+            }
+
             function handleScroll() {
-                if (window.scrollY > 50) {
+                const scrollY = window.scrollY || window.pageYOffset;
+                
+                if (scrollY > 50) {
                     document.body.classList.add('is-scrolled');
                 } else {
                     document.body.classList.remove('is-scrolled');
                 }
+
+                const maxScrollY = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+                
+                const distFromTop = scrollY;
+                const distFromBottom = maxScrollY - scrollY;
+
+                const progressTop = Math.min(Math.max(distFromTop / 150, 0), 1);
+                const progressBottom = Math.min(Math.max(distFromBottom / 150, 0), 1);
+                
+                targetProgress = Math.min(progressTop, progressBottom);
+
+                if (!isAnimating) {
+                    isAnimating = true;
+                    requestAnimationFrame(updatePhysics);
+                }
             }
 
-            window.addEventListener('scroll', handleScroll);
-
+            window.addEventListener('scroll', handleScroll, { passive: true });
             handleScroll();
 
-
-            /* --- АВТООТКРЫТИЕ ПО ССЫЛКЕ (ДЛЯ СКРИПТА) --- */
+            /* --- АВТООТКРЫТИЕ ПО ССЫЛКЕ --- */
             window.addEventListener('load', () => {
                 const hash = window.location.hash;
                 if (hash === '#bugreport') {
