@@ -166,6 +166,22 @@
                 pointer-events: auto;
             }
 
+            @media (max-width: 768px) {
+                header::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: var(--bg-color);
+                    opacity: calc(1 - var(--scroll-progress, 0));
+                    z-index: -1;
+                    pointer-events: none;
+                    transition: background-color 0.3s;
+                }
+            }
+
             .logo {
                 display: flex;
                 align-items: center;
@@ -1033,11 +1049,7 @@
                         </div>
                         <div class="bf-item">
                             <div class="bf-title">🌙 Ночной режим</div>
-                            <div class="bf-desc">Полноценная поддержка тёмной темы, которая бережет зрение и заряд батареи.</div>
-                        </div>
-                        <div class="bf-item">
-                            <div class="bf-title">🎨 Авто-переключение</div>
-                            <div class="bf-desc">Тема может подстраиваться под настройки твоего устройства или включаться вручную.</div>
+                            <div class="bf-desc">Полноценная поддержка тёмной темы, которая бережет зрение, заряд батареи, и включается автоматически.</div>
                         </div>
                         <div class="bf-item">
                             <div class="bf-title">🎨 Кастомизация</div>
@@ -1066,10 +1078,6 @@
                         <div class="bf-item">
                             <div class="bf-title">📈 Визуальный прогресс</div>
                             <div class="bf-desc">Добавлены цветные «капсулы», позволяющие мгновенно понять успеваемость по конкретному предмету.</div>
-                        </div>
-                        <div class="bf-item">
-                            <div class="bf-title">🔮 Прогноз баллов</div>
-                            <div class="bf-desc">Наведи курсор на баллы, и калькулятор подскажет, сколько именно не хватает до ближайшей оценки.</div>
                         </div>
                         <div class="bf-item">
                             <div class="bf-title">🔔 Уведомления</div>
@@ -1340,7 +1348,7 @@
                         <a href="https://violentmonkey.github.io" target="_blank" class="text-link">Violentmonkey</a>:
                     </p>
                     <ol class="step-list">
-                        <li>Установи расширение для твоего браузера.</li>
+                        <li>Установи расширение для своего браузера.</li>
                         <li>Нажми кнопку ниже — скрипт откроется автоматически.</li>
                         <li>Нажми "Установить" ("Install").</li>
                     </ol>
@@ -2044,13 +2052,25 @@
             function updatePhysics() {
                 const diff = targetProgress - currentProgress;
                 
-                velocity += diff * tension;
-                velocity *= friction;
+                const currentTension = diff < 0 ? 0.12 : 0.05; 
+                const currentFriction = diff < 0 ? 0.70 : 0.80; 
 
-                if (velocity > maxVelocity) velocity = maxVelocity;
-                if (velocity < -maxVelocity) velocity = -maxVelocity;
+                velocity += diff * currentTension;
+                velocity *= currentFriction;
+
+                if (velocity > 0.06) velocity = 0.06;   
+                if (velocity < -0.08) velocity = -0.08; 
 
                 currentProgress += velocity;
+
+                if (currentProgress < 0) {
+                    currentProgress = Math.abs(currentProgress) * 0.4; 
+                    velocity = -velocity * 0.2; 
+                } 
+                else if (currentProgress > 1) {
+                    currentProgress = 1 - (currentProgress - 1) * 0.4; 
+                    velocity = -velocity * 0.2; 
+                }
 
                 document.documentElement.style.setProperty('--scroll-progress', currentProgress);
 
