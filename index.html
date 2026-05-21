@@ -866,6 +866,32 @@
                 }
             }
 
+            /* --- БЛОК ЧЕЙНДЖЛОГА В МОДАЛКЕ --- */
+            .changelog-box {
+                margin-top: 20px;
+                padding: 12px 16px;
+                background: rgba(128, 128, 128, 0.06);
+                border-radius: 14px;
+                border: 1px dashed var(--border-color);
+                font-size: 0.85rem;
+                text-align: left;
+            }
+            body.dark-mode .changelog-box {
+                background: rgba(255, 255, 255, 0.03);
+            }
+            .changelog-title {
+                font-weight: 700;
+                color: var(--primary);
+                margin-bottom: 4px;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+            }
+            .changelog-text {
+                color: var(--text-secondary);
+                line-height: 1.4;
+            }
+
         </style>
     </head>
     <body>
@@ -1372,6 +1398,13 @@
                     </div>
                 </div>
                 
+                <div class="changelog-box" id="modal-changelog-box" style="display: none;">
+                    <div class="changelog-title">
+                        <span>✨ Что нового в этой версии:</span>
+                    </div>
+                    <div class="changelog-text" id="modal-changelog-text"></div>
+                </div>
+                
                 <div class="modal-footer-stats">
                     <span id="script-version-info">Загрузка версии...</span>
                     <span class="stats-divider">•</span>
@@ -1764,13 +1797,16 @@
                     openLightbox(targetImg.src);
                 }
             });
-        // --- АВТООПРЕДЕЛЕНИЕ АКТУАЛЬНОЙ ВЕРСИИ СКРИПТА ---
+
+            // --- АВТООПРЕДЕЛЕНИЕ АКТУАЛЬНОЙ ВЕРСИИ СКРИПТА И ЧЕЙНДЖЛОГА ---
             async function fetchLatestVersion() {
                 const RAW_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js';
-
                 const API_URL = 'https://api.github.com/repos/defl-orator/etis-reborn/commits?path=etis.user.js&page=1&per_page=1';
                 
                 const versionEl = document.getElementById('script-version-info');
+                const changelogBox = document.getElementById('modal-changelog-box');
+                const changelogText = document.getElementById('modal-changelog-text');
+                
                 if (!versionEl) return;
 
                 try {
@@ -1778,8 +1814,18 @@
                     if (!rawResponse.ok) throw new Error('Ошибка скачивания файла');
                     const text = await rawResponse.text();
                     
+                    // Поиск версии
                     const verMatch = text.match(/@version\s+([\d\.]+)/);
                     const version = verMatch ? verMatch[1] : '1.0';
+                    
+                    // Поиск чейнджлога (парсит строку после @changelog)
+                    const changelogMatch = text.match(/@changelog\s+(.+)/);
+                    if (changelogMatch && changelogMatch[1] && changelogText && changelogBox) {
+                        changelogText.textContent = changelogMatch[1].trim();
+                        changelogBox.style.display = 'block'; // Показываем блок, если данные найдены
+                    } else if (changelogBox) {
+                        changelogBox.style.display = 'none'; // Скрываем, если чейнджлога нет
+                    }
                     
                     let dateStr = "н/д";
                     try {
@@ -1800,6 +1846,7 @@
                 } catch (error) {
                     console.error('Не удалось получить версию скрипта:', error);
                     versionEl.textContent = 'Не удалось загрузить данные о версии';
+                    if (changelogBox) changelogBox.style.display = 'none';
                 }
             }
 
