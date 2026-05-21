@@ -443,16 +443,90 @@
                 opacity: 0.6;
             }
 
+            /* --- СТИЛИ ДЛЯ МОДАЛЬНЫХ ОКОН --- */
             .modal-overlay {
-                position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-                background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); z-index: 2000;
-                display: none; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.3s;
+                position: fixed; 
+                top: 0; 
+                left: 0; 
+                width: 100%; 
+                height: 100%;
+                background: rgba(0,0,0,0.6); 
+                backdrop-filter: blur(5px); 
+                z-index: 2000;
+                display: none; 
+                align-items: center; 
+                justify-content: center; 
+                opacity: 0; 
+                transition: opacity 0.3s ease;
             }
-            .modal-overlay.active { display: flex; opacity: 1; }
+
+            .modal-overlay.active { 
+                display: flex; 
+                opacity: 1; 
+            }
+
             .modal-window {
-                background: var(--modal-bg); width: 90%; max-width: 600px; padding: 40px;
-                border-radius: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-                position: relative; color: var(--text-color); border: 1px solid var(--border-color);
+                background: var(--modal-bg); 
+                width: 90%; 
+                max-width: 600px; 
+                padding: 40px;
+                border-radius: 24px; 
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                position: relative; 
+                color: var(--text-color); 
+                border: 1px solid var(--border-color);
+                
+                transform: scale(0.9) translateY(20px);
+                transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            }
+
+            .modal-overlay.active .modal-window {
+                transform: scale(1) translateY(0);
+            }
+
+            /* --- МОБИЛЬНАЯ ВЕРСИЯ --- */
+            @media (max-width: 768px) {
+                .modal-overlay {
+                    align-items: flex-end;
+                }
+
+                .modal-window {
+                    width: 100%;
+                    max-width: 100%;
+                    border-radius: 24px 24px 0 0;
+                    padding: 32px 20px 40px 20px;
+                    border-bottom: none;
+                    border-left: none;
+                    border-right: none;
+                    
+                    max-height: 85vh; 
+                    overflow-y: auto;
+                    -webkit-overflow-scrolling: touch;
+                    
+                    transform: translateY(100%);
+                    transition: transform 0.35s cubic-bezier(0.15, 1, 0.3, 1);
+                }
+
+                .modal-overlay.active .modal-window {
+                    transform: translateY(0);
+                }
+
+                .modal-window::before {
+                    content: '';
+                    display: block;
+                    width: 36px;
+                    height: 5px;
+                    background: rgba(128, 128, 128, 0.3);
+                    border-radius: 10px;
+                    margin: -16px auto 20px auto;
+                }
+
+                .modal-close {
+                    position: absolute;
+                    top: 16px;
+                    right: 16px;
+                    z-index: 10;
+                }
             }
             .modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); }
             .modal-title { font-size: 1.8rem; margin-bottom: 20px; text-align: center; }
@@ -869,27 +943,40 @@
             /* --- БЛОК ЧЕЙНДЖЛОГА В МОДАЛКЕ --- */
             .changelog-box {
                 margin-top: 20px;
-                padding: 12px 16px;
-                background: rgba(128, 128, 128, 0.06);
-                border-radius: 14px;
-                border: 1px dashed var(--border-color);
-                font-size: 0.85rem;
+                padding: 18px 20px;
+                background: #ffffff;
+                border-radius: 28px;
+                border: 1px solid rgba(128, 128, 128, 0.08);
+                box-shadow: 0 8px 24px var(--shadow);
+                font-size: 0.9rem;
                 text-align: left;
             }
+
             body.dark-mode .changelog-box {
-                background: rgba(255, 255, 255, 0.03);
+                background: #25282c;
+                border-color: rgba(255, 255, 255, 0.06);
             }
+
             .changelog-title {
                 font-weight: 700;
                 color: var(--primary);
-                margin-bottom: 4px;
-                display: flex;
-                align-items: center;
-                gap: 6px;
+                margin-bottom: 6px;
+                font-size: 1rem;
             }
+
             .changelog-text {
                 color: var(--text-secondary);
-                line-height: 1.4;
+                line-height: 1.5;
+            }
+
+            /* Блокировка прокрутки основного контента сайта */
+            body.modal-open {
+                overflow: hidden;
+            }
+
+            /* Нативное предотвращение утечки скролла на задний фон */
+            .modal-window {
+                overscroll-behavior: contain;
             }
 
         </style>
@@ -1700,6 +1787,7 @@
                 });
             }
             const modal = document.getElementById('installModal');
+            
             function openModal() { 
                 const ua = navigator.userAgent;
                 const isApple = /Macintosh|Mac OS X|iPad|iPhone|iPod/i.test(ua);
@@ -1714,7 +1802,10 @@
                 }
 
                 modal.style.display = 'flex'; 
-                setTimeout(() => modal.classList.add('active'), 10); 
+                setTimeout(() => {
+                    modal.classList.add('active');
+                    document.body.classList.add('modal-open');
+                }, 10); 
             }
 
             function closeModal() {
@@ -1722,6 +1813,7 @@
                 modal.classList.remove('active');
                 setTimeout(() => {
                     modal.style.display = 'none';
+                    document.body.classList.remove('modal-open');
                 }, 300);
             }
 
@@ -1768,12 +1860,18 @@
                 
                 lightboxImg.src = src;
                 lightbox.style.display = 'flex';
-                setTimeout(() => lightbox.classList.add('active'), 10);
+                setTimeout(() => {
+                    lightbox.classList.add('active');
+                    document.body.classList.add('modal-open');
+                }, 10);
             }
 
             function closeLightbox() {
                 lightbox.classList.remove('active');
-                setTimeout(() => lightbox.style.display = 'none', 300);
+                setTimeout(() => {
+                    lightbox.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                }, 300);
             }
 
             lightbox.addEventListener('click', (e) => {
@@ -1855,12 +1953,18 @@
             function openBugModal(e) {
                 if(e) e.preventDefault();
                 bugModal.style.display = 'flex';
-                setTimeout(() => bugModal.classList.add('active'), 10);
+                setTimeout(() => {
+                    bugModal.classList.add('active');
+                    document.body.classList.add('modal-open');
+                }, 10);
             }
 
             function closeBugModal() {
                 bugModal.classList.remove('active');
-                setTimeout(() => bugModal.style.display = 'none', 300);
+                setTimeout(() => {
+                    bugModal.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                }, 300);
             }
 
             function sendBugReport(e) {
@@ -2011,12 +2115,18 @@
 
             function openReviewModal() {
                 reviewModal.style.display = 'flex';
-                setTimeout(() => reviewModal.classList.add('active'), 10);
+                setTimeout(() => {
+                    reviewModal.classList.add('active');
+                    document.body.classList.add('modal-open');
+                }, 10);
             }
 
             function closeReviewModal() {
                 reviewModal.classList.remove('active');
-                setTimeout(() => reviewModal.style.display = 'none', 300);
+                setTimeout(() => {
+                    reviewModal.style.display = 'none';
+                    document.body.classList.remove('modal-open');
+                }, 300);
             }
 
             document.querySelectorAll('#modal-stars span').forEach(star => {
@@ -2166,6 +2276,19 @@
                 } else if (hash === '#writereview') {
                     openReviewModal();
                 }
+            });
+
+            // Закрытие модальных окон при клике на полупрозрачный фон (оверлей)
+            document.querySelectorAll('.modal-overlay').forEach(overlay => {
+                overlay.addEventListener('click', (e) => {
+                    // Если кликнули именно по фону, а не по самому окну внутри него
+                    if (e.target === overlay) {
+                        if (overlay.id === 'installModal') closeModal();
+                        else if (overlay.id === 'bugModal') closeBugModal();
+                        else if (overlay.id === 'reviewModal') closeReviewModal();
+                        else if (overlay.id === 'imageLightbox') closeLightbox();
+                    }
+                });
             });
 
             // вызовы функций
