@@ -1,8 +1,8 @@
     // ==UserScript==
     // @name         ЕТИС REBORN
     // @namespace    http://tampermonkey.net/
-    // @version      2.5
-    // @changelog    Умный сайдбар у ПК. Анимация появления блоков при загрузке. Обновлённый вид аналитики, подробного расписания (Beta), анкетирования. Множество фиксов.
+    // @version      2.6
+    // @changelog    Новая вкладка "Профиль" (Beta). Опция стеклянного вида акцентных кнопок. Доработанный поиск. Больше микровзаимодействий и настроек. Улучшенные анимации. Редизайн окон. Общая доработка интерфейса и исправление багов.
     // @description  Глобальный редизайн ЕТИСа
     // @author       dya_dya
     // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
@@ -402,7 +402,7 @@
 
         padding: 4px !important;
         gap: 8px !important;
-        margin-bottom: 2.4rem !important;
+        margin-bottom: 1.6rem !important;
         border-bottom: none !important;
 
         /* Индикация скролла по бокам */
@@ -482,12 +482,19 @@
     .ui-dialog .ui-dialog-content > form { display: flex !important; flex-direction: column !important; }
     .ui-dialog .ui-dialog-content > form > input { margin-top: 6px !important; }
     .ui-dialog .ui-dialog-content > form > input.btn { align-self: flex-end !important; }
-    .ui-widget-content { border: none !important; background: var(--color-card) !important; color: var(--color-text-primary) !important; }
-    .ui-widget-header { border: none !important; background: var(--color-highlight) !important; color: var(--color-text-primary) !important; }
+    .ui-widget-content { border: none !important; background: var(--color-body) !important; color: var(--color-text-primary) !important; }
+    .ui-widget-header { border: none !important; background: var(--color-body) !important; color: var(--color-text-primary) !important; }
     .ui-widget-overlay { background: var(--color-dialog-fade) !important; opacity: 1 !important; }
     .ui-dialog .ui-dialog-titlebar-close { border: none !important; background: none !important; color: var(--color-text-secondary) !important; }
     .ui-dialog .ui-dialog-titlebar-close > .ui-button-icon-primary { display: none !important; }
     .ui-dialog .ui-dialog-titlebar-close:before { content: 'close' !important; font-family: 'Material Symbols Rounded' !important; font-size: 18px !important; }
+
+    .ui-dialog .ui-dialog-content {
+        padding: 2.4rem !important;
+        background: var(--color-body) !important;
+        color: var(--color-text-primary) !important;
+        font-size: 1.3rem !important;
+    }
 
     /* Inputs & Buttons */
     input, select, textarea, button { font-family: inherit !important; }
@@ -1137,7 +1144,7 @@
 
         padding: 4px !important;
         gap: 8px !important;
-        margin-bottom: 1.5rem !important;
+        margin-bottom: 1.6rem !important;
 
         /* Индикация скролла */
         background-image:
@@ -1223,27 +1230,28 @@
         background: var(--color-highlight-light) !important;
     }
 
-    /* Универсальный тумблер */
+    /* --- УНИВЕРСАЛЬНЫЙ ТУМБЛЕР --- */
     html body input[type="checkbox"].tumbler-checkbox {
         position: relative !important;
         width: 5rem !important;
         min-width: 5rem !important;
         height: 2.5rem !important;
         appearance: none !important;
-        background: rgba(142, 142, 147, 0.2) !important;
+        -moz-appearance: none !important;
+        background: rgba(142, 142, 147, 0.25) !important;
         border-radius: 1.25rem !important;
         border: none !important;
+        padding: 0 !important;
+        font-size: 0 !important;
+        box-sizing: border-box !important;
         cursor: pointer !important;
-        transition: background 0.3s ease !important;
+        transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         display: inline-flex !important;
         flex-shrink: 0 !important;
-        box-sizing: border-box !important;
         box-shadow: none !important;
         margin: 0 !important;
     }
-
     html body input[type="checkbox"].tumbler-checkbox:before { display: none !important; }
-
     html body input[type="checkbox"].tumbler-checkbox:after {
         content: '' !important;
         position: absolute !important;
@@ -1253,28 +1261,91 @@
         height: 2.1rem !important;
         background: #fff !important;
         border-radius: 1.05rem !important;
-        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), width 0.2s ease !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: none !important;
         margin: 0 !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.15), 0 1px 2px rgba(0,0,0,0.1) !important;
     }
-
     html body input[type="checkbox"].tumbler-checkbox:active:after {
         width: 3.6rem !important;
     }
-
     html body input[type="checkbox"].tumbler-checkbox:checked {
-        background: var(--color-accent) !important;
+        background: var(--color-accent) !important; 
     }
-
     html body input[type="checkbox"].tumbler-checkbox:checked:after {
         transform: translateX(1.6rem) !important;
     }
-
     html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
         width: 3.6rem !important;
         transform: translateX(1rem) !important;
     }
 
+    /* --- СТИЛИ ДЛЯ ВКЛАДОК --- */
+    .ios-settings-group {
+        background: var(--color-card) !important; /* Белый цвет для блоков настроек */
+        border-radius: var(--radius-large) !important;
+        margin-bottom: 2.4rem !important;
+        border: 1px solid var(--color-table-border) !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .ios-settings-group > label,
+    .ios-settings-group > .ios-settings-row {
+        position: relative !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 1.4rem 1.6rem !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+        background: transparent !important;
+        cursor: pointer !important;
+        transition: background-color 0.2s ease !important;
+        text-decoration: none !important;
+        border: none !important;
+    }
+
+    .ios-settings-group > label:hover,
+    .ios-settings-group > .ios-settings-row:hover {
+        background: var(--color-table-highlight) !important;
+    }
+    
+    .ios-settings-group > *::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 1.6rem !important;
+        right: 1.6rem !important;
+        height: 1px !important;
+        background-color: var(--color-table-border) !important;
+        display: none !important;
+    }
+
+    /* Отступ для обычных строк с иконками */
+    .ios-settings-group > *:has(> div > .material-icons)::after {
+        left: 5.2rem !important;
+    }
+    /* Специфичный отступ для окна синхронизации */
+    .ios-settings-group > [style*="padding-left: 2.4rem"]::after {
+        left: 6.0rem !important;
+    }
+
+    .ios-settings-group > *:has(~ *:not([style*="display: none"]):not([style*="display:none"]))::after {
+        display: block !important;
+    }
+
+    .ios-settings-group > * {
+        border-bottom-left-radius: 0 !important;
+        border-bottom-right-radius: 0 !important;
+    }
+    .ios-settings-group > *:first-child { 
+        border-top-left-radius: var(--radius-large) !important; 
+        border-top-right-radius: var(--radius-large) !important; 
+    }
+    .ios-settings-group > *:not([style*="display: none"]):not([style*="display:none"]):not(:has(~ *:not([style*="display: none"]):not([style*="display:none"]))) {
+        border-bottom-left-radius: var(--radius-large) !important; 
+        border-bottom-right-radius: var(--radius-large) !important; 
+    }
     .timetable-toolbar label.toolbar-item {
         padding-left: 0.65rem !important;
         padding-right: 1.5rem !important;
@@ -1614,7 +1685,7 @@
         background-color: var(--color-accent) !important;
         color: var(--color-text-primary-invert) !important;
         font-weight: 600 !important;
-        margin: 0 12px 4px 12px !important;
+        margin: 2px 12px !important;
         border-radius: var(--radius-small) !important;
         width: auto !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
@@ -1624,7 +1695,7 @@
     .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover {
         background-color: var(--color-accent) !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
-        margin: 0 12px 4px 12px !important;
+        margin: 2px 12px !important;
         border-radius: var(--radius-small) !important;
         width: auto !important;
     }
@@ -1650,7 +1721,7 @@
     @media (hover: hover) {
         .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
             background: var(--color-highlight) !important;
-            margin: 0 12px 4px 12px !important;
+            margin: 2px 12px !important;
             border-radius: var(--radius-small) !important;
             width: auto !important;
         }
@@ -2285,9 +2356,6 @@
         background: var(--color-accent-active) !important;
     }
 
-    .resource-block:first-of-type { margin-top: 3.5rem !important; }
-
-
     .resource-block {
         margin-bottom: 2.4rem !important;
     }
@@ -2901,7 +2969,7 @@
 
     /* Контейнер самого окна */
     .ui-dialog {
-        background: var(--color-card) !important;
+        background: var(--color-body) !important;
         border: none !important;
         border-radius: var(--radius-large) !important;
         box-shadow: var(--shadow-dialog) !important;
@@ -4311,8 +4379,8 @@
             table-layout: auto !important;
         }
 
-        .session-table-v6 td:not(:first-child):not(:last-child),
-        .term-table-v6 td:not(:first-child):not(:last-child) {
+        .session-table-v6 td:not(:first-child):not(:last-child):not(.align-right-cell),
+        .term-table-v6 td:not(:first-child):not(:last-child):not(.align-right-cell) {
             width: 1% !important;
             white-space: nowrap !important;
             min-width: 90px !important;
@@ -4408,7 +4476,7 @@
     .span9 table.common.absence-table tr > th:nth-child(5),
     .span9 table.common.absence-table tr > td:nth-child(5) {
         width: 20% !important;
-        text-align: left !important;
+        text-align: right !important;
     }
 
     /* Фикс для заголовков в Библиотеке */
@@ -4935,25 +5003,30 @@
     .stats-link-bottom {
         display: flex !important;
         align-items: center !important;
-        justify-content: center !important;
-        gap: 8px !important;
-        margin: 4rem auto 2rem !important;
-        padding: 1.2rem 2rem !important;
-        background: var(--color-highlight) !important;
-        border-radius: 12px !important;
-        color: var(--color-text-secondary) !important;
+        padding: 1.6rem 2rem !important;
+        background: var(--color-card) !important;
+        border-radius: var(--radius-large) !important;
+        box-shadow: var(--shadow-main) !important;
         text-decoration: none !important;
-        font-size: 1.3rem !important;
-        width: fit-content !important;
         transition: all 0.2s ease !important;
+        gap: 16px !important;
+        border: 1px solid var(--color-table-border) !important;
+        margin: 0 0 1.6rem 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .stats-link-bottom:before {
+        content: none !important;
     }
 
-    .stats-link-bottom:hover {
-        color: var(--color-accent) !important;
-        background: var(--color-accent-active) !important;
+    @media (hover: hover) and (pointer: fine) {
+        .stats-link-bottom:hover {
+            background: var(--color-highlight) !important;
+            transform: translateY(-2px) !important;
+        }
     }
 
-    /* Список учителей */
+    /* Список преподов */
     .teachers-list {
         display: flex !important;
         flex-direction: column !important;
@@ -5223,7 +5296,9 @@
     }
     .analytics-overlay.active { opacity: 1; visibility: visible; }
     .stat-box {
-        background: var(--color-highlight); padding: 1.4rem 1.6rem;
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        padding: 1.4rem 1.6rem;
         border-radius: var(--radius-medium); display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 0.4rem;
         width: 100%; box-sizing: border-box;
     }
@@ -5237,7 +5312,9 @@
     .leaderboard-list { display: flex; flex-direction: column; gap: 1rem; }
     .leaderboard-item {
         display: flex; align-items: center; gap: 1.4rem;
-        background: var(--color-highlight); padding: 1.2rem 1.6rem;
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        padding: 1.2rem 1.6rem;
         border-radius: var(--radius-medium); transition: transform 0.2s;
     }
     .leaderboard-item:hover { transform: translateX(4px); }
@@ -5358,7 +5435,8 @@
         padding: 1.6rem !important;
         border-radius: var(--radius-large) !important;
         border: 1px solid var(--color-table-border) !important;
-        background: var(--color-input) !important;
+        background: var(--color-card) !important;
+        box-shadow: var(--shadow-main) !important;
         color: var(--color-text-primary) !important;
         font-size: 1.4rem !important;
         resize: vertical !important;
@@ -5632,11 +5710,11 @@
         text-overflow: ellipsis !important;
         padding: 1.2rem 1.6rem !important;
         border: 1px solid var(--color-table-border) !important;
-        background: var(--color-input) !important;
+        background: var(--color-card) !important;
         border-radius: var(--radius-medium) !important;
         color: var(--color-text-primary) !important;
         font-size: 1.4rem !important;
-        box-shadow: none !important;
+        box-shadow: var(--shadow-main) !important;
         margin: 0 !important;
         height: auto !important;
         line-height: 1.4 !important;
@@ -6029,21 +6107,23 @@
     /* --- COLOR PICKER MODAL --- */
     .color-picker-grid {
         display: grid;
-        grid-template-columns: repeat(10, 42px);
-        gap: 1.2rem;
+        grid-template-columns: repeat(10, 36px);
+        gap: 1rem;
         margin-top: 1rem;
-        justify-content: flex-start;
+        justify-content: space-between;
+        max-width: 100%;
+        box-sizing: border-box;
     }
 
     .color-picker-circle {
-        width: 42px;
-        height: 42px;
+        width: 36px;
+        height: 36px;
         border-radius: 50%;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.6rem;
+        font-size: 1.4rem;
         font-weight: 800;
         color: #fff;
         transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -6088,6 +6168,9 @@
     .color-picker-random-btn {
         width: 42px !important;
         height: 42px !important;
+        min-width: 42px !important;
+        min-height: 42px !important;
+        flex-shrink: 0 !important;
         padding: 0 !important;
         border-radius: 50% !important;
         display: flex !important;
@@ -6448,7 +6531,7 @@
     ========================================== */
     #etis-settings-modal, .analytics-modal, #etis-reviews-modal {
         position: fixed !important;
-        background: var(--color-card) !important;
+        background: var(--color-body) !important;
         box-shadow: var(--shadow-dialog) !important;
         z-index: 2000001 !important;
         display: flex !important;
@@ -6468,25 +6551,6 @@
 
     #etis-settings-overlay.active, .analytics-overlay.active, #etis-reviews-overlay.active {
         opacity: 1 !important; visibility: visible !important;
-    }
-
-    /* Десктоп (По центру, широкие) */
-    @media (min-width: 961px) {
-        #etis-settings-modal, .analytics-modal, #etis-reviews-modal {
-            top: 50% !important; left: 50% !important;
-            transform: translate(-50%, -50%) scale(0.95) !important;
-            width: 90% !important;
-            max-width: 600px !important; /* Увеличили ширину настроек */
-            max-height: 85vh !important;
-            border-radius: 24px !important;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-        }
-        #etis-settings-modal.active, .analytics-modal.active, #etis-reviews-modal.active {
-            opacity: 1 !important; visibility: visible !important;
-            transform: translate(-50%, -50%) scale(1) !important;
-        }
-        /* Для аналитики и расписания делаем окно еще шире */
-        .analytics-modal { max-width: 750px !important; }
     }
 
     /* Мобильные (Шторка снизу) */
@@ -6535,6 +6599,7 @@
     #etis-reviews-modal .ui-dialog-content {
         overflow-y: auto !important;
         flex: 1 1 auto !important;
+        min-height: 0 !important;
     }
 
     @media (max-width: 960px) {
@@ -6550,41 +6615,258 @@
         }
     }
 
-    /* Макет окна настроек для ПК (Сайдбар + Контент) */
+    .settings-content-scroll .ios-settings-group,
+    .settings-content-scroll .teacher-search-wrapper,
+    .settings-content-scroll .appearance-section,
+    .settings-content-scroll .color-picker-grid,
+    .settings-content-scroll #bento-capture-area {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .analytics-modal .settings-sidebar-btn {
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        flex-wrap: nowrap !important;
+        justify-content: flex-start !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 12px 16px !important;
+        margin: 0 0 8px 0 !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: var(--radius-medium) !important;
+        color: var(--color-text-primary) !important;
+        font-size: 1.4rem !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+        font-family: inherit !important;
+        box-shadow: none !important;
+        box-sizing: border-box !important;
+        height: auto !important;
+        min-height: 48px !important;
+    }
+
+    .analytics-modal .settings-sidebar-btn span {
+        display: inline-block !important;
+        border: none !important;
+        padding: 0 !important;
+    }
+
+    .analytics-modal .settings-sidebar-btn .sidebar-btn-text {
+        flex-grow: 1 !important;
+        text-align: left !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        line-height: 1.3 !important;
+        color: inherit !important;
+    }
+
+    .analytics-modal .settings-sidebar-btn .material-icons {
+        flex-shrink: 0 !important;
+        margin-right: 12px !important;
+        font-size: 2.2rem !important;
+        color: var(--color-text-secondary) !important;
+    }
+
+    .analytics-modal .settings-sidebar-btn .chevron {
+        margin-right: 0 !important;
+        margin-left: auto !important;
+    }
+
+    .analytics-modal .settings-sidebar-btn.active {
+        background: var(--bg-accent) !important;
+        color: var(--color-text-primary-invert) !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+    }
+
+    .analytics-modal .settings-sidebar-btn.active .material-icons {
+        color: var(--color-text-primary-invert) !important;
+    }
+
     @media (min-width: 961px) {
-        #etis-settings-modal {
+        #etis-cons-modal .settings-content-scroll,
+        #etis-profile-modal .settings-content-scroll,
+        #etis-sync-modal .settings-content-scroll,
+        #etis-settings-modal .settings-content-scroll {
+            padding: 0 !important; 
+        }
+        .settings-content-area .ui-widget-header {
+            padding: 1.6rem 2.4rem 0.8rem 2.4rem !important;
+            background: transparent !important;
+            border-bottom: none !important;
+        }
+        .analytics-modal:not(:has(.settings-layout)) .ui-widget-header {
+            display: none !important;
+        }
+    }
+    @media (max-width: 960px) {
+        .sidebar-tabs-container {
+            background: var(--color-card) !important;
+            border-radius: var(--radius-large) !important;
+            border: 1px solid var(--color-table-border) !important;
+            display: flex;
+            flex-direction: column;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            margin-top: 1rem !important;
+            margin-bottom: 2.4rem;
+            overflow: hidden;
+        }
+        
+        html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn,
+        html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn,
+        html body .sidebar-tabs-container .settings-sidebar-btn {
+            position: relative !important;
+            margin: 0 !important;
+            border-radius: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            padding: 1.6rem 2rem !important; 
+        }
+        
+        html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn::after,
+        html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn::after,
+        html body .sidebar-tabs-container .settings-sidebar-btn::after {
+            content: '' !important;
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 5.2rem !important; /* Отступ слева (начинается ровно под текстом, пропуская иконку) */
+            right: 1.6rem !important; /* Отступ справа */
+            height: 1px !important;
+            background-color: var(--color-table-border) !important;
+            display: block !important;
+        }
+        
+        html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn:last-child::after,
+        html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn:last-child::after,
+        html body .sidebar-tabs-container .settings-sidebar-btn:last-child::after {
+            display: none !important;
+        }
+        
+        .sidebar-tabs-container .settings-sidebar-btn.active {
+            background: var(--color-highlight) !important;
+            box-shadow: none !important;
+        }
+        .sidebar-tabs-container .settings-sidebar-btn.active .sidebar-btn-text {
+            color: var(--color-text-primary) !important;
+        }
+        .sidebar-tabs-container .settings-sidebar-btn.active .material-icons {
+            color: var(--color-accent) !important;
+        }
+        .settings-content-area .ui-widget-header {
+            padding: 0 0 1.6rem 0 !important;
+            background: transparent !important;
+            border-bottom: none !important;
+        }
+    }
+
+    /* ========================================================= */
+    /* --- ДЕСКТОПНЫЙ МАКЕТ ОКОН НА ПК --- */
+    /* ========================================================= */
+    @media (min-width: 961px) {
+        #etis-settings-modal, 
+        #etis-profile-modal,
+        #etis-cons-modal,
+        #etis-sync-modal,
+        #etis-reviews-modal {
+            top: 50% !important; left: 50% !important;
+            transform: translate(-50%, -50%) scale(0.95) !important;
+            width: 90% !important;
             max-width: 850px !important;
             height: 60vh !important;
             min-height: 500px !important;
+            background: var(--color-body) !important;
+            padding: 1.6rem !important;
+            box-sizing: border-box !important;
+            border-radius: 28px !important;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+            overflow: hidden !important;
         }
-        .settings-layout {
-            display: flex;
-            height: 100%;
-            width: 100%;
+
+        #etis-settings-modal.ui-dialog-content,
+        #etis-profile-modal.ui-dialog-content,
+        #etis-cons-modal.ui-dialog-content,
+        #etis-sync-modal.ui-dialog-content,
+        #etis-reviews-modal.ui-dialog-content,
+        .analytics-modal.ui-dialog-content {
+            overflow: hidden !important;
+            padding: 0 !important;
         }
+
+        .analytics-modal:not(#etis-settings-modal):not(#etis-cons-modal):not(#etis-profile-modal):not(#etis-sync-modal):not(#etis-reviews-modal) {
+            top: 50% !important; left: 50% !important;
+            transform: translate(-50%, -50%) scale(0.95) !important;
+            width: 90% !important;
+            max-width: 850px !important;
+            height: auto !important;
+            min-height: auto !important;
+            max-height: 85vh !important;
+            background: var(--color-body) !important;
+            padding: 1.6rem !important;
+            box-sizing: border-box !important;
+            border-radius: 28px !important;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+            overflow: hidden !important;
+        }
+        
+        #etis-settings-modal.active, 
+        #etis-profile-modal.active,
+        #etis-cons-modal.active,
+        #etis-sync-modal.active,
+        .analytics-modal.active, 
+        #etis-reviews-modal.active {
+            opacity: 1 !important; visibility: visible !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+        }
+
+        .settings-layout { 
+            display: flex !important; height: 100% !important; width: 100% !important; gap: 1.6rem !important; 
+            min-height: 0 !important; min-width: 0 !important;
+        }
+
         .settings-sidebar {
-            width: 250px;
-            min-width: 250px;
-            border-right: 1px solid var(--color-table-border);
-            padding: 2.4rem 1.6rem;
-            background: var(--color-highlight);
-            display: flex !important;
-            flex-direction: column;
-            gap: 8px;
-            overflow-y: auto;
+            width: 250px !important; min-width: 250px !important; max-width: 250px !important;
+            background: var(--color-card) !important; border-radius: var(--radius-large) !important;
+            box-shadow: var(--shadow-main) !important; padding: 1.6rem !important; display: flex !important;
+            flex-direction: column !important; gap: 8px !important; overflow-y: auto !important; height: 100% !important;
         }
+
         .settings-content-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            flex: 1 1 auto !important; width: 100% !important; 
+            display: flex !important; flex-direction: column !important;
+            background: transparent !important; height: 100% !important;
+            padding-bottom: 0 !important; position: relative !important; 
+            min-height: 0 !important; min-width: 0 !important;
         }
-        .settings-content-scroll {
-            flex: 1;
-            padding: 2.4rem;
-            overflow-y: auto;
+        
+        .settings-content-area::-webkit-scrollbar { display: none !important; }
+
+        .settings-content-area .ui-widget-header {
+            background: transparent !important; border-bottom: none !important;
+            padding: 0 0 1.6rem 0 !important;
         }
-        /* Скрываем мобильную шапку и кнопку "Назад" на ПК */
+
+        .back-modal-btn[data-back="main"] { display: none !important; }
+
+        #bento-capture-area {
+            max-width: 100% !important; width: 100% !important; margin-bottom: 1.2rem !important;
+            padding: 12px !important; box-sizing: border-box !important;
+        }
+
+        #bento-capture-area > div { aspect-ratio: auto !important; height: auto !important; gap: 10px !important; padding: 12px !important; }
+        #bento-capture-area div[style*="padding: 24px"] { padding: 16px !important; }
+        #bento-capture-area div[style*="width: 70px"] { width: 52px !important; height: 52px !important; font-size: 24px !important; margin-bottom: 6px !important; }
+        #bento-capture-area div[style*="font-size: 2.2rem"] { font-size: 1.8rem !important; }
+        #bento-capture-area div[style*="font-size: 4rem"] { font-size: 2.8rem !important; margin-bottom: 4px !important; }
+        #bento-capture-area div[style*="font-size: 3.2rem"] { font-size: 2.4rem !important; margin-bottom: 4px !important; }
+
+        .close-modal-btn, .close-analytics, .ui-dialog-titlebar-close, .close-modal { display: none !important; }
         .settings-mobile-header, .mobile-main-title { display: none !important; }
     }
 
@@ -6681,7 +6963,7 @@
     }
 
     #etis-settings-modal .settings-sidebar-btn.active {
-        background: var(--color-accent) !important;
+        background: var(--bg-accent) !important;
         color: var(--color-text-primary-invert) !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
     }
@@ -6723,11 +7005,21 @@
         .color-picker-grid {
             grid-template-columns: repeat(6, 42px);
             gap: 0.8rem;
-            justify-content: flex-start;
+            justify-content: space-between;
         }
         .appearance-section { align-items: flex-start !important; }
         .appearance-title { text-align: left !important; }
         .color-picker-controls-row { justify-content: flex-start !important; }
+        .ios-settings-row .chevron {
+            margin-right: -0.6rem !important;
+        }
+    }
+
+    #modal-back-btn {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
     }
 
     /* 1. Блокировка фона на уровне HTML и BODY */
@@ -6847,6 +7139,14 @@
         }
     }
 
+    @media (min-width: 961px) {
+        .back-modal-btn[data-back="appearance"],
+        .back-modal-btn[data-back="grades"],
+        .back-modal-btn[data-back="version"] {
+            display: inline-block !important;
+        }
+    }
+
     .login-alert-box h4 {
         color: var(--color-red) !important;
         margin-top: 0 !important;
@@ -6893,18 +7193,16 @@
     table.distr td, table.distr th {
         vertical-align: middle !important;
     }
-    /* Расширяем первую колонку, чтобы капсулы не наезжали на кружки */
     table.distr td:first-child, table.distr th:first-child {
         min-width: 300px !important;
         padding-right: 2rem !important;
     }
-    /* Превращаем старые квадраты в аккуратные круглые индикаторы */
     .distr .pair {
         width: 14px !important;
         height: 14px !important;
         border-radius: 50% !important;
         margin: 6px auto !important;
-        color: transparent !important; /* Скрываем вшитый пробел &nbsp; */
+        color: transparent !important;
         box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.1) !important;
         transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         cursor: help !important;
@@ -6912,12 +7210,10 @@
     .distr .pair:hover {
         transform: scale(1.5) !important;
     }
-    /* Цвета типов пар под дизайн ЕТИС REBORN */
     .distr .lec { background: var(--color-blue) !important; }
     .distr .pract { background: var(--color-green) !important; }
     .distr .lab { background: var(--color-warning) !important; }
 
-    /* Специальный фикс для таблицы анкет */
     table.question_table tbody tr:hover td {
         background-color: transparent !important;
     }
@@ -6945,7 +7241,6 @@
         cursor: pointer !important;
     }
 
-    /* Стиль самих кружков */
     table.question_table input[type="radio"] {
         transform: scale(1.2);
     }
@@ -6960,28 +7255,11 @@
         background-size: 100% 1px !important;
     }
 
-    /* --- ФИКС ДЛЯ ССЫЛОК: НИКАКИХ ПРЫЖКОВ --- */
     .span3 > .nav.nav-tabs.nav-stacked > li > a,
     .span3 > .nav.nav-tabs.nav-stacked > li.active > a {
         margin: 2px 12px !important;
         transition: background-color 0.15s ease, color 0.15s ease !important;
         transform: none !important;
-    }
-
-    /* --- УМНАЯ АКТИВНАЯ ВКЛАДКА --- */
-    .span3 > .nav.nav-tabs.nav-stacked {
-        overflow: visible !important;
-        position: relative !important;
-    }
-
-    .span3 > .nav.nav-tabs.nav-stacked > li.active {
-        position: sticky !important;
-        z-index: 100 !important;
-        background-color: transparent !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        top: 16px !important;   
-        bottom: 16px !important; 
     }
 
     @media (max-width: 960px) {
@@ -6993,21 +7271,158 @@
         }
     }
 
-    .span3 > .nav.nav-tabs.nav-stacked > li.active.stuck-top,
-    .span3 > .nav.nav-tabs.nav-stacked > li.active.stuck-bottom {
-        box-shadow: none !important;
-    }
-    .span3 > .nav.nav-tabs.nav-stacked > li.active::before,
-    .span3 > .nav.nav-tabs.nav-stacked > li.active::after {
-        display: none !important;
+    /* --- УМНАЯ АКТИВНАЯ ВКЛАДКА --- */
+    .span3 > .nav.nav-tabs.nav-stacked {
+        overflow: visible !important;
+        position: relative !important;
     }
 
-    /* Фикс прыжка активных вкладок при наведении */
+    @media (min-width: 961px) {
+        /* Липкое позиционирование активно только при включенном Умном сайдбаре и только на ПК */
+        html.smart-sidebar-enabled .span3 > .nav.nav-tabs.nav-stacked > li.active {
+            position: sticky !important;
+            z-index: 100 !important;
+            background-color: transparent !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            top: 16px !important;   
+            bottom: 16px !important; 
+        }
+
+        /* Обычное прокручивание на ПК, если настройка выключена */
+        html:not(.smart-sidebar-enabled) .span3 > .nav.nav-tabs.nav-stacked > li.active {
+            position: relative !important;
+            top: auto !important;
+            bottom: auto !important;
+            z-index: 1 !important;
+        }
+    }
+
+    @media (max-width: 960px) {
+        /* На мобильных активная вкладка всегда прокручивается стандартно */
+        .span3 > .nav.nav-tabs.nav-stacked > li.active {
+            position: relative !important;
+            top: auto !important;
+            bottom: auto !important;
+            z-index: 1 !important;
+        }
+        /* Скрываем настройки, предназначенные только для ПК */
+        .pc-only-setting {
+            display: none !important;
+        }
+    }
+
     .submenu b, .submenu b:hover,
     .weeks .week.current > a, .weeks .week.current > a:hover,
     .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
     .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover {
         transform: none !important;
+    }
+
+    /* === ВЫРАВНИВАНИЕ ПО ПРАВОМУ КРАЮ === */
+    html body table th:last-child, 
+    html body table td:last-child,
+    html body .common th:last-child, 
+    html body .common td:last-child,
+    html body .slimtab_nice th:last-child, 
+    html body .slimtab_nice td:last-child {
+        text-align: right !important;
+        padding-right: 16px !important;
+    }
+
+    @media (max-width: 768px) {
+        html body table th:last-child, 
+        html body table td:last-child,
+        html body .common th:last-child, 
+        html body .common td:last-child,
+        html body .slimtab_nice th:last-child, 
+        html body .slimtab_nice td:last-child {
+            padding-right: 8px !important;
+        }
+    }
+
+
+    /* === ФИЗИКА КАПЛИ === */
+    .mobile-menu-btn,
+    .mobile-menu-btn * {
+        -webkit-touch-callout: none !important;
+        -webkit-user-select: none !important;
+        -moz-user-select: none !important;
+        -ms-user-select: none !important;
+        user-select: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .mobile-menu-btn {
+        overflow: hidden !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+        transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                    transform 0.3s cubic-bezier(0.2, 0, 0, 1),
+                    background-color 0.3s ease !important;
+        transform-origin: center center !important; 
+        transform: translateX(-50%) scale(1) !important;
+    }
+
+    .mobile-menu-btn.open {
+        transform-origin: center center !important;
+        transform: translateX(-50%) scale(1) !important;
+    }
+
+    .mobile-menu-btn.is-pressed:not(.open) {
+        transform: translateX(-50%) scale(1.03, 0.93) !important;
+    }
+    .mobile-menu-btn.is-pressed.open {
+        transform: translateX(-50%) scale(0.92) !important;
+    }
+
+    .mobile-menu-btn .menu-btn-content {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        z-index: 2 !important;
+    }
+
+    .mobile-menu-btn::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 70%);
+        transform: translate(-50%, -50%);
+        border-radius: 50%;
+        opacity: 0;
+        transition: opacity 0.4s ease, width 0s 0.4s, height 0s 0.4s;
+        pointer-events: none;
+        z-index: 1;
+    }
+    
+    .mobile-menu-btn.is-pressed::after {
+        width: 140px;
+        height: 140px;
+        opacity: 1;
+        transition: width 0.4s cubic-bezier(0.2, 0, 0, 1), 
+                    height 0.4s cubic-bezier(0.2, 0, 0, 1), 
+                    opacity 0.2s ease-in;
+    }
+
+    .sync-tabs {
+        background: var(--color-card) !important;
+        box-shadow: var(--shadow-main) !important;
+        border: 1px solid var(--color-table-border) !important;
     }
 
         `;
@@ -7088,6 +7503,59 @@
             { hex: '#FF5722', bg: 'rgba(255, 87, 34, 0.15)' }    // Оранжевый
         ];
 
+        // Умное склонение направления обучения (в винительный падеж)
+        function declineDirection(direction) {
+            if (!direction) return '';
+            let clean = direction.trim().replace(/\s+/g, ' ');
+            if (clean.length > 40 || clean.split(' ').length > 4) {
+                return clean;
+            }
+            
+            const adjectives = /([ая]я|[ыио]й|[ое]е|[ыи]е)$/i;
+            const connectors = /^(и|в|на|с|о|об|по|для|при)$/i;
+            const skipWords = /^(отношения|технологии|системы|ресурсы|процессы|исследования|мероприятия)$/i;
+            
+            let words = clean.split(' ');
+            let hasSeenNoun = false;
+            let allowDecline = true;
+            
+            return words.map(word => {
+                if (!allowDecline) return word;
+                
+                let isUpper = word[0] === word[0].toUpperCase();
+                let lower = word.toLowerCase();
+                
+                if (connectors.test(lower)) {
+                    hasSeenNoun = false;
+                    return word;
+                }
+                
+                if (skipWords.test(lower)) {
+                    hasSeenNoun = true;
+                    return word;
+                }
+                
+                if (adjectives.test(lower)) {
+                    if (lower.endsWith('ая')) lower = lower.slice(0, -2) + 'ую';
+                    else if (lower.endsWith('яя')) lower = lower.slice(0, -2) + 'юю';
+                } else {
+                    // Noun
+                    if (hasSeenNoun) {
+                        allowDecline = false;
+                        return word;
+                    }
+                    if (lower.endsWith('а')) lower = lower.slice(0, -1) + 'у';
+                    else if (lower.endsWith('я')) lower = lower.slice(0, -1) + 'ю';
+                    hasSeenNoun = true;
+                }
+                
+                if (isUpper && lower.length > 0) {
+                    return lower[0].toUpperCase() + lower.slice(1);
+                }
+                return lower;
+            }).join(' ');
+        }
+
         function getRandomExtColor() {
             return EXT_CAL_COLORS[Math.floor(Math.random() * EXT_CAL_COLORS.length)].hex;
         }
@@ -7110,11 +7578,26 @@
         const GENERAL_CONFIG_KEY = 'etis_general_config';
         let savedConfig = JSON.parse(localStorage.getItem(GENERAL_CONFIG_KEY)) || {};
         const defaultCompactConfig = { showWorkType: true, showControlType: false, showPassScore: true, showRating: false, showDate: true, showTeacher: false };
-        let generalConfig = { dimPastPairs: true, shortAudFormat: false, hideDaysOff: false, showSunday: false, absoluteScores: false, compactGrades: false, watermark: true, datesLeft: false, generateQR: true, showGaps: true, showGapsCustom: true, ...savedConfig };
-        generalConfig.compactGradesConfig = { ...defaultCompactConfig, ...(generalConfig.compactGradesConfig || {}) };
+        let generalConfig = { dimPastPairs: true, shortAudFormat: false, hideDaysOff: false, showSunday: false, absoluteScores: false, compactGrades: false, gradeNotifications: true, watermark: true, datesLeft: false, generateQR: true, showGaps: true, showGapsCustom: true, smartSidebar: true, ...savedConfig };
 
+        // Применение режима умного сайдбара
+        function applySmartSidebar() {
+            if (generalConfig.smartSidebar !== false) {
+                document.documentElement.classList.add('smart-sidebar-enabled');
+            } else {
+                document.documentElement.classList.remove('smart-sidebar-enabled');
+            }
+        }
+        applySmartSidebar(); // Применяем сразу при запуске скрипта
+        
+        // Подстраховка для пользователей, у которых конфиг уже был сохранен без этого параметра
+        if (typeof generalConfig.gradeNotifications === 'undefined') generalConfig.gradeNotifications = true;
+        
+        generalConfig.compactGradesConfig = { ...defaultCompactConfig, ...(generalConfig.compactGradesConfig || {}) };
         function applyAccentColor() {
-            const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
+            const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'], isGlass: false, isColoredGlass: true };
+            const isGlass = config.isGlass === true;
+            const isColoredGlass = config.isColoredGlass !== false;
 
             let c1 = ACCENT_COLORS[config.colors[0]] || ACCENT_COLORS.blue;
             let c2 = config.colors[1] ? ACCENT_COLORS[config.colors[1]] : c1;
@@ -7123,7 +7606,11 @@
             if (!styleEl) {
                 styleEl = document.createElement('style');
                 styleEl.id = 'etis-custom-accent';
-                safeAppend(styleEl);
+                if (document.head) {
+                    document.head.appendChild(styleEl);
+                } else {
+                    document.documentElement.appendChild(styleEl);
+                }
             }
 
             const hexToRgba = (hex, alpha) => {
@@ -7132,19 +7619,155 @@
             };
 
             const bgAccent = config.isGradient ? `linear-gradient(135deg, ${c1}, ${c2})` : c1;
+            const bgAccentGlass = config.isGradient ? `linear-gradient(135deg, ${hexToRgba(c1, 0.65)}, ${hexToRgba(c2, 0.65)})` : hexToRgba(c1, 0.65);
+            const bgAccentGlassHover = config.isGradient ? `linear-gradient(135deg, ${hexToRgba(c1, 0.75)}, ${hexToRgba(c2, 0.75)})` : hexToRgba(c1, 0.75);
+
+            let targetStyles = '';
+            let targetHoverStyles = '';
+            let targetTextStyles = '';
+            let targetIconStyles = '';
+            let glassCapsulesCss = '';
+
+            if (isGlass) {
+                glassCapsulesCss = `
+                    .timetable-gap-capsule, .pair_info .aud a[href*="zoom"], .pair_info .aud a[href*="telemost"], 
+                    .pair_info .aud a.btn-generic-online, .kt-score-capsule, .pair-type-badge, 
+                    .subject-score-capsule, .absence-capsule, .jour-badge, .week-date-styled,
+                    .etis-preview-glass-element {
+                        backdrop-filter: blur(12px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+                    }
+                `;
+                if (isColoredGlass) {
+                    targetStyles = `
+                        background: ${bgAccentGlass} !important;
+                        backdrop-filter: blur(16px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+                        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+                        color: #ffffff !important;
+                        border: none !important;
+                    `;
+                    targetHoverStyles = `
+                        background: ${bgAccentGlassHover} !important;
+                        backdrop-filter: blur(16px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+                        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+                        transform: translateY(-1px);
+                    `;
+                    targetTextStyles = `color: #ffffff !important;`;
+                    targetIconStyles = `color: #ffffff !important; opacity: 1 !important;`;
+                } else {
+                    targetStyles = `
+                        background: var(--bg-glass-neutral) !important;
+                        backdrop-filter: blur(16px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+                        box-shadow: inset 0 0 0 1px var(--border-glass-neutral), 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+                        color: var(--color-text-primary) !important;
+                        border: none !important;
+                    `;
+                    targetHoverStyles = `
+                        background: var(--bg-glass-neutral-hover) !important;
+                        backdrop-filter: blur(16px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+                        box-shadow: inset 0 0 0 1px var(--border-glass-neutral), 0 6px 16px rgba(0, 0, 0, 0.1) !important;
+                        transform: translateY(-1px);
+                    `;
+                    targetTextStyles = `color: var(--color-text-primary) !important;`;
+                    targetIconStyles = `color: var(--color-text-primary) !important; opacity: 1 !important;`;
+                }
+            } else {
+                targetStyles = `
+                    background: var(--bg-accent) !important;
+                    border: none !important;
+                    color: #ffffff !important;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+                `;
+                targetHoverStyles = `
+                    filter: brightness(0.9) !important;
+                    transform: translateY(-1px);
+                `;
+                targetTextStyles = `color: #ffffff !important;`;
+                targetIconStyles = `color: #ffffff !important; opacity: 1 !important;`;
+            }
 
             styleEl.innerHTML = `
-                :root, [theme="light"], [theme="dark"] {
+                :root, [theme="light"] {
                     --color-accent: ${c1} !important;
                     --color-text-link: ${c1} !important;
                     --color-accent-active: ${hexToRgba(c1, 0.15)} !important;
                     --bg-accent: ${bgAccent} !important;
+                    --bg-glass-neutral: rgba(255, 255, 255, 0.6) !important;
+                    --bg-glass-neutral-hover: rgba(255, 255, 255, 0.8) !important;
+                    --border-glass-neutral: rgba(0, 0, 0, 0.1) !important;
                 }
-                .span3 > .nav.nav-tabs.nav-stacked > li.active > a, .weeks .week.current, .submenu b,
-                .answer-btn-custom, #sbmt, .gpa-capsule, .mobile-menu-btn, .timetable-toolbar .toolbar-item.is-active,
-                form.que_form #send_btn, .badge.ctl, .jour-info-group {
-                    background: var(--bg-accent) !important; border: none !important; color: #fff !important;
+                [theme="dark"] {
+                    --color-accent: ${c1} !important;
+                    --color-text-link: ${c1} !important;
+                    --color-accent-active: ${hexToRgba(c1, 0.15)} !important;
+                    --bg-accent: ${bgAccent} !important;
+                    --bg-glass-neutral: rgba(255, 255, 255, 0.12) !important;
+                    --bg-glass-neutral-hover: rgba(255, 255, 255, 0.18) !important;
+                    --border-glass-neutral: rgba(255, 255, 255, 0.1) !important;
                 }
+
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a, 
+                .weeks .week.current, .submenu b,
+                .answer-btn-custom, #sbmt, .gpa-capsule, .mobile-menu-btn, 
+                .timetable-toolbar .toolbar-item.is-active,
+                form.que_form #send_btn, .badge.ctl, .jour-info-group,
+                .settings-sidebar-btn.active, button.sync-tab.active,
+                .etis-preview-active-element {
+                    ${targetStyles}
+                }
+
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a *, 
+                .weeks .week.current *, .submenu b *,
+                .answer-btn-custom *, #sbmt *, .gpa-capsule *, .mobile-menu-btn *, 
+                .timetable-toolbar .toolbar-item.is-active *,
+                form.que_form #send_btn *, .badge.ctl *, .jour-info-group *,
+                .settings-sidebar-btn.active *, button.sync-tab.active *,
+                .etis-preview-active-element * {
+                    ${targetTextStyles}
+                }
+
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a .material-icons,
+                .answer-btn-custom .material-icons, #sbmt .material-icons, 
+                .mobile-menu-btn .material-icons, .timetable-toolbar .toolbar-item.is-active .material-icons,
+                .settings-sidebar-btn.active .material-icons, button.sync-tab.active .material-icons,
+                .etis-preview-active-element .material-icons {
+                    ${targetIconStyles}
+                }
+
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover, 
+                .weeks .week.current:hover, .submenu b:hover,
+                .answer-btn-custom:hover, #sbmt:hover, .mobile-menu-btn:hover, 
+                .timetable-toolbar .toolbar-item.is-active:hover,
+                form.que_form #send_btn:hover,
+                .settings-sidebar-btn.active:hover, button.sync-tab.active:hover {
+                    ${targetHoverStyles}
+                }
+
+                .span3 > .nav.nav-tabs.nav-stacked > li > a *,
+                .settings-sidebar-btn * {
+                    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease !important;
+                    display: inline-block;
+                }
+                
+                .span3 > .nav.nav-tabs.nav-stacked > li > a .sidebar-link-text,
+                .settings-sidebar-btn .sidebar-btn-text {
+                    display: block !important; 
+                    transform-origin: left center;
+                }
+
+                @media (hover: hover) and (pointer: fine) {
+                    .span3 > .nav.nav-tabs.nav-stacked > li > a:hover .sidebar-link-text,
+                    .span3 > .nav.nav-tabs.nav-stacked > li > a:hover .material-icons,
+                    .settings-sidebar-btn:hover .sidebar-btn-text,
+                    .settings-sidebar-btn:hover .material-icons {
+                        transform: scale(1.05) !important;
+                    }
+                }
+
                 ${config.isGradient ? `
                 .msg-sender, .msg-sender .material-icons, .file-attachment-link .material-icons, .teacher-name-link,
                 .review-dis-link, .tpr_part > a, .theme a, .logo-say-hey, .accent-stat,
@@ -7159,6 +7782,7 @@
                 #swipe-action-bubble.active-threshold.action-note, #swipe-action-bubble.active-threshold.action-add,
                 #swipe-action-bubble.active-threshold.action-note .material-icons { color: var(--color-accent) !important; }
                 `}
+                ${glassCapsulesCss}
             `;
         }
 
@@ -7242,6 +7866,117 @@
         new MutationObserver(updateBrowserNavColor).observe(document.documentElement, { attributes: true, attributeFilter: ['theme'] });
         updateBrowserNavColor();
 
+        function updateEmptyState(container, hasResults, query = '', type = 'default') {
+            let emptyEl = container.querySelector('.etis-empty-state');
+            
+            if (hasResults) {
+                if (emptyEl) emptyEl.remove();
+                return;
+            }
+
+            const isTrimester = document.body.textContent.toLowerCase().includes('триместр') || !document.body.textContent.toLowerCase().includes('семестр');
+            const termWord = isTrimester ? 'триместре' : 'семестре';
+            
+            let title = 'Ничего не нашлось';
+            let subtitle = 'Попробуйте изменить запрос или сбросить фильтры.';
+            let icon = 'search_off';
+
+            if (!query) {
+                icon = 'folder_open';
+                if (type === 'teachers') {
+                    title = 'Список преподавателей пуст';
+                    subtitle = `Похоже, в текущем ${termWord} у вас нет назначенных занятий или информация еще не обновилась.`;
+                } else if (type === 'grades') {
+                    title = 'Оценок пока нет';
+                    subtitle = `В выбранном ${termWord} еще не выставлено ни одного контрольного мероприятия.`;
+                } else if (type === 'library') {
+                    title = 'Литература не найдена';
+                    subtitle = 'В этом разделе библиотеки сейчас нет доступных книг или рекомендуемых изданий.';
+                } else if (type === 'announces') {
+                    title = 'Объявлений пока нет';
+                    subtitle = 'В этом разделе еще не опубликовано ни одного официального объявления.';
+                    icon = 'campaign';
+                } else if (type === 'messages') {
+                    title = 'Сообщений пока нет';
+                    subtitle = 'У вас нет входящих сообщений от преподавателей.';
+                    icon = 'mail';
+                } else if (type === 'journal') {
+                    title = 'Журнал пуст';
+                    subtitle = 'У вас нет доступных записей в журнале посещений.';
+                    icon = 'fact_check';
+                } else if (type === 'comments') {
+                    title = 'Комментариев пока нет';
+                    subtitle = 'Вы еще не оставили ни одного комментария по оценке качества занятий.';
+                    icon = 'forum';
+                } else if (type === 'rating') {
+                    title = 'Рейтинг пуст';
+                    subtitle = 'На данный момент статистика оценок факультетов и кафедр недоступна.';
+                    icon = 'emoji_events';
+                } else if (type === 'teacher_stats') {
+                    title = 'Статистика пуста';
+                    subtitle = 'Похоже, за последние 2 сессии по вашим дисциплинам еще нет накопленных данных.';
+                    icon = 'insights';
+                } else if (type === 'absence') {
+                    title = 'Пропусков нет';
+                    subtitle = 'За выбранный учебный период у вас нет зафиксированных пропусков занятий. Так держать!';
+                    icon = 'verified';
+                } else if (type === 'term_test') {
+                    title = 'Оценки не требуются';
+                    subtitle = 'На данный момент у вас нет дистанционных занятий, требующих оценки.';
+                    icon = 'fact_check';
+                }
+            } else {
+                subtitle = `По запросу <b>«${query}»</b> ничего не найдено. Проверьте раскладку клавиатуры или попробуйте изменить поисковый запрос.`;
+            }
+
+            if (emptyEl) {
+                emptyEl.querySelector('.etis-empty-title').textContent = title;
+                emptyEl.querySelector('.etis-empty-subtitle').innerHTML = subtitle;
+                emptyEl.querySelector('.material-icons').textContent = icon;
+                return;
+            }
+
+            emptyEl = document.createElement('div');
+            emptyEl.className = 'etis-empty-state';
+            
+            emptyEl.style.cssText = `
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: center;
+                text-align: left;
+                padding: 2.4rem !important;
+                background: var(--color-card);
+                border-radius: var(--radius-large);
+                border: 1px solid var(--color-table-border);
+                box-shadow: var(--shadow-main);
+                margin: 0 0 1.6rem 0 !important;
+                animation: fadeIn 0.25s ease-out;
+                width: 100%;
+                box-sizing: border-box;
+            `;
+            emptyEl.innerHTML = `
+                <span class="material-icons" style="font-size: 4.8rem; color: var(--color-text-secondary); opacity: 0.6; margin-bottom: 1.6rem;">${icon}</span>
+                <div class="etis-empty-title" style="font-size: 1.6rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 0.8rem;">${title}</div>
+                <div class="etis-empty-subtitle" style="font-size: 1.3rem; color: var(--color-text-secondary); max-width: 420px; line-height: 1.5;">${subtitle}</div>
+            `;
+            
+            // Позиционирование выше официальных уведомлений и ссылок статистики
+            const refChild = Array.from(container.children).find(el => 
+                el.classList.contains('etis-official-notice') || 
+                el.classList.contains('electr-description') || 
+                el.classList.contains('google-chart-wrapper') ||
+                el.classList.contains('stats-link-bottom') ||
+                el.tagName === 'P'
+            );
+
+            if (refChild) {
+                container.insertBefore(emptyEl, refChild);
+            } else {
+                container.appendChild(emptyEl);
+            }
+        }
+
         function createTooltipTriangle() {
             const xmlns = 'http://www.w3.org/2000/svg'
 
@@ -7272,6 +8007,16 @@
 
         // Запускаем при загрузке документа
         function init() {
+            if (!localStorage.getItem('etis_reborn_install_date')) {
+                localStorage.setItem('etis_reborn_install_date', Date.now());
+            }
+            setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    let timeSpent = parseInt(localStorage.getItem('etis_reborn_time_spent') || '0', 10);
+                    localStorage.setItem('etis_reborn_time_spent', timeSpent + 10);
+                }
+            }, 10000);
+
             addViewport();
             setIcon();
             stylePages();
@@ -7503,25 +8248,26 @@
 
                     let html = '';
                     history.forEach(item => {
-                        // Выделяем текущую версию, если она совпадает
                         const isCurrent = item.version === GM_info.script.version;
                         const borderStyle = isCurrent ? 'border: 2px solid var(--color-accent);' : 'border: 1px solid var(--color-table-border);';
 
                         html += `
-                            <div style="background:var(--color-card); padding:1.6rem; border-radius:12px; margin-bottom:1.2rem; text-align:left; ${borderStyle}">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-                                    <div style="display:flex; align-items:baseline; gap:8px;">
-                                        <span style="font-weight:800; font-size:1.5rem; color:var(--color-text-primary);">v${item.version}</span>
-                                        <span style="color:var(--color-text-secondary); font-size:1.2rem; font-weight:600;">от ${item.date}</span>
-                                        ${isCurrent ? '<span style="background:var(--color-accent-active); color:var(--color-accent); padding:2px 6px; border-radius:4px; font-size:1rem; font-weight:800; margin-left:4px;">ТЕКУЩАЯ</span>' : ''}
-                                    </div>
-                                    <a href="${item.url}" target="_blank" class="answer-btn-custom" style="padding: 6px 14px; font-size: 1.2rem; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; border-radius: 50px;">
-                                        <span class="material-icons" style="font-size: 16px;">file_download</span> Установить
+                            <div style="background: var(--color-card); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 1.6rem; ${borderStyle} position: relative; transition: all 0.2s; text-align: left;">
+                                <!-- Дата в правом верхнем углу -->
+                                <div style="position: absolute; top: 1.6rem; right: 1.6rem; font-size: 1.2rem; color: var(--color-text-secondary); font-weight: 600;">
+                                    ${item.date}
+                                </div>
+                                
+                                <!-- Кликабельная версия и бейдж -->
+                                <div style="margin-bottom: 1.2rem; display: flex; align-items: center; gap: 8px; padding-right: 8rem;">
+                                    <a href="${item.url}" target="_blank" style="font-size: 1.6rem; font-weight: 800; color: var(--color-accent); text-decoration: none; transition: opacity 0.2s;" title="Нажмите, чтобы установить эту версию" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                                        Версия ${item.version}
                                     </a>
+                                    ${isCurrent ? '<span style="background:var(--color-accent-active); color:var(--color-accent); padding:2px 6px; border-radius:4px; font-size:1rem; font-weight:800;">ТЕКУЩАЯ</span>' : ''}
                                 </div>
-                                <div style="font-size:1.3rem; color:var(--color-text-primary); line-height:1.5; opacity: 0.9;">
-                                    ${item.changelog}
-                                </div>
+                                
+                                <!-- Описание -->
+                                <div style="font-size: 1.3rem; color: var(--color-text-primary); line-height: 1.5; white-space: pre-wrap;">${item.changelog.trim()}</div>
                             </div>
                         `;
                     });
@@ -7615,12 +8361,14 @@
             }
 
             return mainHtml + `
-                <div style="margin-top: 2.4rem;">
-                    <button id="open-history-btn" class="settings-menu-btn" style="background: transparent; border: 1px solid var(--color-table-border); padding: 12px 16px;">
-                        <span class="material-icons" style="color: var(--color-text-secondary);">history</span>
-                        История версий
-                        <span class="material-icons chevron">chevron_right</span>
-                    </button>
+                <div class="ios-settings-group" style="margin-top: 1.6rem;">
+                    <div class="ios-settings-row" id="open-history-btn" style="cursor:pointer;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span class="material-icons" style="color:var(--color-accent);">history</span>
+                            <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">История версий</span>
+                        </div>
+                        <span class="material-icons chevron" style="color:var(--color-text-secondary);">chevron_right</span>
+                    </div>
                 </div>
             `;
         }
@@ -7670,12 +8418,40 @@
             }
 
             const toggleMenuHandler = (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 const isOpen = sidebar.classList.contains('mobile-active');
                 toggleMenu(!isOpen);
             };
 
-            menuBtn.addEventListener('click', toggleMenuHandler);
+            // Функции для добавления/снятия класса нажатия
+            const addPressed = () => menuBtn.classList.add('is-pressed');
+            const removePressed = () => menuBtn.classList.remove('is-pressed');
+
+            // Обрабатываем удержание
+            menuBtn.addEventListener('touchstart', addPressed, { passive: true });
+            menuBtn.addEventListener('mousedown', addPressed);
+
+            // Обрабатываем отпускание
+            menuBtn.addEventListener('touchend', (e) => {
+                removePressed();
+                toggleMenuHandler(e);
+            });
+            menuBtn.addEventListener('mouseup', (e) => {
+                removePressed();
+                // На десктопах / с мышью
+                if (e.pointerType === 'mouse' || !e.pointerType) {
+                    toggleMenuHandler(e);
+                }
+            });
+            
+            // Если свайпнули за пределы кнопки
+            menuBtn.addEventListener('mouseleave', removePressed);
+            menuBtn.addEventListener('touchcancel', removePressed);
+
+            menuBtn.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+            });
 
             const closeMenuHandler = (e) => {
                 e.stopPropagation();
@@ -7701,6 +8477,12 @@
                 link.addEventListener('click', (e) => {
                     if (isSidebarScrolling) {
                         e.preventDefault();
+                        return;
+                    }
+
+                    const href = link.getAttribute('href') || '';
+                    if (href.startsWith('#')) {
+                        // Не показываем бесконечную загрузку для открытия модальных окон
                         return;
                     }
 
@@ -7764,7 +8546,10 @@
                             duration = (count * 90) + ((count - 1) * 10);
                         } else {
                             const timeEl = row.querySelector('.eval');
-                            if (timeEl) startTimeStr = timeEl.textContent.trim();
+                            if (timeEl) {
+                                const match = timeEl.textContent.match(/\d{1,2}:\d{2}/);
+                                if (match) startTimeStr = match[0];
+                            }
                         }
 
                         if (!startTimeStr || startTimeStr === "00:00" || startTimeStr === "Весь день") return;
@@ -7808,7 +8593,13 @@
                                 });
                                 if (!rawPairNum) rawPairNum = numTd.textContent.trim().split(' ')[0] + ' пара';
 
-                                const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
+                                let pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
+                                if (cleanSubjectName.toLowerCase().includes('консультация')) {
+                                    const timeEl = row.querySelector('.eval');
+                                    if (timeEl) pairId += `_${timeEl.textContent.trim()}`;
+                                    const teacherEl = row.querySelector('.pair_teacher a');
+                                    if (teacherEl) pairId += `_${teacherEl.textContent.trim()}`;
+                                }
                                 let imp = JSON.parse(localStorage.getItem('etis_important_pairs_v1') || '[]');
                                 if (imp.includes(pairId)) {
                                     imp = imp.filter(id => id !== pairId);
@@ -8217,38 +9008,25 @@
                 style.innerHTML = `
                     #etis-cons-modal .settings-sidebar-btn { display: flex !important; align-items: center !important; padding: 12px 16px !important; border-radius: var(--radius-medium) !important; cursor: pointer !important; margin-bottom: 8px !important; transition: all 0.2s ease !important; border: 1px solid transparent; box-sizing: border-box; }
                     #etis-cons-modal .settings-sidebar-btn:hover { background: var(--color-table-highlight) !important; }
-                    #etis-cons-modal .settings-sidebar-btn.active { background: var(--color-accent) !important; color: var(--color-text-primary-invert) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
+                    #etis-cons-modal .settings-sidebar-btn.active { background: var(--bg-accent) !important; color: var(--color-text-primary-invert) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
                     #etis-cons-modal .settings-sidebar-btn.active .material-icons, #etis-cons-modal .settings-sidebar-btn.active .sidebar-btn-text { color: var(--color-text-primary-invert) !important; }
                     #etis-cons-modal .settings-sidebar-btn.active .chevron { display: none !important; }
 
                     .cons-email-copy { color: var(--color-text-link); cursor: pointer; text-decoration: none; transition: color 0.2s; }
                     .cons-email-copy:hover { color: var(--color-accent) !important; text-decoration: underline; }
 
-                    .copy-word-hint {
-                        color: var(--color-accent);
-                        font-weight: 800;
-                        cursor: pointer;
-                        text-decoration: underline;
-                        text-decoration-style: dashed;
-                        transition: all 0.2s;
-                        display: inline-block;
-                    }
+                    .copy-word-hint { color: var(--color-accent); font-weight: 800; cursor: pointer; text-decoration: underline; text-decoration-style: dashed; transition: all 0.2s; display: inline-block; }
 
                     #etis-cons-modal { display: flex !important; flex-direction: column !important; }
                     #etis-cons-modal .settings-layout { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
                     #etis-cons-modal .settings-content-area { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
 
-                    @media (max-width: 960px) {
-                        #etis-cons-modal .hidden-on-mobile { display: none !important; }
-                    }
+                    @media (max-width: 960px) { #etis-cons-modal .hidden-on-mobile { display: none !important; } }
 
                     #etis-cons-modal .settings-sidebar,
                     #etis-cons-modal .settings-content-scroll {
-                        flex: 1 1 auto !important;
-                        overflow-y: auto !important;
-                        -webkit-overflow-scrolling: touch !important;
-                        min-height: 0 !important;
-                        overscroll-behavior: contain !important;
+                        flex: 1 1 auto !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;
+                        min-height: 0 !important; overscroll-behavior: contain !important;
                         padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px) !important;
                     }
 
@@ -8284,18 +9062,18 @@
                         <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
                     </div>
 
-                    <div class="settings-sidebar-btn ${activeFileId === 'system_etis' ? 'active' : ''}" data-file-id="system_etis">
-                        <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'system_etis' ? '' : 'color: var(--color-text-secondary);'}">school</span>
-                        <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Расписание ЕТИС</span>
-                        <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
-                    </div>
+                    <div class="sidebar-tabs-container">
+                        <div class="settings-sidebar-btn ${activeFileId === 'system_etis' ? 'active' : ''}" data-file-id="system_etis">
+                            <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'system_etis' ? '' : 'color: var(--color-text-secondary);'}">school</span>
+                            <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Расписание ЕТИС</span>
+                            <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
+                        </div>
 
-                    <div class="settings-sidebar-btn ${activeFileId === 'upload_cons' ? 'active' : ''}" data-file-id="upload_cons">
-                        <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'upload_cons' ? '' : 'color: var(--color-text-secondary);'}">upload_file</span>
-                        <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Добавить файл</span>
-                        <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
-                    </div>
-                    <hr style="border-top: 1px solid var(--color-table-border); border-bottom: none; margin: 8px 0;">
+                        <div class="settings-sidebar-btn ${activeFileId === 'upload_cons' ? 'active' : ''}" data-file-id="upload_cons">
+                            <span class="material-icons" style="margin-right: 12px; ${activeFileId === 'upload_cons' ? '' : 'color: var(--color-text-secondary);'}">upload_file</span>
+                            <span class="sidebar-btn-text" style="flex-grow: 1; font-weight: 600;">Добавить файл</span>
+                            <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
+                        </div>
                 `;
 
                 consultationsFiles.forEach(file => {
@@ -8309,6 +9087,8 @@
                         </div>
                     `;
                 });
+                
+                sidebarHtml += `</div>`;
 
                 let contentHtml = '';
                 let headerTitle = 'Информация';
@@ -8319,13 +9099,15 @@
                     const isSystemShow = localStorage.getItem('etis_show_consultations') !== 'false';
 
                     contentHtml = `
-                        <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
+                        <div style="background: var(--color-card); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main);">
                             <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">За текущий период</div>
-                            <p style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 1.6rem; line-height: 1.5;">
+                            <p style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 0; line-height: 1.5;">
                                 Это консультации, которые система ЕТИС автоматически добавила в ваше расписание.
                             </p>
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 10px 20px; background: var(--color-card); border-radius: 50px; border: 1px solid var(--color-table-border);">
-                                <span style="font-size:1.3rem; font-weight:600; color:var(--color-text-primary);">Отображать в расписании</span>
+                        </div>
+                        <div class="ios-settings-group">
+                            <label>
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Отображать в расписании</span>
                                 <input type="checkbox" id="system-cons-toggle" class="tumbler-checkbox" ${isSystemShow ? 'checked' : ''}>
                             </label>
                         </div>
@@ -8333,13 +9115,13 @@
                 } else if (activeFileId === 'upload_cons') {
                     headerTitle = 'Загрузка расписания';
                     contentHtml = `
-                        <div style="background: var(--color-highlight); padding: 2rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
+                        <div style="background: var(--color-card); padding: 2rem; border-radius: var(--radius-large); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main);">
                             <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">Инструкция</div>
                             <p style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 2rem; line-height: 1.5;">
-                                Вы можете загрузить файл с расписанием консультаций, чтобы они были у вас под рукой и отображались в вашем расписании. Для этого зайдите в <a href="stu_ann.announces" style="color: var(--color-accent); font-weight: 800; text-decoration: none;">Объявления</a>, впишите в поиск <span class="copy-word-hint" title="Нажмите, чтобы скопировать" data-copy="консультаций">"консультаций"</span>, нажмите на кнопку "В расписание", либо скачайте его и загрузите сюда.
+                                Вы можете загрузить файл с расписанием консультаций. Зайдите в <a href="stu_ann.announces" style="color: var(--color-accent); font-weight: 800; text-decoration: none;">Объявления</a>, впишите в поиск <span class="copy-word-hint" title="Нажмите, чтобы скопировать" data-copy="консультаций">"консультаций"</span>, нажмите на кнопку "В расписание", либо скачайте DOCX файл и загрузите его сюда.
                             </p>
 
-                            <div id="cons-drop-zone" style="border: 2px dashed var(--color-accent); border-radius: var(--radius-large); padding: 4rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--color-card);">
+                            <div id="cons-drop-zone" style="border: 2px dashed var(--color-accent); border-radius: var(--radius-medium); padding: 4rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--color-card);">
                                 <span class="material-icons" style="font-size: 4rem; color: var(--color-accent); margin-bottom: 1rem;">cloud_upload</span>
                                 <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Нажмите или перетащите DOCX файл сюда</div>
                                 <div style="font-size: 1.2rem; color: var(--color-text-secondary);">Поддерживаются файлы .docx</div>
@@ -8348,21 +9130,18 @@
                         </div>
                     `;
                 } else if (activeFile) {
-                    headerTitle = 'Файл консультаций';
+                    headerTitle = activeFile.title;
                     const isFileActive = activeFile.isActive;
 
                     contentHtml = `
-                        <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem;">
-                            <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">${activeFile.title}</div>
-
-                            <div style="display: flex; gap: 1.2rem; align-items: center; flex-wrap: nowrap;">
-                                <label style="flex: 1; display:flex; align-items:center; justify-content:space-between; gap: 12px; cursor:pointer; padding: 12px 20px; background: var(--color-card); border-radius: 24px; border: 1px solid var(--color-table-border);">
-                                    <span style="font-size:1.3rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Отображать в расписании</span>
-                                    <input type="checkbox" class="tumbler-checkbox toggle-cons-file" data-id="${activeFile.id}" ${isFileActive ? 'checked' : ''}>
-                                </label>
-                                <button class="answer-btn-custom delete-cons-file" data-id="${activeFile.id}" title="Удалить" style="background: rgba(255, 59, 48, 0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255, 59, 48, 0.3) !important; box-shadow: none !important; width: 48px; height: 48px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <span class="material-icons" style="font-size: 2.2rem; margin: 0;">delete_outline</span>
-                                </button>
+                        <div class="ios-settings-group">
+                            <label>
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Отображать в расписании</span>
+                                <input type="checkbox" class="tumbler-checkbox toggle-cons-file" data-id="${activeFile.id}" ${isFileActive ? 'checked' : ''}>
+                            </label>
+                            <div class="ios-settings-row delete-cons-file" data-id="${activeFile.id}">
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-red);">Удалить файл</span>
+                                <span class="material-icons" style="color:var(--color-red);">delete_outline</span>
                             </div>
                         </div>
 
@@ -8396,7 +9175,7 @@
                                         <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary);">${t.name}</div>
                                         ${t.degree ? `<div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px; margin-bottom: 10px;">${t.degree}</div>` : '<div style="margin-bottom: 8px;"></div>'}
                                     </div>
-                                    <label style="display: ${isFileActive ? 'flex' : 'none'}; align-items:center; cursor:pointer;">
+                                    <label style="display: ${isFileActive ? 'flex' : 'none'} !important; align-items:center; cursor:pointer; margin:0; padding:0; border:none; background:transparent;">
                                         <input type="checkbox" class="tumbler-checkbox toggle-cons-teacher" data-file-id="${activeFile.id}" data-teacher-idx="${tIdx}" ${isTeacherActive ? 'checked' : ''}>
                                     </label>
                                 </div>
@@ -8421,15 +9200,17 @@
                             ${sidebarHtml}
                         </div>
                         <div class="settings-content-area ${isMainMobile ? 'hidden-on-mobile' : ''}">
-                            <div class="ui-widget-header" style="padding:16px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
-                                <div style="display:flex; align-items:center; gap:12px;">
-                                    <span class="material-icons back-modal-btn settings-mobile-header" data-back="main_menu" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
-                                    <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 250px;">${headerTitle}</span>
-                                </div>
-                                <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
-                            </div>
                             <div class="settings-content-scroll">
-                                ${contentHtml}
+                                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <span class="material-icons back-modal-btn settings-mobile-header" data-back="main_menu" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                        <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">${headerTitle}</span>
+                                    </div>
+                                    <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
+                                </div>
+                                <div style="padding: 0.8rem 0 4rem 0;">
+                                    ${contentHtml}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -8442,7 +9223,6 @@
                     btn.onclick = () => renderView(btn.getAttribute('data-file-id'));
                 });
 
-                // ЛОГИКА КОПИРОВАНИЯ СЛОВА В ИНСТРУКЦИИ
                 modal.querySelectorAll('.copy-word-hint').forEach(span => {
                     span.onclick = (e) => {
                         e.stopPropagation();
@@ -8450,10 +9230,8 @@
                         const textToCopy = span.getAttribute('data-copy');
 
                         navigator.clipboard.writeText(textToCopy).then(() => {
-                            // Визуальный фидбек внутри текста
                             span.textContent = '"скопировано"';
                             span.style.color = 'var(--color-green)';
-
                             setTimeout(() => {
                                 span.textContent = originalText;
                                 span.style.color = '';
@@ -8570,7 +9348,7 @@
                 const delBtn = modal.querySelector('.delete-cons-file');
                 if (delBtn) {
                     delBtn.onclick = (e) => {
-                        if(confirm('Удалить эту вкладку консультаций?')) {
+                        if(confirm('Удалить этот файл консультаций?')) {
                             consultationsFiles = consultationsFiles.filter(f => f.id !== e.target.getAttribute('data-id'));
                             saveConsultationsState();
                             if (typeof window.injectConsultationPairs === 'function') {
@@ -8586,6 +9364,309 @@
             };
 
             renderView(viewId);
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+                modal.classList.add('active');
+                document.body.classList.add('modal-open-body');
+            });
+        }
+
+        function openProfileModal(view = 'main') {
+            let overlay = document.getElementById('etis-profile-overlay');
+            let modal = document.getElementById('etis-profile-modal');
+
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'etis-profile-overlay';
+                overlay.className = 'analytics-overlay';
+                document.body.appendChild(overlay);
+            }
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'etis-profile-modal';
+                modal.className = 'analytics-modal';
+                document.body.appendChild(modal);
+            }
+
+            const closeAll = () => {
+                overlay.classList.remove('active');
+                modal.classList.remove('active');
+                document.body.classList.remove('modal-open-body');
+            };
+            overlay.onclick = closeAll;
+
+            const renderView = (currentView) => {
+                let cpCount = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]').length;
+                let notesObj = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{}}');
+                let notesCount = Object.keys(notesObj.specific || {}).length;
+                let gradesObj = JSON.parse(localStorage.getItem('etis_reborn_grades_snapshot_v3') || '{"grades":{}}');
+                let gradesCount = Object.keys(gradesObj.grades || {}).length;
+                let consCount = JSON.parse(localStorage.getItem('etis_consultation_files_v1') || '[]').length;
+
+                let rawName = 'Студент';
+                const nameNode = document.querySelector('.navbar-static-top .span12 > span');
+                if (nameNode) rawName = nameNode.childNodes[0].textContent.trim();
+                const nameParts = rawName.split(' ');
+                let firstName = nameParts.length > 1 ? nameParts[1] : nameParts[0];
+
+                let studentDirection = '';
+                const originalInfo = document.querySelector('.navbar-static-top .span12 > span');
+                if (originalInfo) {
+                    const spans = Array.from(originalInfo.querySelectorAll('span'));
+                    for (let span of spans) {
+                        const text = span.textContent.trim();
+                        // Отсеиваем форму обучения, курс, год и факультет, чтобы вытащить чистое направление
+                        if (/^(очная|заочная|очно-заочная|вечерняя)$/i.test(text)) continue;
+                        if (/^\d{4}(\s*г\.)?$/i.test(text)) continue;
+                        if (/курс/i.test(text)) continue;
+                        if (/факультет/i.test(text)) continue;
+                        
+                        studentDirection = text.replace(/^(направление|специальность|направленность|профиль)\s*(подготовки)?\s*["«]?/i, '')
+                                               .replace(/["»]$/, '')
+                                               .trim();
+                        if (studentDirection) break;
+                    }
+                }
+                const declinedDir = declineDirection(studentDirection);
+
+                let diplomaGpaStr = localStorage.getItem('etis_diploma_gpa');
+                let gpa = diplomaGpaStr ? parseFloat(diplomaGpaStr) : 0;
+
+                let badge = 'Новичок'; let badgeEmoji = '🌱';
+                if (gpa > 0) {
+                    if (gpa >= 4.75) { badge = 'Легенда'; badgeEmoji = '🗿'; }
+                    else if (gpa >= 4.0) { badge = 'Нормис'; badgeEmoji = '😎'; }
+                    else { badge = 'Пофигист'; badgeEmoji = '🦦'; }
+                }
+
+                // Надежный расчет дней использования
+                let installDateRaw = GM_getValue('etis_reborn_install_date') || localStorage.getItem('etis_reborn_install_date');
+                
+                if (!installDateRaw) {
+                    installDateRaw = Date.now().toString();
+                    GM_setValue('etis_reborn_install_date', installDateRaw);
+                    localStorage.setItem('etis_reborn_install_date', installDateRaw);
+                } else {
+                    // Синхронизируем хранилища, если одно из них сбросилось
+                    GM_setValue('etis_reborn_install_date', installDateRaw);
+                    localStorage.setItem('etis_reborn_install_date', installDateRaw);
+                }
+                
+                const installDate = parseInt(installDateRaw, 10);
+                const joinDateStr = new Date(installDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+                const daysPassed = Math.max(1, Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24)));
+                const totalSeconds = parseInt(localStorage.getItem('etis_reborn_time_spent') || '0', 10);
+                const minsPerDay = Math.max(1, Math.round((totalSeconds / 60) / daysPassed));
+
+                const getDaysWord = (n) => {
+                    const absN = Math.abs(n) % 100; const lastDigit = absN % 10;
+                    if (absN > 10 && absN < 20) return 'дней';
+                    if (lastDigit > 1 && lastDigit < 5) return 'дня';
+                    if (lastDigit === 1) return 'день'; return 'дней';
+                };
+                const getMinsWord = (n) => {
+                    const absN = Math.abs(n) % 100; const lastDigit = absN % 10;
+                    if (absN > 10 && absN < 20) return 'минут';
+                    if (lastDigit > 1 && lastDigit < 5) return 'минуты';
+                    if (lastDigit === 1) return 'минуте'; return 'минут';
+                };
+
+                let title = currentView === 'main' ? 'Мой профиль' : 'Мои данные';
+                if (currentView === 'menu') title = 'Профиль';
+                let contentHTML = '';
+
+                if (currentView === 'main') {
+                    contentHTML = `
+                        <div id="bento-capture-area" style="background: var(--color-body); padding: 24px; border-radius: 32px; margin: 0 auto; width: calc(100% - 16px); box-sizing: border-box;">
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; aspect-ratio: auto; background: var(--color-card); border-radius: 28px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); box-sizing: border-box;">
+                                <!-- Ячейка 1: Имя и Аватар (Крупная, 2 колонки) -->
+                                <div style="grid-column: span 2; background: var(--color-highlight); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 4px;">
+                                    <div style="width: 56px; height: 56px; background: var(--color-accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; margin-bottom: 4px; color: #fff !important; -webkit-text-fill-color: #fff !important;">
+                                        ${firstName.charAt(0)}
+                                    </div>
+                                    <div style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.2;">Я ${firstName}</div>
+                                    <div style="font-size: 1.2rem; color: var(--color-text-secondary); font-weight: 600;">Студент ПГНИУ</div>
+                                </div>
+
+                                <!-- Ячейка 2: Средний балл диплома (Высокая, 1 колонка) -->
+                                <div style="grid-column: span 1; background: var(--color-highlight); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                                    ${gpa > 0 ? `
+                                        <div style="font-size: 2.8rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1;">${gpa.toFixed(2)}</div>
+                                        <div style="font-size: 1.1rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.3;">Ср. балл<br>диплома</div>
+                                    ` : `
+                                        <div style="font-size: 1.1rem; color: var(--color-text-secondary); font-weight: 600; line-height: 1.3; text-align: center;">Зайдите в <a href="https://student.psu.ru/pls/stu_cus_et/stu.signs?p_mode=diplom#open-profile" style="color: var(--color-accent) !important; font-weight: 800; text-decoration: underline !important;">«Оценки в диплом»</a></div>
+                                    `}
+                                </div>
+                                
+                                <!-- Ячейка 3: Направление обучения (Широкая плашка, 3 колонки) -->
+                                ${declinedDir ? `
+                                <div style="grid-column: span 3; background: var(--color-highlight); border-radius: 20px; padding: 12px 20px; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; flex-wrap: wrap;">
+                                    <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">school</span>
+                                    <span style="font-size: 1.25rem; color: var(--color-text-secondary); font-weight: 500; text-transform: lowercase;">изучаю</span>
+                                    <span style="font-size: 1.45rem; font-weight: 800; color: var(--color-accent);">${declinedDir}</span>
+                                </div>
+                                ` : ''}
+
+                                <!-- Ячейка 4: Бейдж статуса (Узкая, 1 колонка) -->
+                                <div style="grid-column: span 1; background: var(--color-accent); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                                    <div style="font-size: 3.2rem; margin-bottom: 4px; line-height: 1; -webkit-text-fill-color: initial;">${badgeEmoji}</div>
+                                    <div style="font-size: 1.4rem; font-weight: 800; color: #fff !important; -webkit-text-fill-color: #fff !important; line-height: 1.2;">Я ${badge}</div>
+                                </div>
+
+                                <!-- Ячейка 5: Статистика использования (Широкая, 2 колонки) -->
+                                <div style="grid-column: span 2; background: var(--color-highlight); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 6px;">
+                                    <div style="font-size: 1.25rem; color: var(--color-text-primary); font-weight: 600; line-height: 1.4;">
+                                        Пользуюсь ЕТИС REBORN уже <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-accent);">${daysPassed} ${getDaysWord(daysPassed)}</span> по <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-accent);">${minsPerDay} ${getMinsWord(minsPerDay)}</span> в день
+                                    </div>
+                                </div>
+                        </div>
+                    `;
+                } else if (currentView === 'data') {
+                    const dataRow = (rowTitle, count, key) => `
+                        <div class="ios-settings-row" style="cursor: default !important;">
+                            <div>
+                                <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">${rowTitle}</div>
+                                <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px;">Сохранено записей: ${count}</div>
+                            </div>
+                            <button class="answer-btn-custom clear-data-btn" data-key="${key}" style="background: rgba(255,59,48,0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important; padding: 6px 12px; font-size: 1.2rem;">
+                                Очистить
+                            </button>
+                        </div>
+                    `;
+                    contentHTML = `
+                        <div class="ios-settings-group">
+                            <div class="ios-settings-row" style="cursor: default !important;">
+                                <div>
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Дата присоединения</div>
+                                    <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px;">Скрипт установлен: ${joinDateStr}</div>
+                                </div>
+                            </div>
+                            ${dataRow('Свои пары', cpCount, 'etis_custom_pairs_v1')}
+                            ${dataRow('Заметки и ДЗ', notesCount, 'etis_subject_notes_v2')}
+                            ${dataRow('История оценок', gradesCount, 'etis_reborn_grades_snapshot_v3')}
+                            ${dataRow('Файлы консультаций', consCount, 'etis_consultation_files_v1')}
+                        </div>
+                        <div style="font-size: 1.2rem; color: var(--color-text-secondary); line-height: 1.5; text-align: left; padding: 0 4px;">
+                            Удаление очистит кэш скрипта в браузере. Данные начнут собираться заново при посещении соответствующих страниц.
+                        </div>
+                    `;
+                }
+
+                const isMainMobile = currentView === 'menu';
+                const showBackBtnOnPC = currentView !== 'menu' && currentView !== 'main';
+                const backBtnClass = showBackBtnOnPC ? 'back-modal-btn' : 'back-modal-btn settings-mobile-header';
+                const backTarget = window.innerWidth <= 960 ? 'menu' : 'main';
+
+                // Иконка "Поделиться" встраивается прямо в шапку рядом с закрытием
+                const shareBtnHtml = currentView === 'main' ? `
+                    <button id="share-bento-btn" style="background:transparent!important; border:none!important; box-shadow:none!important; padding:0!important; margin:0!important; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                        <span class="material-icons" style="color:var(--color-text-secondary); font-size:24px; transition:color 0.2s;">ios_share</span>
+                    </button>
+                ` : '';
+
+                modal.innerHTML = `
+                    <div class="settings-layout">
+                        <div class="settings-sidebar ${!isMainMobile ? 'hidden-on-mobile' : ''}">
+                            <div class="desktop-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary);">Профиль</div>
+                            <div class="mobile-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary); display:flex; justify-content:space-between; align-items:center;">
+                                Профиль
+                                <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
+                            </div>
+
+                            <div class="sidebar-tabs-container">
+                                <div class="settings-sidebar-btn ${currentView === 'main' ? 'active' : ''}" data-target="main">
+                                    <span class="material-icons">account_circle</span><span class="sidebar-btn-text">Мой профиль</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                                <div class="settings-sidebar-btn ${currentView === 'data' ? 'active' : ''}" data-target="data">
+                                    <span class="material-icons">storage</span><span class="sidebar-btn-text">Мои данные</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-content-area ${isMainMobile ? 'hidden-on-mobile' : ''}">
+                            <div class="settings-content-scroll">
+                                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <span class="material-icons ${backBtnClass}" data-back="${backTarget}" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                        <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">${title}</span>
+                                    </div>
+                                    <div style="display:flex; align-items:center; gap:16px;">
+                                        ${shareBtnHtml}
+                                        <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
+                                    </div>
+                                </div>
+                                <div style="padding: 0.8rem 0 4rem 0;">
+                                    ${contentHTML}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                modal.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = closeAll);
+                modal.querySelectorAll('.back-modal-btn').forEach(btn => btn.onclick = () => renderView(btn.getAttribute('data-back')));
+                modal.querySelectorAll('.settings-sidebar-btn').forEach(btn => {
+                    btn.onclick = () => renderView(btn.getAttribute('data-target'));
+                });
+
+                if (currentView === 'main') {
+                    const shareBtn = modal.querySelector('#share-bento-btn');
+                    if (shareBtn) {
+                        shareBtn.onclick = (e) => {
+                            e.preventDefault(); e.stopPropagation();
+                            const bIcon = shareBtn.querySelector('.material-icons');
+                            const origIcon = bIcon.textContent;
+                            bIcon.textContent = 'sync'; bIcon.style.animation = 'spin 1s linear infinite';
+                            bIcon.style.color = 'var(--color-accent)';
+                            const targetEl = document.getElementById('bento-capture-area');
+                            
+                            const executeShare = () => {
+                                let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
+                                if (!h2c) {
+                                    bIcon.textContent = 'error'; bIcon.style.animation = 'none'; bIcon.style.color = 'var(--color-red)';
+                                    setTimeout(() => { bIcon.textContent = origIcon; bIcon.style.color = 'var(--color-text-secondary)'; }, 2000);
+                                    return;
+                                }
+                                targetEl.style.borderRadius = '0';
+                                h2c(targetEl, { scale: 3, useCORS: true, backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() }).then(canvas => {
+                                    targetEl.style.borderRadius = '32px';
+                                    canvas.toBlob(blob => {
+                                        const file = new File([blob], 'EtisProfile.png', { type: 'image/png' });
+                                        if (window.innerWidth <= 960 && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                            navigator.share({ files: [file], title: 'Мой профиль ЕТИС' }).catch(()=>{}); 
+                                            bIcon.textContent = origIcon; bIcon.style.animation = 'none'; bIcon.style.color = 'var(--color-text-secondary)';
+                                        } else {
+                                            const link = document.createElement('a'); link.download = 'EtisProfile.png'; link.href = URL.createObjectURL(blob); link.click();
+                                            URL.revokeObjectURL(link.href);
+                                            bIcon.textContent = 'check'; bIcon.style.animation = 'none'; bIcon.style.color = 'var(--color-green)';
+                                            setTimeout(() => { bIcon.textContent = origIcon; bIcon.style.color = 'var(--color-text-secondary)'; }, 2000);
+                                        }
+                                    }, 'image/png');
+                                });
+                            };
+
+                            if (typeof html2canvas === 'undefined' && !window.html2canvas) {
+                                const script = document.createElement('script'); script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                                script.onload = () => executeShare(); document.head.appendChild(script);
+                            } else { executeShare(); }
+                        };
+                    }
+                }
+
+                if (currentView === 'data') {
+                    modal.querySelectorAll('.clear-data-btn').forEach(btn => {
+                        btn.onclick = () => {
+                            if (confirm('Очистить эти данные?')) {
+                                localStorage.removeItem(btn.getAttribute('data-key'));
+                                renderView('data'); 
+                            }
+                        };
+                    });
+                }
+            };
+
+            renderView(window.innerWidth <= 960 ? 'menu' : 'main');
+            
             requestAnimationFrame(() => {
                 overlay.classList.add('active');
                 modal.classList.add('active');
@@ -8613,37 +9694,41 @@
                 overlay.classList.remove('active');
                 modal.classList.remove('active');
                 document.body.classList.remove('modal-open-body');
-
-                if (requiresReloadOnClose) {
-                    setTimeout(() => window.location.reload(), 300);
-                }
+                if (requiresReloadOnClose) setTimeout(() => window.location.reload(), 300);
             };
             overlay.onclick = closeAll;
 
             const renderView = (currentView) => {
-                // На ПК при открытии 'main' сразу показываем расписание
                 if (currentView === 'main' && window.innerWidth > 960) currentView = 'timetable';
 
-                let title = '';
-                let contentHTML = '';
-                let backTarget = 'main';
+                // Сохраняем текущую позицию скролла перед обновлением HTML
+                const scrollContainer = modal.querySelector('.settings-content-scroll');
+                const savedScroll = scrollContainer ? scrollContainer.scrollTop : 0;
 
-                // --- КОНТЕНТ ВКЛАДОК ---
+                let title = ''; let contentHTML = ''; let backTarget = 'main';
+
                 if (currentView === 'general') {
                     title = 'Общие';
                     contentHTML = `
-                        <div style="margin: 0;">
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                        <div class="ios-settings-group">
+                            <label class="pc-only-setting">
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Умный сайдбар</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Фиксация активной вкладки при выходе за пределы экрана</span>
+                                </div>
+                                <input type="checkbox" id="setting-smart-sidebar" class="tumbler-checkbox" ${generalConfig.smartSidebar !== false ? 'checked' : ''}>
+                            </label>
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Генерация QR-кода</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Создавать QR-код при экспорте онлайн-занятия</span>
                                 </div>
                                 <input type="checkbox" id="setting-generate-qr" class="tumbler-checkbox" ${generalConfig.generateQR ? 'checked' : ''}>
                             </label>
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition);">
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Вотермарка на скриншотах</span>
-                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Даёт возможность поделиться сайтом с установкой расширения.</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Даёт возможность поделиться сайтом с установкой расширения</span>
                                 </div>
                                 <input type="checkbox" id="setting-watermark" class="tumbler-checkbox" ${generalConfig.watermark ? 'checked' : ''}>
                             </label>
@@ -8652,52 +9737,50 @@
                 } else if (currentView === 'timetable') {
                     title = 'Расписание';
                     contentHTML = `
-                        <div style="margin: 0;">
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                        <div class="ios-settings-group">
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Окна</span>
-                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Отображение количества свободных пар между занятиями</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Показывать количество свободных пар между занятиями</span>
                                 </div>
                                 <input type="checkbox" id="setting-show-gaps" class="tumbler-checkbox" ${generalConfig.showGaps ? 'checked' : ''}>
                             </label>
-                            <div id="gaps-custom-wrapper" style="display: ${generalConfig.showGaps ? 'block' : 'none'};">
-                                <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
-                                    <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
-                                        <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Окна между своими парами</span>
-                                        <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Рассчитывать окна для консультаций и внешних календарей</span>
-                                    </div>
-                                    <input type="checkbox" id="setting-show-gaps-custom" class="tumbler-checkbox" ${generalConfig.showGapsCustom ? 'checked' : ''}>
-                                </label>
-                            </div>
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                            <label id="gaps-custom-wrapper" style="display: ${generalConfig.showGaps ? 'flex' : 'none'} !important;">
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Окна между своими парами</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Рассчитывать окна для консультаций и внешних календарей</span>
+                                </div>
+                                <input type="checkbox" id="setting-show-gaps-custom" class="tumbler-checkbox" ${generalConfig.showGapsCustom ? 'checked' : ''}>
+                            </label>
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Скрывать выходные дни</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Убирает из расписания пустые дни без пар</span>
                                 </div>
                                 <input type="checkbox" id="setting-hide-days" class="tumbler-checkbox" ${generalConfig.hideDaysOff ? 'checked' : ''}>
                             </label>
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Затемнение прошедших пар</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Делает прошедшие занятия тусклыми</span>
                                 </div>
                                 <input type="checkbox" id="setting-dim-pairs" class="tumbler-checkbox" ${generalConfig.dimPastPairs ? 'checked' : ''}>
                             </label>
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Компактные аудитории</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">«107/5» вместо «ауд. 107, к. 5, э. 1»</span>
                                 </div>
                                 <input type="checkbox" id="setting-short-aud" class="tumbler-checkbox" ${generalConfig.shortAudFormat ? 'checked' : ''}>
                             </label>
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Даты слева</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Писать дату рядом с днем недели, а не в правом углу</span>
                                 </div>
                                 <input type="checkbox" id="setting-dates-left" class="tumbler-checkbox" ${generalConfig.datesLeft ? 'checked' : ''}>
                             </label>
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition);">
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Показывать Воскресенье</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Добавляет 7-й день недели в конец списка</span>
@@ -8709,27 +9792,34 @@
                 } else if (currentView === 'grades') {
                     title = 'Оценки';
                     contentHTML = `
-                        <div style="margin: 0;">
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 12px;">
+                        <div class="ios-settings-group">
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Уведомления</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Всплывающие окна при изменении баллов</span>
+                                </div>
+                                <input type="checkbox" id="setting-grade-notifs" class="tumbler-checkbox" ${generalConfig.gradeNotifications !== false ? 'checked' : ''}>
+                            </label>
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Абсолютные баллы</span>
-                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Отображать "из 100" в капсуле над таблицей вместо суммы макс. баллов</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Отображать "из 100" над таблицей вместо макс. баллов</span>
                                 </div>
                                 <input type="checkbox" id="setting-abs-scores" class="tumbler-checkbox" ${generalConfig.absoluteScores ? 'checked' : ''}>
                             </label>
-                            <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: ${generalConfig.compactGrades ? '8px' : '0'};">
+                            <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Компактные оценки</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Скрывает лишние столбцы в таблицах с оценками</span>
                                 </div>
                                 <input type="checkbox" id="setting-compact-grades" class="tumbler-checkbox" ${generalConfig.compactGrades ? 'checked' : ''}>
                             </label>
-                            <div id="compact-settings-btn-wrapper" style="display:${generalConfig.compactGrades ? 'block' : 'none'};">
-                                <button class="settings-menu-btn" data-target="compact_grades_settings" style="width: 100%; background: transparent; border: 1px solid var(--color-table-border);">
-                                    <span class="material-icons" style="color: var(--color-text-secondary);">view_column</span>
-                                    Настроить колонки
-                                    <span class="material-icons chevron">chevron_right</span>
-                                </button>
+                            <div class="ios-settings-row" id="compact-settings-btn-wrapper" style="display:${generalConfig.compactGrades ? 'flex' : 'none'} !important;" data-target="compact_grades_settings">
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons" style="color:var(--color-blue);">view_column</span>
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Настроить колонки</span>
+                                </div>
+                                <span class="material-icons chevron" style="color:var(--color-text-secondary);">chevron_right</span>
                             </div>
                         </div>
                     `;
@@ -8738,7 +9828,7 @@
                     backTarget = 'grades';
                     const cfg = generalConfig.compactGradesConfig;
                     const makeToggle = (id, label, desc, checked) => `
-                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition); margin-bottom: 8px;">
+                        <label>
                             <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">${label}</span>
                                 <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">${desc}</span>
@@ -8747,8 +9837,8 @@
                         </label>
                     `;
                     contentHTML = `
-                        <div style="margin: 0;">
-                            <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-bottom: 1.6rem; padding: 0 4px; line-height: 1.4;">Выберите, какие столбцы оставить видимыми (<b>Тема</b> и <b>Оценка</b> отображаются всегда):</div>
+                        <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-bottom: 1.2rem; padding: 0 4px; line-height: 1.4;">Выберите, какие столбцы оставить видимыми (<b>Тема</b> и <b>Оценка</b> отображаются всегда):</div>
+                        <div class="ios-settings-group">
                             ${makeToggle('cfg-workType', 'Вид работы', 'Лек, практ, лаб, сам', cfg.showWorkType)}
                             ${makeToggle('cfg-controlType', 'Вид контроля', 'Итоговое или текущее КМ', cfg.showControlType)}
                             ${makeToggle('cfg-passScore', 'Проходной балл', 'Минимум для зачета', cfg.showPassScore)}
@@ -8757,35 +9847,127 @@
                             ${makeToggle('cfg-teacher', 'Преподаватель', 'ФИО преподавателя', cfg.showTeacher)}
                         </div>
                     `;
+                } else if (currentView === 'theme_settings') {
+                    title = 'Тема интерфейса';
+                    backTarget = 'appearance';
+                    
+                    const makeThemeRow = (id, icon, label, isActive) => `
+                        <div class="ios-settings-row theme-option-row" data-theme="${id}" style="cursor:pointer;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span class="material-icons" style="color:${isActive ? 'var(--color-accent)' : 'var(--color-text-secondary)'};">${icon}</span>
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">${label}</span>
+                            </div>
+                            ${isActive ? `<span class="material-icons" style="color:var(--color-accent);">check</span>` : ''}
+                        </div>
+                    `;
+                    
+                    contentHTML = `
+                        <div class="ios-settings-group">
+                            ${makeThemeRow('auto', 'brightness_auto', 'Системная', theme === 'auto')}
+                            ${makeThemeRow('light', 'light_mode', 'Светлая', theme === 'light')}
+                            ${makeThemeRow('dark', 'dark_mode', 'Темная', theme === 'dark')}
+                        </div>
+                    `;
                 } else if (currentView === 'appearance') {
                     title = 'Внешний вид';
                     let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
-                    const getHex = (key) => ACCENT_COLORS[key] || ACCENT_COLORS.blue;
-                    const c1 = getHex(config.colors[0]);
-                    const c2 = config.colors[1] ? getHex(config.colors[1]) : c1;
-                    const currentPreviewBg = config.isGradient ? `linear-gradient(135deg, ${c1}, ${c2})` : c1;
+                    
+                    let themeLabel = 'Системная';
+                    if (theme === 'light') themeLabel = 'Светлая';
+                    if (theme === 'dark') themeLabel = 'Темная';
 
                     contentHTML = `
-                        <div class="appearance-section">
-                            <div class="appearance-title">Тема интерфейса</div>
-                            <div class="theme-selector-group">
-                                <button class="theme-btn ${theme === 'auto' ? 'active' : ''}" data-theme="auto" title="Системная"><span class="material-icons">brightness_auto</span></button>
-                                <button class="theme-btn ${theme === 'light' ? 'active' : ''}" data-theme="light" title="Светлая"><span class="material-icons">light_mode</span></button>
-                                <button class="theme-btn ${theme === 'dark' ? 'active' : ''}" data-theme="dark" title="Темная"><span class="material-icons">dark_mode</span></button>
+                        <div class="ios-settings-group" style="margin-bottom: 3.2rem;">
+                            <div class="ios-settings-row" data-target="theme_settings" style="cursor:pointer;">
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons" style="color:var(--color-accent);">palette</span>
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Тема интерфейса</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:4px;">
+                                    <span style="font-size:1.4rem; color:var(--color-text-secondary);">${themeLabel}</span>
+                                    <span class="material-icons chevron" style="color:var(--color-text-secondary);">chevron_right</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="appearance-section" style="margin-bottom: 0;">
-                            <div class="appearance-title">Цветовой акцент</div>
-                            <div class="color-picker-controls-row">
-                                <div class="color-picker-toggle-wrap" style="background: ${currentPreviewBg}">
-                                    <span>Градиент</span>
-                                    <input type="checkbox" id="grad-toggle" class="tumbler-checkbox" ${config.isGradient ? 'checked' : ''}>
+                        
+                        <div class="appearance-title">Настройки акцента</div>
+                        <div class="ios-settings-group">
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Градиент</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Использовать два цвета</span>
                                 </div>
-                                <button id="random-color-btn" class="color-picker-random-btn" title="Случайные цвета"><span class="material-icons">casino</span></button>
+                                <input type="checkbox" id="grad-toggle" class="tumbler-checkbox" ${config.isGradient ? 'checked' : ''}>
+                            </label>
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Эффект стекла</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Размытие для капсул и кнопок</span>
+                                </div>
+                                <input type="checkbox" id="glass-toggle" class="tumbler-checkbox" ${config.isGlass ? 'checked' : ''}>
+                            </label>
+                            <label style="display: ${config.isGlass ? 'flex' : 'none'} !important;" id="colored-glass-wrapper">
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Цветное стекло</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Заливать капсулы выбранным цветом</span>
+                                </div>
+                                <input type="checkbox" id="colored-glass-toggle" class="tumbler-checkbox" ${config.isColoredGlass !== false ? 'checked' : ''}>
+                            </label>
+                        </div>
+                        
+                        <div class="appearance-title" style="margin-bottom: 1.2rem;">Цветовая палитра</div>
+                        <div class="ios-settings-group" style="margin-bottom: 3.2rem;">
+                            <div class="ios-settings-row" style="padding: 1.6rem; cursor: default; justify-content: center;">
+                                <div class="color-picker-grid" id="color-grid" style="margin: 0; width: 100%;"></div>
                             </div>
-                            <div class="color-picker-grid" id="color-grid"></div>
+                            <div class="ios-settings-row" id="random-color-row" style="cursor: pointer;">
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons" style="color:var(--color-text-secondary);">casino</span>
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Случайные цвета</span>
+                                </div>
+                                <span class="material-icons chevron" style="color:var(--color-text-secondary);">chevron_right</span>
+                            </div>
+                        </div>
+
+                        <!-- ИНТЕРАКТИВНЫЙ БЛОК ПРЕДПОКАЗА ИНТЕРФЕЙСА -->
+                        <div class="appearance-title" style="margin-bottom: 1.2rem;">Предпоказ</div>
+                        <div id="accent-preview-box" style="
+                            border: 1px solid var(--color-table-border);
+                            background: var(--color-card);
+                            border-radius: var(--radius-large);
+                            padding: 1.6rem;
+                            display: flex;
+                            flex-direction: column;
+                            gap: 1.2rem;
+                            width: 100%;
+                            box-sizing: border-box;
+                            box-shadow: var(--shadow-main);
+                            overflow: hidden;
+                        ">
+                            <!-- Интеграция класса .etis-preview-active-element для элемента меню -->
+                            <div class="etis-preview-active-element" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-radius: var(--radius-small); font-weight: 700; transition: background 0.3s, color 0.3s;">
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="material-icons" style="font-size: 1.8rem; transition: color 0.3s;">account_circle</span>
+                                    <span style="font-size: 1.2rem;">Мой профиль</span>
+                                </div>
+                                <span class="material-icons" style="font-size: 1.6rem; transition: color 0.3s;">chevron_right</span>
+                            </div>
+                            <!-- Интеграция классов .etis-preview-active-element и .etis-preview-glass-element для вкладок -->
+                            <div style="display: flex; gap: 8px;">
+                                <div class="etis-preview-active-element" style="padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.1rem; font-weight: 700; transition: background 0.3s, box-shadow 0.3s;">Активный</div>
+                                <div class="etis-preview-glass-element" style="background: var(--color-highlight); color: var(--color-text-primary); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.1rem; font-weight: 600; border: 1px solid var(--color-table-border); transition: backdrop-filter 0.3s;">Обычный</div>
+                            </div>
+                            <!-- Карточка-уведомление -->
+                            <div style="display: flex; align-items: center; justify-content: space-between; background: var(--color-highlight); padding: 1.2rem; border-radius: var(--radius-medium);">
+                                <div style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
+                                    <span style="font-size: 1.2rem; font-weight: 700; color: var(--color-text-primary);">Интерфейс</span>
+                                    <span style="font-size: 1rem; color: var(--color-text-secondary);">Цветные акценты и градиенты</span>
+                                </div>
+                                <span class="material-icons" style="color: var(--color-accent); font-size: 1.8rem; transition: color 0.2s;">done</span>
+                            </div>
                         </div>
                     `;
+                
                 } else if (currentView === 'version') {
                     title = 'Обновление';
                     contentHTML = `<div id="version-content-wrapper"></div>`;
@@ -8795,12 +9977,13 @@
                     contentHTML = `<div id="version-history-list"><div style="text-align:center; padding: 3rem 0; color:var(--color-text-secondary);"><span class="material-icons" style="animation:spin 1s linear infinite; font-size: 32px;">sync</span></div></div>`;
                 }
 
-                // --- СБОРКА HTML МОДАЛКИ (Split-Layout) ---
                 const isMainMobile = currentView === 'main';
+                const showBackBtnOnPC = backTarget !== 'main';
+                const backBtnClass = showBackBtnOnPC ? 'back-modal-btn' : 'back-modal-btn settings-mobile-header';
+
 
                 modal.innerHTML = `
                     <div class="settings-layout">
-                        <!-- САЙДБАР (На мобильных виден только если main) -->
                         <div class="settings-sidebar ${!isMainMobile ? 'hidden-on-mobile' : ''}">
                             <div class="desktop-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary);">Настройки</div>
                             <div class="mobile-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary); display:flex; justify-content:space-between; align-items:center;">
@@ -8808,43 +9991,50 @@
                                 <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
                             </div>
 
-                            <div class="settings-sidebar-btn ${currentView === 'general' ? 'active' : ''}" data-target="general">
-                                <span class="material-icons">settings</span><span class="sidebar-btn-text">Общие</span><span class="material-icons chevron">chevron_right</span>
-                            </div>
-                            <div class="settings-sidebar-btn ${currentView === 'timetable' ? 'active' : ''}" data-target="timetable">
-                                <span class="material-icons">calendar_today</span><span class="sidebar-btn-text">Расписание</span><span class="material-icons chevron">chevron_right</span>
-                            </div>
-                            <div class="settings-sidebar-btn ${currentView === 'grades' ? 'active' : ''}" data-target="grades">
-                                <span class="material-icons">analytics</span><span class="sidebar-btn-text">Оценки</span><span class="material-icons chevron">chevron_right</span>
-                            </div>
-                            <div class="settings-sidebar-btn ${currentView === 'appearance' ? 'active' : ''}" data-target="appearance">
-                                <span class="material-icons">palette</span><span class="sidebar-btn-text">Внешний вид</span><span class="material-icons chevron">chevron_right</span>
-                            </div>
-                            <div class="settings-sidebar-btn ${currentView === 'version' || currentView === 'history' ? 'active' : ''}" data-target="version">
-                                <span class="material-icons">system_update</span><span class="sidebar-btn-text">Обновление</span>${updateState.hasUpdate ? '<span class="badge-point"></span>' : ''}<span class="material-icons chevron">chevron_right</span>
+                            <div class="sidebar-tabs-container">
+                                <div class="settings-sidebar-btn ${currentView === 'general' ? 'active' : ''}" data-target="general">
+                                    <span class="material-icons">settings</span><span class="sidebar-btn-text">Общие</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                                <div class="settings-sidebar-btn ${currentView === 'timetable' ? 'active' : ''}" data-target="timetable">
+                                    <span class="material-icons">calendar_today</span><span class="sidebar-btn-text">Расписание</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                                <div class="settings-sidebar-btn ${currentView === 'grades' ? 'active' : ''}" data-target="grades">
+                                    <span class="material-icons">analytics</span><span class="sidebar-btn-text">Оценки</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                                <div class="settings-sidebar-btn ${currentView === 'appearance' ? 'active' : ''}" data-target="appearance">
+                                    <span class="material-icons">palette</span><span class="sidebar-btn-text">Внешний вид</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                                <div class="settings-sidebar-btn ${currentView === 'version' || currentView === 'history' ? 'active' : ''}" data-target="version">
+                                    <span class="material-icons">system_update</span><span class="sidebar-btn-text">Обновление</span>${updateState.hasUpdate ? '<span class="badge-point"></span>' : ''}<span class="material-icons chevron">chevron_right</span>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- КОНТЕНТ (На мобильных скрыт если main) -->
                         <div class="settings-content-area ${isMainMobile ? 'hidden-on-mobile' : ''}">
-                            <!-- Шапка контента -->
-                            <div class="ui-widget-header" style="padding:16px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
-                                <div style="display:flex; align-items:center; gap:12px;">
-                                    <span class="material-icons back-modal-btn settings-mobile-header" data-back="${backTarget}" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
-                                    <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">${title}</span>
-                                </div>
-                                <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
-                            </div>
-
-                            <!-- Сам контент -->
                             <div class="settings-content-scroll">
-                                ${contentHTML}
+                                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <span class="material-icons ${backBtnClass}" data-back="${backTarget}" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                        <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">${title}</span>
+                                    </div>
+                                    <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
+                                </div>
+                                <div style="padding: 0.8rem 0 4rem 0;">
+                                    ${contentHTML}
+                                </div>
                             </div>
                         </div>
                     </div>
                 `;
 
-                // --- СОБЫТИЯ И ЛОГИКА ---
+                // Восстановление позиции прокрутки после того, как браузер полностью пересчитает высоты элементов
+                setTimeout(() => {
+                    const restoredScroll = modal.querySelector('.settings-content-scroll');
+                    if (restoredScroll && savedScroll > 0) {
+                        restoredScroll.scrollTop = savedScroll;
+                    }
+                }, 0);
+
                 modal.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = closeAll);
                 modal.querySelectorAll('.back-modal-btn').forEach(btn => {
                     btn.onclick = function() { renderView(this.getAttribute('data-back')); };
@@ -8852,56 +10042,43 @@
                 modal.querySelectorAll('.settings-sidebar-btn').forEach(btn => {
                     btn.onclick = () => renderView(btn.getAttribute('data-target'));
                 });
-
-                // Подключение кнопок внутренних страниц
-                modal.querySelectorAll('.settings-menu-btn[data-target]').forEach(btn => {
-                    btn.onclick = () => renderView(btn.getAttribute('data-target'));
+                modal.querySelectorAll('.ios-settings-row[data-target]').forEach(row => {
+                    row.onclick = () => renderView(row.getAttribute('data-target'));
                 });
 
-                // Обработчики чекбоксов
                 if (currentView === 'general') {
-                    modal.querySelector('#setting-watermark').onchange = (e) => {
-                        generalConfig.watermark = e.target.checked;
-                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                    };
-                    modal.querySelector('#setting-generate-qr').onchange = (e) => {
-                        generalConfig.generateQR = e.target.checked;
-                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                    };
+                    modal.querySelector('#setting-watermark').onchange = (e) => { generalConfig.watermark = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); };
+                    modal.querySelector('#setting-generate-qr').onchange = (e) => { generalConfig.generateQR = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); };
+                    
+                    const sidebarToggle = modal.querySelector('#setting-smart-sidebar');
+                    if (sidebarToggle) {
+                        sidebarToggle.onchange = (e) => {
+                            generalConfig.smartSidebar = e.target.checked;
+                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                            applySmartSidebar();
+                        };
+                    }
+
                 } else if (currentView === 'timetable') {
                     modal.querySelector('#setting-show-gaps').onchange = (e) => {
                         generalConfig.showGaps = e.target.checked;
                         const wrap = modal.querySelector('#gaps-custom-wrapper');
-                        if (wrap) wrap.style.display = e.target.checked ? 'block' : 'none';
+                        if (wrap) wrap.style.setProperty('display', e.target.checked ? 'flex' : 'none', 'important');
                         localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                         if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                     };
-                    modal.querySelector('#setting-show-gaps-custom').onchange = (e) => {
-                        generalConfig.showGapsCustom = e.target.checked;
-                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
-                    };
+                    modal.querySelector('#setting-show-gaps-custom').onchange = (e) => { generalConfig.showGapsCustom = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable(); };
                     modal.querySelector('#setting-hide-days').onchange = (e) => { generalConfig.hideDaysOff = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyHideDaysOff) window.applyHideDaysOff(); };
                     modal.querySelector('#setting-dim-pairs').onchange = (e) => { generalConfig.dimPastPairs = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyDimming) window.applyDimming(); };
                     modal.querySelector('#setting-short-aud').onchange = (e) => { generalConfig.shortAudFormat = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
                     modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
                     modal.querySelector('#setting-show-sunday').onchange = (e) => { generalConfig.showSunday = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
                 } else if (currentView === 'grades') {
-                    modal.querySelector('#setting-abs-scores').onchange = (e) => {
-                        generalConfig.absoluteScores = e.target.checked;
-                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        requiresReloadOnClose = true;
-                    };
+                    modal.querySelector('#setting-grade-notifs').onchange = (e) => { generalConfig.gradeNotifications = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); };
+                    modal.querySelector('#setting-abs-scores').onchange = (e) => { generalConfig.absoluteScores = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
                     modal.querySelector('#setting-compact-grades').onchange = (e) => {
                         generalConfig.compactGrades = e.target.checked;
-                        const wrapper = modal.querySelector('#compact-settings-btn-wrapper');
-                        if (e.target.checked) {
-                            wrapper.style.display = 'block';
-                            wrapper.previousElementSibling.style.marginBottom = '8px';
-                        } else {
-                            wrapper.style.display = 'none';
-                            wrapper.previousElementSibling.style.marginBottom = '0';
-                        }
+                        modal.querySelector('#compact-settings-btn-wrapper').style.setProperty('display', e.target.checked ? 'flex' : 'none', 'important');
                         localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                         requiresReloadOnClose = true;
                     };
@@ -8919,47 +10096,114 @@
                             requiresReloadOnClose = true;
                         }
                     });
+                } else if (currentView === 'theme_settings') {
+                    modal.querySelectorAll('.theme-option-row').forEach(row => {
+                        row.onclick = () => {
+                            theme = row.getAttribute('data-theme'); 
+                            localStorage.setItem('theme', theme);
+                            if (theme === 'auto') setSystemThemeDetection();
+                            else { removeSystemThemeDetection(); document.documentElement.setAttribute('theme', theme); }
+                            renderView('theme_settings');
+                        };
+                    });
                 } else if (currentView === 'appearance') {
                     let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
                     if (window._etisTargetIndex === undefined) window._etisTargetIndex = 0;
 
-                    modal.querySelectorAll('.theme-btn').forEach(btn => {
-                        btn.onclick = () => {
-                            theme = btn.getAttribute('data-theme'); localStorage.setItem('theme', theme);
-                            if (theme === 'auto') setSystemThemeDetection();
-                            else { removeSystemThemeDetection(); document.documentElement.setAttribute('theme', theme); }
-                            modal.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active');
-                        };
-                    });
-
                     const grid = modal.querySelector('#color-grid');
+
+                    // Функция для локального обновления классов выбранных цветов в DOM
+                    const updateColorGridSelection = (gridEl, currentConfig) => {
+                        gridEl.querySelectorAll('.color-picker-circle').forEach(circle => {
+                            const colorKey = circle.getAttribute('data-color-key');
+                            circle.classList.remove('selected');
+                            circle.innerHTML = '';
+                            
+                            const selectedIndex = currentConfig.colors.indexOf(colorKey);
+                            if (selectedIndex !== -1) {
+                                circle.classList.add('selected');
+                                circle.innerHTML = currentConfig.isGradient 
+                                    ? (selectedIndex + 1).toString() 
+                                    : '<span class="material-icons" style="font-size: 20px;">check</span>';
+                            }
+                        });
+                    };
+
                     COLOR_ORDER.forEach(colorKey => {
-                        const circle = document.createElement('div'); circle.className = 'color-picker-circle'; circle.style.backgroundColor = ACCENT_COLORS[colorKey];
+                        const circle = document.createElement('div'); 
+                        circle.className = 'color-picker-circle'; 
+                        circle.style.backgroundColor = ACCENT_COLORS[colorKey];
+                        circle.setAttribute('data-color-key', colorKey); 
+
                         const selectedIndex = config.colors.indexOf(colorKey);
-                        if (selectedIndex !== -1) { circle.classList.add('selected'); circle.innerHTML = config.isGradient ? (selectedIndex + 1).toString() : '<span class="material-icons" style="font-size: 20px;">check</span>'; }
+                        if (selectedIndex !== -1) { 
+                            circle.classList.add('selected'); 
+                            circle.innerHTML = config.isGradient ? (selectedIndex + 1).toString() : '<span class="material-icons" style="font-size: 20px;">check</span>'; 
+                        }
+
                         circle.onclick = () => {
                             if (config.isGradient) {
                                 if (config.colors.includes(colorKey)) config.colors.reverse();
                                 else { if (config.colors.length < 2) { config.colors.push(colorKey); window._etisTargetIndex = 0; } else { config.colors[window._etisTargetIndex] = colorKey; window._etisTargetIndex = (window._etisTargetIndex === 0) ? 1 : 0; } }
                             } else { config.colors = [colorKey]; window._etisTargetIndex = 0; }
-                            localStorage.setItem('etis_accent_config', JSON.stringify(config)); applyAccentColor(); renderView('appearance');
+                            localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
+                            applyAccentColor(); 
+                            
+                            // Локальное обновление
+                            updateColorGridSelection(grid, config);
                         };
                         grid.appendChild(circle);
                     });
 
-                    const randomBtn = modal.querySelector('#random-color-btn');
-                    randomBtn.onclick = () => {
-                        const r1 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)]; let r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
+                    // Кнопка рандомайзера
+                    modal.querySelector('#random-color-row').onclick = (e) => {
+                        e.preventDefault();
+                        const r1 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)]; 
+                        let r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
                         while (config.isGradient && r2 === r1) r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
-                        config.colors = config.isGradient ? [r1, r2] : [r1]; localStorage.setItem('etis_accent_config', JSON.stringify(config)); applyAccentColor(); renderView('appearance');
+                        config.colors = config.isGradient ? [r1, r2] : [r1]; 
+                        localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
+                        applyAccentColor(); 
+                        
+                        updateColorGridSelection(grid, config);
                     };
 
+                    // Переключатель градиента
                     modal.querySelector('#grad-toggle').onchange = (e) => {
                         config.isGradient = e.target.checked;
                         if (!config.isGradient && config.colors.length > 1) config.colors = [config.colors[0]];
                         if (config.isGradient && config.colors.length < 2) config.colors.push('lightblue');
-                        localStorage.setItem('etis_accent_config', JSON.stringify(config)); applyAccentColor(); renderView('appearance');
+                        localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
+                        applyAccentColor(); 
+                        
+                        updateColorGridSelection(grid, config);
                     };
+
+                    // Переключатель размытия стекла
+                    const glassToggle = modal.querySelector('#glass-toggle');
+                    if (glassToggle) {
+                        glassToggle.onchange = (e) => {
+                            config.isGlass = e.target.checked; 
+                            localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
+                            applyAccentColor(); 
+                            
+                            // Локальное скрытие/отображение настроек цвета стекла
+                            const wrapper = modal.querySelector('#colored-glass-wrapper');
+                            if (wrapper) {
+                                wrapper.style.setProperty('display', config.isGlass ? 'flex' : 'none', 'important');
+                            }
+                        };
+                    }
+
+                    // Переключатель цветного стекла
+                    const coloredGlassToggle = modal.querySelector('#colored-glass-toggle');
+                    if (coloredGlassToggle) {
+                        coloredGlassToggle.onchange = (e) => {
+                            config.isColoredGlass = e.target.checked; 
+                            localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
+                            applyAccentColor(); 
+                        };
+                    }
                 } else if (currentView === 'version') {
                     refreshModalUI();
                     if (updateState.status === 'idle') initAutoUpdateCheck(true);
@@ -8969,6 +10213,255 @@
             };
 
             renderView(view);
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+                modal.classList.add('active');
+                document.body.classList.add('modal-open-body');
+            });
+        }
+
+        function openSyncModal(view = 'export') {
+            let overlay = document.getElementById('etis-sync-overlay');
+            let modal = document.getElementById('etis-sync-modal');
+
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'etis-sync-overlay';
+                overlay.className = 'analytics-overlay';
+                document.body.appendChild(overlay);
+            }
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'etis-sync-modal';
+                modal.className = 'analytics-modal';
+                document.body.appendChild(modal);
+            }
+
+            const closeAll = () => {
+                overlay.classList.remove('active');
+                modal.classList.remove('active');
+                document.body.classList.remove('modal-open-body');
+            };
+            overlay.onclick = closeAll;
+
+            // Определяем начальную вкладку на мобильных (меню 'main')
+            const startView = (window.innerWidth <= 960 && view === 'export') ? 'main' : view;
+
+            const renderView = (currentView) => {
+                let contentHTML = '';
+                let title = 'Синхронизация';
+                if (currentView === 'export') title = 'Экспорт в календарь';
+                if (currentView === 'import') title = 'Импорт из календаря';
+
+                let etisLink = '';
+                const resourcesDiv = document.getElementById('resources');
+                if (resourcesDiv) {
+                    const textBox = resourcesDiv.querySelector('#textbox');
+                    if (textBox) etisLink = textBox.value;
+                }
+
+                if (currentView === 'export') {
+                    contentHTML = `
+                        <div style="background: var(--color-card); padding: 1.6rem; border-radius: var(--radius-large); font-size: 1.3rem; line-height: 1.5; color: var(--color-text-primary); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main);">
+                            <b>Чтобы подключить расписание к сервисам календарей (Google, iOS, Яндекс):</b><br><br>
+                            1. Нажмите "Скопировать ссылку".<br>
+                            2. В настройках вашего календаря найдите "Добавить по URL" или "Подписаться".<br>
+                            3. Вставьте ссылку и сохраните. <span style="color: var(--color-text-secondary);">Синхронизация может занимать до 24 часов на стороне вашего календаря.</span>
+                        </div>
+                        <div class="ios-settings-group">
+                            <div class="ios-settings-row" id="copy-etis-link-btn" style="padding-left: 2.4rem;">
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons" style="color:var(--color-blue);">content_copy</span>
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Скопировать ссылку</span>
+                                </div>
+                                <span class="material-icons chevron" style="color:var(--color-text-secondary);">chevron_right</span>
+                            </div>
+                            <div class="ios-settings-row" id="unsub-etis-btn" style="padding-left: 2.4rem;">
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons" style="color:var(--color-red);">delete_outline</span>
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-red);">Отписаться от календаря</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else if (currentView === 'import') {
+                    contentHTML = `
+                        <div style="background: var(--color-card); padding: 1.6rem; border-radius: var(--radius-large); font-size: 1.3rem; color: var(--color-text-primary); line-height: 1.5; margin-bottom: 2.4rem; border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main);">
+                            <b style="display:block; margin-bottom: 8px;">Вставьте ссылку на ваш публичный календарь в формате .ics, чтобы видеть личные события в расписании ЕТИС.</b>
+                            <span style="color: var(--color-text-secondary);">В Apple Calendar: нажмите иконку «i» у календаря ➔ Включите «Публичный календарь» ➔ Поделиться ссылкой ➔ Вставить сюда.</span>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem; margin-bottom: 2.4rem; flex-wrap: wrap; align-items: stretch;">
+                            <input type="text" id="ext-cal-input" placeholder="webcal://... или https://..." style="flex: 1; min-width: 200px; padding: 1.2rem 1.6rem !important; border-radius: 50px !important; border: 1px solid var(--color-table-border) !important; background: var(--color-card) !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; box-shadow: var(--shadow-main) !important; margin: 0 !important;">
+                            <button class="answer-btn-custom" id="ext-cal-add" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important; height: auto !important; margin: 0 !important;">
+                                <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">add</span>Добавить
+                            </button>
+                        </div>
+                        
+                        <div id="ext-cals-list" class="ios-settings-group" style="display:none; margin-bottom: 2.4rem;"></div>
+                    `;
+                }
+
+                const isMainMobile = window.innerWidth <= 960 ? (currentView === 'main') : false;
+
+                modal.innerHTML = `
+                    <div class="settings-layout">
+                        <div class="settings-sidebar ${!isMainMobile ? 'hidden-on-mobile' : ''}">
+                            <div class="desktop-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary);">Синхронизация</div>
+                            <div class="mobile-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary); display:flex; justify-content:space-between; align-items:center;">
+                                Синхронизация
+                                <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
+                            </div>
+
+                            <div class="sidebar-tabs-container">
+                                <div class="settings-sidebar-btn ${currentView === 'export' ? 'active' : ''}" data-target="export">
+                                    <span class="material-icons">cloud_upload</span><span class="sidebar-btn-text">Экспорт (Из ЕТИС)</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                                <div class="settings-sidebar-btn ${currentView === 'import' ? 'active' : ''}" data-target="import">
+                                    <span class="material-icons">cloud_download</span><span class="sidebar-btn-text">Импорт (В ЕТИС)</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-content-area ${isMainMobile ? 'hidden-on-mobile' : ''}">
+                            <div class="settings-content-scroll">
+                                <div class="ui-widget-header" style="padding:16px 24px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <span class="material-icons back-modal-btn settings-mobile-header" data-back="main" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                        <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">${title}</span>
+                                    </div>
+                                    <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
+                                </div>
+                                <div style="padding: 0.8rem 0 0 0;">
+                                    ${contentHTML}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                modal.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = closeAll);
+                modal.querySelectorAll('.back-modal-btn').forEach(btn => btn.onclick = () => renderView(btn.getAttribute('data-back')));
+                modal.querySelectorAll('.settings-sidebar-btn').forEach(btn => {
+                    btn.onclick = () => renderView(btn.getAttribute('data-target'));
+                });
+
+                if (currentView === 'export') {
+                    const copyBtn = modal.querySelector('#copy-etis-link-btn');
+                    copyBtn.addEventListener('click', () => {
+                        navigator.clipboard.writeText(etisLink).then(() => {
+                            const origHtml = copyBtn.innerHTML;
+                            copyBtn.innerHTML = `<div style="display:flex; align-items:center; gap:12px;"><span class="material-icons" style="color:var(--color-green);">check</span><span style="font-size:1.4rem; font-weight:600; color:var(--color-green);">Скопировано!</span></div>`;
+                            setTimeout(() => { copyBtn.innerHTML = origHtml; }, 2000);
+                        });
+                    });
+
+                    const unsubBtn = modal.querySelector('#unsub-etis-btn');
+                    unsubBtn.addEventListener('click', () => {
+                        const origDelBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Отписаться'));
+                        if (origDelBtn) {
+                            if (confirm('Отписаться от календаря?')) origDelBtn.click();
+                        }
+                    });
+                } else if (currentView === 'import') {
+                    const calsListContainer = modal.querySelector('#ext-cals-list');
+                    const extInput = modal.querySelector('#ext-cal-input');
+                    const addExtBtn = modal.querySelector('#ext-cal-add');
+
+                    const renderCalsList = () => {
+                        let cals = migrateExternalCals();
+                        calsListContainer.innerHTML = '';
+                        if (cals.length === 0) {
+                            calsListContainer.style.display = 'none';
+                            return;
+                        }
+                        calsListContainer.style.display = 'block';
+
+                        cals.forEach((calObj, idx) => {
+                            const calUrl = calObj.url;
+                            const calColor = calObj.color || '#AF52DE';
+                            const shortUrl = calUrl.length > 30 ? calUrl.substring(0, 18) + '...' + calUrl.substring(calUrl.length - 8) : calUrl;
+
+                            const item = document.createElement('div');
+                            item.className = 'ios-settings-row';
+                            item.innerHTML = `
+                                <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; flex: 1;">
+                                    <div class="ext-cal-color-picker" data-idx="${idx}" style="width: 14px; height: 14px; border-radius: 50%; background: ${calColor}; cursor: pointer; transition: transform 0.2s;" title="Изменить цвет"></div>
+                                    <span style="font-size: 1.4rem; font-weight: 500; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${calUrl}">${shortUrl}</span>
+                                </div>
+                                <span class="material-icons delete-cal-btn" data-idx="${idx}" style="color:var(--color-red); cursor:pointer;">delete_outline</span>
+                            `;
+                            calsListContainer.appendChild(item);
+                        });
+
+                        calsListContainer.querySelectorAll('.ext-cal-color-picker').forEach(picker => {
+                            picker.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                document.querySelectorAll('.ext-color-popup').forEach(p => p.remove());
+
+                                const idx = e.target.getAttribute('data-idx');
+                                const popup = document.createElement('div');
+                                popup.className = 'ext-color-popup';
+                                popup.style.cssText = 'position: absolute; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: var(--color-card); padding: 16px; border-radius: var(--radius-medium); box-shadow: var(--shadow-dialog); border: 1px solid var(--color-table-border); z-index: 100000;';
+
+                                EXT_CAL_COLORS.forEach(c => {
+                                    const circle = document.createElement('div');
+                                    circle.style.cssText = `width: 28px; height: 28px; border-radius: 50%; background: ${c.hex}; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.15);`;
+                                    circle.onclick = (ev) => {
+                                        ev.stopPropagation();
+                                        let currentCals = migrateExternalCals();
+                                        if(currentCals[idx]) {
+                                            currentCals[idx].color = c.hex;
+                                            localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
+                                            popup.remove();
+                                            renderView('import');
+                                            window.location.reload(); 
+                                        }
+                                    };
+                                    popup.appendChild(circle);
+                                });
+
+                                const rect = e.target.getBoundingClientRect();
+                                popup.style.top = `${rect.bottom + 12}px`;
+                                popup.style.left = `${rect.left - 50}px`;
+                                document.body.appendChild(popup);
+                                setTimeout(() => document.addEventListener('click', () => popup.remove(), {once: true}), 0);
+                            });
+                        });
+
+                        calsListContainer.querySelectorAll('.delete-cal-btn').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
+                                e.stopPropagation();
+                                const idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
+                                let currentCals = migrateExternalCals();
+                                if (confirm('Удалить этот календарь?')) {
+                                    currentCals.splice(idx, 1);
+                                    localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
+                                    renderView('import');
+                                    window.location.reload();
+                                }
+                            });
+                        });
+                    };
+
+                    renderCalsList();
+
+                    addExtBtn.addEventListener('click', () => {
+                        const val = extInput.value.trim();
+                        if (!val) return;
+                        let cals = migrateExternalCals();
+                        if (!cals.some(c => c.url === val)) {
+                            cals.push({ url: val, color: getRandomExtColor() });
+                            localStorage.setItem('etis_external_cals_v2', JSON.stringify(cals));
+                        }
+                        extInput.value = '';
+                        renderView('import');
+                        window.location.reload();
+                    });
+                }
+            };
+
+            renderView(startView);
             requestAnimationFrame(() => {
                 overlay.classList.add('active');
                 modal.classList.add('active');
@@ -8989,7 +10482,7 @@
                 document.body.appendChild(pushContainer);
             }
 
-            const showPush = (title, subject, body, type = 'info', icon = 'notifications') => {
+            const showPush = (title, subject, body, type = 'info', icon = 'notifications', onClick = null) => {
                 const toast = document.createElement('div');
                 toast.className = `push-toast ${type}`;
                 toast.innerHTML = `
@@ -9002,10 +10495,16 @@
                         <div class="push-detail">${body}</div>
                     </div>
                 `;
-                toast.onclick = () => {
+                
+                // Модифицированный обработчик клика по уведомлению
+                toast.onclick = (e) => {
                     toast.classList.remove('show');
                     setTimeout(() => toast.remove(), 400);
+                    if (typeof onClick === 'function') {
+                        onClick(e);
+                    }
                 };
+                
                 pushContainer.appendChild(toast);
                 requestAnimationFrame(() => setTimeout(() => toast.classList.add('show'), 50));
                 setTimeout(() => {
@@ -9016,6 +10515,317 @@
                 }, 8000);
             };
             window.showEtisPush = showPush; // Делаем доступной отовсюду
+
+            // Модальное окно создания/редактирования пары
+            function openCustomPairModal(dayName, isFromToolbar = false, existingPair = null) {
+                let overlay = document.querySelector('.analytics-overlay');
+                let modal = document.querySelector('.analytics-modal');
+
+                if (!overlay || !modal) {
+                    overlay = document.createElement('div');
+                    overlay.className = 'analytics-overlay';
+                    document.body.appendChild(overlay);
+
+                    modal = document.createElement('div');
+                    modal.className = 'analytics-modal';
+                    document.body.appendChild(modal);
+                }
+
+                // Определяем, является ли пара событием из объявлений
+                const isAnnouncementEvent = !!(existingPair && existingPair.msgHash);
+                
+                // Корректное название окна
+                const title = isAnnouncementEvent 
+                    ? `Редактировать событие` 
+                    : (existingPair ? `Редактировать пару` : (isFromToolbar ? `Добавить пару` : `Добавить на ${dayName}`));
+                    
+                const pairId = existingPair ? existingPair.id : ('cp_' + Date.now());
+
+                let defStart = existingPair ? existingPair.startTime : "08:00";
+                let defEnd = existingPair ? existingPair.endTime : "09:30";
+
+                const daysArr = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+                const todayNamePlaceholder = daysArr[new Date().getDay()];
+
+                let teachersList = [];
+                let audsList = [];
+
+                document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
+                    const tLink = row.querySelector('.pair_teacher a:not(.eval)');
+                    if (tLink && tLink.textContent.trim()) {
+                        let name = tLink.textContent.trim();
+                        if (!teachersList.includes(name)) teachersList.push(name);
+                    }
+                    const audEl = row.querySelector('.pair_info .aud');
+                    if (audEl) {
+                        const clone = audEl.cloneNode(true);
+                        clone.querySelectorAll('.material-icons, .note-btn-wrapper').forEach(el => el.remove());
+                        let aText = clone.textContent.trim();
+
+                        if (aText.includes('ауд.')) {
+                            const m = aText.match(/ауд\.\s*([^,]+),\s*к\.\s*([^,]+)/i);
+                            if (m) aText = `${m[1].trim()}/${m[2].trim()}`;
+                        }
+                        if (aText && !/Онлайн|Zoom|Телемост/i.test(aText) && !audsList.includes(aText)) audsList.push(aText);
+                    }
+                });
+
+                const placeholders = isFromToolbar ? 
+                    [`Практика по математике в 13:30 в ${todayNamePlaceholder.toLowerCase()}...`, "Физ-ра в 9:45..."] : 
+                    ["Практика по математике в 13:30...", "Физ-ра в 9:45..."];
+
+                let placeholderTimer = null;
+
+                // Вкладки и блок заметок рендерятся только для обычных пар (не для событий из объявлений)
+                modal.innerHTML = `
+                    <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${title}</span>
+                        <button class="close-modal" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                    </div>
+                    <div class="ui-dialog-content" style="padding: 2.4rem;">
+                        ${(existingPair && !isAnnouncementEvent) ? `
+                        <div class="sync-tabs">
+                            <button class="sync-tab" data-tab="notes">Заметки / ДЗ</button>
+                            <button class="sync-tab active" data-tab="edit">Настройки пары</button>
+                        </div>
+                        <div class="tab-content" id="tab-notes">
+                            <textarea class="note-modal-textarea" id="cp-notes-area" placeholder="Что нужно сделать?">${existingPair.notes || ''}</textarea>
+                            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+                                <button class="answer-btn-custom clear-cp-note-btn" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important;">Удалить</button>
+                                <button class="answer-btn-custom save-cp-note-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить заметку</button>
+                            </div>
+                        </div>
+                        ` : ''}
+
+                        <div class="tab-content active" id="tab-edit">
+                            ${!existingPair ? `
+                            <div style="display: flex; align-items: center; position: relative; margin-bottom: 2rem;">
+                                <span class="material-icons" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-accent); font-size: 22px; pointer-events: none; z-index: 2;">auto_awesome</span>
+                                <input type="text" id="cp-smart-add" placeholder="${placeholders[0]}" style="width: 100%; padding: 1.2rem 1.6rem 1.2rem 44px !important; margin: 0 !important; box-sizing: border-box; background: var(--color-card) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-medium) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; box-shadow: var(--shadow-main) !important;">
+                            </div>
+                            ` : ''}
+
+                            <div class="custom-pair-input-group">
+                                <input type="text" id="cp-subject" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}">
+                            </div>
+
+                            <div class="custom-pair-input-group">
+                                ${isFromToolbar ? `
+                                    <input type="text" id="cp-date-input" placeholder="${todayNamePlaceholder}" value="${existingPair ? existingPair.dayName : ''}" style="flex: 0.8;">
+                                ` : `
+                                    <input type="hidden" id="cp-date-input" value="${dayName}">
+                                `}
+                                <input type="time" id="cp-start" value="${defStart}" required title="Время начала">
+                                <input type="time" id="cp-end" value="${defEnd}" required title="Время окончания">
+                            </div>
+
+                            <div class="custom-pair-input-group">
+                                <select id="cp-type" style="flex: 0.8;">
+                                    <option value="лек" ${existingPair?.type === 'лек' ? 'selected' : ''}>Лекция</option>
+                                    <option value="практ" ${existingPair?.type === 'практ' ? 'selected' : ''}>Практика</option>
+                                    <option value="лаб" ${existingPair?.type === 'лаб' ? 'selected' : ''}>Лабораторная</option>
+                                    <option value="экз" ${existingPair?.type === 'экз' ? 'selected' : ''}>Экзамен</option>
+                                    <option value="зач" ${existingPair?.type === 'зач' ? 'selected' : ''}>Зачет</option>
+                                    <option value="конс" ${existingPair?.type === 'конс' ? 'selected' : ''}>Консультация</option>
+                                    <option value="лич" ${existingPair?.type === 'лич' || !existingPair?.type ? 'selected' : ''}>Личное</option>
+                                </select>
+                                <select id="cp-recurrence">
+                                    <option value="once" ${existingPair?.recurrence === 'once' ? 'selected' : ''}>Только на этой неделе</option>
+                                    <option value="every" ${existingPair?.recurrence === 'every' ? 'selected' : ''}>Каждую неделю</option>
+                                    <option value="biweekly" ${existingPair?.recurrence === 'biweekly' ? 'selected' : ''}>Раз в 2 недели</option>
+                                </select>
+                            </div>
+
+                            <div class="custom-pair-input-group">
+                                <input type="text" id="cp-aud" placeholder="Аудитория / Ссылка" value="${existingPair ? existingPair.aud : ''}">
+                                <input type="text" id="cp-teacher" placeholder="Преподаватель" value="${existingPair ? existingPair.teacher : ''}">
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 2.4rem;">
+                                <button class="answer-btn-custom save-cp-btn">${existingPair ? 'Сохранить' : 'Добавить'}</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                const closeModal = () => {
+                    if (placeholderTimer) clearInterval(placeholderTimer);
+                    overlay.classList.remove('active');
+                    modal.classList.remove('active');
+                    document.body.classList.remove('modal-open-body');
+                };
+                overlay.onclick = closeModal;
+                modal.querySelector('.close-modal').onclick = closeModal;
+
+                const smartInput = modal.querySelector('#cp-smart-add');
+                const subjectInput = modal.querySelector('#cp-subject');
+                const dateInput = modal.querySelector('#cp-date-input');
+                const timeStartInput = modal.querySelector('#cp-start');
+                const timeEndInput = modal.querySelector('#cp-end');
+                const typeInput = modal.querySelector('#cp-type');
+                const audInput = modal.querySelector('#cp-aud');
+                const teacherInput = modal.querySelector('#cp-teacher');
+
+                if (smartInput) {
+                    let pIdx = 0;
+                    placeholderTimer = setInterval(() => {
+                        pIdx = (pIdx + 1) % placeholders.length;
+                        smartInput.placeholder = placeholders[pIdx];
+                    }, 2000);
+
+                    smartInput.addEventListener('input', (e) => {
+                        let text = " " + e.target.value + " ";
+                        if (!text.trim()) return;
+                        let extractedDate = "";
+                        let m1 = text.match(/\s(\d{1,2}\.\d{1,2}(?:\.\d{2,4})?)\s/);
+                        let m2 = text.match(/\s(\d{1,2}\s+(?:янв|фев|мар|апр|ма[яй]|июн|июл|авг|сен|окт|ноя|дек)[а-я]*)\s/i);
+                        let m3 = text.match(/\s(?:в\s|во\s)?(понедельник|вторник|сред[ау]|четверг|пятниц[ау]|суббот[ау]|воскресенье)\s/i);
+                        let m4 = text.match(/\s(сегодня|завтра|послезавтра)\s/i);
+                        if (m1) { extractedDate = m1[1]; text = text.replace(m1[0], ' '); }
+                        else if (m2) { extractedDate = m2[1]; text = text.replace(m2[0], ' '); }
+                        else if (m3) { extractedDate = m3[1]; text = text.replace(m3[0], ' '); }
+                        else if (m4) { extractedDate = m4[1]; text = text.replace(m4[0], ' '); }
+                        if (extractedDate && isFromToolbar) {
+                            let cleanDate = extractedDate.charAt(0).toUpperCase() + extractedDate.slice(1);
+                            cleanDate = cleanDate.replace(/среду/i, 'Среда').replace(/пятницу/i, 'Пятница').replace(/субботу/i, 'Суббота');
+                            dateInput.value = cleanDate;
+                        }
+                        let timeParsed = false;
+                        let naturalTimeMatch = text.match(/\s(?:в|на|к)?\s*(\d{1,2})\s+(утра|вечера|дня|ночи|часов|час|часа)\s/i);
+                        if (naturalTimeMatch) {
+                            let h = parseInt(naturalTimeMatch[1], 10);
+                            const mod = naturalTimeMatch[2].toLowerCase();
+                            if (mod.includes('вечер') && h < 12) h += 12;
+                            else if (mod.includes('дня') && h < 12 && h >= 1) h += 12;
+                            else if (mod.includes('ноч') && h === 12) h = 0;
+                            timeStartInput.value = `${String(h).padStart(2, '0')}:00`;
+                            let totalM = h * 60 + 90;
+                            timeEndInput.value = `${String(Math.floor(totalM/60)%24).padStart(2,'0')}:${String(totalM%60).padStart(2,'0')}`;
+                            text = text.replace(naturalTimeMatch[0], ' ');
+                            timeParsed = true;
+                        }
+                        if (!timeParsed) {
+                            let strictTimeMatch = text.match(/\s(?:в|на|к)?\s*(\d{1,2})[:.-](\d{2})\s/i);
+                            if (strictTimeMatch) {
+                                let h = strictTimeMatch[1].padStart(2, '0');
+                                let m = strictTimeMatch[2].padStart(2, '0');
+                                timeStartInput.value = `${h}:${m}`;
+                                let totalM = parseInt(h)*60 + parseInt(m) + 90;
+                                timeEndInput.value = `${String(Math.floor(totalM/60)%24).padStart(2,'0')}:${String(totalM%60).padStart(2,'0')}`;
+                                text = text.replace(strictTimeMatch[0], ' ');
+                            } else if (text.match(/\sпосле обеда\s/i)) {
+                                timeStartInput.value = '13:30'; timeEndInput.value = '15:00';
+                                text = text.replace(/\sпосле обеда\s/i, ' ');
+                            }
+                        }
+                        let typeMatch = text.match(/\s(лекци[яию]|лек\b|практик[ауи]|практ\b|лабораторн[аяую]|лаба\b|лаб\b)\s/i);
+                        if (typeMatch) {
+                            let t = typeMatch[1].toLowerCase();
+                            if (t.startsWith('лек')) typeInput.value = 'лек';
+                            if (t.startsWith('практ')) typeInput.value = 'практ';
+                            if (t.startsWith('лаб')) typeInput.value = 'лаб';
+                            text = text.replace(typeMatch[0], ' ');
+                        }
+                        let aud = '', bldg = '';
+                        let matchLocA = text.match(/\s(?:в|на)?\s*(\d+)\s*корпус[еа]?\s*(?:в\s+)?(?:ауд\.?|каб\.?|кабинет[е]?|аудитори[ия])?\s*(\d+[a-zа-я]?)\s*(?:кабинет[е]?|аудитори[ия])?\s/i);
+                        if (matchLocA) { bldg = matchLocA[1]; aud = matchLocA[2]; text = text.replace(matchLocA[0], ' '); }
+                        else {
+                            let matchLocB = text.match(/\s(?:(?:в\s+)?(?:ауд\.?|каб\.?|кабинет[е]?|аудитори[ия])?\s*)?(\d+[a-zа-я]?)\s*(?:кабинет[е]?|аудитори[ия])?\s*(?:в\s+)?(\d+)\s*корпус[еа]\s/i);
+                            if (matchLocB) { aud = matchLocB[1]; bldg = matchLocB[2]; text = text.replace(matchLocB[0], ' '); }
+                            else {
+                                let matchLocC = text.match(/\s(\d+[a-zа-я]?)\s*[\/\\]\s*(\d+)\s/i);
+                                if (matchLocC) { aud = matchLocC[1]; bldg = matchLocC[2]; text = text.replace(matchLocC[0], ' '); }
+                                else {
+                                    let matchLocD = text.match(/\s(?:(?:в\s+)?(?:ауд\.?|каб\.?|кабинет[е]?|аудитори[ия])\s*(\d+[a-zа-я]?))|(?:(?:в\s+)?(\d+[a-zа-я]?)\s*(?:каб\.?|кабинет[е]?|ауд\.?|аудитори[ия]))\s/i);
+                                    if (matchLocD) { aud = matchLocD[1] || matchLocD[2]; text = text.replace(matchLocD[0], ' '); }
+                                }
+                            }
+                        }
+                        if (aud) audInput.value = bldg ? `${aud}/${bldg}` : aud;
+                        let subject = text.replace(/\s+/g, ' ').trim();
+                        subject = subject.replace(/^(по|в|на|с)\s+/i, '').replace(/\s+(по|в|на|с)$/i, '').trim();
+                        if (subject.length > 0) subject = subject.charAt(0).toUpperCase() + subject.slice(1);
+                        subjectInput.value = subject;
+                    });
+                }
+
+                timeStartInput.addEventListener('change', (e) => {
+                    if (e.target.value) {
+                        let [hours, minutes] = e.target.value.split(':').map(Number);
+                        minutes += 90; hours += Math.floor(minutes / 60); minutes = minutes % 60; hours = hours % 24;
+                        timeEndInput.value = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                    }
+                });
+
+                const internalResolveDate = (inputStr) => {
+                    inputStr = inputStr.trim().toLowerCase();
+                    const now = new Date(); now.setHours(0,0,0,0);
+                    let targetDate = null;
+                    let m = inputStr.match(/^(\d{1,2})\.(\d{1,2})/);
+                    if (m) targetDate = new Date(now.getFullYear(), parseInt(m[2], 10)-1, parseInt(m[1], 10));
+                    else {
+                        m = inputStr.match(/^(\d{1,2})\s+(янв|фев|мар|апр|ма|июн|июл|авг|сен|окт|ноя|дек)/);
+                        if (m) {
+                            const months = { 'янв':0, 'фев':1, 'мар':2, 'апр':3, 'ма':4, 'июн':5, 'июл':6, 'авг':7, 'сен':8, 'окт':9, 'ноя':10, 'дек':11 };
+                            targetDate = new Date(now.getFullYear(), months[m[2]], parseInt(m[1], 10));
+                        }
+                    }
+                    const actualWeek = parseInt(localStorage.getItem('etis_actual_week') || '1', 10);
+                    if (targetDate) {
+                        if (targetDate < now && (now.getMonth() - targetDate.getMonth()) > 6) targetDate.setFullYear(now.getFullYear() + 1);
+                        const dArr = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
+                        const getMon = (d) => { const nd = new Date(d); nd.setDate(nd.getDate() - (nd.getDay() || 7) + 1); return nd.setHours(0,0,0,0); };
+                        const weekDiff = Math.round((getMon(targetDate) - getMon(now)) / (7 * 24 * 3600 * 1000));
+                        return { dayName: dArr[targetDate.getDay()], addedWeek: actualWeek + weekDiff };
+                    }
+                    const dMap = { 'понедельник': 'Понедельник', 'вторник': 'Вторник', 'сред': 'Среда', 'четверг': 'Четверг', 'пятниц': 'Пятница', 'суббот': 'Суббота', 'воскресенье': 'Воскресенье' };
+                    let foundDay = Object.keys(dMap).find(k => inputStr.startsWith(k));
+                    if (foundDay) return { dayName: dMap[foundDay], addedWeek: actualWeek };
+                    return { dayName: todayNamePlaceholder, addedWeek: actualWeek };
+                };
+
+                modal.querySelector('.save-cp-btn').onclick = () => {
+                    const subject = subjectInput.value.trim();
+                    if (!subject) return alert('Введите название предмета!');
+
+                    // Если это существующее событие, сохраняем его оригинальный день и неделю, а не сбрасываем на 1
+                    let finalDayName = existingPair ? existingPair.dayName : dayName;
+                    let finalAddedWeek = existingPair ? existingPair.addedWeek : parseInt(document.querySelector('.week.current')?.textContent.trim() || '1', 10);
+
+                    if (isFromToolbar) {
+                        const dateInputVal = dateInput.value.trim() || todayNamePlaceholder;
+                        const resolved = internalResolveDate(dateInputVal);
+                        finalDayName = resolved.dayName;
+                        finalAddedWeek = resolved.addedWeek;
+                    }
+
+                    const pair = {
+                        id: pairId,
+                        addedWeek: finalAddedWeek,
+                        dayName: finalDayName,
+                        subject: subject,
+                        startTime: timeStartInput.value,
+                        endTime: timeEndInput.value,
+                        type: typeInput.value,
+                        recurrence: modal.querySelector('#cp-recurrence').value,
+                        aud: audInput.value.trim() || '',
+                        teacher: teacherInput.value.trim() || '',
+                        ...(existingPair && existingPair.msgHash ? { msgHash: existingPair.msgHash } : {})
+                    };
+
+                    let cp = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
+                    if (existingPair) cp = cp.filter(p => p.id !== pairId);
+                    cp.push(pair);
+                    localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
+                    closeModal(); window.location.reload();
+                };
+
+                overlay.classList.add('active');
+                modal.classList.add('active');
+                document.body.classList.add('modal-open-body');
+                if (!existingPair) setTimeout(() => smartInput.focus(), 100);
+            }
+
+            window.openCustomPairModal = openCustomPairModal;
 
             // --- ПАРСЕР ДАТ И УМНОЕ ДОБАВЛЕНИЕ В РАСПИСАНИЕ ---
             const monthsDict = { 'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11 };
@@ -9154,8 +10964,10 @@
                             addedMsgs = addedMsgs.filter(h => h !== hash);
                             localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
 
-                            // Меняем визуал
-                            el.classList.remove('added');
+                            // СИНХРОННО снимаем класс "added" со всех упоминаний этой даты на странице
+                            document.querySelectorAll(`.msg-event-link[data-hash="${hash}"]`).forEach(link => {
+                                link.classList.remove('added');
+                            });
 
                             // Показываем уведомление
                             if (window.showEtisPush) window.showEtisPush('Удалено', title, `Событие убрано из расписания`, 'info', 'event_busy');
@@ -9195,11 +11007,26 @@
                             addedMsgs.push(hash);
                             localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
 
-                            // Меняем визуал
-                            el.classList.add('added');
+                            // СИНХРОННО добавляем класс "added" на все упоминания этой даты на странице
+                            document.querySelectorAll(`.msg-event-link[data-hash="${hash}"]`).forEach(link => {
+                                link.classList.add('added');
+                            });
 
                             // Показываем уведомление
-                            if (window.showEtisPush) window.showEtisPush('Добавлено в расписание', title, `${targetWeek} неделя, ${pair.dayName}`, 'success', 'event_available');
+                            if (window.showEtisPush) {
+                                window.showEtisPush(
+                                    'Добавлено в расписание', 
+                                    title, 
+                                    `${targetWeek} неделя, ${pair.dayName} (Нажмите для настройки)`, 
+                                    'success', 
+                                    'event_available',
+                                    () => {
+                                        if (typeof window.openCustomPairModal === 'function') {
+                                            window.openCustomPairModal(pair.dayName, false, pair);
+                                        }
+                                    }
+                                );
+                            }
                         }
                     };
                 });
@@ -9464,7 +11291,7 @@
                     const sidebarStyles = document.createElement('style');
                     sidebarStyles.innerHTML = `
                         .span3 > .nav.nav-tabs.nav-stacked > li > a {
-                            margin: 0 12px 4px 12px !important;
+                            margin: 2px 12px !important;
                             padding: 10px 14px !important;
                             border-radius: var(--radius-small) !important;
                             width: auto !important;
@@ -9673,12 +11500,36 @@
                     settingsLi.appendChild(settingsLink);
                     allListItems.push(settingsLi);
 
+                    // Вкладка "Профиль"
+                    const profileLi = document.createElement("li");
+                    profileLi.className = 'theme-switcher-item';
+                    const profileLink = document.createElement("a");
+                    profileLink.style.cursor = 'pointer';
+                    profileLink.href = "#profile";
+                    profileLink.textContent = 'Профиль';
+
+                    profileLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const side = document.querySelector('.span3');
+                        if (side && side.classList.contains('mobile-active')) {
+                            side.classList.remove('mobile-active');
+                            document.querySelector('.mobile-overlay')?.classList.remove('active');
+                            document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                        }
+                        // На смартфонах открываем меню выбора, на ПК — сразу «Мой профиль»
+                        openProfileModal(window.innerWidth <= 960 ? 'menu' : 'main');
+                    });
+
+                    profileLi.appendChild(profileLink);
+                    allListItems.push(profileLi);
+
                     // Функция иконок
                     const getIconForHref = (href) => {
                         if (href === '#version-check') return 'system_update';
                         if (href === '#appearance') return 'palette';
                         if (href === '#report-bug') return 'bug_report';
                         if (href === '#settings') return 'settings';
+                        if (href === '#profile') return 'account_circle';
                         if (href.includes('teach_plan')) return 'school';
                         if (href.includes('timetable')) return 'calendar_month';
                         if (href.includes('signs')) return 'workspace_premium';
@@ -9787,7 +11638,7 @@
                         ['library', 'electr', 'advice', 'ses', 'about'],
                         ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'портфолио'],
                         ['term_test', 'special_est_list', 'оцените дистанционное'],
-                        ['#settings', 'change_pass', 'change_email', 'change_pr_page', 'logout']
+                        ['#settings', 'profile', 'change_pass', 'change_email', 'change_pr_page', 'logout']
                     ];
 
                     const usedItems = new Set();
@@ -11239,6 +13090,43 @@
                             div.style.width = '100%';
                         });
 
+                        // === СБОР ДАННЫХ ОБ ОТЧЕТНОСТИ (ЗАЧЕТ/ЭКЗАМЕН) ===
+                        let subjectsReportType = JSON.parse(localStorage.getItem('etis_subjects_report_type_v1') || '{}');
+                        let reportDataUpdated = false;
+                        span9.querySelectorAll('table.teach_plan, table.common').forEach(table => {
+                            const rows = Array.from(table.querySelectorAll('tr'));
+                            let discIdx = -1, reportIdx = -1;
+                            const headers = rows[0]?.querySelectorAll('th');
+                            if (headers) {
+                                headers.forEach((th, idx) => {
+                                    const text = th.textContent.toLowerCase();
+                                    if (text.includes('дисциплина') || text.includes('наименование')) discIdx = idx;
+                                    if (text.includes('отчетность')) reportIdx = idx;
+                                });
+                            }
+                            if (discIdx !== -1 && reportIdx !== -1) {
+                                for (let i = 1; i < rows.length; i++) {
+                                    const cells = rows[i].querySelectorAll('td');
+                                    if (cells[discIdx] && cells[reportIdx]) {
+                                        const subjName = cells[discIdx].textContent.replace(/\s+/g, ' ').trim().toLowerCase();
+                                        const reportText = cells[reportIdx].textContent.toLowerCase();
+                                        if (subjName && reportText) {
+                                            if (reportText.includes('зачет') || reportText.includes('зачёт')) {
+                                                subjectsReportType[subjName] = 'зачет';
+                                                reportDataUpdated = true;
+                                            } else if (reportText.includes('экзамен')) {
+                                                subjectsReportType[subjName] = 'экзамен';
+                                                reportDataUpdated = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        if (reportDataUpdated) {
+                            localStorage.setItem('etis_subjects_report_type_v1', JSON.stringify(subjectsReportType));
+                        }
+
                         // --- СТИЛИЗАЦИЯ КОНТЕНТА ---
                         if (page === 'stu.teach_plan') {
                             const isAdvanced = currentMode === 'advanced';
@@ -11324,14 +13212,26 @@
                                 });
                             }
 
-                            // КРАТКИЙ ВИД (Добавляем капсулы)
+                            // КРАТКИЙ ВИД
                             if (!isAdvanced && !isChooseDis) {
+                                // 1. Создаем капсулу поиска
+                                const searchContainer = document.createElement('div');
+                                searchContainer.className = 'teacher-search-wrapper';
+                                searchContainer.style.cssText = 'margin-top: 0 !important; margin-bottom: 1.6rem !important;';
+                                searchContainer.innerHTML = `
+                                    <div class="search-capsule" style="max-width: 100%;">
+                                        <span class="material-icons search-icon">search</span>
+                                        <input type="text" class="search-input" id="plan-short-search" placeholder="Поиск" style="padding-left: 44px !important;">
+                                    </div>
+                                `;
+                                if (submenu) submenu.after(searchContainer);
+
                                 const shortTables = span9.querySelectorAll('table.teach_plan, table.common');
 
                                 shortTables.forEach(table => {
                                     if (!table.parentNode.classList.contains('wide-table-wrapper')) {
                                         const wrapper = document.createElement('div');
-                                        wrapper.className = 'wide-table-wrapper';
+                                        wrapper.className = 'wide-table-wrapper plan-short-table-group';
                                         table.parentNode.insertBefore(wrapper, table);
                                         wrapper.appendChild(table);
                                     }
@@ -11342,17 +13242,62 @@
                                         let bg, color;
 
                                         if (text === 'экзамен') {
-                                            // СИНИЙ
                                             bg = 'rgba(0, 122, 255, 0.15)';
                                             color = 'var(--color-blue)';
                                         } else if (text === 'зачет' || text === 'зачёт') {
-                                            // ЗЕЛЕНЫЙ
                                             bg = 'rgba(52, 199, 89, 0.15)';
                                             color = 'var(--color-green)';
                                         }
 
                                         if (bg) {
                                             cell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; white-space: nowrap;">${cell.textContent.trim()}</span>`;
+                                        }
+                                    });
+                                });
+
+                                // 2. Логика фильтрации дисциплин в реальном времени
+                                const searchInput = searchContainer.querySelector('#plan-short-search');
+                                searchInput.addEventListener('input', (e) => {
+                                    const val = e.target.value.toLowerCase().trim();
+                                    
+                                    document.querySelectorAll('.plan-short-table-group').forEach(wrapper => {
+                                        // Чтение названия триместра/курса перед таблицей
+                                        const prevH3 = wrapper.previousElementSibling;
+                                        const h3Text = (prevH3 && prevH3.tagName === 'H3') ? prevH3.textContent.toLowerCase() : '';
+                                        const isPeriodMatch = val !== '' && h3Text.includes(val);
+
+                                        const rows = Array.from(wrapper.querySelectorAll('tbody tr'));
+                                        let visibleRowsCount = 0;
+
+                                        rows.forEach((row) => {
+                                            if (row.querySelector('th')) return; // Игнорируем шапку таблицы
+
+                                            const cells = row.querySelectorAll('td');
+                                            const subjectName = cells[0] ? cells[0].textContent.toLowerCase() : '';
+
+                                            // Отображаем строку, если совпал поиск по периоду ИЛИ по дисциплине
+                                            if (val === '' || subjectName.includes(val) || isPeriodMatch) {
+                                                row.style.display = '';
+                                                highlightSearchTerm(row, val);
+                                                visibleRowsCount++;
+                                            } else {
+                                                row.style.display = 'none';
+                                            }
+                                        });
+
+                                        // Скрываем/показываем таблицу и заголовок курса над ней с подсветкой текста
+                                        if (val !== '' && visibleRowsCount === 0) {
+                                            wrapper.style.setProperty('display', 'none', 'important');
+                                            if (prevH3 && prevH3.tagName === 'H3') {
+                                                prevH3.style.setProperty('display', 'none', 'important');
+                                                highlightSearchTerm(prevH3, val);
+                                            }
+                                        } else {
+                                            wrapper.style.setProperty('display', 'block', 'important');
+                                            if (prevH3 && prevH3.tagName === 'H3') {
+                                                prevH3.style.setProperty('display', 'block', 'important');
+                                                highlightSearchTerm(prevH3, val);
+                                            }
                                         }
                                     });
                                 });
@@ -12517,14 +14462,22 @@
 
                         if (statsLink) {
                             statsLink.className = 'stats-link-bottom';
+                            statsLink.innerHTML = `
+                                <div class="order-icon-box" style="background: var(--color-accent-active) !important;">
+                                    <span class="material-icons" style="color: var(--color-accent) !important;">insights</span>
+                                </div>
+                                <div style="flex-grow: 1; text-align: left;">
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); line-height: 1.4;">Статистика сдачи экзаменов и зачетов</div>
+                                    <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 2px;">Статистика по преподавателям за последние 2 сессии</div>
+                                </div>
+                                <span class="material-icons" style="color: var(--color-text-secondary); font-size: 1.8rem; flex-shrink: 0;">open_in_new</span>
+                            `;
                             span9.appendChild(statsLink);
                         }
 
-                        const noResults = document.createElement('div');
-                        noResults.className = 'no-results-msg';
-                        noResults.textContent = 'Преподаватель не найден';
-                        noResults.style.display = 'none';
-                        listContainer.after(noResults);
+                        // Первоначальная проверка при пустом списке на сервере
+                        const initialCardsCount = listContainer.querySelectorAll('.teacher-card').length;
+                        updateEmptyState(listContainer, initialCardsCount > 0, '', 'teachers');
 
                         const input = searchWrapper.querySelector('.search-input');
                         input.addEventListener('input', (e) => {
@@ -12540,7 +14493,9 @@
                                     card.style.display = 'none';
                                 }
                             });
-                            noResults.style.display = (foundCount === 0 && term !== '') ? 'block' : 'none';
+                            
+                            // Использование умного плейсхолдера вместо простого текста
+                            updateEmptyState(listContainer, foundCount > 0, term, 'teachers');
                         });
 
                         break;
@@ -13124,228 +15079,7 @@
                     if (syncHeader) {
                         const resourcesDiv = document.getElementById('resources');
                         if (resourcesDiv) {
-                            resourcesDiv.className = 'sync-card';
-
-                            // 1. Скрываем всё оригинальное содержимое ЕТИСа
-                            Array.from(resourcesDiv.children).forEach(child => {
-                                child.style.display = 'none';
-                            });
-
-                            let etisLink = '';
-                            const textBox = resourcesDiv.querySelector('#textbox');
-                            if (textBox) etisLink = textBox.value;
-
-                            // 2. Создаем новый интерфейс
-                            const newUI = document.createElement('div');
-                            newUI.innerHTML = `
-                                <div class="sync-tabs">
-                                    <button class="sync-tab active" data-tab="export">Экспорт в календарь</button>
-                                    <button class="sync-tab" data-tab="import">Импорт из календаря</button>
-                                </div>
-
-                                <div class="sync-tab-content active" id="sync-tab-export">
-                                    <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); font-size: 1.3rem; line-height: 1.5; color: var(--color-text-primary); margin-bottom: 1.6rem;">
-                                        <b>Чтобы подключить своё расписание к различным сервисам календарей, Вам необходимо (на примере Google Calendar):</b><br><br>
-                                        1. Нажать кнопку "Скопировать" и скопировать ссылку на свой календарь.<br>
-                                        2. Перейти в настройки Google Calendar в правом верхнем углу (изображение зубчатого колеса).<br>
-                                        3. В меню с левой стороны нажать "Добавить календарь" и далее нажать "Добавить по URL".<br>
-                                        4. В поле URL календаря вставить ссылку на Ваш календарь из личного кабинета (пункт 1).<br>
-                                        5. Нажать кнопку "Добавить календарь". Синхронизация может занимать некоторое время.
-                                    </div>
-                                    <div style="display: flex; justify-content: flex-start; gap: 1.2rem; flex-wrap: wrap;">
-                                        <button class="answer-btn-custom copy-etis-link-btn" style="background: var(--color-accent) !important; color: #fff !important;">
-                                            <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">content_copy</span>Скопировать
-                                        </button>
-                                        <button class="answer-btn-custom unsub-etis-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">
-                                            <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">delete_outline</span>Отписаться
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="sync-tab-content" id="sync-tab-import">
-                                    <p style="color: var(--color-text-secondary); margin-bottom: 1.2rem; font-size: 1.3rem; line-height: 1.5;">Вставьте ссылку на ваш публичный календарь в формате <b>.ics</b> (iCloud, Google), чтобы видеть личные события прямо в расписании ЕТИС. Можно добавить несколько!</p>
-
-                                    <div id="ext-cals-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin-bottom: 1.2rem;"></div>
-
-                                    <div style="display: flex; gap: 1rem; margin-bottom: 1.6rem; flex-wrap: wrap; align-items: stretch;">
-                                        <input type="text" id="ext-cal-input" placeholder="webcal://... или https://..." style="flex: 1; min-width: 250px; padding: 1.2rem 1.6rem !important; border-radius: 50px !important; border: 1px solid var(--color-table-border) !important; background: var(--color-input) !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; box-shadow: none !important; margin: 0 !important;">
-
-                                        <button class="answer-btn-custom" id="ext-cal-add" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important; height: auto !important; margin: 0 !important;">
-                                            <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">add</span>Добавить
-                                        </button>
-                                    </div>
-
-                                    <div style="background: var(--color-highlight); padding: 1.6rem; border-radius: var(--radius-large); font-size: 1.3rem; color: var(--color-text-primary); line-height: 1.5;">
-                                        <b style="display:block; margin-bottom: 8px;">Как получить ссылку на примере Apple Calendar:</b>
-                                        1. Откройте приложение «Календарь».<br>
-                                        2. Нажмите «Календари» внизу экрана.<br>
-                                        3. Нажмите иконку «i» справа от нужного календаря.<br>
-                                        4. Включите тумблер «Публичный календарь».<br>
-                                        5. Нажмите «Поделиться ссылкой» и скопируйте её сюда.
-                                    </div>
-                                </div>
-                            `;
-                            resourcesDiv.appendChild(newUI);
-
-                            // --- Логика вкладок ---
-                            const tabs = newUI.querySelectorAll('.sync-tab');
-                            const contents = newUI.querySelectorAll('.sync-tab-content');
-                            tabs.forEach(t => t.addEventListener('click', () => {
-                                tabs.forEach(tab => tab.classList.remove('active'));
-                                contents.forEach(c => c.classList.remove('active'));
-                                t.classList.add('active');
-                                newUI.querySelector('#sync-tab-' + t.getAttribute('data-tab')).classList.add('active');
-                            }));
-
-                            // --- Логика Экспорта ---
-                            const copyBtn = newUI.querySelector('.copy-etis-link-btn');
-                            copyBtn.addEventListener('click', () => {
-                                navigator.clipboard.writeText(etisLink).then(() => {
-                                    const origHtml = copyBtn.innerHTML;
-                                    copyBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">check</span>Скопировано!';
-                                    copyBtn.style.setProperty('background', 'var(--color-green)', 'important');
-                                    setTimeout(() => {
-                                        copyBtn.innerHTML = origHtml;
-                                        copyBtn.style.setProperty('background', 'var(--color-accent)', 'important');
-                                    }, 2000);
-                                });
-                            });
-
-                            const unsubBtn = newUI.querySelector('.unsub-etis-btn');
-                            unsubBtn.addEventListener('click', () => {
-                                const origDelBtn = Array.from(resourcesDiv.querySelectorAll('button')).find(b => b.textContent.includes('Отписаться'));
-                                if (origDelBtn) origDelBtn.click();
-                            });
-
-                            // --- Логика Импорта (Множественные календари) ---
-                            const calsListContainer = newUI.querySelector('#ext-cals-list');
-                            const extInput = newUI.querySelector('#ext-cal-input');
-                            const addExtBtn = newUI.querySelector('#ext-cal-add');
-
-                            // Миграция старой одиночной ссылки в новый список
-                            let oldLink = localStorage.getItem('etis_external_cal_link');
-                            if (oldLink) {
-                                let arr = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
-                                if (!arr.some(c => c.url === oldLink || c === oldLink)) {
-                                    arr.push({ url: oldLink, color: getRandomExtColor() });
-                                }
-                                localStorage.setItem('etis_external_cals_v2', JSON.stringify(arr));
-                                localStorage.removeItem('etis_external_cal_link');
-                            }
-
-                            const renderCalsList = () => {
-                                let cals = migrateExternalCals();
-                                calsListContainer.innerHTML = '';
-
-                                if (cals.length === 0) {
-                                    calsListContainer.style.display = 'none';
-                                    return;
-                                }
-                                calsListContainer.style.display = 'flex';
-
-                                cals.forEach((calObj, idx) => {
-                                    const calUrl = calObj.url;
-                                    const calColor = calObj.color || '#AF52DE';
-                                    const shortUrl = calUrl.length > 40 ? calUrl.substring(0, 25) + '...' + calUrl.substring(calUrl.length - 10) : calUrl;
-
-                                    const item = document.createElement('div');
-                                    item.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 1.2rem 1.6rem; background: var(--color-card); border: 1px solid var(--color-table-border); border-radius: var(--radius-medium); gap: 1rem; box-shadow: var(--shadow-main);';
-
-                                    // Иконка календаря и текст — слева, выбор цвета и удаление — справа
-                                    item.innerHTML = `
-                                        <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; flex: 1;">
-                                            <span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem; flex-shrink: 0;">event</span>
-                                            <span style="font-size: 1.3rem; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${calUrl}">${shortUrl}</span>
-                                        </div>
-                                        <div style="display: flex; align-items: center; gap: 1.6rem; flex-shrink: 0; padding-right: 0.4rem;">
-                                            <div class="ext-cal-color-picker" data-idx="${idx}" style="width: 18px; height: 18px; border-radius: 50%; background: ${calColor}; cursor: pointer; box-shadow: 0 0 0 2px var(--color-card), 0 0 0 4px ${calColor}; transition: transform 0.2s;" title="Изменить цвет"></div>
-                                            <button class="delete-cal-btn" data-idx="${idx}" title="Удалить" style="margin: 0; padding: 4px;">
-                                                <span class="material-icons" style="font-size: 2rem;">delete_outline</span>
-                                            </button>
-                                        </div>
-                                    `;
-                                    calsListContainer.appendChild(item);
-                                });
-
-                                // Логика выбора цвета
-                                calsListContainer.querySelectorAll('.ext-cal-color-picker').forEach(picker => {
-                                    picker.addEventListener('click', (e) => {
-                                        e.stopPropagation();
-                                        document.querySelectorAll('.ext-color-popup').forEach(p => p.remove());
-
-                                        const idx = e.target.getAttribute('data-idx');
-                                        const popup = document.createElement('div');
-                                        popup.className = 'ext-color-popup';
-
-                                        // Сетка 3x2 (3 колонки, автоматически перенесется на 2 строки)
-                                        popup.style.cssText = 'position: absolute; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: var(--color-card); padding: 16px; border-radius: var(--radius-medium); box-shadow: var(--shadow-dialog); border: 1px solid var(--color-table-border); z-index: 100000;';
-
-                                        EXT_CAL_COLORS.forEach(c => {
-                                            const circle = document.createElement('div');
-                                            circle.style.cssText = `width: 28px; height: 28px; border-radius: 50%; background: ${c.hex}; cursor: pointer; transition: transform 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.15);`;
-                                            circle.onmouseenter = () => circle.style.transform = 'scale(1.2)';
-                                            circle.onmouseleave = () => circle.style.transform = 'scale(1)';
-                                            circle.onclick = (ev) => {
-                                                ev.stopPropagation();
-                                                let currentCals = migrateExternalCals();
-                                                if(currentCals[idx]) {
-                                                    currentCals[idx].color = c.hex;
-                                                    localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
-                                                    popup.remove();
-                                                    picker.style.background = c.hex;
-                                                    picker.style.boxShadow = `0 0 0 2px var(--color-card), 0 0 0 4px ${c.hex}`;
-                                                    window.location.reload();
-                                                }
-                                            };
-                                            popup.appendChild(circle);
-                                        });
-
-                                        const rect = e.target.getBoundingClientRect();
-                                        popup.style.top = `${rect.bottom + window.scrollY + 12}px`;
-                                        popup.style.left = `${rect.left + window.scrollX - 50}px`;
-                                        document.body.appendChild(popup);
-
-                                        const closePopup = (ev) => {
-                                            if (!popup.contains(ev.target) && ev.target !== e.target) {
-                                                popup.remove();
-                                                document.removeEventListener('click', closePopup);
-                                            }
-                                        };
-                                        setTimeout(() => document.addEventListener('click', closePopup), 0);
-                                    });
-                                });
-
-                                // Навешиваем события на кнопки удаления
-                                calsListContainer.querySelectorAll('.delete-cal-btn').forEach(btn => {
-                                    btn.addEventListener('click', (e) => {
-                                        const idx = parseInt(e.currentTarget.getAttribute('data-idx'), 10);
-                                        let currentCals = migrateExternalCals();
-
-                                        if (confirm('Удалить этот календарь из расписания?')) {
-                                            currentCals.splice(idx, 1);
-                                            localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
-                                            window.location.reload();
-                                        }
-                                    });
-                                });
-                            };
-
-                            renderCalsList();
-
-                            addExtBtn.addEventListener('click', () => {
-                                const val = extInput.value.trim();
-                                if (!val) return;
-
-                                let cals = migrateExternalCals();
-                                if (!cals.some(c => c.url === val)) {
-                                    cals.push({ url: val, color: getRandomExtColor() });
-                                    localStorage.setItem('etis_external_cals_v2', JSON.stringify(cals));
-                                }
-
-                                extInput.value = '';
-                                addExtBtn.innerHTML = '<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">check</span>Добавлено!';
-                                setTimeout(() => { window.location.reload(); }, 600);
-                            });
+                            resourcesDiv.style.display = 'none';
                         }
 
                         // Кнопка в тулбаре
@@ -13354,17 +15088,7 @@
                         newBtn.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">sync</span> Синхронизация';
 
                         newBtn.addEventListener('click', () => {
-                            if (resourcesDiv) {
-                                const isHidden = resourcesDiv.hasAttribute('hidden') || resourcesDiv.style.display === 'none';
-                                if (isHidden) {
-                                    resourcesDiv.removeAttribute('hidden');
-                                    resourcesDiv.style.display = 'block';
-                                    newBtn.classList.add('is-active');
-                                } else {
-                                    resourcesDiv.style.display = 'none';
-                                    newBtn.classList.remove('is-active');
-                                }
-                            }
+                            openSyncModal('export');
                         });
                         toolbar.appendChild(newBtn);
                         syncHeader.remove();
@@ -13568,15 +15292,25 @@
 
                                     // Умное форматирование аудитории перед отрисовкой
                                     let displayAud = pair.aud;
-                                    if (displayAud && displayAud.includes('/') && !generalConfig.shortAudFormat) {
-                                        // Переводим "107/5" в длинный формат, если компактный выключен
-                                        const parts = displayAud.split('/');
-                                        if (parts.length === 2) {
-                                            const room = parts[0].trim();
-                                            const building = parts[1].trim();
-                                            const floorMatch = room.match(/\d/);
-                                            const floor = floorMatch ? floorMatch[0] : '1';
-                                            displayAud = `ауд. ${room}, к. ${building}, э. ${floor}`;
+                                    if (displayAud) {
+                                        if (generalConfig.shortAudFormat) {
+                                            // Если включен компактный вид, преобразуем "ауд. 413, к. 8, э. 4" -> "413/8"
+                                            const m = displayAud.match(/(?:ауд\.?\s*)?([0-9А-Яа-яa-zA-Z]+),\s*(?:к\.?\s*)?([0-9А-Яа-яa-zA-Z]+)/i);
+                                            if (m) {
+                                                displayAud = `${m[1]}/${m[2]}`;
+                                            }
+                                        } else {
+                                            // Если компактный вид выключен, расширяем "413/8" -> "ауд. 413, к. 8, э. 4"
+                                            if (displayAud.includes('/') && !displayAud.includes('http')) {
+                                                const parts = displayAud.split('/');
+                                                if (parts.length === 2) {
+                                                    const room = parts[0].trim();
+                                                    const building = parts[1].trim();
+                                                    const floorMatch = room.match(/\d/);
+                                                    const floor = floorMatch ? floorMatch[0] : '1';
+                                                    displayAud = `ауд. ${room}, к. ${building}, э. ${floor}`;
+                                                }
+                                            }
                                         }
                                     }
 
@@ -13705,12 +15439,17 @@
                                         tr.className = 'custom-pair-row docx-consultation-row';
                                         if (ev.endTime) tr.setAttribute('data-end-time', ev.endTime);
 
+                                        let timeHtml = `<font class="eval" style="font-size: 1.2rem; color: var(--color-text-primary); font-weight: 500; display: block;">${ev.startTime}</font>`;
+                                        if (ev.endTime) {
+                                            timeHtml += `<span style="font-size: 1.05rem; color: var(--color-text-secondary); display: block; margin-top: 2px;">${ev.endTime}</span>`;
+                                        }
+
                                         tr.innerHTML = `
                                             <td class="pair_num">
                                                 <div class="pair-badge-wrapper" style="margin-bottom: 6px;">
                                                     <span class="pair-type-badge" style="color: var(--color-text-secondary); font-weight: 800; font-size: 1.05rem; letter-spacing: 0.5px;">КОНС</span>
                                                 </div>
-                                                <font class="eval" style="font-size: 1.2rem; color: var(--color-text-primary); font-weight: 500;">${ev.startTime}</font>
+                                                ${timeHtml}
                                             </td>
                                             <td class="pair_info">
                                                 <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
@@ -13747,355 +15486,6 @@
 
                     // Вызываем сразу после объявления
                     window.injectConsultationPairs();
-
-                    // Модальное окно создания/редактирования пары (с Умным Добавлением)
-                    function openCustomPairModal(dayName, isFromToolbar = false, existingPair = null) {
-                        let overlay = document.querySelector('.analytics-overlay');
-                        let modal = document.querySelector('.analytics-modal');
-
-                        if (!overlay || !modal) {
-                            overlay = document.createElement('div');
-                            overlay.className = 'analytics-overlay';
-                            document.body.appendChild(overlay);
-
-                            modal = document.createElement('div');
-                            modal.className = 'analytics-modal';
-                            document.body.appendChild(modal);
-                        }
-
-                        const title = existingPair ? `Редактировать пару` : (isFromToolbar ? `Добавить пару` : `Добавить на ${dayName}`);
-                        const pairId = existingPair ? existingPair.id : ('cp_' + Date.now());
-
-                        let defStart = existingPair ? existingPair.startTime : "08:00";
-                        let defEnd = existingPair ? existingPair.endTime : "09:30";
-
-                        // --- 1. АКТУАЛЬНЫЙ ДЕНЬ НЕДЕЛИ ---
-                        const daysArr = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-                        const todayNamePlaceholder = daysArr[new Date().getDay()];
-
-                        // --- 2. СБОР РЕАЛЬНЫХ ДАННЫХ ДЛЯ ПЛЕЙСХОЛДЕРОВ ---
-                        let teachersList = [];
-                        let audsList = [];
-
-                        document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
-                            const tLink = row.querySelector('.pair_teacher a:not(.eval)');
-                            if (tLink && tLink.textContent.trim()) {
-                                let name = tLink.textContent.trim();
-                                if (!teachersList.includes(name)) teachersList.push(name);
-                            }
-                            const audEl = row.querySelector('.pair_info .aud');
-                            if (audEl) {
-                                const clone = audEl.cloneNode(true);
-                                clone.querySelectorAll('.material-icons, .note-btn-wrapper').forEach(el => el.remove());
-                                let aText = clone.textContent.trim();
-
-                                if (aText.includes('ауд.')) {
-                                    const m = aText.match(/ауд\.\s*([^,]+),\s*к\.\s*([^,]+)/i);
-                                    if (m) aText = `${m[1].trim()}/${m[2].trim()}`;
-                                    else {
-                                        const m2 = aText.match(/ауд\.\s*([^,]+)/i);
-                                        if (m2) aText = m2[1].trim();
-                                    }
-                                }
-                                if (aText && !/Онлайн|Zoom|Телемост/i.test(aText) && !audsList.includes(aText)) audsList.push(aText);
-                            }
-                        });
-
-                        const randomTeacher = teachersList.length ? teachersList[Math.floor(Math.random() * teachersList.length)] : "Иванов И.И.";
-                        const randomAud = audsList.length ? audsList[Math.floor(Math.random() * audsList.length)] : "123/1";
-
-                        // Плейсхолдеры
-                        const placeholdersToolbar = [
-                            `Лекция по математике в 13:30 в ${todayNamePlaceholder.toLowerCase()}...`,
-                            "Физ-ра в 9:45...",
-                            "Собрание сегодня в 123 кабинете...",
-                            "Праздник завтра после обеда...",
-                            "Лекция по туризму в 333 кабинете во вторник..."
-                        ];
-                        const placeholdersDay = [
-                            "Лекция по математике в 13:30...",
-                            "Физ-ра в 9:45...",
-                            "Собрание в 123 кабинете...",
-                            "Спорт после обеда...",
-                            "Лекция по туризму в 333 кабинете..."
-                        ];
-                        const placeholders = isFromToolbar ? placeholdersToolbar : placeholdersDay;
-
-                        let placeholderTimer = null;
-
-                        modal.innerHTML = `
-                            <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
-                                <span class="ui-dialog-title">${title}</span>
-                                <button class="close-modal" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
-                            </div>
-                            <div class="ui-dialog-content" style="padding: 2.4rem;">
-                                ${existingPair ? `
-                                <div class="sync-tabs">
-                                    <button class="sync-tab" data-tab="notes">Заметки / ДЗ</button>
-                                    <button class="sync-tab active" data-tab="edit">Настройки пары</button>
-                                </div>
-                                <div class="tab-content" id="tab-notes">
-                                    <textarea class="note-modal-textarea" id="cp-notes-area" placeholder="Что нужно сделать?"></textarea>
-                                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
-                                        <button class="answer-btn-custom clear-cp-note-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Удалить</button>
-                                        <button class="answer-btn-custom save-cp-note-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить заметку</button>
-                                    </div>
-                                </div>
-                                ` : ''}
-
-                                <div class="tab-content active" id="tab-edit">
-                                    ${!existingPair ? `
-                                    <div style="display: flex; align-items: center; position: relative; margin-bottom: 2rem;">
-                                        <span class="material-icons" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-accent); font-size: 22px; pointer-events: none; z-index: 2;">auto_awesome</span>
-                                        <input type="text" id="cp-smart-add" placeholder="${placeholders[0]}" style="width: 100%; padding: 1.2rem 1.6rem 1.2rem 44px !important; margin: 0 !important; box-sizing: border-box; background: var(--color-accent-active) !important; border: 1px solid transparent !important; border-radius: var(--radius-medium) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; box-shadow: none !important;">
-                                    </div>
-                                    ` : ''}
-
-                                    <div class="custom-pair-input-group">
-                                        <input type="text" id="cp-subject" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}">
-                                    </div>
-
-                                    <div class="custom-pair-input-group">
-                                        ${isFromToolbar ? `
-                                            <input type="text" id="cp-date-input" placeholder="${todayNamePlaceholder}" value="${existingPair ? existingPair.dayName : ''}" style="flex: 0.8;">
-                                        ` : `
-                                            <input type="hidden" id="cp-date-input" value="${dayName}">
-                                        `}
-                                        <input type="time" id="cp-start" value="${defStart}" required title="Время начала">
-                                        <input type="time" id="cp-end" value="${defEnd}" required title="Время окончания">
-                                    </div>
-
-                                    <div class="custom-pair-input-group">
-                                        <select id="cp-type" style="flex: 0.8;">
-                                            <option value="лек" ${existingPair?.type === 'лек' ? 'selected' : ''}>Лекция</option>
-                                            <option value="практ" ${existingPair?.type === 'практ' ? 'selected' : ''}>Практика</option>
-                                            <option value="лаб" ${existingPair?.type === 'лаб' ? 'selected' : ''}>Лабораторная</option>
-                                            <option value="экз" ${existingPair?.type === 'экз' ? 'selected' : ''}>Экзамен</option>
-                                            <option value="зач" ${existingPair?.type === 'зач' ? 'selected' : ''}>Зачет</option>
-                                            <option value="конс" ${existingPair?.type === 'конс' ? 'selected' : ''}>Консультация</option>
-                                            <option value="лич" ${existingPair?.type === 'лич' || !existingPair?.type ? 'selected' : ''}>Личное</option>
-                                        </select>
-                                        <select id="cp-recurrence">
-                                            <option value="once" ${existingPair?.recurrence === 'once' ? 'selected' : ''}>Только на этой неделе</option>
-                                            <option value="every" ${existingPair?.recurrence === 'every' ? 'selected' : ''}>Каждую неделю</option>
-                                            <option value="biweekly" ${existingPair?.recurrence === 'biweekly' ? 'selected' : ''}>Раз в 2 недели</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="custom-pair-input-group">
-                                        <input type="text" id="cp-aud" placeholder="Аудитория / Ссылка" value="${existingPair ? existingPair.aud : ''}">
-                                        <input type="text" id="cp-teacher" placeholder="Преподаватель" value="${existingPair ? existingPair.teacher : ''}">
-                                    </div>
-                                    <div style="display: flex; justify-content: flex-end; margin-top: 2.4rem;">
-                                        <button class="answer-btn-custom save-cp-btn">${existingPair ? 'Сохранить' : 'Добавить'}</button>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-
-                        // Закрытие модалки
-                        const closeModal = () => {
-                            if (placeholderTimer) clearInterval(placeholderTimer);
-                            overlay.classList.remove('active');
-                            modal.classList.remove('active');
-                            document.body.classList.remove('modal-open-body');
-                        };
-                        overlay.onclick = closeModal;
-                        modal.querySelector('.close-modal').onclick = closeModal;
-
-                        // Получаем ссылки на элементы ПОСЛЕ того как вставили HTML
-                        const smartInput = modal.querySelector('#cp-smart-add');
-                        const subjectInput = modal.querySelector('#cp-subject');
-                        const dateInput = modal.querySelector('#cp-date-input');
-                        const timeStartInput = modal.querySelector('#cp-start');
-                        const timeEndInput = modal.querySelector('#cp-end');
-                        const typeInput = modal.querySelector('#cp-type');
-                        const audInput = modal.querySelector('#cp-aud');
-                        const teacherInput = modal.querySelector('#cp-teacher');
-
-                        // Таймер плейсхолдеров
-                        if (smartInput) {
-                            let pIdx = 0;
-                            placeholderTimer = setInterval(() => {
-                                pIdx = (pIdx + 1) % placeholders.length;
-                                smartInput.placeholder = placeholders[pIdx];
-                            }, 2000);
-
-                            // Логика умного парсера
-                            smartInput.addEventListener('input', (e) => {
-                                let text = " " + e.target.value + " ";
-                                if (!text.trim()) return;
-                                let extractedDate = "";
-                                let m1 = text.match(/\s(\d{1,2}\.\d{1,2}(?:\.\d{2,4})?)\s/);
-                                let m2 = text.match(/\s(\d{1,2}\s+(?:янв|фев|мар|апр|ма[яй]|июн|июл|авг|сен|окт|ноя|дек)[а-я]*)\s/i);
-                                let m3 = text.match(/\s(?:в\s|во\s)?(понедельник|вторник|сред[ау]|четверг|пятниц[ау]|суббот[ау]|воскресенье)\s/i);
-                                let m4 = text.match(/\s(сегодня|завтра|послезавтра)\s/i);
-                                if (m1) { extractedDate = m1[1]; text = text.replace(m1[0], ' '); }
-                                else if (m2) { extractedDate = m2[1]; text = text.replace(m2[0], ' '); }
-                                else if (m3) { extractedDate = m3[1]; text = text.replace(m3[0], ' '); }
-                                else if (m4) { extractedDate = m4[1]; text = text.replace(m4[0], ' '); }
-                                if (extractedDate && isFromToolbar) {
-                                    let cleanDate = extractedDate.charAt(0).toUpperCase() + extractedDate.slice(1);
-                                    cleanDate = cleanDate.replace(/среду/i, 'Среда').replace(/пятницу/i, 'Пятница').replace(/субботу/i, 'Суббота');
-                                    dateInput.value = cleanDate;
-                                }
-                                let timeParsed = false;
-                                let naturalTimeMatch = text.match(/\s(?:в|на|к)?\s*(\d{1,2})\s+(утра|вечера|дня|ночи|часов|час|часа)\s/i);
-                                if (naturalTimeMatch) {
-                                    let h = parseInt(naturalTimeMatch[1], 10);
-                                    const mod = naturalTimeMatch[2].toLowerCase();
-                                    if (mod.includes('вечер') && h < 12) h += 12;
-                                    else if (mod.includes('дня') && h < 12 && h >= 1) h += 12;
-                                    else if (mod.includes('ноч') && h === 12) h = 0;
-                                    timeStartInput.value = `${String(h).padStart(2, '0')}:00`;
-                                    let totalM = h * 60 + 90;
-                                    timeEndInput.value = `${String(Math.floor(totalM/60)%24).padStart(2,'0')}:${String(totalM%60).padStart(2,'0')}`;
-                                    text = text.replace(naturalTimeMatch[0], ' ');
-                                    timeParsed = true;
-                                }
-                                if (!timeParsed) {
-                                    let strictTimeMatch = text.match(/\s(?:в|на|к)?\s*(\d{1,2})[:.-](\d{2})\s/i);
-                                    if (strictTimeMatch) {
-                                        let h = strictTimeMatch[1].padStart(2, '0');
-                                        let m = strictTimeMatch[2].padStart(2, '0');
-                                        timeStartInput.value = `${h}:${m}`;
-                                        let totalM = parseInt(h)*60 + parseInt(m) + 90;
-                                        timeEndInput.value = `${String(Math.floor(totalM/60)%24).padStart(2,'0')}:${String(totalM%60).padStart(2,'0')}`;
-                                        text = text.replace(strictTimeMatch[0], ' ');
-                                    } else if (text.match(/\sпосле обеда\s/i)) {
-                                        timeStartInput.value = '13:30'; timeEndInput.value = '15:00';
-                                        text = text.replace(/\sпосле обеда\s/i, ' ');
-                                    }
-                                }
-                                let typeMatch = text.match(/\s(лекци[яию]|лек\b|практик[ауи]|практ\b|лабораторн[аяую]|лаба\b|лаб\b)\s/i);
-                                if (typeMatch) {
-                                    let t = typeMatch[1].toLowerCase();
-                                    if (t.startsWith('лек')) typeInput.value = 'лек';
-                                    if (t.startsWith('практ')) typeInput.value = 'практ';
-                                    if (t.startsWith('лаб')) typeInput.value = 'лаб';
-                                    text = text.replace(typeMatch[0], ' ');
-                                }
-                                let aud = '', bldg = '';
-                                let matchLocA = text.match(/\s(?:в|на)?\s*(\d+)\s*корпус[еа]?\s*(?:в\s+)?(?:ауд\.?|каб\.?|кабинет[е]?|аудитори[ия])?\s*(\d+[a-zа-я]?)\s*(?:кабинет[е]?|аудитори[ия])?\s/i);
-                                if (matchLocA) { bldg = matchLocA[1]; aud = matchLocA[2]; text = text.replace(matchLocA[0], ' '); }
-                                else {
-                                    let matchLocB = text.match(/\s(?:(?:в\s+)?(?:ауд\.?|каб\.?|кабинет[е]?|аудитори[ия])?\s*)?(\d+[a-zа-я]?)\s*(?:кабинет[е]?|аудитори[ия])?\s*(?:в\s+)?(\d+)\s*корпус[еа]\s/i);
-                                    if (matchLocB) { aud = matchLocB[1]; bldg = matchLocB[2]; text = text.replace(matchLocB[0], ' '); }
-                                    else {
-                                        let matchLocC = text.match(/\s(\d+[a-zа-я]?)\s*[\/\\]\s*(\d+)\s/i);
-                                        if (matchLocC) { aud = matchLocC[1]; bldg = matchLocC[2]; text = text.replace(matchLocC[0], ' '); }
-                                        else {
-                                            let matchLocD = text.match(/\s(?:(?:в\s+)?(?:ауд\.?|каб\.?|кабинет[е]?|аудитори[ия])\s*(\d+[a-zа-я]?))|(?:(?:в\s+)?(\d+[a-zа-я]?)\s*(?:каб\.?|кабинет[е]?|ауд\.?|аудитори[ия]))\s/i);
-                                            if (matchLocD) { aud = matchLocD[1] || matchLocD[2]; text = text.replace(matchLocD[0], ' '); }
-                                        }
-                                    }
-                                }
-                                if (aud) audInput.value = bldg ? `${aud}/${bldg}` : aud;
-                                let subject = text.replace(/\s+/g, ' ').trim();
-                                let isDative = /^(по)\s+/i.test(subject);
-                                subject = subject.replace(/^(по|в|на|с)\s+/i, '').replace(/\s+(по|в|на|с)$/i, '').trim();
-                                if (isDative) {
-                                    subject = subject.split(' ').map((word, idx, arr) => {
-                                        const lower = word.toLowerCase();
-                                        if (lower === 'праву' || lower === 'делу') return word.replace(/у$/i, 'о');
-                                        if (lower.endsWith('ому')) return word.slice(0, -3) + 'ый';
-                                        if (lower.endsWith('ему')) return word.slice(0, -3) + 'ий';
-                                        if (lower.endsWith('ой') || lower.endsWith('ей')) return word.slice(0, -2) + 'ая';
-                                        if (lower.endsWith('ым') || lower.endsWith('им')) return word.slice(0, -2) + 'ые';
-                                        if (lower.endsWith('ию')) return word.slice(0, -2) + 'ие';
-                                        if (lower.endsWith('ии')) {
-                                            if (idx > 0 && !arr[idx-1].toLowerCase().endsWith('ой') && !arr[idx-1].toLowerCase().endsWith('ей')) return word;
-                                            return word.slice(0, -2) + 'ия';
-                                        }
-                                        if (lower.endsWith('ям')) return word.slice(0, -2) + 'и';
-                                        if (lower.endsWith('ам')) return word.slice(0, -2) + 'ы';
-                                        if (lower.endsWith('у')) return word.slice(0, -1);
-                                        if (lower.endsWith('е')) return word.slice(0, -1) + 'а';
-                                        return word;
-                                    }).join(' ');
-                                }
-                                if (subject.length > 0) subject = subject.charAt(0).toUpperCase() + subject.slice(1);
-                                subjectInput.value = subject;
-                            });
-                        }
-
-                        // Авто-сдвиг времени
-                        timeStartInput.addEventListener('change', (e) => {
-                            if (e.target.value) {
-                                let [hours, minutes] = e.target.value.split(':').map(Number);
-                                minutes += 90; hours += Math.floor(minutes / 60); minutes = minutes % 60; hours = hours % 24;
-                                timeEndInput.value = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                            }
-                        });
-
-                        // Функция парсинга даты (вспомогательная, должна быть доступна внутри)
-                        const internalResolveDate = (inputStr) => {
-                            inputStr = inputStr.trim().toLowerCase();
-                            const now = new Date(); now.setHours(0,0,0,0);
-                            let targetDate = null;
-                            let m = inputStr.match(/^(\d{1,2})\.(\d{1,2})/);
-                            if (m) targetDate = new Date(now.getFullYear(), parseInt(m[2], 10)-1, parseInt(m[1], 10));
-                            else {
-                                m = inputStr.match(/^(\d{1,2})\s+(янв|фев|мар|апр|ма|июн|июл|авг|сен|окт|ноя|дек)/);
-                                if (m) {
-                                    const months = { 'янв':0, 'фев':1, 'мар':2, 'апр':3, 'ма':4, 'июн':5, 'июл':6, 'авг':7, 'сен':8, 'окт':9, 'ноя':10, 'дек':11 };
-                                    targetDate = new Date(now.getFullYear(), months[m[2]], parseInt(m[1], 10));
-                                }
-                            }
-                            const actualWeek = parseInt(localStorage.getItem('etis_actual_week') || '1', 10);
-                            if (targetDate) {
-                                if (targetDate < now && (now.getMonth() - targetDate.getMonth()) > 6) targetDate.setFullYear(now.getFullYear() + 1);
-                                const dArr = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
-                                const getMon = (d) => { const nd = new Date(d); nd.setDate(nd.getDate() - (nd.getDay() || 7) + 1); return nd.setHours(0,0,0,0); };
-                                const weekDiff = Math.round((getMon(targetDate) - getMon(now)) / (7 * 24 * 3600 * 1000));
-                                return { dayName: dArr[targetDate.getDay()], addedWeek: actualWeek + weekDiff };
-                            }
-                            const dMap = { 'понедельник': 'Понедельник', 'вторник': 'Вторник', 'сред': 'Среда', 'четверг': 'Четверг', 'пятниц': 'Пятница', 'суббот': 'Суббота', 'воскресенье': 'Воскресенье' };
-                            let foundDay = Object.keys(dMap).find(k => inputStr.startsWith(k));
-                            if (foundDay) return { dayName: dMap[foundDay], addedWeek: actualWeek };
-                            return { dayName: todayNamePlaceholder, addedWeek: actualWeek };
-                        };
-
-                        // Сохранение пары
-                        modal.querySelector('.save-cp-btn').onclick = () => {
-                            const subject = subjectInput.value.trim();
-                            if (!subject) return alert('Введите название предмета!');
-
-                            let finalDayName = dayName;
-                            let finalAddedWeek = parseInt(document.querySelector('.week.current')?.textContent.trim() || '1', 10);
-
-                            if (isFromToolbar) {
-                                const dateInputVal = dateInput.value.trim() || todayNamePlaceholder;
-                                const resolved = internalResolveDate(dateInputVal);
-                                finalDayName = resolved.dayName;
-                                finalAddedWeek = resolved.addedWeek;
-                            }
-
-                            const pair = {
-                                id: pairId,
-                                addedWeek: finalAddedWeek,
-                                dayName: finalDayName,
-                                subject: subject,
-                                startTime: timeStartInput.value,
-                                endTime: timeEndInput.value,
-                                type: typeInput.value,
-                                recurrence: modal.querySelector('#cp-recurrence').value,
-                                aud: audInput.value.trim() || '',
-                                teacher: teacherInput.value.trim() || ''
-                            };
-
-                            let cp = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
-                            if (existingPair) cp = cp.filter(p => p.id !== pairId);
-                            cp.push(pair);
-                            localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
-                            closeModal(); window.location.reload();
-                        };
-
-                        overlay.classList.add('active');
-                        modal.classList.add('active');
-                        document.body.classList.add('modal-open-body');
-                        if (!existingPair) setTimeout(() => smartInput.focus(), 100);
-                    }
 
                     // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ), КНОПКИ "+" И ШЕРИНГА ---
                     const dayHeaders = span9.querySelectorAll('.day h3');
@@ -14732,7 +16122,14 @@
                             let tempSubjEl = targetEl.cloneNode(true);
                             tempSubjEl.querySelectorAll('.material-icons, .note-btn-wrapper, .delete-custom-pair-btn').forEach(el => el.remove());
                             const cleanSubjectName = tempSubjEl.textContent.trim();
-                            const pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
+                            
+                            let pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
+                            if (cleanSubjectName.toLowerCase().includes('консультация')) {
+                                const timeEl = row.querySelector('.eval');
+                                if (timeEl) pairId += `_${timeEl.textContent.trim()}`;
+                                const teacherEl = row.querySelector('.pair_teacher a:not(.eval)');
+                                if (teacherEl) pairId += `_${teacherEl.textContent.trim()}`;
+                            }
 
                             // Логика переноса непривязанных заметок
                             if (notesData.next_unbound && notesData.next_unbound[cleanSubjectName] && !seenSubjects.has(cleanSubjectName)) {
@@ -14904,7 +16301,7 @@
                                 <div class="tab-content active" id="tab-notes">
                                     <textarea class="note-modal-textarea" id="cp-notes-area" placeholder="Что нужно сделать?">${currentNote}</textarea>
                                     <div style="margin: 2rem 0;">
-                                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition);">
+                                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-card) !important; border-radius: 16px; transition: var(--transition); box-shadow: var(--shadow-main) !important; border: 1px solid var(--color-table-border) !important;">
                                             <div style="display:flex; flex-direction:column; gap:2px;">
                                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">На следующую пару</span>
                                                 <span style="font-size:1.1rem; color:var(--color-text-secondary);">Перенести заметку на следующую неделю</span>
@@ -14913,7 +16310,7 @@
                                         </label>
                                     </div>
                                     <div style="display: flex; justify-content: flex-end; gap: 1rem;">
-                                        <button class="answer-btn-custom clear-note-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Удалить</button>
+                                        <button class="answer-btn-custom clear-note-btn" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important;">Удалить</button>
                                         <button class="answer-btn-custom save-note-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить</button>
                                     </div>
                                 </div>
@@ -14943,7 +16340,7 @@
 
                                     ${!isPureCustom ? `
                                     <div style="margin: 2rem 0;">
-                                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-highlight); border-radius: 16px; transition: var(--transition);">
+                                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-card) !important; border-radius: 16px; transition: var(--transition); box-shadow: var(--shadow-main) !important; border: 1px solid var(--color-table-border) !important;">
                                             <div style="display:flex; flex-direction:column; gap:2px;">
                                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Применить ко всем</span>
                                                 <span style="font-size:1.1rem; color:var(--color-text-secondary);">Ко всем парам с таким же оригинальным названием</span>
@@ -16102,8 +17499,25 @@
                     case 'stu_ann.announces':
                     case 'stu.announce': {
                         span9.querySelectorAll('br, h2, h3').forEach((el, i) => { if(i < 2) el.remove(); });
-                        const announceMessages = span9.querySelectorAll('ul.nav.msg');
+                        const announceMessages = span9.querySelectorAll('ul.nav.msg, ul.nav.answ');
                         if (!announceMessages.length) break;
+
+                        // Если объявлений изначально нет на сервере
+                        if (!announceMessages.length) {
+                            span9.innerHTML = '';
+                            updateEmptyState(span9, false, '', 'announces');
+                            break;
+                        }
+
+                        // Удаляем точку уведомлений из сайдбара
+                        const activeLink = document.querySelector('.span3 > .nav.nav-tabs.nav-stacked > li.active > a');
+                        if (activeLink) {
+                            const dot = activeLink.querySelector('.badge-point');
+                            if (dot) dot.remove();
+                        }
+                        if (!document.querySelector('.span3 .badge-point')) {
+                            document.querySelector('.mobile-menu-btn')?.classList.remove('has-updates');
+                        }
 
                         const container = document.createElement('div');
                         container.className = 'msg-container';
@@ -16120,6 +17534,7 @@
                         `;
 
                         announceMessages.forEach(msg => {
+                            const isUnread = msg.classList.contains('answ');
                             const firstLi = msg.querySelector('li:first-child');
                             if (!firstLi) return;
                             const cloneContent = firstLi.cloneNode(true);
@@ -16162,7 +17577,10 @@
                             card.className = 'msg-card';
                             card.innerHTML = `
                                 <div class="msg-header">
-                                    <div class="msg-sender"><span class="material-icons">campaign</span>${authorStr}</div>
+                                    <div class="msg-sender">
+                                        <span class="material-icons">campaign</span>${authorStr}
+                                        ${isUnread ? '<span style="display:inline-block; width:8px; height:8px; min-width:8px; background:var(--color-red); border-radius:50%; margin-left:8px; align-self:center; box-shadow: 0 0 6px rgba(255,59,48,0.5);"></span>' : ''}
+                                    </div>
                                     <div class="msg-date msg-date-wrapper">
                                         <span class="msg-date-text">${dateStr}</span>
                                         <div class="share-msg-wrap">${softShareSVG}</div>
@@ -16223,7 +17641,7 @@
                                                     btn.style.setProperty('border', '1px solid var(--color-accent)', 'important');
                                                     btn.style.setProperty('cursor', 'default', 'important');
 
-                                                    if (window.showEtisPush) window.showEtisPush('Консультации загружены', data.title, 'Добавлено в расписание (не забудьте включить тумблер!)', 'success', 'event_available');
+                                                    if (window.showEtisPush) window.showEtisPush('Консультации загружены', data.title, 'Добавлено в расписание', 'success', 'event_available');
 
                                                     if (typeof window.injectConsultationPairs === 'function') {
                                                         document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
@@ -16273,11 +17691,16 @@
                         // Логика фильтрации
                         searchWrapper.querySelector('#ann-search').addEventListener('input', (e) => {
                             const val = e.target.value.toLowerCase().trim();
+                            let visibleCount = 0;
                             container.querySelectorAll('.msg-card').forEach(card => {
                                 const isMatch = (val === '' || card.textContent.toLowerCase().includes(val));
                                 card.style.display = isMatch ? '' : 'none';
-                                if (isMatch) highlightSearchTerm(card, val);
+                                if (isMatch) {
+                                    highlightSearchTerm(card, val);
+                                    visibleCount++;
+                                }
                             });
+                            updateEmptyState(span9, visibleCount > 0, val, 'announces');
                         });
 
                         span9.innerHTML = '';
@@ -16294,7 +17717,26 @@
                             if (firstLi && firstLi.textContent.includes('Страницы')) firstLi.style.display = 'none';
                         }
 
-                        const messages = span9.querySelectorAll('ul.nav.msg');
+                        const messages = span9.querySelectorAll('ul.nav.msg, ul.nav.answ');
+
+                        // Если папка входящих сообщений изначально пуста
+                        if (!messages.length) {
+                            span9.querySelectorAll('ul.nav.msg, ul.nav.answ').forEach(m => m.remove());
+                            const oldH2 = span9.querySelector('h2'); if (oldH2) oldH2.remove();
+                            updateEmptyState(span9, false, '', 'messages');
+                            break;
+                        }
+                        
+                        // Удаляем точку уведомлений из сайдбара
+                        const activeLink = document.querySelector('.span3 > .nav.nav-tabs.nav-stacked > li.active > a');
+                        if (activeLink) {
+                            const dot = activeLink.querySelector('.badge-point');
+                            if (dot) dot.remove();
+                        }
+                        if (!document.querySelector('.span3 .badge-point')) {
+                            document.querySelector('.mobile-menu-btn')?.classList.remove('has-updates');
+                        }
+
                         const container = document.createElement('div');
                         container.className = 'msg-container';
 
@@ -16310,6 +17752,7 @@
                         `;
 
                         messages.forEach(msg => {
+                            const isUnread = msg.classList.contains('answ');
                             const mainLi = msg.querySelector('li');
                             if (!mainLi) return;
                             const cloneContent = mainLi.cloneNode(true);
@@ -16340,7 +17783,10 @@
                             card.className = 'msg-card';
                             card.innerHTML = `
                                 <div class="msg-header">
-                                    <div class="msg-sender"><span class="material-icons">person</span>${teacherName}</div>
+                                    <div class="msg-sender">
+                                        <span class="material-icons">person</span>${teacherName}
+                                        ${isUnread ? '<span style="display:inline-block; width:8px; height:8px; min-width:8px; background:var(--color-red); border-radius:50%; margin-left:8px; align-self:center; box-shadow: 0 0 6px rgba(255,59,48,0.5);"></span>' : ''}
+                                    </div>
                                     <div class="msg-date msg-date-wrapper">
                                         <span class="msg-date-text">${dateStr}</span>
                                         <div class="share-msg-wrap">${softShareSVG}</div>
@@ -16370,12 +17816,17 @@
                         // Логика фильтрации
                         searchWrapper.querySelector('#msg-search').addEventListener('input', (e) => {
                             const val = e.target.value.toLowerCase().trim();
+                            let visibleCount = 0;
                             container.querySelectorAll('.msg-card').forEach(card => {
-                                card.style.display = (val === '' || card.textContent.toLowerCase().includes(val)) ? '' : 'none';
+                                const isMatch = (val === '' || card.textContent.toLowerCase().includes(val));
+                                card.style.display = isMatch ? '' : 'none';
+                                if (isMatch) visibleCount++;
                             });
+                            // Вызов умного пустого состояния для поиска
+                            updateEmptyState(container, visibleCount > 0, val, 'messages');
                         });
 
-                        span9.querySelectorAll('ul.nav.msg').forEach(m => m.remove());
+                        span9.querySelectorAll('ul.nav.msg, ul.nav.answ').forEach(m => m.remove());
                         const oldH2 = span9.querySelector('h2'); if (oldH2) oldH2.remove();
 
                         span9.prepend(searchWrapper);
@@ -16659,7 +18110,7 @@
                     }
 
                     case 'stu.signs': {
-                        // СТИЛИ ДЛЯ ТУЛТИПОВ В ТАБЛИЦАХ ОЦЕНОК
+                        // СТИЛИ ДЛЯ ВЫРАВНИВАНИЯ И ТУЛТИПОВ В ТАБЛИЦАХ ОЦЕНОК
                         if (!document.getElementById('etis-reborn-grades-tooltip-css')) {
                             const css = document.createElement('style');
                             css.id = 'etis-reborn-grades-tooltip-css';
@@ -16683,6 +18134,23 @@
                                     transform: translateY(0) !important;
                                     opacity: 1;
                                     visibility: visible;
+                                }
+                                
+                                html body table td.align-right-cell,
+                                html body table th.align-right-cell,
+                                html body div.span9 table.common tr td.align-right-cell,
+                                html body div.span9 table.common tr th.align-right-cell {
+                                    text-align: right !important;
+                                    padding-right: 16px !important;
+                                    vertical-align: middle !important;
+                                }
+                                @media (max-width: 768px) {
+                                    html body table td.align-right-cell,
+                                    html body table th.align-right-cell,
+                                    html body div.span9 table.common tr td.align-right-cell,
+                                    html body div.span9 table.common tr th.align-right-cell {
+                                        padding-right: 8px !important;
+                                    }
                                 }
                             `;
                             document.head.appendChild(css);
@@ -16815,12 +18283,11 @@
                                     headerContainer.className = 'subject-header-flex session-term-header-group';
                                     headerContainer.style.cssText = 'display: flex !important; justify-content: space-between !important; align-items: center !important; margin-top: 4rem; margin-bottom: 1.5rem; padding: 0 !important; margin-left: 0 !important; width: 100%; box-sizing: border-box;';
 
-                                    // Левая капсула (Инфо)
-                                    const leftCapsule = document.createElement('div');
-                                    leftCapsule.className = 'subject-score-capsule';
-                                    leftCapsule.style.cssText = 'margin-left: 0 !important; margin-right: 0; background: var(--color-highlight); color: var(--color-text-primary); border: 1px solid var(--color-table-border); box-shadow: none; font-size: 1.15rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 16px;';
-                                    leftCapsule.textContent = combinedInfo;
-                                    headerContainer.appendChild(leftCapsule);
+                                    // Левый блок
+                                    const leftText = document.createElement('div');
+                                    leftText.style.cssText = 'font-size: 1.3rem; font-weight: 800; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center;';
+                                    leftText.textContent = combinedInfo;
+                                    headerContainer.appendChild(leftText);
 
                                     // Правая капсула (GPA)
                                     if (hasAny) {
@@ -16851,28 +18318,34 @@
                                     if (headerRow) {
                                         const thead = document.createElement('thead');
                                         const clonedHeader = headerRow.cloneNode(true);
-                                        if (generalConfig.compactGrades) {
-                                            const cfg = generalConfig.compactGradesConfig;
-                                            clonedHeader.querySelectorAll('th').forEach((th, idx) => {
+                                        let lastVisibleTh = null;
+                                        clonedHeader.querySelectorAll('th').forEach((th, idx) => {
+                                            if (generalConfig.compactGrades) {
+                                                const cfg = generalConfig.compactGradesConfig;
                                                 if (idx === 2 && !cfg.showDate) th.style.display = 'none';
                                                 if (idx === 3 && !cfg.showTeacher) th.style.display = 'none';
                                                 if (idx > 3) th.style.display = 'none';
-                                            });
-                                        }
+                                            }
+                                            if (th.style.display !== 'none') lastVisibleTh = th;
+                                        });
+                                        if (lastVisibleTh) lastVisibleTh.classList.add('align-right-cell');
                                         thead.appendChild(clonedHeader);
                                         newTable.appendChild(thead);
                                     }
                                     const tbody = document.createElement('tbody');
                                     block.rows.forEach(r => {
-                                        if (generalConfig.compactGrades) {
-                                            const cfg = generalConfig.compactGradesConfig;
-                                            r.querySelectorAll('td').forEach((td, idx) => {
+                                        let lastVisibleTd = null;
+                                        r.querySelectorAll('td').forEach((td, idx) => {
+                                            if (generalConfig.compactGrades) {
+                                                const cfg = generalConfig.compactGradesConfig;
                                                 if (idx === 2 && !cfg.showDate) td.style.display = 'none';
                                                 if (idx === 3 && !cfg.showTeacher) td.style.display = 'none';
                                                 if (idx > 3) td.style.display = 'none';
                                                 if (idx === 1) { td.style.width = '1%'; td.style.whiteSpace = 'nowrap'; td.style.textAlign = 'center'; }
-                                            });
-                                        }
+                                            }
+                                            if (td.style.display !== 'none') lastVisibleTd = td;
+                                        });
+                                        if (lastVisibleTd) lastVisibleTd.classList.add('align-right-cell');
                                         tbody.appendChild(r);
                                     });
                                     newTable.appendChild(tbody);
@@ -16971,7 +18444,7 @@
                             modal.innerHTML = `
                                 <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
                                     <span class="ui-dialog-title">Ваша успеваемость</span>
-                                    <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                                    <span class="close-analytics material-icons" style="color:var(--color-text-secondary); font-size:24px; cursor:pointer; user-select:none; transition: color 0.2s;">close</span>
                                 </div>
                                 <div class="ui-dialog-content" style="padding: 2.4rem;">
                                     <div id="analytics-empty" style="display:none; text-align:center; padding: 3rem; color:var(--color-text-secondary); font-size:1.4rem;">
@@ -17295,6 +18768,10 @@
                                     const wrapper = wrappers[index];
                                     if (!wrapper) return;
 
+                                    // Чтение метаданных периода текущего блока (например, "1 триместр, 1 курс")
+                                    const termName = (wrapper.getAttribute('data-term-name') || '').toLowerCase();
+                                    const isPeriodMatch = val !== "" && termName.includes(val);
+
                                     const rows = Array.from(wrapper.querySelectorAll('tbody tr'));
                                     let visibleRowsCount = 0;
                                     let sum = 0, count = 0, hasFail = false, hasPass = false, hasAny = false;
@@ -17303,8 +18780,8 @@
                                         const subject = row.cells[0]?.textContent.toLowerCase() || "";
                                         const teacher = row.cells[3]?.textContent.toLowerCase() || "";
 
-                                        // Показываем строку, если совпал поиск
-                                        if (val === "" || subject.includes(val) || teacher.includes(val)) {
+                                        // Отображаем строку, если совпали метаданные периода ИЛИ название предмета/преподавателя
+                                        if (val === "" || subject.includes(val) || teacher.includes(val) || isPeriodMatch) {
                                             row.style.display = "";
                                             highlightSearchTerm(row, val);
                                             visibleRowsCount++;
@@ -17345,6 +18822,7 @@
                                     } else {
                                         header.style.setProperty('display', 'flex', 'important');
                                         wrapper.style.setProperty('display', 'block', 'important');
+                                        highlightSearchTerm(header, val);
 
                                         // --- ОБНОВЛЕНИЕ КАПСУЛЫ ---
                                         const capsules = header.querySelectorAll('.subject-score-capsule');
@@ -17382,12 +18860,22 @@
                                         }
                                     }
                                 });
+                                // Определение общей видимости строк по всем таблицам сессии
+                                let totalVisible = 0;
+                                document.querySelectorAll('.session-term-table-group').forEach(w => {
+                                    if (w.style.display !== 'none') {
+                                        totalVisible += w.querySelectorAll('tbody tr:not([style*="display: none"])').length;
+                                    }
+                                });
+                                
+                                updateEmptyState(span9, totalVisible > 0, val, 'grades');
                             });
 
                             // --- ОФОРМЛЕНИЕ ПАМЯТКИ ТОЛЬКО ДЛЯ СЕССИЙ ---
                             const sessionFooterP = span9.querySelector('p');
                             if (sessionFooterP && sessionFooterP.textContent.includes('Показанные здесь оценки являются официальными')) {
                                 const infoBox = document.createElement('div');
+                                infoBox.className = 'etis-official-notice';
                                 infoBox.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large) !important; box-shadow: var(--shadow-main); padding: 2.6rem !important; margin-top: 4rem; text-align: left !important; color: var(--color-text-primary); border: 1px solid var(--color-table-border); line-height: 1.6;';
 
                                 let rawHTML = sessionFooterP.innerHTML.replace(/&nbsp;/g, '').trim();
@@ -17452,11 +18940,19 @@
                                 const totalRow = rows.find(r => r.textContent.toLowerCase().includes('всего:'));
 
                                 let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
+                                let isZachet = false;
 
                                 rows.forEach(r => {
                                     if (r === totalRow) return;
 
                                     const cells = r.querySelectorAll('th, td');
+                                    
+                                    // Логика определения типа предмета (Зачет)
+                                    if (cells.length >= 7 && cells[2]) {
+                                        if (cells[2].textContent.toLowerCase().includes('зачет') || cells[2].textContent.toLowerCase().includes('зачёт')) {
+                                            isZachet = true;
+                                        }
+                                    }
 
                                     // === ЛОГИКА: КОМПАКТНЫЕ ОЦЕНКИ ===
                                     if (generalConfig.compactGrades) {
@@ -17505,6 +19001,13 @@
                                         }
                                     }
                                     // ========================================
+
+                                    // НАХОДИМ ПОСЛЕДНЮЮ ВИДИМУЮ ЯЧЕЙКУ И ПРИЖИМАЕМ ВПРАВО
+                                    let lastVisibleCell = null;
+                                    cells.forEach(cell => {
+                                        if (cell.style.display !== 'none') lastVisibleCell = cell;
+                                    });
+                                    if (lastVisibleCell) lastVisibleCell.classList.add('align-right-cell');
 
                                     if (r.querySelector('th')) return;
 
@@ -17614,9 +19117,25 @@
                                     totalRow.remove();
                                 }
 
+                                const subjectsReportType = JSON.parse(localStorage.getItem('etis_subjects_report_type_v1') || '{}');
+                                const cleanSubjName = h3.textContent.replace(/\[.*?\]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                                
+                                if (subjectsReportType[cleanSubjName] === 'зачет') {
+                                    isZachet = true;
+                                } else {
+                                    // Пытаемся найти частичное совпадение
+                                    for (const [savedSubj, type] of Object.entries(subjectsReportType)) {
+                                        if (savedSubj === cleanSubjName || savedSubj.includes(cleanSubjName) || cleanSubjName.includes(savedSubj)) {
+                                            if (type === 'зачет') isZachet = true;
+                                            break;
+                                        }
+                                    }
+                                }
+
                                 wrapper.setAttribute('data-subject-name', h3.textContent.trim());
                                 wrapper.setAttribute('data-score-current', calculatedCurrent);
                                 wrapper.setAttribute('data-score-max', calculatedMax);
+                                wrapper.setAttribute('data-is-zachet', isZachet ? 'true' : 'false');
 
                                 const headerContainer = document.createElement('div');
                                 headerContainer.className = 'subject-header-flex term-header-group';
@@ -17647,19 +19166,30 @@
                                     let tooltipText = '';
                                     let currentMark = '';
                                     let markColor = '';
+                                    const zachetCheck = wrapper.getAttribute('data-is-zachet') === 'true';
 
-                                    if (calculatedCurrent < 41) {
-                                        tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
-                                        currentMark = '2'; markColor = 'var(--color-red)';
-                                    } else if (calculatedCurrent < 61) {
-                                        tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
-                                        currentMark = '3'; markColor = 'var(--color-warning)';
-                                    } else if (calculatedCurrent < 81) {
-                                        tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
-                                        currentMark = '4'; markColor = '#8BC34A';
+                                    if (zachetCheck) {
+                                        if (calculatedCurrent < 41) {
+                                            tooltipText = `До зачета: ${41 - calculatedCurrent} б.`;
+                                            currentMark = 'НЕЗАЧЕТ'; markColor = 'var(--color-red)';
+                                        } else {
+                                            tooltipText = `Зачет получен! 😎`;
+                                            currentMark = 'ЗАЧЕТ'; markColor = 'var(--color-green)';
+                                        }
                                     } else {
-                                        tooltipText = `Отлично! 😎`;
-                                        currentMark = '5'; markColor = 'var(--color-green)';
+                                        if (calculatedCurrent < 41) {
+                                            tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
+                                            currentMark = '2'; markColor = 'var(--color-red)';
+                                        } else if (calculatedCurrent < 61) {
+                                            tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
+                                            currentMark = '3'; markColor = 'var(--color-warning)';
+                                        } else if (calculatedCurrent < 81) {
+                                            tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
+                                            currentMark = '4'; markColor = '#8BC34A';
+                                        } else {
+                                            tooltipText = `Отлично! 😎`;
+                                            currentMark = '5'; markColor = 'var(--color-green)';
+                                        }
                                     }
 
                                     const tooltip = document.createElement('div');
@@ -17671,6 +19201,10 @@
                             });
 
                             // --- ЛОГИКА ФИЛЬТРАЦИИ И ДИНАМИЧЕСКОГО ПЕРЕСЧЕТА ---
+                            // Первоначальная проверка при пустом списке
+                            const initialTermGradesCount = document.querySelectorAll('.term-table-v6 tbody tr:not(:has(th))').length;
+                            updateEmptyState(span9, initialTermGradesCount > 0, '', 'grades');
+
                             const filterInput = searchContainer.querySelector('.term-local-input');
                             filterInput.addEventListener('input', (e) => {
                                 const val = e.target.value.toLowerCase().trim();
@@ -17771,19 +19305,30 @@
                                                 let tooltipText = '';
                                                 let currentMark = '';
                                                 let markColor = '';
+                                                const zachetCheck = wrapper.getAttribute('data-is-zachet') === 'true';
 
-                                                if (calculatedCurrent < 41) {
-                                                    tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
-                                                    currentMark = '2'; markColor = 'var(--color-red)';
-                                                } else if (calculatedCurrent < 61) {
-                                                    tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
-                                                    currentMark = '3'; markColor = 'var(--color-warning)';
-                                                } else if (calculatedCurrent < 81) {
-                                                    tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
-                                                    currentMark = '4'; markColor = '#8BC34A';
+                                                if (zachetCheck) {
+                                                    if (calculatedCurrent < 41) {
+                                                        tooltipText = `До зачета: ${41 - calculatedCurrent} б.`;
+                                                        currentMark = 'НЕЗАЧЕТ'; markColor = 'var(--color-red)';
+                                                    } else {
+                                                        tooltipText = `Зачет получен! 😎`;
+                                                        currentMark = 'ЗАЧЕТ'; markColor = 'var(--color-green)';
+                                                    }
                                                 } else {
-                                                    tooltipText = `Отлично! 😎`;
-                                                    currentMark = '5'; markColor = 'var(--color-green)';
+                                                    if (calculatedCurrent < 41) {
+                                                        tooltipText = `До тройки: ${41 - calculatedCurrent} б.`;
+                                                        currentMark = '2'; markColor = 'var(--color-red)';
+                                                    } else if (calculatedCurrent < 61) {
+                                                        tooltipText = `До четверки: ${61 - calculatedCurrent} б.`;
+                                                        currentMark = '3'; markColor = 'var(--color-warning)';
+                                                    } else if (calculatedCurrent < 81) {
+                                                        tooltipText = `До пятерки: ${81 - calculatedCurrent} б.`;
+                                                        currentMark = '4'; markColor = '#8BC34A';
+                                                    } else {
+                                                        tooltipText = `Отлично! 😎`;
+                                                        currentMark = '5'; markColor = 'var(--color-green)';
+                                                    }
                                                 }
 
                                                 const oldTooltip = capsule.querySelector('.score-tooltip');
@@ -17797,6 +19342,15 @@
                                         }
                                     }
                                 });
+                                // Определение общей видимости строк по всем предметам
+                                let totalVisible = 0;
+                                document.querySelectorAll('.term-subject-group').forEach(w => {
+                                    if (w.style.display !== 'none') {
+                                        totalVisible += w.querySelectorAll('tbody tr:not([style*="display: none"]):not(:has(th))').length;
+                                    }
+                                });
+                                
+                                updateEmptyState(span9, totalVisible > 0, val, 'grades');
                             });
 
                             // --- ОКНО РЕЙТИНГА ---
@@ -17818,7 +19372,7 @@
                                 modal.innerHTML = `
                                     <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
                                         <span class="ui-dialog-title">Топ предметов триместра</span>
-                                        <button class="close-analytics" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                                        <span class="close-analytics material-icons" style="color:var(--color-text-secondary); font-size:24px; cursor:pointer; user-select:none; transition: color 0.2s;">close</span>
                                     </div>
                                     <div class="ui-dialog-content" style="padding: 2.4rem;">
                                         <div id="analytics-empty" style="display:none; text-align:center; padding: 3rem; color:var(--color-text-secondary); font-size:1.4rem;">
@@ -17829,6 +19383,12 @@
                                         </div>
                                     </div>
                                 `;
+
+                                // Интерактивный ховер-эффект для крестика
+                                modal.querySelectorAll('.close-analytics').forEach(btn => {
+                                    btn.addEventListener('mouseenter', () => btn.style.color = 'var(--color-accent)');
+                                    btn.addEventListener('mouseleave', () => btn.style.color = 'var(--color-text-secondary)');
+                                });
 
                                 const closeAnalytics = () => {
                                     overlay.classList.remove('active');
@@ -17910,6 +19470,7 @@
                             const currentFooterP = span9.querySelector('p');
                             if (currentFooterP && currentFooterP.textContent.includes('Показанные здесь оценки являются официальными')) {
                                 const infoBox = document.createElement('div');
+                                infoBox.className = 'etis-official-notice';
                                 infoBox.style.cssText = `
                                     background: var(--color-card);
                                     border-radius: var(--radius-large) !important;
@@ -18042,6 +19603,7 @@
                                     capsule.style.color = '#fff';
                                 } else if (count > 0) {
                                     const avg = Math.round((sum / count) * 100) / 100;
+                                    localStorage.setItem('etis_diploma_gpa', avg.toString()); // Сохраняем для профиля
                                     capsule.textContent = `${avg} / 5`;
                                     const p = (avg / 5) * 100;
                                     if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
@@ -18060,6 +19622,7 @@
                                 const footerP = span9.querySelector('p');
                                 if (footerP && footerP.textContent.includes('Итоговая оценка по дисциплине')) {
                                     const infoBox = document.createElement('div');
+                                    infoBox.className = 'etis-official-notice';
                                     infoBox.style.cssText = `
                                         background: var(--color-card);
                                         border-radius: var(--radius-large) !important;
@@ -18156,7 +19719,7 @@
                             const footerP = span9.querySelector('p');
                             if (footerP && footerP.textContent.includes('Показанные здесь оценки')) {
                                 const infoBox = document.createElement('div');
-
+                                infoBox.className = 'etis-official-notice';
                                 infoBox.style.cssText = `
                                     background: var(--color-card);
                                     border-radius: var(--radius-large) !important;
@@ -18344,36 +19907,39 @@
                             if (totalUpdates > 0) {
                                 storedData.lastUpdated = Date.now();
 
-                                if (totalUpdates === 1) {
-                                    // Одиночное уведомление
-                                    if (scoreUpdates.length === 1) {
-                                        const u = scoreUpdates[0];
-                                        showPush(`Новые баллы: +${u.diff}`, u.subj, `Теперь у вас ${u.newScore} из ${u.max}`, 'info', 'trending_up');
-                                    } else {
-                                        const u = markUpdates[0];
-                                        let statusTitle = 'Оценка изменена';
-                                        let pushType = 'info';
-                                        let icon = 'assignment_turned_in';
+                                // Проверяем настройку: показываем пуш только если уведомления включены
+                                if (generalConfig.gradeNotifications !== false) {
+                                    if (totalUpdates === 1) {
+                                        // Одиночное уведомление
+                                        if (scoreUpdates.length === 1) {
+                                            const u = scoreUpdates[0];
+                                            showPush(`Новые баллы: +${u.diff}`, u.subj, `Теперь у вас ${u.newScore} из ${u.max}`, 'info', 'trending_up');
+                                        } else {
+                                            const u = markUpdates[0];
+                                            let statusTitle = 'Оценка изменена';
+                                            let pushType = 'info';
+                                            let icon = 'assignment_turned_in';
 
-                                        const markLow = u.newMark.toLowerCase();
-                                        if (markLow.includes('зачет') ||['5','4'].includes(u.newMark) || markLow.includes('отлично') || markLow.includes('хорошо')) {
-                                            statusTitle = 'Успех! 🎉'; pushType = 'success'; icon = 'emoji_events';
-                                        } else if (u.newMark === '2' || markLow.includes('незачет') || markLow.includes('неудовл')) {
-                                            statusTitle = 'Внимание'; pushType = 'warning'; icon = 'priority_high';
+                                            const markLow = u.newMark.toLowerCase();
+                                            if (markLow.includes('зачет') ||['5','4'].includes(u.newMark) || markLow.includes('отлично') || markLow.includes('хорошо')) {
+                                                statusTitle = 'Успех! 🎉'; pushType = 'success'; icon = 'emoji_events';
+                                            } else if (u.newMark === '2' || markLow.includes('незачет') || markLow.includes('неудовл')) {
+                                                statusTitle = 'Внимание'; pushType = 'warning'; icon = 'priority_high';
+                                            }
+                                            showPush(statusTitle, u.subj, `Итог: ${u.newMark}`, pushType, icon);
                                         }
-                                        showPush(statusTitle, u.subj, `Итог: ${u.newMark}`, pushType, icon);
+                                    } else {
+                                        // Массовое уведомление (слияние)
+                                        let subjList =[];
+                                        scoreUpdates.forEach(u => subjList.push(u.subj));
+                                        markUpdates.forEach(u => subjList.push(u.subj));
+                                        subjList =[...new Set(subjList)]; // Убираем дубликаты
+
+                                        let bodyText = subjList.slice(0, 2).join(', ');
+                                        if (subjList.length > 2) bodyText += ` и ещё ${subjList.length - 2}`;
+
+                                        showPush('Обновление успеваемости', `Изменения по ${totalUpdates} предметам`, bodyText, 'info', 'dynamic_feed');
                                     }
-                                } else {
-                                    // Массовое уведомление (слияние)
-                                    let subjList =[];
-                                    scoreUpdates.forEach(u => subjList.push(u.subj));
-                                    markUpdates.forEach(u => subjList.push(u.subj));
-                                    subjList =[...new Set(subjList)]; // Убираем дубликаты
-
-                                    let bodyText = subjList.slice(0, 2).join(', ');
-                                    if (subjList.length > 2) bodyText += ` и ещё ${subjList.length - 2}`;
-
-                                    showPush('Обновление успеваемости', `Изменения по ${totalUpdates} предметам`, bodyText, 'info', 'dynamic_feed');
                                 }
                             }
 
@@ -18399,8 +19965,12 @@
                     }
 
                     case 'stu.electr': {
+                        // Очищаем пустые текстовые узлы и переносы строк на самом верху страницы
+                        while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
+                            span9.firstChild.remove();
+                        }
+
                         const resTable = document.getElementById('resources');
-                        if (!resTable) break;
 
                         // 1. Убираем лишние заголовки
                         span9.querySelectorAll('h3').forEach(h => {
@@ -18410,7 +19980,7 @@
                             }
                         });
 
-                        // 2. Оформляем инфо-блок (памятка от научной библиотеки)
+                        // 2. Оформляем инфо-блок (памятка от научной библиотеки) и переносим в конец страницы
                         const introText = span9.querySelector('p[style*="font-size:11pt"]');
                         if (introText) {
                             const infoBox = document.createElement('div');
@@ -18419,7 +19989,8 @@
                                 border-radius: var(--radius-large) !important;
                                 box-shadow: var(--shadow-main);
                                 padding: 2.4rem !important;
-                                margin-bottom: 2.4rem;
+                                margin-top: 3.2rem; /* Сделаем красивый отступ от таблиц сверху */
+                                margin-bottom: 0 !important;
                                 text-align: left !important;
                                 color: var(--color-text-primary);
                                 border: 1px solid var(--color-table-border);
@@ -18427,7 +19998,6 @@
                                 font-size: 1.35rem;
                             `;
 
-                            // Убираем переносы строк для красивого заполнения
                             let cleanHTML = introText.innerHTML.replace(/<br\s*\/?>/gi, ' ').replace(/\s+/g, ' ').trim();
 
                             infoBox.innerHTML = `
@@ -18439,7 +20009,8 @@
                                     ${cleanHTML}
                                 </div>
                             `;
-                            introText.replaceWith(infoBox);
+                            introText.remove();
+                            span9.appendChild(infoBox);
                         }
 
                         // 3. Парсинг таблицы и исправление скролла/разделителей
@@ -18666,7 +20237,7 @@
                         const libIntro = Array.from(span9.querySelectorAll('p')).find(p => p.textContent.includes('Для чтения полных текстов'));
                         if (libIntro) {
                             const infoBox = document.createElement('div');
-                            // Используем стиль карточки-памятки
+                            infoBox.className = 'electr-description';
                             infoBox.style.cssText = `
                                 background: var(--color-card);
                                 border-radius: var(--radius-large) !important;
@@ -18823,6 +20394,11 @@
                                 }
                             });
 
+                            // Первоначальная проверка при пустом списке
+                            const initialRecsCount = document.querySelectorAll('.library-subject-block').length;
+                            updateEmptyState(span9, initialRecsCount > 0, '', 'library');
+
+
                             const filterInput = searchContainer.querySelector('.lib-local-input');
                             filterInput.addEventListener('input', (e) => {
                                 const val = e.target.value.toLowerCase().trim();
@@ -18854,7 +20430,17 @@
                                     // Скрываем или показываем предмет целиком
                                     block.style.display = blockHasVisible ? "block" : "none";
                                 });
+                                // Подсчет общей видимости книг
+                                let totalVisible = 0;
+                                document.querySelectorAll('.library-subject-block').forEach(block => {
+                                    if (block.style.display !== 'none') {
+                                        totalVisible += block.querySelectorAll('.wide-table-wrapper:not([style*="display: none"]) tbody tr:not([style*="display: none"]):not(:has(th))').length;
+                                    }
+                                });
+
+                                updateEmptyState(span9, totalVisible > 0, val, 'library');
                             });
+
                         }
                         else if (pageMode === 'history' || (!pageMode && span9.querySelector('th')?.textContent.includes('Книга'))) {
                             const historyTable = span9.querySelector('table.common');
@@ -18869,13 +20455,23 @@
                                 wrapper.appendChild(historyTable);
                                 historyTable.style.minWidth = "900px";
 
+                                // Первоначальная проверка при пустом списке
+                                const initialHistoryCount = historyTable.querySelectorAll('tbody tr:not(:has(th))').length;
+                                updateEmptyState(span9, initialHistoryCount > 0, '', 'library');
+
                                 const filterInput = searchContainer.querySelector('.history-filter-input');
                                 filterInput.addEventListener('input', (e) => {
                                     const val = e.target.value.toLowerCase().trim();
+                                    let totalVisible = 0;
+                                    
                                     historyTable.querySelectorAll('tbody tr').forEach(row => {
                                         if (row.querySelector('th')) return;
-                                        row.style.display = (val === "" || row.textContent.toLowerCase().includes(val)) ? "" : "none";
+                                        const match = (val === "" || row.textContent.toLowerCase().includes(val));
+                                        row.style.display = match ? "" : "none";
+                                        if (match) totalVisible++;
                                     });
+                                    
+                                    updateEmptyState(span9, totalVisible > 0, val, 'library');
                                 });
                             }
                         }
@@ -19044,12 +20640,15 @@
                         break;
                     }
 
-                    case 'stu.term_test':
+                    case 'stu.term_test': {
                         const reviewContainer = span9.querySelector('.review');
                         if (!reviewContainer) break;
 
                         const listUl = reviewContainer.querySelector('ul.list');
-                        if (listUl) {
+                        // Проверяем, есть ли в списке дисциплин хотя бы один элемент li
+                        const hasData = listUl && listUl.querySelectorAll('li').length > 0;
+
+                        if (hasData) {
                             const card = document.createElement('div');
                             card.className = 'review-card';
 
@@ -19067,7 +20666,6 @@
                                 let cleanTitle = fullTitle;
                                 let badgeTypes =[];
 
-                                // Извлекаем тип пары из скобок (лек, практ)
                                 const match = fullTitle.match(/\(([^)]+)\)$/i);
                                 if (match) {
                                     cleanTitle = fullTitle.replace(match[0], '').trim();
@@ -19084,7 +20682,6 @@
                                 let badgesHtml = '';
                                 let titleColor = 'var(--color-text-primary)';
                                 
-                                // Главный цвет дисциплины берем по первой капсуле
                                 const mainType = badgeTypes[0] || '';
                                 if (mainType === 'лек') titleColor = 'var(--color-blue)';
                                 else if (mainType === 'практ') titleColor = 'var(--color-green)';
@@ -19118,16 +20715,23 @@
 
                             card.appendChild(newList);
                             listUl.parentNode.replaceChild(card, listUl);
+
+                            const emptySubmenu = reviewContainer.querySelector('.submenu');
+                            if (emptySubmenu && !emptySubmenu.textContent.trim()) {
+                                emptySubmenu.remove();
+                            }
+
+                            reviewContainer.querySelectorAll('h2, h3').forEach(h => h.remove());
+                        } else {
+                            // Если оценивать нечего, полностью удаляем контейнер оценки и лишние BR
+                            reviewContainer.remove();
+                            span9.querySelectorAll('br').forEach(br => br.remove());
                         }
 
-                        const emptySubmenu = reviewContainer.querySelector('.submenu');
-                        if (emptySubmenu && !emptySubmenu.textContent.trim()) {
-                            emptySubmenu.remove();
-                        }
-
-                        reviewContainer.querySelectorAll('h2, h3').forEach(h => h.remove());
-
+                        // Вызываем проверку пустого состояния
+                        updateEmptyState(span9, hasData, '', 'term_test');
                         break;
+                    }
 
                     case 'stu.about':
                         span9.querySelectorAll('h3').forEach(h => h.remove());
@@ -19581,9 +21185,13 @@
                         break;
                     }
 
+                    case 'stu.dis_stat': 
                     case 'stu.teacher_stats': {
                         const table = span9.querySelector('table.common');
-                        if (table) {
+                        // Таблица считается пустой, если в ней нет строк с ячейками данных (td), только заголовки (th)
+                        const hasData = table && table.querySelectorAll('td').length > 0;
+
+                        if (hasData) {
                             const wrapper = document.createElement('div');
                             wrapper.className = 'wide-table-wrapper';
                             table.parentNode.insertBefore(wrapper, table);
@@ -19595,21 +21203,35 @@
                                 el.removeAttribute('valign');
                                 if (el.textContent.trim() === '') el.classList.add('empty');
                             });
+
+                            const footerText = span9.innerHTML.split('</table>')[1];
+                            if (footerText) {
+                                const footerDiv = document.createElement('div');
+                                footerDiv.className = 'electr-description';
+                                footerDiv.style.textAlign = 'left';
+                                footerDiv.style.marginTop = '2rem';
+                                footerDiv.innerHTML = footerText.replace(/<br>/g, '');
+
+                                const currentContent = span9.innerHTML.split('</table>')[0] + '</table>';
+                                span9.innerHTML = currentContent;
+                                span9.appendChild(footerDiv);
+                            }
+                        } else {
+                            if (table) table.remove();
+
+                            // Удаляем текстовые сноски внизу страницы ("** - если средний балл...")
+                            Array.from(span9.childNodes).forEach(node => {
+                                if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('средний балл')) {
+                                    node.textContent = '';
+                                }
+                                if (node.tagName === 'BR') {
+                                    node.remove();
+                                }
+                            });
                         }
 
-                        const span9Content = span9.innerHTML;
-                        const footerText = span9.innerHTML.split('</table>')[1];
-                        if (footerText) {
-                            const footerDiv = document.createElement('div');
-                            footerDiv.className = 'electr-description';
-                            footerDiv.style.textAlign = 'left';
-                            footerDiv.style.marginTop = '2rem';
-                            footerDiv.innerHTML = footerText.replace(/<br>/g, '');
-
-                            const currentContent = span9.innerHTML.split('</table>')[0] + '</table>';
-                            span9.innerHTML = currentContent;
-                            span9.appendChild(footerDiv);
-                        }
+                        // Вызываем проверку пустого состояния
+                        updateEmptyState(span9, hasData, '', 'teacher_stats');
                         break;
                     }
 
@@ -19617,15 +21239,19 @@
                         const groupH3 = span9.querySelector('h3');
                         const listItems = span9.querySelectorAll('li > a[href*="stu_jour.tt_pair"]');
 
-                        if (!listItems.length) break;
-
                         span9.innerHTML = '';
 
                         if (groupH3) {
                             const pageTitle = document.createElement('h2');
                             pageTitle.textContent = groupH3.textContent.trim();
-                            pageTitle.style.marginBottom = '2.4rem';
+                            pageTitle.style.marginBottom = '1.6rem';
                             span9.appendChild(pageTitle);
+                        }
+
+                        // Если записей в журнале нет
+                        if (!listItems.length) {
+                            updateEmptyState(span9, false, '', 'journal');
+                            break;
                         }
 
                         const container = document.createElement('div');
@@ -19739,304 +21365,323 @@
 
                     case 'est_pkg.show_list': {
                         const feedbackMsgs = span9.querySelectorAll('ul.nav.msg');
-
-                        if (feedbackMsgs.length > 0) {
-                            const container = document.createElement('div');
-                            container.className = 'msg-container';
-
-                            feedbackMsgs.forEach(msg => {
-                                const li = msg.querySelector('li');
-                                if (!li) return;
-
-                                const clone = li.cloneNode(true);
-
-                                if (li.hasAttribute('onclick')) {
-                                    const clickFunc = li.getAttribute('onclick');
-                                    if (clickFunc.includes('read')) {
-                                        try { new Function(clickFunc)(); } catch(e) {}
-                                    }
-                                }
-
-                                const dateNode = clone.querySelector('font[color="#808080"]');
-                                const dateStr = dateNode ? formatEtisDate(dateNode.textContent.trim()) : '';
-                                if (dateNode) dateNode.remove();
-
-                                const headerNode = clone.querySelector('font[style*="font-weight:bold"]');
-                                let headerHTML = '';
-                                if (headerNode) {
-                                    headerHTML = headerNode.innerHTML.replace(/<br>/g, ' ').replace(/\s+/g, ' ').trim();
-                                    headerNode.remove();
-                                }
-
-                                const tableNode = clone.querySelector('table');
-                                let tableHTML = '';
-                                if (tableNode) {
-                                    tableNode.removeAttribute('width');
-                                    tableNode.className = 'feedback-table';
-                                    tableNode.querySelectorAll('td').forEach(td => {
-                                        td.removeAttribute('width');
-                                        td.removeAttribute('style');
-                                    });
-                                    tableHTML = tableNode.outerHTML;
-                                    tableNode.remove();
-                                }
-
-                                let bodyText = clone.innerHTML.replace(/^(<br\s*\/?>|\s)+/, '').replace(/(<br\s*\/?>|\s)+$/, '');
-                                if (!bodyText.replace(/<br>/g, '').trim()) bodyText = '';
-
-                                const card = document.createElement('div');
-                                card.className = 'msg-card';
-
-                                card.innerHTML = `
-                                    <div class="msg-header">
-                                        <div class="msg-sender"><span class="material-icons">rate_review</span>Отзыв</div>
-                                        <div class="msg-date">${dateStr}</div>
-                                    </div>
-                                    ${headerHTML ? `<div class="msg-subject" style="font-weight:500; opacity:0.9; font-size:1.3rem;">${headerHTML}</div>` : ''}
-                                    ${bodyText ? `<div class="msg-body" style="margin-bottom:1rem;">${bodyText}</div>` : ''}
-                                    ${tableHTML}
-                                `;
-                                container.appendChild(card);
-                            });
-
-                            feedbackMsgs.forEach(m => m.remove());
-
-                            const submenu = span9.querySelector('.submenu');
-                            if (submenu) submenu.after(container);
-                            else span9.appendChild(container);
-                        }
-
-                        // --- Оформление заголовка и добавление инструкции ---
-                        const ratingH4 = span9.querySelector('h4');
-                        if (ratingH4 && ratingH4.textContent.includes('Индекс удовлетворенности')) {
-                            // Делаем заголовок аккуратнее
-                            const newTitle = document.createElement('h3');
-                            newTitle.textContent = ratingH4.textContent;
-                            newTitle.style.marginBottom = '2rem';
-                            newTitle.style.fontSize = '1.6rem';
-                            newTitle.style.fontWeight = '800';
-                            newTitle.style.color = 'var(--color-text-primary)';
-                            newTitle.style.lineHeight = '1.4';
-                            
-                            // Создаем карточку-пояснение
-                            const infoBlock = document.createElement('div');
-                            infoBlock.style.cssText = `
-                                background: var(--color-card);
-                                border-radius: var(--radius-large);
-                                box-shadow: var(--shadow-main);
-                                padding: 2.4rem;
-                                margin-bottom: 3rem;
-                                border: 1px solid var(--color-table-border);
-                                color: var(--color-text-primary);
-                                line-height: 1.6;
-                                font-size: 1.35rem;
-                            `;
-                            
-                            // Используем flex-сетку для идеального выравнивания иконки и пунктов меню
-                            infoBlock.innerHTML = `
-                                <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-weight:800; font-size:1.6rem; color:var(--color-text-primary);">
-                                    <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">help_outline</span>
-                                    Как читать таблицы?
-                                </div>
-                                <div style="display: flex; flex-direction: column; gap: 10px; color: var(--color-text-secondary);">
-                                    <div style="display: flex; gap: 10px;">
-                                        <span style="color: var(--color-accent); font-weight: 800;">•</span>
-                                        <div><b style="color: var(--color-text-primary);">Строки</b> — кафедры и факультеты, работу которых оценивали.</div>
-                                    </div>
-                                    <div style="display: flex; gap: 10px;">
-                                        <span style="color: var(--color-accent); font-weight: 800;">•</span>
-                                        <div><b style="color: var(--color-text-primary);">Столбцы (аббревиатуры)</b> — факультеты студентов, которые оставляли отзыв. Например, ЭК — студенты эконома. Столбец <b style="color: var(--color-text-primary);">«Все»</b> — средний балл от студентов со всего университета.</div>
-                                    </div>
-                                    <div style="display: flex; gap: 10px;">
-                                        <span style="color: var(--color-accent); font-weight: 800;">•</span>
-                                        <div><b style="color: var(--color-text-primary);">Оценки</b> — средний индекс (максимум 5.0). <span style="background: rgba(255, 59, 48, 0.1); color: var(--color-red); padding: 2px 6px; border-radius: 6px; font-weight: 800; font-size: 1.2rem; display: inline-block; line-height: 1;">Красным</span> выделены оценки ниже 4.0. Прочерк означает, что студенты данного факультета не оценивали эту кафедру.</div>
-                                    </div>
-                                </div>
-                            `;
-
-                            ratingH4.replaceWith(newTitle);
-                            newTitle.after(infoBlock);
-                            
-                            // Убираем мусорные переносы строк ЕТИСа, чтобы отступы были ровными
-                            let nextSibling = infoBlock.nextSibling;
-                            while (nextSibling && nextSibling.tagName === 'BR') {
-                                const toRemove = nextSibling;
-                                nextSibling = nextSibling.nextSibling;
-                                toRemove.remove();
-                            }
-                        }
-
                         const ratingTable = document.getElementById('rating');
+                        const submenu = span9.querySelector('.submenu');
 
-                        if (ratingTable) {
-                            // 1. Ищем строку с аббревиатурами факультетов (заголовки колонок)
-                            let headerThs =[];
-                            ratingTable.querySelectorAll('tr').forEach(tr => {
-                                const ths = tr.querySelectorAll('th');
-                                // Нам нужна строка, где много th без colspan (это "Все", "ММ", "ФЗ" и т.д.)
-                                if (ths.length > 5 && !ths[0].hasAttribute('colspan')) {
-                                    headerThs = Array.from(ths).map(th => th.textContent.trim());
-                                }
-                            });
+                        // Определяем активную вкладку по тегу <b> (активный элемент меню)
+                        const activeSubmenuItem = submenu ? submenu.querySelector('b') : null;
+                        const activeTabName = activeSubmenuItem ? activeSubmenuItem.textContent.toLowerCase() : '';
 
-                            if (headerThs.length > 0) {
-                                const groups =[];
-                                let currentGroup = null;
+                        // Разделяем вкладки взаимно исключающим образом
+                        const isCommentsTab = activeTabName.includes('комментари') || (!ratingTable && !span9.querySelector('form') && !activeTabName);
+                        const isRatingTab = activeTabName.includes('рейтинг') || (!!ratingTable && !activeTabName);
 
-                                // 2. Группируем данные (Факультет -> Кафедры)
-                                ratingTable.querySelectorAll('tr.lvl1, tr.lvl2').forEach(tr => {
-                                    if (tr.classList.contains('lvl1')) {
-                                        currentGroup = {
-                                            name: tr.cells[0].textContent.trim(),
-                                            overallData: Array.from(tr.cells).slice(1),
-                                            departments:[]
-                                        };
-                                        groups.push(currentGroup);
-                                    } else if (tr.classList.contains('lvl2') && currentGroup) {
-                                        currentGroup.departments.push({
-                                            name: tr.cells[0].textContent.trim(),
-                                            data: Array.from(tr.cells).slice(1)
-                                        });
-                                    }
-                                });
+                        // Логика вкладки "Мои комментарии"
+                        if (isCommentsTab) {
+                            if (feedbackMsgs.length > 0) {
+                                const container = document.createElement('div');
+                                container.className = 'msg-container';
 
-                                const newContainer = document.createElement('div');
-                                newContainer.className = 'rating-split-container';
+                                feedbackMsgs.forEach(msg => {
+                                    const li = msg.querySelector('li');
+                                    if (!li) return;
 
-                                // 3. Создаем отдельные таблицы для каждого факультета
-                                groups.forEach(group => {
-                                    // Находим индексы непустых колонок ТОЛЬКО для этого факультета (убираем лишний пустой скролл)
-                                    const activeColIndices =[];
-                                    for (let i = 0; i < headerThs.length; i++) {
-                                        let hasData = false;
-                                        if (group.overallData[i] && group.overallData[i].textContent.trim() !== '') hasData = true;
-                                        if (!hasData) {
-                                            for (let dep of group.departments) {
-                                                if (dep.data[i] && dep.data[i].textContent.trim() !== '') {
-                                                    hasData = true;
-                                                    break;
-                                                }
-                                            }
+                                    const clone = li.cloneNode(true);
+
+                                    if (li.hasAttribute('onclick')) {
+                                        const clickFunc = li.getAttribute('onclick');
+                                        if (clickFunc.includes('read')) {
+                                            try { new Function(clickFunc)(); } catch(e) {}
                                         }
-                                        if (hasData) activeColIndices.push(i);
                                     }
 
-                                    if (activeColIndices.length === 0 && group.departments.length === 0) return;
+                                    const dateNode = clone.querySelector('font[color="#808080"]');
+                                    const dateStr = dateNode ? formatEtisDate(dateNode.textContent.trim()) : '';
+                                    if (dateNode) dateNode.remove();
 
-                                    const wrapper = document.createElement('div');
-                                    wrapper.className = 'wide-table-wrapper';
-                                    wrapper.style.marginBottom = '3rem';
+                                    const headerNode = clone.querySelector('font[style*="font-weight:bold"]');
+                                    let headerHTML = '';
+                                    if (headerNode) {
+                                        headerHTML = headerNode.innerHTML.replace(/<br>/g, ' ').replace(/\s+/g, ' ').trim();
+                                        headerNode.remove();
+                                    }
 
-                                    const table = document.createElement('table');
-                                    table.className = 'common rating-split-table';
-                                    table.style.width = '100%';
-
-                                    // --- ШАПКА ТАБЛИЦЫ ---
-                                    const thead = document.createElement('thead');
-                                    const hTr = document.createElement('tr');
-                                    const thName = document.createElement('th');
-                                    thName.textContent = group.name; // Название факультета слева сверху
-                                    thName.style.textAlign = 'left';
-                                    hTr.appendChild(thName);
-
-                                    activeColIndices.forEach(idx => {
-                                        const th = document.createElement('th');
-                                        th.textContent = headerThs[idx];
-                                        th.style.textAlign = 'center';
-                                        hTr.appendChild(th);
-                                    });
-                                    thead.appendChild(hTr);
-                                    table.appendChild(thead);
-
-                                    // --- ТЕЛО ТАБЛИЦЫ ---
-                                    const tbody = document.createElement('tbody');
-
-                                    // Функция переноса и стилизации ячейки с оценкой
-                                    const processCell = (origTd) => {
-                                        const td = document.createElement('td');
-                                        td.style.textAlign = 'center';
-                                        td.style.verticalAlign = 'middle';
-                                        
-                                        if (!origTd) {
-                                            td.innerHTML = '<span style="color: var(--color-table-border);">-</span>';
-                                            return td;
-                                        }
-
-                                        td.innerHTML = origTd.innerHTML;
-
-                                        // Сохраняем тултипы (родные от ЕТИС)
-                                        if (origTd.classList.contains('tooltip')) {
-                                            td.classList.add('tooltip');
-                                            if (origTd.title) td.title = origTd.title;
-                                            if (origTd.hasAttribute('data-val')) td.setAttribute('data-val', origTd.getAttribute('data-val'));
-                                        }
-
-                                        if (td.textContent.trim() === '') {
-                                            td.innerHTML = '<span style="color: var(--color-table-border);">-</span>';
-                                        } else {
-                                            // Оформление красных оценок в капсулы
-                                            const font = td.querySelector('font[color="#d00"], font[style*="color:#d00"]');
-                                            if (font) {
-                                                font.style.cssText = 'color: var(--color-red) !important; font-weight: 800 !important; background: rgba(255, 59, 48, 0.1) !important; padding: 0.4rem 0.8rem !important; border-radius: 6px !important; display: inline-block !important;';
-                                            }
-                                        }
-                                        return td;
-                                    };
-
-                                    // 1. Строка "В целом по факультету"
-                                    const overallTr = document.createElement('tr');
-                                    overallTr.style.background = 'var(--color-highlight)';
-                                    const overallTdName = document.createElement('td');
-                                    overallTdName.innerHTML = '<b>В целом по факультету</b>';
-                                    overallTr.appendChild(overallTdName);
-
-                                    activeColIndices.forEach(idx => {
-                                        overallTr.appendChild(processCell(group.overallData[idx]));
-                                    });
-                                    tbody.appendChild(overallTr);
-
-                                    // 2. Строки кафедр
-                                    group.departments.forEach(dep => {
-                                        const tr = document.createElement('tr');
-                                        const tdName = document.createElement('td');
-                                        tdName.textContent = dep.name.replace(/^[\-—]\s*/, ''); // Убираем возможные тире в начале
-                                        tr.appendChild(tdName);
-
-                                        activeColIndices.forEach(idx => {
-                                            tr.appendChild(processCell(dep.data[idx]));
+                                    const tableNode = clone.querySelector('table');
+                                    let tableHTML = '';
+                                    if (tableNode) {
+                                        tableNode.removeAttribute('width');
+                                        tableNode.className = 'feedback-table';
+                                        tableNode.querySelectorAll('td').forEach(td => {
+                                            td.removeAttribute('width');
+                                            td.removeAttribute('style');
                                         });
-                                        tbody.appendChild(tr);
-                                    });
+                                        tableHTML = tableNode.outerHTML;
+                                        tableNode.remove();
+                                    }
 
-                                    table.appendChild(tbody);
-                                    wrapper.appendChild(table);
-                                    newContainer.appendChild(wrapper);
+                                    let bodyText = clone.innerHTML.replace(/^(<br\s*\/?>|\s)+/, '').replace(/(<br\s*\/?>|\s)+$/, '');
+                                    if (!bodyText.replace(/<br>/g, '').trim()) bodyText = '';
+
+                                    const card = document.createElement('div');
+                                    card.className = 'msg-card';
+
+                                    card.innerHTML = `
+                                        <div class="msg-header">
+                                            <div class="msg-sender"><span class="material-icons">rate_review</span>Отзыв</div>
+                                            <div class="msg-date">${dateStr}</div>
+                                        </div>
+                                        ${headerHTML ? `<div class="msg-subject" style="font-weight:500; opacity:0.9; font-size:1.3rem;">${headerHTML}</div>` : ''}
+                                        ${bodyText ? `<div class="msg-body" style="margin-bottom:1rem;">${bodyText}</div>` : ''}
+                                        ${tableHTML}
+                                    `;
+                                    container.appendChild(card);
                                 });
 
-                                ratingTable.parentNode.replaceChild(newContainer, ratingTable);
-                            } else {
-                                // Фолбэк, если таблица не распарсилась
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'wide-table-wrapper';
-                                ratingTable.parentNode.insertBefore(wrapper, ratingTable);
-                                wrapper.appendChild(ratingTable);
-                                ratingTable.removeAttribute('width');
-                                ratingTable.classList.add('common');
+                                feedbackMsgs.forEach(m => m.remove());
+
+                                if (submenu) submenu.after(container);
+                                else span9.appendChild(container);
                             }
+                            
+                            // Вызов заглушки для комментариев
+                            updateEmptyState(span9, feedbackMsgs.length > 0, '', 'comments');
                         }
 
+                        // Логика вкладки "Рейтинг факультетов и кафедр"
+                        if (isRatingTab) {
+                            const ratingH4 = span9.querySelector('h4');
+                            
+                            // Проверяем, есть ли реальные числовые оценки в таблице (хотя бы одна строка с colspan или > 1 ячейкой)
+                            let hasRatingData = false;
+                            if (ratingTable) {
+                                const rows = ratingTable.querySelectorAll('tr.lvl1, tr.lvl2');
+                                for (let r of rows) {
+                                    if (r.cells.length > 1) {
+                                        hasRatingData = true;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (hasRatingData) {
+                                // Оформляем заголовок и памятку "Как читать таблицы?" только если данные есть
+                                if (ratingH4 && ratingH4.textContent.includes('Индекс удовлетворенности')) {
+                                    const newTitle = document.createElement('h3');
+                                    newTitle.textContent = ratingH4.textContent;
+                                    newTitle.style.marginBottom = '2rem';
+                                    newTitle.style.fontSize = '1.6rem';
+                                    newTitle.style.fontWeight = '800';
+                                    newTitle.style.color = 'var(--color-text-primary)';
+                                    newTitle.style.lineHeight = '1.4';
+                                    
+                                    const infoBlock = document.createElement('div');
+                                    infoBlock.style.cssText = `
+                                        background: var(--color-card);
+                                        border-radius: var(--radius-large);
+                                        box-shadow: var(--shadow-main);
+                                        padding: 2.4rem;
+                                        margin-bottom: 3rem;
+                                        border: 1px solid var(--color-table-border);
+                                        color: var(--color-text-primary);
+                                        line-height: 1.6;
+                                        font-size: 1.35rem;
+                                    `;
+                                    
+                                    infoBlock.innerHTML = `
+                                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-weight:800; font-size:1.6rem; color:var(--color-text-primary);">
+                                            <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">help_outline</span>
+                                            Как читать таблицы?
+                                        </div>
+                                        <div style="display: flex; flex-direction: column; gap: 10px; color: var(--color-text-secondary);">
+                                            <div style="display: flex; gap: 10px;">
+                                                <span style="color: var(--color-accent); font-weight: 800;">•</span>
+                                                <div><b style="color: var(--color-text-primary);">Строки</b> — кафедры и факультеты, работу которых оценивали.</div>
+                                            </div>
+                                            <div style="display: flex; gap: 10px;">
+                                                <span style="color: var(--color-accent); font-weight: 800;">•</span>
+                                                <div><b style="color: var(--color-text-primary);">Столбцы (аббревиатуры)</b> — факультеты студентов, которые оставляли отзыв. Например, ЭК — студенты эконома. Столбец <b style="color: var(--color-text-primary);">«Все»</b> — средний балл от студентов со всего университета.</div>
+                                        </div>
+                                            <div style="display: flex; gap: 10px;">
+                                                <span style="color: var(--color-accent); font-weight: 800;">•</span>
+                                                <div><b style="color: var(--color-text-primary);">Оценки</b> — средний индекс (максимум 5.0). <span style="background: rgba(255, 59, 48, 0.1); color: var(--color-red); padding: 2px 6px; border-radius: 6px; font-weight: 800; font-size: 1.2rem; display: inline-block; line-height: 1;">Красным</span> выделены оценки ниже 4.0. Прочерк означает, что студенты данного факультета не оценивали эту кафедру.</div>
+                                            </div>
+                                        </div>
+                                    `;
+
+                                    ratingH4.replaceWith(newTitle);
+                                    newTitle.after(infoBlock);
+                                    
+                                    let nextSibling = infoBlock.nextSibling;
+                                    while (nextSibling && nextSibling.tagName === 'BR') {
+                                        const toRemove = nextSibling;
+                                        nextSibling = nextSibling.nextSibling;
+                                        toRemove.remove();
+                                    }
+                                }
+
+                                if (ratingTable) {
+                                    let headerThs =[];
+                                    ratingTable.querySelectorAll('tr').forEach(tr => {
+                                        const ths = tr.querySelectorAll('th');
+                                        if (ths.length > 5 && !ths[0].hasAttribute('colspan')) {
+                                            headerThs = Array.from(ths).map(th => th.textContent.trim());
+                                        }
+                                    });
+
+                                    if (headerThs.length > 0) {
+                                        const groups =[];
+                                        let currentGroup = null;
+
+                                        ratingTable.querySelectorAll('tr.lvl1, tr.lvl2').forEach(tr => {
+                                            if (tr.classList.contains('lvl1')) {
+                                                currentGroup = {
+                                                    name: tr.cells[0].textContent.trim(),
+                                                    overallData: Array.from(tr.cells).slice(1),
+                                                    departments:[]
+                                                };
+                                                groups.push(currentGroup);
+                                            } else if (tr.classList.contains('lvl2') && currentGroup) {
+                                                currentGroup.departments.push({
+                                                    name: tr.cells[0].textContent.trim(),
+                                                    data: Array.from(tr.cells).slice(1)
+                                                });
+                                            }
+                                        });
+
+                                        const newContainer = document.createElement('div');
+                                        newContainer.className = 'rating-split-container';
+
+                                        groups.forEach(group => {
+                                            const activeColIndices =[];
+                                            for (let i = 0; i < headerThs.length; i++) {
+                                                let hasData = false;
+                                                if (group.overallData[i] && group.overallData[i].textContent.trim() !== '') hasData = true;
+                                                if (!hasData) {
+                                                    for (let dep of group.departments) {
+                                                        if (dep.data[i] && dep.data[i].textContent.trim() !== '') {
+                                                            hasData = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                                if (hasData) activeColIndices.push(i);
+                                            }
+
+                                            if (activeColIndices.length === 0 && group.departments.length === 0) return;
+
+                                            const wrapper = document.createElement('div');
+                                            wrapper.className = 'wide-table-wrapper';
+                                            wrapper.style.marginBottom = '3rem';
+
+                                            const table = document.createElement('table');
+                                            table.className = 'common rating-split-table';
+                                            table.style.width = '100%';
+
+                                            const thead = document.createElement('thead');
+                                            const hTr = document.createElement('tr');
+                                            const thName = document.createElement('th');
+                                            thName.textContent = group.name;
+                                            thName.style.textAlign = 'left';
+                                            hTr.appendChild(thName);
+
+                                            activeColIndices.forEach(idx => {
+                                                const th = document.createElement('th');
+                                                th.textContent = headerThs[idx];
+                                                th.style.textAlign = 'center';
+                                                hTr.appendChild(th);
+                                            });
+                                            thead.appendChild(hTr);
+                                            table.appendChild(thead);
+
+                                            const tbody = document.createElement('tbody');
+
+                                            const processCell = (origTd) => {
+                                                const td = document.createElement('td');
+                                                td.style.textAlign = 'center';
+                                                td.style.verticalAlign = 'middle';
+                                                
+                                                if (!origTd) {
+                                                    td.innerHTML = '<span style="color: var(--color-table-border);">-</span>';
+                                                    return td;
+                                                }
+
+                                                td.innerHTML = origTd.innerHTML;
+
+                                                if (origTd.classList.contains('tooltip')) {
+                                                    td.classList.add('tooltip');
+                                                    if (origTd.title) td.title = origTd.title;
+                                                    if (origTd.hasAttribute('data-val')) td.setAttribute('data-val', origTd.getAttribute('data-val'));
+                                                }
+
+                                                if (td.textContent.trim() === '') {
+                                                    td.innerHTML = '<span style="color: var(--color-table-border);">-</span>';
+                                                } else {
+                                                    const font = td.querySelector('font[color="#d00"], font[style*="color:#d00"]');
+                                                    if (font) {
+                                                        font.style.cssText = 'color: var(--color-red) !important; font-weight: 800 !important; background: rgba(255, 59, 48, 0.1) !important; padding: 0.4rem 0.8rem !important; border-radius: 6px !important; display: inline-block !important;';
+                                                    }
+                                                }
+                                                return td;
+                                            };
+
+                                            const overallTr = document.createElement('tr');
+                                            overallTr.style.background = 'var(--color-highlight)';
+                                            const overallTdName = document.createElement('td');
+                                            overallTdName.innerHTML = '<b>В целом по факультету</b>';
+                                            overallTr.appendChild(overallTdName);
+
+                                            activeColIndices.forEach(idx => {
+                                                overallTr.appendChild(processCell(group.overallData[idx]));
+                                            });
+                                            tbody.appendChild(overallTr);
+
+                                            group.departments.forEach(dep => {
+                                                const tr = document.createElement('tr');
+                                                const tdName = document.createElement('td');
+                                                tdName.textContent = dep.name.replace(/^[\-—]\s*/, '');
+                                                tr.appendChild(tdName);
+
+                                                activeColIndices.forEach(idx => {
+                                                    tr.appendChild(processCell(dep.data[idx]));
+                                                });
+                                                tbody.appendChild(tr);
+                                            });
+
+                                            table.appendChild(tbody);
+                                            wrapper.appendChild(table);
+                                            newContainer.appendChild(wrapper);
+                                        });
+
+                                        ratingTable.parentNode.replaceChild(newContainer, ratingTable);
+                                    }
+                                }
+                            } else {
+                                // Если данных нет, полностью очищаем оригинальный заголовок, пустую таблицу и лишние BR
+                                if (ratingH4) ratingH4.remove();
+                                if (ratingTable) ratingTable.remove();
+                                
+                                span9.querySelectorAll('br').forEach(br => {
+                                    if (br.parentNode === span9) br.remove();
+                                });
+                            }
+
+                            // Вызываем проверку пустого состояния
+                            updateEmptyState(span9, hasRatingData, '', 'rating');
+                        }
                         break;
                     }
 
                     case 'stu.absence': {
-                        span9.querySelectorAll('h2, h3').forEach(h => h.remove());
-                        
+                        // Чистим лишние пробельные текстовые узлы в самом начале
                         while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
                             span9.firstChild.remove();
                         }
                         
                         const table = span9.querySelector('table.slimtab_nice');
-                        if (table) {
+                        // Таблица пуста, если в ней нет ячеек с данными (td), а есть только заголовки (th)
+                        const hasData = table && table.querySelectorAll('td').length > 0;
+
+                        if (hasData) {
                             table.className = 'common absence-table';
 
                             const wrapper = document.createElement('div');
@@ -20078,50 +21723,69 @@
                                     }
                                 }
                             });
-                        }
 
-                        let total = '0', valid = '0', invalid = '0';
-                        let foundStats = false;
+                            let total = '0', valid = '0', invalid = '0';
+                            let foundStats = false;
 
-                        Array.from(span9.childNodes).forEach(node => {
-                            if (node.nodeType === Node.TEXT_NODE) {
-                                const text = node.textContent;
-                                if (text.includes('Всего пропущено занятий:')) {
-                                    total = text.replace(/\D/g, '');
-                                    foundStats = true;
-                                    node.textContent = '';
+                            Array.from(span9.childNodes).forEach(node => {
+                                if (node.nodeType === Node.TEXT_NODE) {
+                                    const text = node.textContent;
+                                    if (text.includes('Всего пропущено занятий:')) {
+                                        total = text.replace(/\D/g, '');
+                                        foundStats = true;
+                                        node.textContent = '';
+                                    }
+                                    if (text.includes('Из них по уважительной причине:')) {
+                                        valid = text.replace(/\D/g, '');
+                                        node.textContent = '';
+                                    }
+                                } else if (node.tagName === 'B' && node.textContent.includes('По неуважительной причине:')) {
+                                    invalid = node.textContent.replace(/\D/g, '');
+                                    node.remove();
                                 }
-                                if (text.includes('Из них по уважительной причине:')) {
-                                    valid = text.replace(/\D/g, '');
-                                    node.textContent = '';
-                                }
-                            } else if (node.tagName === 'B' && node.textContent.includes('По неуважительной причине:')) {
-                                invalid = node.textContent.replace(/\D/g, '');
-                                node.remove();
+                            });
+
+                            if (foundStats) {
+                                const summaryDiv = document.createElement('div');
+                                summaryDiv.className = 'absence-summary';
+                                summaryDiv.innerHTML = `
+                                    <div class="absence-stat">
+                                        <span class="absence-stat-val">${total}</span>
+                                        <span class="absence-stat-label">Всего пропущено</span>
+                                    </div>
+                                    <div class="absence-stat valid">
+                                        <span class="absence-stat-val">${valid}</span>
+                                        <span class="absence-stat-label">Уважительные</span>
+                                    </div>
+                                    <div class="absence-stat invalid">
+                                        <span class="absence-stat-val">${invalid}</span>
+                                        <span class="absence-stat-label">Неуважительные</span>
+                                    </div>
+                                `;
+                                span9.appendChild(summaryDiv);
                             }
-                        });
+                        } else {
+                            // Если пропусков за период нет, полностью удаляем пустую таблицу
+                            if (table) table.remove();
 
-                        if (foundStats) {
-                            const summaryDiv = document.createElement('div');
-                            summaryDiv.className = 'absence-summary';
-                            summaryDiv.innerHTML = `
-                                <div class="absence-stat">
-                                    <span class="absence-stat-val">${total}</span>
-                                    <span class="absence-stat-label">Всего пропущено</span>
-                                </div>
-                                <div class="absence-stat valid">
-                                    <span class="absence-stat-val">${valid}</span>
-                                    <span class="absence-stat-label">Уважительные</span>
-                                </div>
-                                <div class="absence-stat invalid">
-                                    <span class="absence-stat-val">${invalid}</span>
-                                    <span class="absence-stat-label">Неуважительные</span>
-                                </div>
-                            `;
-                            span9.appendChild(summaryDiv);
+                            // Чистим текстовую и блочную статистику в корне span9
+                            Array.from(span9.childNodes).forEach(node => {
+                                if (node.nodeType === Node.TEXT_NODE) {
+                                    const text = node.textContent;
+                                    if (text.includes('Всего пропущено занятий:') || text.includes('Из них по уважительной причине:')) {
+                                        node.textContent = '';
+                                    }
+                                } else if (node.tagName === 'B' && node.textContent.includes('По неуважительной причине:')) {
+                                    node.remove();
+                                }
+                                if (node.tagName === 'BR') {
+                                    node.remove();
+                                }
+                            });
                         }
 
-                        span9.querySelectorAll('br').forEach(br => br.remove());
+                        // Вызываем проверку пустого состояния для пропусков
+                        updateEmptyState(span9, hasData, '', 'absence');
                         break;
                     }
                 }
@@ -20336,6 +22000,18 @@
 
             initSmartScroll();
 
+            // Автоматическое открытие профиля после расчета оценок диплома
+            if (window.location.hash === '#open-profile') {
+                // Бесследно стираем хэш-маркер из адресной строки без перезагрузки страницы
+                history.replaceState(null, document.title, window.location.pathname + window.location.search);
+                setTimeout(() => {
+                    if (typeof openProfileModal === 'function') {
+                        // На смартфонах открываем меню выбора, на ПК — сразу «Мой профиль»
+                        openProfileModal(window.innerWidth <= 960 ? 'menu' : 'main');
+                    }
+                }, 1000); // Небольшая задержка, чтобы страница успела полностью загрузиться
+            }
+
             document.querySelectorAll('.submenu a:not(.answer-btn-custom), .weeks a, .timetable-toolbar a.toolbar-item').forEach(link => {
                 link.addEventListener('click', (e) => {
                     const href = link.getAttribute('href');
@@ -20349,5 +22025,28 @@
             if (page.includes('announces') || page.includes('teacher_notes')) {
                 initEventLinks();
             }
+
+            // Закрытие всех кастомных модальных окон при нажатии клавиши ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const activeModal = document.querySelector('#etis-settings-modal.active, .analytics-modal.active');
+                    if (activeModal) {
+                        const id = activeModal.id;
+                        let overlay = null;
+                        
+                        if (id === 'etis-settings-modal') overlay = document.getElementById('etis-settings-overlay');
+                        else if (id === 'etis-profile-modal') overlay = document.getElementById('etis-profile-overlay');
+                        else if (id === 'etis-sync-modal') overlay = document.getElementById('etis-sync-overlay');
+                        else if (id === 'etis-cons-modal') overlay = document.getElementById('etis-cons-overlay');
+                        
+                        if (!overlay) overlay = document.querySelector('.analytics-overlay.active');
+
+                        if (activeModal) activeModal.classList.remove('active');
+                        if (overlay) overlay.classList.remove('active');
+                        document.body.classList.remove('modal-open-body');
+                    }
+                }
+            });
+
         }
     })();
