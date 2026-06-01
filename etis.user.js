@@ -1,8 +1,8 @@
     // ==UserScript==
     // @name         ЕТИС REBORN
     // @namespace    http://tampermonkey.net/
-    // @version      2.6
-    // @changelog    Новая вкладка "Профиль" (Beta). Опция стеклянного вида акцентных кнопок. Доработанный поиск. Больше микровзаимодействий и настроек. Улучшенные анимации. Редизайн окон. Общая доработка интерфейса и исправление багов.
+    // @version      2.7
+    // @changelog    Облачная синхронизация данных (Beta). Быстрый вход без ввода пароля. Доработка управления данными. 20 достижений в профиле.
     // @description  Глобальный редизайн ЕТИСа
     // @author       dya_dya
     // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
@@ -23,6 +23,66 @@
 
     (function() {
         'use strict';
+
+        // Флаг блокировки таймстампов во время инициализации и слияния
+        let isSyncLocked = true;
+
+        // ==========================================
+        // РЕГИСТРАЦИЯ И УПРАВЛЕНИЕ УСТРОЙСТВАМИ
+        // ==========================================
+        const registerCurrentDevice = () => {
+            let deviceId = localStorage.getItem('etis_device_id');
+            if (!deviceId) {
+                deviceId = 'dev_' + Math.random().toString(36).substring(2, 10);
+                localStorage.setItem('etis_device_id', deviceId);
+            }
+
+            let deviceName = localStorage.getItem('etis_device_name');
+            if (!deviceName) {
+                let os = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ? 'Смартфон' : 'ПК';
+                let browser = navigator.userAgent.includes('Firefox') ? 'Firefox' : (navigator.userAgent.includes('Chrome') ? 'Chrome' : 'Safari');
+                deviceName = `${os} (${browser})`;
+                localStorage.setItem('etis_device_name', deviceName);
+            }
+
+            let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
+            if (!meta.devices) meta.devices = {};
+
+            meta.devices[deviceId] = {
+                name: deviceName,
+                os: /iPhone|iPad|iPod/i.test(navigator.userAgent) ? 'iOS' : (/Android/i.test(navigator.userAgent) ? 'Android' : (navigator.platform.includes('Mac') ? 'macOS' : 'Windows')),
+                added: meta.devices[deviceId]?.added || Date.now(),
+                lastActive: Date.now()
+            };
+
+            localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
+            return meta;
+        };
+
+        // ==========================================
+        // БЕЗОПАСНОЕ ПОЛУЧЕНИЕ НАСТРОЕК СИНХРОНИЗАЦИИ
+        // ==========================================
+        const getSyncToggles = () => {
+            const defaults = {
+                custom_pairs: true,
+                subject_notes: true,
+                accent_config: true,
+                general_config: true,
+                grades_snapshot: true,
+                consultation_files: true,
+                weekly_pairs_history: true,
+                external_cals: true
+            };
+            try {
+                const saved = JSON.parse(localStorage.getItem('etis_sync_toggles'));
+                if (saved && typeof saved === 'object') {
+                    return { ...defaults, ...saved };
+                }
+            } catch (e) {
+                console.error('[Sync] Ошибка чтения настроек:', e);
+            }
+            return defaults;
+        };
 
         // ==========================================
         // АНТИ-МОРГАНИЕ
@@ -83,6 +143,80 @@
 
         // Если это Safari на Mac, вешаем класс на html
         if (isMacSafari) document.documentElement.classList.add('mac-safari');
+
+        // ==========================================
+        // БЕЗОПАСНАЯ И АТОМАРНАЯ ЗАПИСЬ ДАННЫХ
+        // ==========================================
+        const saveSyncData = (key, value) => {
+            try {
+                // 1. Записываем само значение в память
+                localStorage.setItem(key, value);
+
+                // 2. Напрямую обновляем таймстамп изменения в etis_sync_meta
+                const syncKeys = {
+                    'etis_accent_config': 'accent_config',
+                    'etis_subject_notes_v2': 'subject_notes',
+                    'etis_important_pairs_v1': 'important_pairs',
+                    'etis_custom_pairs_v1': 'custom_pairs',
+                    'etis_general_config': 'general_config',
+                    'etis_reborn_grades_snapshot_v3': 'grades_snapshot',
+                    'etis_consultation_files_v1': 'consultation_files',
+                    'etis_external_cals_v2': 'external_cals',
+                    'etis_weekly_pairs_history_v1': 'weekly_pairs_history'
+                };
+
+                const metaKey = syncKeys[key];
+                if (metaKey) {
+                    let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
+                    const now = Date.now();
+                    meta[metaKey] = now;
+                    localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
+                    console.log(`[Sync] [${metaKey}] Таймстамп успешно обновлен вручную: ${now}`);
+                }
+
+                // 3. Запускаем тихую выгрузку в облако
+                triggerSilentCloudUpload();
+            } catch (e) {
+                console.error('[Sync] Ошибка при безопасной записи данных:', e);
+            }
+        };
+
+        // ==========================================
+        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЕДУПЛИКАЦИИ
+        // ==========================================
+        const deduplicatePairs = (pairs) => {
+            const seenIds = new Set();
+            const seenSignatures = new Set();
+            return pairs.filter(p => {
+                const cleanSubj = (p.subject || '').trim().toLowerCase();
+                const cleanDay = (p.dayName || '').trim().toLowerCase();
+                const cleanTime = (p.startTime || '').trim();
+                const rec = (p.recurrence || 'once').trim().toLowerCase();
+                const week = rec === 'every' ? 'every' : (rec === 'biweekly' ? ('biweekly_' + (p.addedWeek % 2)) : p.addedWeek);
+                const signature = `${cleanDay}_${week}_${cleanTime}_${cleanSubj}`;
+
+                if (seenIds.has(p.id) || seenSignatures.has(signature)) {
+                    return false;
+                }
+                seenIds.add(p.id);
+                seenSignatures.add(signature);
+                return true;
+            });
+        };
+
+        const deduplicateConsultations = (files) => {
+            const seenIds = new Set();
+            const seenTitles = new Set();
+            return files.filter(f => {
+                const cleanTitle = (f.title || '').trim().toLowerCase();
+                if (seenIds.has(f.id) || seenTitles.has(cleanTitle)) {
+                    return false;
+                }
+                seenIds.add(f.id);
+                seenTitles.add(cleanTitle);
+                return true;
+            });
+        };
 
         // ==========================================
         // 1. ВНЕДРЕНИЕ CSS СТИЛЕЙ
@@ -465,7 +599,6 @@
 
     /* Активная вкладка */
     .submenu b {
-        background: var(--color-accent) !important;
         color: var(--color-text-primary-invert) !important;
         font-weight: 600 !important;
     }
@@ -694,7 +827,6 @@
 
     /* АКТИВНАЯ НЕДЕЛЯ */
     .weeks .week.current {
-        background-color: var(--color-accent) !important;
         color: var(--color-text-primary-invert) !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
     }
@@ -1269,7 +1401,7 @@
         width: 3.6rem !important;
     }
     html body input[type="checkbox"].tumbler-checkbox:checked {
-        background: var(--color-accent) !important; 
+        background: var(--color-accent) !important;
     }
     html body input[type="checkbox"].tumbler-checkbox:checked:after {
         transform: translateX(1.6rem) !important;
@@ -1307,9 +1439,9 @@
 
     .ios-settings-group > label:hover,
     .ios-settings-group > .ios-settings-row:hover {
-        background: var(--color-table-highlight) !important;
+        background: transparent !important;
     }
-    
+
     .ios-settings-group > *::after {
         content: '' !important;
         position: absolute !important;
@@ -1338,13 +1470,13 @@
         border-bottom-left-radius: 0 !important;
         border-bottom-right-radius: 0 !important;
     }
-    .ios-settings-group > *:first-child { 
-        border-top-left-radius: var(--radius-large) !important; 
-        border-top-right-radius: var(--radius-large) !important; 
+    .ios-settings-group > *:first-child {
+        border-top-left-radius: var(--radius-large) !important;
+        border-top-right-radius: var(--radius-large) !important;
     }
     .ios-settings-group > *:not([style*="display: none"]):not([style*="display:none"]):not(:has(~ *:not([style*="display: none"]):not([style*="display:none"]))) {
-        border-bottom-left-radius: var(--radius-large) !important; 
-        border-bottom-right-radius: var(--radius-large) !important; 
+        border-bottom-left-radius: var(--radius-large) !important;
+        border-bottom-right-radius: var(--radius-large) !important;
     }
     .timetable-toolbar label.toolbar-item {
         padding-left: 0.65rem !important;
@@ -1682,7 +1814,6 @@
     }
 
     .span3 > .nav.nav-tabs.nav-stacked > li.active > a {
-        background-color: var(--color-accent) !important;
         color: var(--color-text-primary-invert) !important;
         font-weight: 600 !important;
         margin: 2px 12px !important;
@@ -1693,7 +1824,6 @@
 
     .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
     .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover {
-        background-color: var(--color-accent) !important;
         box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
         margin: 2px 12px !important;
         border-radius: var(--radius-small) !important;
@@ -6588,8 +6718,10 @@
         #etis-settings-modal .ui-widget-header,
         .analytics-modal .ui-widget-header,
         #etis-reviews-modal .ui-widget-header {
-            padding-top: 24px !important; /* Отступ под полоску */
-            border-radius: 24px 24px 0 0 !important;
+            padding: 2.0rem 2.4rem !important;
+            background: transparent !important;
+            border-bottom: none !important;
+            box-sizing: border-box !important;
         }
     }
 
@@ -6693,10 +6825,10 @@
         #etis-profile-modal .settings-content-scroll,
         #etis-sync-modal .settings-content-scroll,
         #etis-settings-modal .settings-content-scroll {
-            padding: 0 !important; 
+            padding: 0 !important;
         }
         .settings-content-area .ui-widget-header {
-            padding: 1.6rem 2.4rem 0.8rem 2.4rem !important;
+            padding: 1.2rem 2.4rem 0 2.4rem !important;
             background: transparent !important;
             border-bottom: none !important;
         }
@@ -6717,7 +6849,7 @@
             margin-bottom: 2.4rem;
             overflow: hidden;
         }
-        
+
         html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn,
         html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn,
         html body .sidebar-tabs-container .settings-sidebar-btn {
@@ -6727,9 +6859,9 @@
             border: none !important;
             box-shadow: none !important;
             background: transparent !important;
-            padding: 1.6rem 2rem !important; 
+            padding: 1.6rem 2rem !important;
         }
-        
+
         html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn::after,
         html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn::after,
         html body .sidebar-tabs-container .settings-sidebar-btn::after {
@@ -6742,13 +6874,13 @@
             background-color: var(--color-table-border) !important;
             display: block !important;
         }
-        
+
         html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn:last-child::after,
         html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn:last-child::after,
         html body .sidebar-tabs-container .settings-sidebar-btn:last-child::after {
             display: none !important;
         }
-        
+
         .sidebar-tabs-container .settings-sidebar-btn.active {
             background: var(--color-highlight) !important;
             box-shadow: none !important;
@@ -6759,8 +6891,9 @@
         .sidebar-tabs-container .settings-sidebar-btn.active .material-icons {
             color: var(--color-accent) !important;
         }
-        .settings-content-area .ui-widget-header {
-            padding: 0 0 1.6rem 0 !important;
+        .settings-content-area .ui-widget-header,
+        .settings-content-scroll .ui-widget-header {
+            padding: 2.0rem 0 !important; 
             background: transparent !important;
             border-bottom: none !important;
         }
@@ -6770,7 +6903,7 @@
     /* --- ДЕСКТОПНЫЙ МАКЕТ ОКОН НА ПК --- */
     /* ========================================================= */
     @media (min-width: 961px) {
-        #etis-settings-modal, 
+        #etis-settings-modal,
         #etis-profile-modal,
         #etis-cons-modal,
         #etis-sync-modal,
@@ -6782,7 +6915,7 @@
             height: 60vh !important;
             min-height: 500px !important;
             background: var(--color-body) !important;
-            padding: 1.6rem !important;
+            padding: 0.8rem !important;
             box-sizing: border-box !important;
             border-radius: 28px !important;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
@@ -6808,48 +6941,51 @@
             min-height: auto !important;
             max-height: 85vh !important;
             background: var(--color-body) !important;
-            padding: 1.6rem !important;
+            padding: 0.8rem !important;
             box-sizing: border-box !important;
             border-radius: 28px !important;
             transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
             overflow: hidden !important;
         }
-        
-        #etis-settings-modal.active, 
+
+        #etis-settings-modal.active,
         #etis-profile-modal.active,
         #etis-cons-modal.active,
         #etis-sync-modal.active,
-        .analytics-modal.active, 
+        .analytics-modal.active,
         #etis-reviews-modal.active {
             opacity: 1 !important; visibility: visible !important;
             transform: translate(-50%, -50%) scale(1) !important;
         }
 
-        .settings-layout { 
-            display: flex !important; height: 100% !important; width: 100% !important; gap: 1.6rem !important; 
+        .settings-layout {
+            display: flex !important; height: 100% !important; width: 100% !important;
+            gap: 0.8rem !important; /* Уменьшено в 2 раза (было 1.6rem) */
             min-height: 0 !important; min-width: 0 !important;
         }
 
         .settings-sidebar {
             width: 250px !important; min-width: 250px !important; max-width: 250px !important;
             background: var(--color-card) !important; border-radius: var(--radius-large) !important;
-            box-shadow: var(--shadow-main) !important; padding: 1.6rem !important; display: flex !important;
+            box-shadow: var(--shadow-main) !important;
+            padding: 1.2rem !important;
+            display: flex !important;
             flex-direction: column !important; gap: 8px !important; overflow-y: auto !important; height: 100% !important;
         }
 
         .settings-content-area {
-            flex: 1 1 auto !important; width: 100% !important; 
+            flex: 1 1 auto !important; width: 100% !important;
             display: flex !important; flex-direction: column !important;
             background: transparent !important; height: 100% !important;
-            padding-bottom: 0 !important; position: relative !important; 
+            padding-bottom: 0 !important; position: relative !important;
             min-height: 0 !important; min-width: 0 !important;
         }
-        
+
         .settings-content-area::-webkit-scrollbar { display: none !important; }
 
         .settings-content-area .ui-widget-header {
             background: transparent !important; border-bottom: none !important;
-            padding: 0 0 1.6rem 0 !important;
+            padding: 1.2rem 0 !important;
         }
 
         .back-modal-btn[data-back="main"] { display: none !important; }
@@ -6868,6 +7004,14 @@
 
         .close-modal-btn, .close-analytics, .ui-dialog-titlebar-close, .close-modal { display: none !important; }
         .settings-mobile-header, .mobile-main-title { display: none !important; }
+
+        .settings-content-scroll .ui-widget-header {
+            padding: 0.8rem 1.6rem 0 1.6rem !important;
+            background: transparent !important;
+            border-bottom: none !important;
+            margin-bottom: 0 !important;
+        }
+
     }
 
     /* Макет окна настроек для мобильных */
@@ -6879,7 +7023,7 @@
             min-height: 0 !important;
         }
         .settings-sidebar {
-            padding: 2.4rem;
+            padding: 1.6rem !important;
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -6895,7 +7039,7 @@
             min-height: 0 !important;
         }
         .settings-content-scroll {
-            padding: 2.4rem;
+            padding: 1.6rem !important;
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch !important;
             flex: 1 1 auto !important;
@@ -6903,6 +7047,88 @@
         }
         .hidden-on-mobile { display: none !important; }
         .desktop-main-title { display: none !important; }
+
+        .settings-content-scroll .ui-widget-header {
+            padding: 2.0rem 0 !important;
+            background: transparent !important;
+            border-bottom: none !important;
+            box-sizing: border-box !important;
+        }
+
+        #etis-settings-modal .ui-widget-header,
+        .analytics-modal .ui-widget-header,
+        #etis-reviews-modal .ui-widget-header {
+            padding-top: 2.8rem !important;
+            padding-bottom: 1.6rem !important;
+            border-radius: 24px 24px 0 0 !important;
+        }
+
+        .analytics-modal .ui-widget-header,
+        #etis-reviews-modal .ui-widget-header {
+            padding-left: 2.4rem !important;
+            padding-right: 2.4rem !important;
+        }
+
+        .settings-content-scroll .ui-widget-header {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+        html body #etis-settings-modal .ui-widget-header,
+        html body .analytics-modal .ui-widget-header,
+        html body #etis-reviews-modal .ui-widget-header {
+            padding-top: 2.8rem !important;
+            padding-bottom: 1.6rem !important;
+            border-radius: 24px 24px 0 0 !important;
+        }
+
+        html body .analytics-modal .ui-widget-header,
+        html body #etis-reviews-modal .ui-widget-header {
+            padding-left: 2.4rem !important;
+            padding-right: 2.4rem !important;
+        }
+
+        html body .settings-content-scroll .ui-widget-header {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+        }
+
+    }
+
+    /* Полностью очищаем фон, тень и рамку у кнопок закрытия во всех модальных окнах */
+    button.close-analytics,
+    button.close-modal,
+    button.close-notes,
+    button.close-modal-btn,
+    .close-analytics,
+    .close-modal,
+    .close-notes {
+        background: none !important;
+        box-shadow: none !important;
+        border: none !important;
+        border-radius: 0 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: auto !important;
+        height: auto !important;
+    }
+
+    button.close-analytics:hover,
+    button.close-modal:hover,
+    button.close-notes:hover,
+    button.close-modal-btn:hover {
+        background: none !important;
+    }
+
+    /* Мягкая подсветка крестика акцентным цветом при наведении */
+    button.close-analytics:hover .material-icons,
+    button.close-modal:hover .material-icons,
+    button.close-notes:hover .material-icons,
+    button.close-modal-btn:hover .material-icons {
+        color: var(--color-accent) !important;
     }
 
     /* Кнопки сайдбара настроек */
@@ -7134,16 +7360,14 @@
     }
 
     @media (min-width: 961px) {
-        .login-alert-box {
-            max-width: 840px !important;
-        }
-    }
-
-    @media (min-width: 961px) {
         .back-modal-btn[data-back="appearance"],
         .back-modal-btn[data-back="grades"],
+        .back-modal-btn[data-back="general"],
         .back-modal-btn[data-back="version"] {
             display: inline-block !important;
+        }
+        .login-alert-box {
+            max-width: 840px !important;
         }
     }
 
@@ -7169,7 +7393,7 @@
     /* Применяем ко всем основным карточкам и блокам*/
     .day, .teacher-card, .msg-card, .advice-card, .order-card, .jour-card, .review-item,
     .contract-card, .form-card, .calendar-card, .about-card, .survey-card, .jour-info-card,
-    .wide-table-wrapper, .subject-header-flex, .question, .comment, 
+    .wide-table-wrapper, .subject-header-flex, .question, .comment,
     .cert-footer-card, .absence-stat, .portfolio-header, form.form {
         opacity: 0;
         animation: fadeSlideUpSequential 0.4s ease-out forwards;
@@ -7277,6 +7501,11 @@
         position: relative !important;
     }
 
+    /* Отключение тени у кнопки отправки в окне добавления пар */
+    button.save-cp-btn {
+        box-shadow: none !important;
+    }
+
     @media (min-width: 961px) {
         /* Липкое позиционирование активно только при включенном Умном сайдбаре и только на ПК */
         html.smart-sidebar-enabled .span3 > .nav.nav-tabs.nav-stacked > li.active {
@@ -7285,8 +7514,8 @@
             background-color: transparent !important;
             padding: 0 !important;
             margin: 0 !important;
-            top: 16px !important;   
-            bottom: 16px !important; 
+            top: 16px !important;
+            bottom: 16px !important;
         }
 
         /* Обычное прокручивание на ПК, если настройка выключена */
@@ -7320,22 +7549,22 @@
     }
 
     /* === ВЫРАВНИВАНИЕ ПО ПРАВОМУ КРАЮ === */
-    html body table th:last-child, 
+    html body table th:last-child,
     html body table td:last-child,
-    html body .common th:last-child, 
+    html body .common th:last-child,
     html body .common td:last-child,
-    html body .slimtab_nice th:last-child, 
+    html body .slimtab_nice th:last-child,
     html body .slimtab_nice td:last-child {
         text-align: right !important;
         padding-right: 16px !important;
     }
 
     @media (max-width: 768px) {
-        html body table th:last-child, 
+        html body table th:last-child,
         html body table td:last-child,
-        html body .common th:last-child, 
+        html body .common th:last-child,
         html body .common td:last-child,
-        html body .slimtab_nice th:last-child, 
+        html body .slimtab_nice th:last-child,
         html body .slimtab_nice td:last-child {
             padding-right: 8px !important;
         }
@@ -7365,7 +7594,7 @@
                     border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1),
                     transform 0.3s cubic-bezier(0.2, 0, 0, 1),
                     background-color 0.3s ease !important;
-        transform-origin: center center !important; 
+        transform-origin: center center !important;
         transform: translateX(-50%) scale(1) !important;
     }
 
@@ -7409,13 +7638,13 @@
         pointer-events: none;
         z-index: 1;
     }
-    
+
     .mobile-menu-btn.is-pressed::after {
         width: 140px;
         height: 140px;
         opacity: 1;
-        transition: width 0.4s cubic-bezier(0.2, 0, 0, 1), 
-                    height 0.4s cubic-bezier(0.2, 0, 0, 1), 
+        transition: width 0.4s cubic-bezier(0.2, 0, 0, 1),
+                    height 0.4s cubic-bezier(0.2, 0, 0, 1),
                     opacity 0.2s ease-in;
     }
 
@@ -7510,31 +7739,31 @@
             if (clean.length > 40 || clean.split(' ').length > 4) {
                 return clean;
             }
-            
+
             const adjectives = /([ая]я|[ыио]й|[ое]е|[ыи]е)$/i;
             const connectors = /^(и|в|на|с|о|об|по|для|при)$/i;
             const skipWords = /^(отношения|технологии|системы|ресурсы|процессы|исследования|мероприятия)$/i;
-            
+
             let words = clean.split(' ');
             let hasSeenNoun = false;
             let allowDecline = true;
-            
+
             return words.map(word => {
                 if (!allowDecline) return word;
-                
+
                 let isUpper = word[0] === word[0].toUpperCase();
                 let lower = word.toLowerCase();
-                
+
                 if (connectors.test(lower)) {
                     hasSeenNoun = false;
                     return word;
                 }
-                
+
                 if (skipWords.test(lower)) {
                     hasSeenNoun = true;
                     return word;
                 }
-                
+
                 if (adjectives.test(lower)) {
                     if (lower.endsWith('ая')) lower = lower.slice(0, -2) + 'ую';
                     else if (lower.endsWith('яя')) lower = lower.slice(0, -2) + 'юю';
@@ -7548,7 +7777,7 @@
                     else if (lower.endsWith('я')) lower = lower.slice(0, -1) + 'ю';
                     hasSeenNoun = true;
                 }
-                
+
                 if (isUpper && lower.length > 0) {
                     return lower[0].toUpperCase() + lower.slice(1);
                 }
@@ -7578,7 +7807,23 @@
         const GENERAL_CONFIG_KEY = 'etis_general_config';
         let savedConfig = JSON.parse(localStorage.getItem(GENERAL_CONFIG_KEY)) || {};
         const defaultCompactConfig = { showWorkType: true, showControlType: false, showPassScore: true, showRating: false, showDate: true, showTeacher: false };
-        let generalConfig = { dimPastPairs: true, shortAudFormat: false, hideDaysOff: false, showSunday: false, absoluteScores: false, compactGrades: false, gradeNotifications: true, watermark: true, datesLeft: false, generateQR: true, showGaps: true, showGapsCustom: true, smartSidebar: true, ...savedConfig };
+        let generalConfig = {
+            dimPastPairs: true,
+            shortAudFormat: false,
+            hideDaysOff: false,
+            showSunday: false,
+            absoluteScores: false,
+            compactGrades: false,
+            gradeNotifications: true,
+            watermark: true,
+            datesLeft: false,
+            generateQR: true,
+            showGaps: true,
+            showGapsCustom: true,
+            smartSidebar: true,
+            quickLoginEnabled: false,
+            ...savedConfig
+        };
 
         // Применение режима умного сайдбара
         function applySmartSidebar() {
@@ -7589,10 +7834,10 @@
             }
         }
         applySmartSidebar(); // Применяем сразу при запуске скрипта
-        
+
         // Подстраховка для пользователей, у которых конфиг уже был сохранен без этого параметра
         if (typeof generalConfig.gradeNotifications === 'undefined') generalConfig.gradeNotifications = true;
-        
+
         generalConfig.compactGradesConfig = { ...defaultCompactConfig, ...(generalConfig.compactGradesConfig || {}) };
         function applyAccentColor() {
             const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'], isGlass: false, isColoredGlass: true };
@@ -7630,8 +7875,8 @@
 
             if (isGlass) {
                 glassCapsulesCss = `
-                    .timetable-gap-capsule, .pair_info .aud a[href*="zoom"], .pair_info .aud a[href*="telemost"], 
-                    .pair_info .aud a.btn-generic-online, .kt-score-capsule, .pair-type-badge, 
+                    .timetable-gap-capsule, .pair_info .aud a[href*="zoom"], .pair_info .aud a[href*="telemost"],
+                    .pair_info .aud a.btn-generic-online, .kt-score-capsule, .pair-type-badge,
                     .subject-score-capsule, .absence-capsule, .jour-badge, .week-date-styled,
                     .etis-preview-glass-element {
                         backdrop-filter: blur(12px) saturate(180%) !important;
@@ -7710,9 +7955,9 @@
                     --border-glass-neutral: rgba(255, 255, 255, 0.1) !important;
                 }
 
-                .span3 > .nav.nav-tabs.nav-stacked > li.active > a, 
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
                 .weeks .week.current, .submenu b,
-                .answer-btn-custom, #sbmt, .gpa-capsule, .mobile-menu-btn, 
+                .answer-btn-custom, #sbmt, .gpa-capsule, .mobile-menu-btn,
                 .timetable-toolbar .toolbar-item.is-active,
                 form.que_form #send_btn, .badge.ctl, .jour-info-group,
                 .settings-sidebar-btn.active, button.sync-tab.active,
@@ -7720,9 +7965,9 @@
                     ${targetStyles}
                 }
 
-                .span3 > .nav.nav-tabs.nav-stacked > li.active > a *, 
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a *,
                 .weeks .week.current *, .submenu b *,
-                .answer-btn-custom *, #sbmt *, .gpa-capsule *, .mobile-menu-btn *, 
+                .answer-btn-custom *, #sbmt *, .gpa-capsule *, .mobile-menu-btn *,
                 .timetable-toolbar .toolbar-item.is-active *,
                 form.que_form #send_btn *, .badge.ctl *, .jour-info-group *,
                 .settings-sidebar-btn.active *, button.sync-tab.active *,
@@ -7731,16 +7976,16 @@
                 }
 
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a .material-icons,
-                .answer-btn-custom .material-icons, #sbmt .material-icons, 
+                .answer-btn-custom .material-icons, #sbmt .material-icons,
                 .mobile-menu-btn .material-icons, .timetable-toolbar .toolbar-item.is-active .material-icons,
                 .settings-sidebar-btn.active .material-icons, button.sync-tab.active .material-icons,
                 .etis-preview-active-element .material-icons {
                     ${targetIconStyles}
                 }
 
-                .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover, 
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover,
                 .weeks .week.current:hover, .submenu b:hover,
-                .answer-btn-custom:hover, #sbmt:hover, .mobile-menu-btn:hover, 
+                .answer-btn-custom:hover, #sbmt:hover, .mobile-menu-btn:hover,
                 .timetable-toolbar .toolbar-item.is-active:hover,
                 form.que_form #send_btn:hover,
                 .settings-sidebar-btn.active:hover, button.sync-tab.active:hover {
@@ -7752,10 +7997,10 @@
                     transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s ease !important;
                     display: inline-block;
                 }
-                
+
                 .span3 > .nav.nav-tabs.nav-stacked > li > a .sidebar-link-text,
                 .settings-sidebar-btn .sidebar-btn-text {
-                    display: block !important; 
+                    display: block !important;
                     transform-origin: left center;
                 }
 
@@ -7868,7 +8113,7 @@
 
         function updateEmptyState(container, hasResults, query = '', type = 'default') {
             let emptyEl = container.querySelector('.etis-empty-state');
-            
+
             if (hasResults) {
                 if (emptyEl) emptyEl.remove();
                 return;
@@ -7876,7 +8121,7 @@
 
             const isTrimester = document.body.textContent.toLowerCase().includes('триместр') || !document.body.textContent.toLowerCase().includes('семестр');
             const termWord = isTrimester ? 'триместре' : 'семестре';
-            
+
             let title = 'Ничего не нашлось';
             let subtitle = 'Попробуйте изменить запрос или сбросить фильтры.';
             let icon = 'search_off';
@@ -7938,7 +8183,7 @@
 
             emptyEl = document.createElement('div');
             emptyEl.className = 'etis-empty-state';
-            
+
             emptyEl.style.cssText = `
                 display: flex;
                 flex-direction: column;
@@ -7960,11 +8205,11 @@
                 <div class="etis-empty-title" style="font-size: 1.6rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 0.8rem;">${title}</div>
                 <div class="etis-empty-subtitle" style="font-size: 1.3rem; color: var(--color-text-secondary); max-width: 420px; line-height: 1.5;">${subtitle}</div>
             `;
-            
+
             // Позиционирование выше официальных уведомлений и ссылок статистики
-            const refChild = Array.from(container.children).find(el => 
-                el.classList.contains('etis-official-notice') || 
-                el.classList.contains('electr-description') || 
+            const refChild = Array.from(container.children).find(el =>
+                el.classList.contains('etis-official-notice') ||
+                el.classList.contains('electr-description') ||
                 el.classList.contains('google-chart-wrapper') ||
                 el.classList.contains('stats-link-bottom') ||
                 el.tagName === 'P'
@@ -8013,7 +8258,9 @@
             setInterval(() => {
                 if (document.visibilityState === 'visible') {
                     let timeSpent = parseInt(localStorage.getItem('etis_reborn_time_spent') || '0', 10);
-                    localStorage.setItem('etis_reborn_time_spent', timeSpent + 10);
+                    let unsynced = parseInt(localStorage.getItem('etis_unsynced_time_spent') || '0', 10);
+                    localStorage.setItem('etis_reborn_time_spent', (timeSpent + 10).toString());
+                    localStorage.setItem('etis_unsynced_time_spent', (unsynced + 10).toString());
                 }
             }, 10000);
 
@@ -8037,6 +8284,9 @@
 
             // Запуск через секунду, чтобы страница прогрузилась
             setTimeout(initAutoUpdateCheck, 1500);
+            setTimeout(autoSyncOnLoad, 2000);
+
+            isSyncLocked = false;
         }
 
         if (document.readyState === 'loading') {
@@ -8257,7 +8507,7 @@
                                 <div style="position: absolute; top: 1.6rem; right: 1.6rem; font-size: 1.2rem; color: var(--color-text-secondary); font-weight: 600;">
                                     ${item.date}
                                 </div>
-                                
+
                                 <!-- Кликабельная версия и бейдж -->
                                 <div style="margin-bottom: 1.2rem; display: flex; align-items: center; gap: 8px; padding-right: 8rem;">
                                     <a href="${item.url}" target="_blank" style="font-size: 1.6rem; font-weight: 800; color: var(--color-accent); text-decoration: none; transition: opacity 0.2s;" title="Нажмите, чтобы установить эту версию" onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
@@ -8265,7 +8515,7 @@
                                     </a>
                                     ${isCurrent ? '<span style="background:var(--color-accent-active); color:var(--color-accent); padding:2px 6px; border-radius:4px; font-size:1rem; font-weight:800;">ТЕКУЩАЯ</span>' : ''}
                                 </div>
-                                
+
                                 <!-- Описание -->
                                 <div style="font-size: 1.3rem; color: var(--color-text-primary); line-height: 1.5; white-space: pre-wrap;">${item.changelog.trim()}</div>
                             </div>
@@ -8444,7 +8694,7 @@
                     toggleMenuHandler(e);
                 }
             });
-            
+
             // Если свайпнули за пределы кнопки
             menuBtn.addEventListener('mouseleave', removePressed);
             menuBtn.addEventListener('touchcancel', removePressed);
@@ -8736,10 +8986,18 @@
 
         // --- ЛОГИКА КОНСУЛЬТАЦИЙ (DOCX) ---
         const CONSULTATIONS_KEY = 'etis_consultation_files_v1';
-        let consultationsFiles = JSON.parse(localStorage.getItem(CONSULTATIONS_KEY) || '[]');
+        let consultationsFilesRaw = JSON.parse(localStorage.getItem(CONSULTATIONS_KEY) || '[]');
+
+        let consultationsFiles = deduplicateConsultations(consultationsFilesRaw);
 
         function saveConsultationsState() {
             localStorage.setItem(CONSULTATIONS_KEY, JSON.stringify(consultationsFiles));
+            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+        }
+
+        // Если локально были обнаружены и убраны дубликаты, сразу перезаписываем и синхронизируем чистую версию
+        if (consultationsFiles.length !== consultationsFilesRaw.length) {
+            saveConsultationsState();
         }
 
         function parseConsultationInfo(rawText, rawHtml) {
@@ -9087,7 +9345,7 @@
                         </div>
                     `;
                 });
-                
+
                 sidebarHtml += `</div>`;
 
                 let contentHtml = '';
@@ -9208,8 +9466,7 @@
                                     </div>
                                     <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
                                 </div>
-                                <div style="padding: 0.8rem 0 4rem 0;">
-                                    ${contentHtml}
+                                <div style="padding: 0.8rem 0 4rem 0;">                                    ${contentHtml}
                                 </div>
                             </div>
                         </div>
@@ -9326,13 +9583,14 @@
                     };
                 });
 
+                // Чекбоксы отображения файлов
                 const toggle = modal.querySelectorAll('.toggle-cons-file');
                 toggle.forEach(box => {
                     box.onchange = (e) => {
-                        const fId = e.target.getAttribute('data-id');
+                        const fId = box.getAttribute('data-id');
                         const f = consultationsFiles.find(file => file.id === fId);
                         if (f) {
-                            f.isActive = e.target.checked;
+                            f.isActive = box.checked;
                             saveConsultationsState();
                             renderView(fId);
                             if (typeof window.injectConsultationPairs === 'function') {
@@ -9348,8 +9606,9 @@
                 const delBtn = modal.querySelector('.delete-cons-file');
                 if (delBtn) {
                     delBtn.onclick = (e) => {
-                        if(confirm('Удалить этот файл консультаций?')) {
-                            consultationsFiles = consultationsFiles.filter(f => f.id !== e.target.getAttribute('data-id'));
+                        if (confirm('Удалить этот файл консультаций?')) {
+                            const fileId = delBtn.getAttribute('data-id');
+                            consultationsFiles = consultationsFiles.filter(f => f.id !== fileId);
                             saveConsultationsState();
                             if (typeof window.injectConsultationPairs === 'function') {
                                 document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
@@ -9371,7 +9630,546 @@
             });
         }
 
+        const FIREBASE_DB_URL = 'https://etisreborn-fab19-default-rtdb.europe-west1.firebasedatabase.app/';
+
+        const getAutomaticSyncCode = async () => {
+            if (typeof GM_getValue === 'undefined') return null;
+
+            // 1. Проверяем, разрешил ли пользователь синхронизацию
+            const isEnabled = GM_getValue('etis_sync_enabled', true);
+            if (!isEnabled) return null;
+
+            // 2. Извлекаем ФИО и Направление прямо со страницы
+            let rawName = '';
+            const nameNode = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info b');
+            if (nameNode) {
+                // Кроссбраузерный способ извлечения ФИО (удаляем вложенные span из клона во избежание багов Firefox с childNodes)
+                const clone = nameNode.cloneNode(true);
+                clone.querySelectorAll('span').forEach(span => span.remove());
+                rawName = clone.textContent.replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim().toLowerCase();
+            }
+
+            let studentDirection = '';
+            const originalInfo = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info');
+            if (originalInfo) {
+                const spans = Array.from(originalInfo.querySelectorAll('span'));
+                for (let span of spans) {
+                    const text = span.textContent.trim();
+                    if (/^(очная|заочная|очно-заочная|вечерняя)$/i.test(text)) continue;
+                    if (/^\d{4}(\s*г\.)?$/i.test(text)) continue;
+                    if (/курс/i.test(text)) continue;
+                    if (/факультет/i.test(text)) continue;
+
+                    studentDirection = text.replace(/^(направление|специальность|направленность|профиль)\s*(подготовки)?\s*["«]?/i, '')
+                                           .replace(/["»]$/, '')
+                                           .replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ') // Нормализуем пробелы
+                                           .trim()
+                                           .toLowerCase();
+                    if (studentDirection) break;
+                }
+            }
+
+            // Формируем уникальную строку идентификации
+            let identityString = '';
+            if (rawName && studentDirection) {
+                identityString = `${rawName}_${studentDirection}`;
+                GM_setValue('etis_secure_identity_cache', identityString); // Кешируем для страниц, где нет шапки
+            } else {
+                identityString = GM_getValue('etis_secure_identity_cache', '');
+            }
+
+            if (!identityString) {
+                console.log('[Sync] Ожидание извлечения ФИО и Направления обучения...');
+                return null; // Ожидаем загрузки страницы с профилем
+            }
+
+            console.log(`[Sync] Строка идентификации для хэширования: "${identityString}"`);
+
+            // Хэшируем очищенные данные с секретной солью
+            const encoder = new TextEncoder();
+            const data = encoder.encode(identityString + "etis_reborn_invisible_salt_2026");
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+            // Возвращаем ровно 8 символов для Firebase
+            return hashHex.substring(0, 8).toUpperCase();
+        };
+
+        // Вспомогательные функции для работы с облаком
+        const generateStudentUniqueCode = (fullName, direction) => {
+            const cleanName = fullName.replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim().toLowerCase();
+            const cleanDir = direction.replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim().toLowerCase();
+            const str = `${cleanName}_${cleanDir}`;
+
+            let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+            for (let i = 0, ch; i < str.length; i++) {
+                ch = str.charCodeAt(i);
+                h1 = Math.imul(h1 ^ ch, 2654435761);
+                h2 = Math.imul(h2 ^ ch, 1597334903);
+            }
+            h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+            h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+            const hash = 4294967296 * (2097151 & h2) + (h1 >>> 0);
+            return hash.toString(36).toUpperCase().padStart(8, '0').slice(-8);
+        };
+
+        // Вспомогательный метод безопасного чтения JSON, предотвращающий падение импорта
+        const safeParseJSON = (val, fallback) => {
+            if (!val) return fallback;
+            if (typeof val === 'object') return val;
+            try {
+                return JSON.parse(val);
+            } catch (e) {
+                return fallback;
+            }
+        };
+
+       // ==========================================
+        // СИСТЕМА ШИФРОВАНИЯ ДАННЫХ (AES-GCM)
+        // ==========================================
+        const getCryptoKey = async (password) => {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), {name: "PBKDF2"}, false, ["deriveBits", "deriveKey"]);
+            return crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt: enc.encode("etis_reborn_secure_salt_2026"), iterations: 100000, hash: "SHA-256" },
+                keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
+            );
+        };
+
+        const encryptPayload = async (text, password) => {
+            const key = await getCryptoKey(password);
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const enc = new TextEncoder();
+            const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, key, enc.encode(text));
+
+            const combined = new Uint8Array(iv.length + encrypted.byteLength);
+            combined.set(iv, 0);
+            combined.set(new Uint8Array(encrypted), iv.length);
+
+            let binary = '';
+            combined.forEach(b => binary += String.fromCharCode(b));
+            return btoa(binary);
+        };
+
+        const decryptPayload = async (base64Str, password) => {
+            const key = await getCryptoKey(password);
+            const binary = atob(base64Str);
+            const combined = new Uint8Array(binary.length);
+            for(let i = 0; i < binary.length; i++) combined[i] = binary.charCodeAt(i);
+
+            const iv = combined.slice(0, 12);
+            const data = combined.slice(12);
+            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, key, data);
+
+            const dec = new TextDecoder();
+            return dec.decode(decrypted);
+        };
+
+        let syncDebounceTimer = null;
+
+        // Тихая выгрузка при изменении данных
+        const triggerSilentCloudUpload = async () => {
+            const code = localStorage.getItem('etis_sync_code');
+            if (!code) {
+                console.warn('[Sync] Попытка тихой выгрузки отменена: код синхронизации отсутствует в localStorage.');
+                return;
+            }
+
+            console.log('[Sync] Инициализация таймера тихой выгрузки (задержка 1с)...');
+            clearTimeout(syncDebounceTimer);
+            syncDebounceTimer = setTimeout(async () => {
+                console.log('[Sync] Таймер сработал. Начинаем автоматическую выгрузку в облако...');
+                await uploadDataToCloud(code);
+                syncDebounceTimer = null;
+            }, 1000); // Сохраняем через 1 секунду после последнего изменения
+        };
+
+        // Гарантированная отправка данных перед обновлением/закрытием страницы
+        window.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden' && syncDebounceTimer) {
+                clearTimeout(syncDebounceTimer);
+                const code = localStorage.getItem('etis_sync_code');
+                if (code) uploadDataToCloud(code); // Отправляем мгновенно в фоне
+            }
+        });
+
+        // Асинхронный тихий импорт при старте страницы
+        const autoSyncOnLoad = async () => {
+            console.log('[Sync] Инициализация авто-синхронизации при загрузке страницы...');
+            const code = await getAutomaticSyncCode();
+            if (!code) {
+                console.log('[Sync] Авто-синхронизация отключена или ожидает первого входа в аккаунт.');
+                return;
+            }
+            
+            localStorage.setItem('etis_sync_code', code);
+            console.log(`[Sync] Установлен рабочий код синхронизации: ${code}`);
+            
+            console.log('[Sync] Запуск фоновой проверки обновлений в облаке...');
+            const isUpdated = await downloadDataFromCloud(code);
+            console.log('[Sync] Результат фоновой проверки:', isUpdated ? 'Обнаружены новые данные, обновляем!' : 'Локальные данные актуальны.');
+            
+            if (isUpdated) {
+                console.log('[Sync] Обнаружены новые данные. Перезагружаем страницу для их полного применения...');
+                window.location.reload();
+            }
+        };
+
+        const downloadDataFromCloud = async (code) => {
+            if (!FIREBASE_DB_URL) {
+                console.error('[Sync] Ошибка загрузки: FIREBASE_DB_URL не определен.');
+                return false;
+            }
+
+            console.log(`[Sync] Начинаем фоновую загрузку данных для кода: ${code}`);
+            try {
+                const response = await fetch(`${FIREBASE_DB_URL}sync/${code}.json`, {
+                    cache: 'no-store'
+                });
+
+                console.log(`[Sync] Ответ сервера (GET): статус ${response.status} (${response.statusText})`);
+
+                if (response.ok) {
+                    const rawData = await response.json();
+                    if (!rawData) {
+                        console.log('[Sync] Облачная база данных пуста (rawData === null).');
+                        return false;
+                    }
+
+                    console.log('[Sync] Облачные данные получены. Начинаем дешифровку ключей...');
+                    const data = {};
+                    for (const [key, value] of Object.entries(rawData)) {
+                        if (value !== undefined && value !== null) {
+                            if (typeof value === 'string' && value.length > 20 && !value.includes('{') && !value.includes('[')) {
+                                try {
+                                    data[key] = await decryptPayload(value, code);
+                                    console.log(`[Sync] Ключ [${key}] успешно дешифрован. Длина: ${data[key].length}`);
+                                } catch (err) {
+                                    data[key] = value;
+                                    console.warn(`[Sync] Ошибка дешифровки ключа [${key}], оставлено исходное значение:`, err);
+                                }
+                            } else {
+                                data[key] = value;
+                                console.log(`[Sync] Ключ [${key}] оставлен без дешифровки (не подходит по формату).`);
+                            }
+                        }
+                    }
+
+                    // Обработка проверки удаления
+                    let deviceId = localStorage.getItem('etis_device_id');
+                    let isRegistered = localStorage.getItem('etis_device_registered_in_cloud') === 'true';
+                    console.log(`[Sync] Проверка устройства: ID = ${deviceId}, Зарегистрировано = ${isRegistered}`);
+
+                    if (deviceId && data.sync_meta && isRegistered) {
+                        let cloudMeta = safeParseJSON(data.sync_meta, {});
+                        if (cloudMeta.devices && !cloudMeta.devices[deviceId]) {
+                            console.warn('[Sync] ВНИМАНИЕ: Это устройство отсутствует в облачном списке! Инициируем отключение.');
+                            localStorage.removeItem('etis_sync_code');
+                            localStorage.removeItem('etis_last_sync_time');
+                            localStorage.removeItem('etis_device_registered_in_cloud');
+
+                            if (typeof GM_setValue !== 'undefined') {
+                                GM_setValue('etis_sync_enabled', false);
+                            }
+
+                            if (window.showEtisPush) {
+                                window.showEtisPush('Синхронизация отключена', 'Устройство отключено', 'Это устройство было удалено из панели управления.', 'warning', 'cloud_off');
+                            }
+                            return false;
+                        }
+                    }
+
+                    const toggles = getSyncToggles();
+                    const cloudMeta = safeParseJSON(data.sync_meta, {});
+                    const localMeta = safeParseJSON(localStorage.getItem('etis_sync_meta'), {});
+
+                    console.log('[Sync] Облачные таймстампы:', cloudMeta);
+                    console.log('[Sync] Локальные таймстампы:', localMeta);
+
+                    // Сравнение времени последнего изменения
+                    const isCloudNewer = (key, localKeyName, customCloudData = null) => {
+                        const hasCloudData = customCloudData !== null ? !!customCloudData : !!data[key];
+                        const hasLocalData = !!localStorage.getItem(localKeyName);
+                        if (hasCloudData && !hasLocalData) {
+                            console.log(`[Sync] [${key}] Оценка: Облако новее (локально пусто).`);
+                            return true;
+                        }
+                        if (!hasCloudData) {
+                            console.log(`[Sync] [${key}] Оценка: Облако не новее (в облаке пусто).`);
+                            return false;
+                        }
+                        
+                        // Защита от рассинхронизации: если локально пусто, а в облаке лежит непустой файл
+                        if (hasCloudData) {
+                            const localVal = localStorage.getItem(localKeyName);
+                            const isLocalEmpty = !localVal || localVal === '[]' || localVal === '{}' || localVal === '{"grades":{}}';
+                            const cloudVal = customCloudData !== null ? JSON.stringify(customCloudData) : data[key];
+                            const isCloudEmpty = !cloudVal || cloudVal === '[]' || cloudVal === '{}' || cloudVal === '{"grades":{}}';
+                            if (isLocalEmpty && !isCloudEmpty) {
+                                console.log(`[Sync] [${key}] Оценка: Облако новее (принудительное восстановление пустоты).`);
+                                return true;
+                            }
+                        }
+                        
+                        const cloudTime = parseInt(cloudMeta[key], 10) || 0;
+                        const localTime = parseInt(localMeta[key], 10) || 0;
+                        const newer = cloudTime > localTime;
+                        console.log(`[Sync] [${key}] Сравнение времени: Облако (${cloudTime}) > Локально (${localTime})? Результат: ${newer}`);
+                        return newer;
+                    };
+
+                    let isUpdated = false;
+
+                    if (toggles.custom_pairs && data.custom_pairs && isCloudNewer('custom_pairs', 'etis_custom_pairs_v1')) {
+                        console.log('[Sync] Применяем облачные "Свои пары" (custom_pairs)...');
+                        localStorage.setItem('etis_custom_pairs_v1', data.custom_pairs);
+                        isUpdated = true;
+                    }
+
+                    if (toggles.subject_notes && data.subject_notes && isCloudNewer('subject_notes', 'etis_subject_notes_v2')) {
+                        console.log('[Sync] Применяем облачные "Заметки и ДЗ" (subject_notes)...');
+                        localStorage.setItem('etis_subject_notes_v2', data.subject_notes);
+                        isUpdated = true;
+                    }
+
+                    if (data.important_pairs) {
+                        const parsed = safeParseJSON(data.important_pairs, null);
+                        if (parsed && typeof parsed === 'object') {
+                            if (toggles.subject_notes && parsed.important && isCloudNewer('important_pairs', 'etis_important_pairs_v1', parsed.important)) {
+                                console.log('[Sync] Применяем облачные "Важные пары" (important_pairs)...');
+                                localStorage.setItem('etis_important_pairs_v1', JSON.stringify(parsed.important));
+                                isUpdated = true;
+                            }
+                            if (toggles.external_cals && parsed.external_cals && isCloudNewer('external_cals', 'etis_external_cals_v2', parsed.external_cals)) {
+                                console.log('[Sync] Применяем облачные "Внешние календари" (external_cals)...');
+                                localStorage.setItem('etis_external_cals_v2', JSON.stringify(parsed.external_cals));
+                                isUpdated = true;
+                            }
+                        }
+                    }
+
+                    if (toggles.accent_config && data.accent_config && isCloudNewer('accent_config', 'etis_accent_config')) {
+                        console.log('[Sync] Применяем облачную "Цветовую тему" (accent_config)...');
+                        localStorage.setItem('etis_accent_config', data.accent_config);
+                        if (typeof applyAccentColor === 'function') applyAccentColor();
+                        isUpdated = true;
+                    }
+
+                    if (toggles.general_config && data.general_config && isCloudNewer('general_config', 'etis_general_config')) {
+                        console.log('[Sync] Применяем облачные "Настройки интерфейса" (general_config)...');
+                        localStorage.setItem(GENERAL_CONFIG_KEY, data.general_config);
+                        isUpdated = true;
+                    }
+
+                    if (toggles.grades_snapshot && data.grades_snapshot && isCloudNewer('grades_snapshot', 'etis_reborn_grades_snapshot_v3')) {
+                        console.log('[Sync] Применяем облачную "Историю оценок" (grades_snapshot)...');
+                        localStorage.setItem('etis_reborn_grades_snapshot_v3', data.grades_snapshot);
+                        isUpdated = true;
+                    }
+
+                    if (toggles.consultation_files && data.consultation_files && isCloudNewer('consultation_files', 'etis_consultation_files_v1')) {
+                        console.log('[Sync] Применяем облачные "Файлы консультаций" (consultation_files)...');
+                        localStorage.setItem('etis_consultation_files_v1', data.consultation_files);
+                        isUpdated = true;
+                    }
+
+                    if (toggles.weekly_pairs_history && data.weekly_pairs_history && isCloudNewer('weekly_pairs_history', 'etis_weekly_pairs_history_v1')) {
+                        console.log('[Sync] Применяем облачную "Историю расписания" (weekly_pairs_history)...');
+                        localStorage.setItem('etis_weekly_pairs_history_v1', data.weekly_pairs_history);
+                        isUpdated = true;
+                    }
+
+                    if (data.install_date) {
+                        const parts = data.install_date.toString().split('|');
+                        const cloudInstall = parseInt(parts[0], 10);
+                        let localInstall = parseInt(localStorage.getItem('etis_reborn_install_date') || GM_getValue('etis_reborn_install_date') || '0', 10);
+                        if (cloudInstall > 0 && (localInstall === 0 || cloudInstall < localInstall)) {
+                            localStorage.setItem('etis_reborn_install_date', cloudInstall.toString());
+                            GM_setValue('etis_reborn_install_date', cloudInstall.toString());
+                        }
+
+                        if (parts[1]) {
+                            const cloudTimeSpent = parseInt(parts[1], 10);
+                            const localUnsynced = parseInt(localStorage.getItem('etis_unsynced_time_spent') || '0', 10);
+                            localStorage.setItem('etis_reborn_time_spent', (cloudTimeSpent + localUnsynced).toString());
+                            localStorage.setItem('etis_unsynced_time_spent', '0');
+                        }
+                    }
+
+                    // Слияние метаданных
+                    const mergedMeta = {};
+                    const keys = ['accent_config', 'subject_notes', 'important_pairs', 'custom_pairs', 'general_config', 'grades_snapshot', 'consultation_files', 'external_cals', 'weekly_pairs_history'];
+
+                    const toggleMap = {
+                        accent_config: 'accent_config',
+                        subject_notes: 'subject_notes',
+                        important_pairs: 'subject_notes',
+                        custom_pairs: 'custom_pairs',
+                        general_config: 'general_config',
+                        grades_snapshot: 'grades_snapshot',
+                        consultation_files: 'consultation_files',
+                        external_cals: 'external_cals',
+                        weekly_pairs_history: 'weekly_pairs_history'
+                    };
+
+                    keys.forEach(k => {
+                        const tKey = toggleMap[k];
+                        if (toggles[tKey] !== false) {
+                            mergedMeta[k] = Math.max(parseInt(cloudMeta[k], 10) || 0, parseInt(localMeta[k], 10) || 0);
+                        } else {
+                            mergedMeta[k] = parseInt(localMeta[k], 10) || 0;
+                        }
+                    });
+                    mergedMeta['time_spent'] = Date.now();
+
+                    if (cloudMeta.devices) mergedMeta.devices = cloudMeta.devices;
+
+                    localStorage.setItem('etis_sync_meta', JSON.stringify(mergedMeta));
+                    console.log('[Sync] Слияние завершено успешно. Снимок метаданных сохранен:', mergedMeta);
+
+                    return isUpdated;
+                }
+            } catch (e) {
+                console.error('[Sync] Ошибка фоновой загрузки/слияния данных с облаком:', e);
+            }
+            return false;
+        };
+
+        const uploadDataToCloud = async (code) => {
+            if (!FIREBASE_DB_URL) {
+                console.error('[Sync] Ошибка выгрузки: FIREBASE_DB_URL не определен.');
+                return false;
+            }
+
+            console.log(`[Sync] Инициализация выгрузки в облако для кода: ${code}`);
+
+            // Шаг 1. Сначала скачиваем актуальные данные во избежание затирания
+            console.log('[Sync] Вызов предварительного скачивания во избежание затирания...');
+            const isUpdated = await downloadDataFromCloud(code);
+
+            // Если в процессе скачивания мы получили более свежие данные из облака,
+            // перезагружаем страницу для их гарантированного и полного отображения.
+            if (isUpdated) {
+                console.log('[Sync] Во время выгрузки обнаружены и применены более свежие облачные данные. Перезагружаем страницу...');
+                window.location.reload();
+                return true; // Прерываем текущую выгрузку, так как страница перезапускается
+            }
+
+            // Шаг 2. Регистрируем текущее устройство
+            registerCurrentDevice();
+
+            const toggles = getSyncToggles();
+            console.log('[Sync] Конфигурация тумблеров для отправки:', toggles);
+
+            const payload = {};
+
+            if (toggles.custom_pairs) {
+                payload.custom_pairs = localStorage.getItem('etis_custom_pairs_v1') || '[]';
+                console.log(`[Sync] Пакет "Свои пары" подготовлен. Длина: ${payload.custom_pairs.length}`);
+            }
+            if (toggles.subject_notes) {
+                payload.subject_notes = localStorage.getItem('etis_subject_notes_v2') || '{}';
+                console.log(`[Sync] Пакет "Заметки" подготовлен. Длина: ${payload.subject_notes.length}`);
+            }
+
+            if (toggles.subject_notes || toggles.external_cals) {
+                const cloudImportant = toggles.subject_notes ? (localStorage.getItem('etis_important_pairs_v1') || '[]') : '[]';
+                const cloudCals = toggles.external_cals ? (localStorage.getItem('etis_external_cals_v2') || '[]') : '[]';
+                payload.important_pairs = JSON.stringify({
+                    important: safeParseJSON(cloudImportant, []),
+                    external_cals: safeParseJSON(cloudCals, [])
+                });
+                console.log(`[Sync] Пакет "Важные пары/Календари" подготовлен. Длина: ${payload.important_pairs.length}`);
+            }
+
+            if (toggles.accent_config) {
+                payload.accent_config = localStorage.getItem('etis_accent_config') || '{}';
+                console.log(`[Sync] Пакет "Цветовая тема" подготовлен. Длина: ${payload.accent_config.length}`);
+            }
+            if (toggles.general_config) {
+                payload.general_config = localStorage.getItem('etis_general_config') || '{}';
+                console.log(`[Sync] Пакет "Настройки интерфейса" подготовлен. Длина: ${payload.general_config.length}`);
+            }
+            if (toggles.grades_snapshot) {
+                payload.grades_snapshot = localStorage.getItem('etis_reborn_grades_snapshot_v3') || '{"grades":{}}';
+                console.log(`[Sync] Пакет "История оценок" подготовлен. Длина: ${payload.grades_snapshot.length}`);
+            }
+            if (toggles.consultation_files) {
+                payload.consultation_files = localStorage.getItem('etis_consultation_files_v1') || '[]';
+                console.log(`[Sync] Пакет "Файлы консультаций" подготовлен. Длина: ${payload.consultation_files.length}`);
+            }
+            if (toggles.weekly_pairs_history) {
+                payload.weekly_pairs_history = localStorage.getItem('etis_weekly_pairs_history_v1') || '{}';
+                console.log(`[Sync] Пакет "История расписания" подготовлен. Длина: ${payload.weekly_pairs_history.length}`);
+            }
+
+            const localInstall = localStorage.getItem('etis_reborn_install_date') || GM_getValue('etis_reborn_install_date') || '';
+            const localTimeSpent = localStorage.getItem('etis_reborn_time_spent') || '0';
+            payload.install_date = `${localInstall}|${localTimeSpent}`;
+            payload.sync_meta = localStorage.getItem('etis_sync_meta') || '{}';
+
+            console.log('[Sync] Полный payload метаданных для отправки:', payload.sync_meta);
+
+            // Шаг 3. Зашифровываем payload перед отправкой
+            console.log('[Sync] Шифрование пакета перед отправкой...');
+            const encryptedPayload = {};
+            for (const [key, value] of Object.entries(payload)) {
+                if (value !== undefined && value !== null) {
+                    try {
+                        encryptedPayload[key] = await encryptPayload(value, code);
+                    } catch (e) {
+                        console.error(`[Sync] Критическая ошибка шифрования ключа [${key}]:`, e);
+                        return false;
+                    }
+                }
+            }
+
+            // Шаг 4. Отправляем в Firebase
+            console.log(`[Sync] Отправка PUT-запроса на адрес: ${FIREBASE_DB_URL}sync/${code}.json`);
+            try {
+                const response = await fetch(`${FIREBASE_DB_URL}sync/${code}.json`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(encryptedPayload)
+                });
+                
+                console.log(`[Sync] Ответ сервера (PUT): статус ${response.status} (${response.statusText})`);
+
+                if (response.ok) {
+                    localStorage.setItem('etis_device_registered_in_cloud', 'true');
+                    console.log('[Sync] Успешная выгрузка данных в облако завершена!');
+                } else {
+                    const errorText = await response.text();
+                    console.error('[Sync] Сервер отклонил выгрузку данных! Ответ:', errorText);
+                }
+                return response.ok;
+            } catch (e) {
+                console.error('[Sync] Сетевая ошибка при отправке PUT-запроса:', e);
+            }
+            return false;
+        };
+
         function openProfileModal(view = 'main') {
+            registerCurrentDevice();
+
+             // Безопасный хелпер получения логина
+            const getSavedLoginId = () => {
+                if (typeof GM_getValue === 'undefined') return '';
+
+                // Проверяем наличие закешированных ФИО + Направления
+                let identity = GM_getValue('etis_secure_identity_cache', '');
+                if (!identity) {
+                    // Если кеша нет, пробуем прочесть со страницы прямо сейчас
+                    const nameNode = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info b');
+                    if (nameNode) {
+                        identity = nameNode.childNodes[0].textContent.trim();
+                    }
+                }
+                return identity;
+            };
+
+            let isSyncExpanded = false;
             let overlay = document.getElementById('etis-profile-overlay');
             let modal = document.getElementById('etis-profile-modal');
 
@@ -9403,6 +10201,21 @@
                 let gradesCount = Object.keys(gradesObj.grades || {}).length;
                 let consCount = JSON.parse(localStorage.getItem('etis_consultation_files_v1') || '[]').length;
 
+                let qlAccountsCount = 0;
+                try {
+                    qlAccountsCount = JSON.parse(GM_getValue('ql_accounts_v2', '[]')).length;
+                } catch(e) { qlAccountsCount = 0; }
+                let qlCount = qlAccountsCount;
+                let weeklyPairs = JSON.parse(localStorage.getItem('etis_weekly_pairs_history_v1') || '{}');
+                let weeklyPairsCount = Object.keys(weeklyPairs).length;
+
+                const syncCode = localStorage.getItem('etis_sync_code') || '';
+
+                // Предопределяем цель возврата (data по умолчанию для суб-панелей)
+                let backTarget = window.innerWidth <= 960 ? 'menu' : 'main';
+
+                const localAccent = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'], isGlass: false, isColoredGlass: true };
+
                 let rawName = 'Студент';
                 const nameNode = document.querySelector('.navbar-static-top .span12 > span');
                 if (nameNode) rawName = nameNode.childNodes[0].textContent.trim();
@@ -9415,12 +10228,11 @@
                     const spans = Array.from(originalInfo.querySelectorAll('span'));
                     for (let span of spans) {
                         const text = span.textContent.trim();
-                        // Отсеиваем форму обучения, курс, год и факультет, чтобы вытащить чистое направление
                         if (/^(очная|заочная|очно-заочная|вечерняя)$/i.test(text)) continue;
                         if (/^\d{4}(\s*г\.)?$/i.test(text)) continue;
                         if (/курс/i.test(text)) continue;
                         if (/факультет/i.test(text)) continue;
-                        
+
                         studentDirection = text.replace(/^(направление|специальность|направленность|профиль)\s*(подготовки)?\s*["«]?/i, '')
                                                .replace(/["»]$/, '')
                                                .trim();
@@ -9432,31 +10244,75 @@
                 let diplomaGpaStr = localStorage.getItem('etis_diploma_gpa');
                 let gpa = diplomaGpaStr ? parseFloat(diplomaGpaStr) : 0;
 
-                let badge = 'Новичок'; let badgeEmoji = '🌱';
-                if (gpa > 0) {
-                    if (gpa >= 4.75) { badge = 'Легенда'; badgeEmoji = '🗿'; }
-                    else if (gpa >= 4.0) { badge = 'Нормис'; badgeEmoji = '😎'; }
-                    else { badge = 'Пофигист'; badgeEmoji = '🦦'; }
-                }
+                let badge = 'Новичок';
+                let badgeEmoji = '🌱';
 
-                // Надежный расчет дней использования
                 let installDateRaw = GM_getValue('etis_reborn_install_date') || localStorage.getItem('etis_reborn_install_date');
-                
                 if (!installDateRaw) {
                     installDateRaw = Date.now().toString();
                     GM_setValue('etis_reborn_install_date', installDateRaw);
                     localStorage.setItem('etis_reborn_install_date', installDateRaw);
                 } else {
-                    // Синхронизируем хранилища, если одно из них сбросилось
                     GM_setValue('etis_reborn_install_date', installDateRaw);
                     localStorage.setItem('etis_reborn_install_date', installDateRaw);
                 }
-                
+
                 const installDate = parseInt(installDateRaw, 10);
                 const joinDateStr = new Date(installDate).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
                 const daysPassed = Math.max(1, Math.floor((Date.now() - installDate) / (1000 * 60 * 60 * 24)));
                 const totalSeconds = parseInt(localStorage.getItem('etis_reborn_time_spent') || '0', 10);
                 const minsPerDay = Math.max(1, Math.round((totalSeconds / 60) / daysPassed));
+
+                // Рассчитываем самый сложный статус
+                const badgeStatus = (() => {
+                    const statuses = [
+                        { level: 1, text: 'Новичок', emoji: '🌱', cond: () => true },
+                        { level: 2, text: 'Наблюдатель', emoji: '🕵️', cond: () => daysPassed >= 3 },
+                        { level: 3, text: 'Заметочник', emoji: '📝', cond: () => notesCount >= 1 },
+                        { level: 4, text: 'Конструктор', emoji: '✏️', cond: () => cpCount >= 1 },
+                        { level: 5, text: 'Отличник', emoji: '📚', cond: () => gpa >= 4.5 },
+                        { level: 6, text: 'Постоянный гость', emoji: '🚀', cond: () => totalSeconds >= 3600 },
+                        { level: 7, text: 'Писатель', emoji: '✍️', cond: () => notesCount >= 5 },
+                        { level: 8, text: 'Свой график', emoji: '📅', cond: () => cpCount >= 5 },
+                        { level: 9, text: 'Исследователь', emoji: '🤓', cond: () => gradesCount >= 50 },
+                        { level: 10, text: 'Организатор', emoji: '🧩', cond: () => consCount >= 1 },
+                        { level: 11, text: 'Пофигист', emoji: '🧘', cond: () => gpa > 0 && gpa < 3.5 },
+                        { level: 12, text: 'Хорошист', emoji: '😎', cond: () => gpa >= 4.0 && gpa < 4.5 },
+                        { level: 13, text: 'Старожил', emoji: '⏰', cond: () => daysPassed >= 14 },
+                        { level: 14, text: 'Зависимый', emoji: '🔥', cond: () => totalSeconds >= 18000 },
+                        { level: 15, text: 'Архивариус', emoji: '📖', cond: () => consCount >= 3 },
+                        { level: 16, text: 'Эстет', emoji: '🎨', cond: () => totalSeconds >= 3600 && localStorage.getItem('etis_accent_config') !== null },
+                        { level: 17, text: 'Аналитик', emoji: '📈', cond: () => gradesCount >= 100 && totalSeconds >= 7200 },
+                        { level: 18, text: 'Перфекционист', emoji: '🎓', cond: () => gpa >= 4.75 },
+                        { level: 19, text: 'Ветеран REBORN', emoji: '🛡️', cond: () => daysPassed >= 30 && totalSeconds >= 18000 },
+                        { level: 20, text: 'Легенда ЕТИСа', emoji: '👑', cond: () => totalSeconds >= 36000 && gpa >= 4.5 && notesCount >= 15 }
+                    ];
+
+                    let unlockDates = JSON.parse(localStorage.getItem('etis_statuses_unlocked_dates_v1') || '{}');
+                    let datesChanged = false;
+
+                    let best = statuses[0];
+                    for (const s of statuses) {
+                        if (s.cond()) {
+                            // Автоматически фиксируем дату разблокировки, если её ещё нет в истории
+                            if (!unlockDates[s.level]) {
+                                unlockDates[s.level] = new Date().toLocaleDateString('ru-RU');
+                                datesChanged = true;
+                            }
+                            if (s.level > best.level) {
+                                best = s;
+                            }
+                        }
+                    }
+
+                    if (datesChanged) {
+                        localStorage.setItem('etis_statuses_unlocked_dates_v1', JSON.stringify(unlockDates));
+                    }
+                    return best;
+                })();
+
+                badge = badgeStatus.text;
+                badgeEmoji = badgeStatus.emoji;
 
                 const getDaysWord = (n) => {
                     const absN = Math.abs(n) % 100; const lastDigit = absN % 10;
@@ -9471,6 +10327,50 @@
                     if (lastDigit === 1) return 'минуте'; return 'минут';
                 };
 
+                // Вспомогательная функция отрисовки выбранных цветов темы
+                const getColorsIndicator = (config) => {
+                    if (!config || !config.colors || config.colors.length === 0) return '—';
+
+                    let html = `<span style="display:inline-flex; align-items:center; gap:6px; vertical-align: middle;">`;
+
+                    const isGrad = config.isGradient !== false && config.colors.length > 1;
+                    const c1 = ACCENT_COLORS[config.colors[0]] || '#007AFF';
+
+                    // 1. Первый кружок акцента (всегда отображается)
+                    html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c1}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет акцента 1"></span>`;
+
+                    // 2. Второй кружок акцента (если включен градиент)
+                    if (isGrad && config.colors[1]) {
+                        const c2 = ACCENT_COLORS[config.colors[1]] || c1;
+                        html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c2}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет акцента 2"></span>`;
+                    }
+
+                    // 3. Кружок текущей темы (Автоматическая, Темная или Светлая)
+                    const activeTheme = localStorage.getItem('theme') || 'auto';
+                    let themeBg = '';
+                    let themeTitle = '';
+                    if (activeTheme === 'auto') {
+                        // Градиент наполовину: левая часть светлая, правая — темная
+                        themeBg = 'linear-gradient(90deg, #EAECEE 50%, #212325 50%)';
+                        themeTitle = 'Системная тема (авто)';
+                    } else if (activeTheme === 'dark') {
+                        themeBg = '#212325';
+                        themeTitle = 'Темная тема';
+                    } else {
+                        themeBg = '#EAECEE';
+                        themeTitle = 'Светлая тема';
+                    }
+                    html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${themeBg}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="${themeTitle}"></span>`;
+
+                    // 4. Полупрозрачный кружок эффекта стекла (если включен)
+                    if (config.isGlass === true) {
+                        html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px dashed var(--color-text-secondary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);" title="Эффект стекла активен"></span>`;
+                    }
+
+                    html += `</span>`;
+                    return html;
+                };
+
                 let title = currentView === 'main' ? 'Мой профиль' : 'Мои данные';
                 if (currentView === 'menu') title = 'Профиль';
                 let contentHTML = '';
@@ -9478,8 +10378,7 @@
                 if (currentView === 'main') {
                     contentHTML = `
                         <div id="bento-capture-area" style="background: var(--color-body); padding: 24px; border-radius: 32px; margin: 0 auto; width: calc(100% - 16px); box-sizing: border-box;">
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; aspect-ratio: auto; background: var(--color-card); border-radius: 28px; padding: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.08); box-sizing: border-box;">
-                                <!-- Ячейка 1: Имя и Аватар (Крупная, 2 колонки) -->
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; aspect-ratio: auto; background: var(--color-card); border-radius: 28px; padding: 16px; box-shadow: none; box-sizing: border-box;">
                                 <div style="grid-column: span 2; background: var(--color-highlight); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 4px;">
                                     <div style="width: 56px; height: 56px; background: var(--color-accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; margin-bottom: 4px; color: #fff !important; -webkit-text-fill-color: #fff !important;">
                                         ${firstName.charAt(0)}
@@ -9488,17 +10387,15 @@
                                     <div style="font-size: 1.2rem; color: var(--color-text-secondary); font-weight: 600;">Студент ПГНИУ</div>
                                 </div>
 
-                                <!-- Ячейка 2: Средний балл диплома (Высокая, 1 колонка) -->
                                 <div style="grid-column: span 1; background: var(--color-highlight); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
                                     ${gpa > 0 ? `
                                         <div style="font-size: 2.8rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1;">${gpa.toFixed(2)}</div>
-                                        <div style="font-size: 1.1rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.3;">Ср. балл<br>диплома</div>
+                                        <div style="font-size: 1.1rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.3;">Мой средний балл в <br>дипломе</div>
                                     ` : `
                                         <div style="font-size: 1.1rem; color: var(--color-text-secondary); font-weight: 600; line-height: 1.3; text-align: center;">Зайдите в <a href="https://student.psu.ru/pls/stu_cus_et/stu.signs?p_mode=diplom#open-profile" style="color: var(--color-accent) !important; font-weight: 800; text-decoration: underline !important;">«Оценки в диплом»</a></div>
                                     `}
                                 </div>
-                                
-                                <!-- Ячейка 3: Направление обучения (Широкая плашка, 3 колонки) -->
+
                                 ${declinedDir ? `
                                 <div style="grid-column: span 3; background: var(--color-highlight); border-radius: 20px; padding: 12px 20px; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; flex-wrap: wrap;">
                                     <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">school</span>
@@ -9507,57 +10404,320 @@
                                 </div>
                                 ` : ''}
 
-                                <!-- Ячейка 4: Бейдж статуса (Узкая, 1 колонка) -->
-                                <div style="grid-column: span 1; background: var(--color-accent); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                                <div id="status-bento-card" style="grid-column: span 1; background: var(--color-accent); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
                                     <div style="font-size: 3.2rem; margin-bottom: 4px; line-height: 1; -webkit-text-fill-color: initial;">${badgeEmoji}</div>
                                     <div style="font-size: 1.4rem; font-weight: 800; color: #fff !important; -webkit-text-fill-color: #fff !important; line-height: 1.2;">Я ${badge}</div>
                                 </div>
 
-                                <!-- Ячейка 5: Статистика использования (Широкая, 2 колонки) -->
                                 <div style="grid-column: span 2; background: var(--color-highlight); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 6px;">
                                     <div style="font-size: 1.25rem; color: var(--color-text-primary); font-weight: 600; line-height: 1.4;">
                                         Пользуюсь ЕТИС REBORN уже <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-accent);">${daysPassed} ${getDaysWord(daysPassed)}</span> по <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-accent);">${minsPerDay} ${getMinsWord(minsPerDay)}</span> в день
                                     </div>
                                 </div>
+                            </div>
                         </div>
                     `;
                 } else if (currentView === 'data') {
-                    const dataRow = (rowTitle, count, key) => `
-                        <div class="ios-settings-row" style="cursor: default !important;">
-                            <div>
-                                <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">${rowTitle}</div>
-                                <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px;">Сохранено записей: ${count}</div>
+                    // Чтение кэша последних облачных значений для предотвращения мигания
+                    const lastCloudRaw = JSON.parse(localStorage.getItem('etis_last_cloud_counts_v1') || '{}');
+                    const lastCloud = {
+                        cp: lastCloudRaw.cp !== undefined ? lastCloudRaw.cp : '—',
+                        notes: lastCloudRaw.notes !== undefined ? lastCloudRaw.notes : '—',
+                        grades: lastCloudRaw.grades !== undefined ? lastCloudRaw.grades : '—',
+                        cons: lastCloudRaw.cons !== undefined ? lastCloudRaw.cons : '—',
+                        weekly: lastCloudRaw.weekly !== undefined ? lastCloudRaw.weekly : '—',
+                        theme: lastCloudRaw.theme !== undefined ? lastCloudRaw.theme : '—',
+                        timeSpent: lastCloudRaw.timeSpent !== undefined ? lastCloudRaw.timeSpent : '—',
+                        cals: lastCloudRaw.cals !== undefined ? lastCloudRaw.cals : '—'
+                    };
+
+                    // Хелпер строк данных
+                    const dataRow = (rowTitle, count, key, spanId = '', isSyncable = true, isHTML = false, cloudVal = '—') => {
+                        const localSpanId = `local-val-${key.replace(/_/g, '-')}`;
+                        return `
+                            <div class="ios-settings-row" style="cursor: default !important; padding: 1.4rem 1.6rem !important;">
+                                <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; flex: 1;">
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">${rowTitle}</div>
+                                    <div style="display: flex; align-items: center; gap: 16px; margin-top: 4px;">
+                                        <!-- Локальные данные -->
+                                        <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 1.25rem;" title="Сохранено на этом устройстве">
+                                            <span class="material-icons" style="font-size: 1.6rem; color: var(--color-text-secondary);">download</span>
+                                            <span id="${localSpanId}">${count}</span>
+                                        </span>
+                                        <!-- Облачные данные (если применимо) -->
+                                        ${isSyncable ? `
+                                        <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 1.25rem;" title="Сохранено в облаке Firebase">
+                                            <span class="material-icons" style="font-size: 1.6rem; color: var(--color-accent);">cloud</span>
+                                            <span ${spanId ? `id="${spanId}"` : ''} style="font-weight: 700;">${cloudVal}</span>
+                                        </span>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                                <button class="answer-btn-custom clear-data-btn" data-key="${key}" style="background: rgba(255,59,48,0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important; padding: 6px 12px; font-size: 1.2rem; flex-shrink: 0; margin-left: 12px;">
+                                    Очистить
+                                </button>
                             </div>
-                            <button class="answer-btn-custom clear-data-btn" data-key="${key}" style="background: rgba(255,59,48,0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important; padding: 6px 12px; font-size: 1.2rem;">
-                                Очистить
-                            </button>
-                        </div>
-                    `;
-                    contentHTML = `
-                        <div class="ios-settings-group">
+                        `;
+                    };
+
+                    let syncBlockHTML = '';
+                    const savedLogin = getSavedLoginId();
+                    const isSyncEnabled = typeof GM_getValue !== 'undefined' && GM_getValue('etis_sync_enabled', true);
+
+                    if (savedLogin) {
+                        if (isSyncEnabled) {
+                            // Состояние 1: Логин есть, синхронизация включена и активна
+                            syncBlockHTML = `
+                                <div class="ios-settings-row" style="cursor: default !important;">
+                                    <div>
+                                        <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Облачная синхронизация</div>
+                                        <div style="font-size: 1.3rem; color: var(--color-green); font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                                            <span class="material-icons" style="font-size: 1.6rem;">cloud_done</span> Активна
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="ios-settings-row" id="sync-settings-btn" style="cursor: pointer; justify-content: flex-start !important; gap: 12px;">
+                                    <span class="material-icons" style="color:var(--color-accent);">tune</span>
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Настройки синхронизации</span>
+                                    <span class="material-icons chevron" style="color:var(--color-text-secondary); margin-left:auto;">chevron_right</span>
+                                </div>
+                                <div class="ios-settings-row" id="reset-sync-code-btn" style="cursor: pointer; color: var(--color-red) !important; justify-content: flex-start !important; gap: 12px;">
+                                    <span class="material-icons" style="color:var(--color-red);">cloud_off</span>
+                                    <span style="font-size:1.4rem; font-weight:600;">Отключить синхронизацию</span>
+                                </div>
+                            `;
+                        } else {
+                            // Состояние 2: Логин сохранен, но синхронизация отключена (показываем кнопку включения)
+                            syncBlockHTML = `
+                                <div class="ios-settings-row" style="cursor: default !important;">
+                                    <div>
+                                        <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Облачная синхронизация</div>
+                                        <div style="font-size: 1.3rem; color: var(--color-text-secondary); font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                                            <span class="material-icons" style="font-size: 1.6rem;">cloud_queue</span> Отключена
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="ios-settings-row" id="enable-sync-btn" style="cursor: pointer; color: var(--color-accent) !important; justify-content: flex-start !important; gap: 12px;">
+                                    <span class="material-icons" style="color:var(--color-accent);">cloud_queue</span>
+                                    <span style="font-size:1.4rem; font-weight:600;">Включить авто-синхронизацию</span>
+                                </div>
+                            `;
+                        }
+                    } else {
+                        // Состояние 3: Логина нет совсем (первый запуск скрипта)
+                        syncBlockHTML = `
                             <div class="ios-settings-row" style="cursor: default !important;">
                                 <div>
-                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Дата присоединения</div>
-                                    <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px;">Скрипт установлен: ${joinDateStr}</div>
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Облачная синхронизация</div>
+                                    <div style="font-size: 1.3rem; color: var(--color-warning); font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                                        <span class="material-icons" style="font-size: 1.6rem;">cloud_queue</span> Ожидает первого входа в аккаунт
+                                    </div>
+                                    <div style="font-size: 1.15rem; color: var(--color-text-secondary); margin-top: 6px; line-height: 1.4;">
+                                        Выйдите из ЕТИС и войдите снова, чтобы активировать бесшовную синхронизацию.
+                                    </div>
                                 </div>
                             </div>
-                            ${dataRow('Свои пары', cpCount, 'etis_custom_pairs_v1')}
-                            ${dataRow('Заметки и ДЗ', notesCount, 'etis_subject_notes_v2')}
-                            ${dataRow('История оценок', gradesCount, 'etis_reborn_grades_snapshot_v3')}
-                            ${dataRow('Файлы консультаций', consCount, 'etis_consultation_files_v1')}
+                        `;
+                    }
+
+                    let calsCount = typeof migrateExternalCals === 'function' ? migrateExternalCals().length : 0;
+
+                    contentHTML = `
+                    <div class="ios-settings-group" id="ql-sync-group" style="margin-bottom: 1rem !important;">
+                        ${syncBlockHTML}
+                    </div>
+
+                    <div style="font-size: 1.2rem; color: var(--color-text-secondary); line-height: 1.5; text-align: left; padding: 0 4px; margin-bottom: 2.4rem; margin-top: -0.5rem;">
+                        Синхронизация позволяет переносить ваши пары, заметки и цветовые темы между устройствами в зашифрованном виде. Логин и пароли в облако не отправляются.
+                    </div>
+
+                    <div class="ios-settings-group" style="margin-bottom: 0 !important;">
+                        <div class="ios-settings-row" style="cursor: default !important;">
+                            <div>
+                                <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Дата присоединения</div>
+                                <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px;" id="install-date-val">Скрипт установлен: ${joinDateStr}</div>
+                            </div>
                         </div>
-                        <div style="font-size: 1.2rem; color: var(--color-text-secondary); line-height: 1.5; text-align: left; padding: 0 4px;">
-                            Удаление очистит кэш скрипта в браузере. Данные начнут собираться заново при посещении соответствующих страниц.
+                        ${dataRow('Свои пары', cpCount, 'etis_custom_pairs_v1', 'cloud-val-cp', true, false, lastCloud.cp)}
+                        ${dataRow('Заметки и ДЗ', notesCount, 'etis_subject_notes_v2', 'cloud-val-notes', true, false, lastCloud.notes)}
+                        ${dataRow('История оценок', gradesCount, 'etis_reborn_grades_snapshot_v3', 'cloud-val-grades', true, false, lastCloud.grades)}
+                        ${dataRow('Файлы консультаций', consCount, 'etis_consultation_files_v1', 'cloud-val-cons', true, false, lastCloud.cons)}
+                        ${dataRow('История расписания (для сводки)', weeklyPairsCount, 'etis_weekly_pairs_history_v1', 'cloud-val-weekly', true, false, lastCloud.weekly)}
+                        ${dataRow('Тема и цвета', getColorsIndicator(localAccent), 'etis_accent_config', 'cloud-val-theme', true, true, lastCloud.theme)}
+                        ${dataRow('Время использования', `${Math.round(totalSeconds / 60)} мин`, 'etis_reborn_time_spent', 'cloud-val-time-spent', true, false, lastCloud.timeSpent)}
+                        ${dataRow('Внешние календари', calsCount, 'etis_external_cals_v2', 'cloud-val-cals', true, false, lastCloud.cals)}
+                        ${dataRow('Данные быстрого входа', qlCount, 'etis_quick_login_creds', '', false)}
+                    </div>
+                    `;
+                } else if (currentView === 'sync_options') {
+                    title = 'Настройки синхронизации';
+                    backTarget = 'data';
+
+                    const toggles = getSyncToggles();
+
+                    const makeToggle = (key, label, desc) => `
+                        <label>
+                            <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">${label}</span>
+                                <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">${desc}</span>
+                            </div>
+                            <input type="checkbox" class="tumbler-checkbox sync-option-toggle" data-key="${key}" ${toggles[key] !== false ? 'checked' : ''}>
+                        </label>
+                    `;
+
+                    // --- ИНТЕГРАЦИЯ УЛУЧШЕННОЙ ПАНЕЛИ УСТРОЙСТВ ---
+                    let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
+                    let devices = meta.devices || {};
+                    let deviceId = localStorage.getItem('etis_device_id');
+                    let devicesCount = Object.keys(devices).length;
+
+                    let devicesHtml = '';
+                    if (devicesCount > 0) {
+                        devicesHtml = `
+                            <div class="ios-settings-group" style="margin-bottom: 2rem;">
+                        `;
+                        for (const [id, dev] of Object.entries(devices)) {
+                        const isCurrent = id === deviceId;
+
+                        // Берем время последней активности
+                        const activeTime = dev.lastActive || dev.added;
+                        const dateStr = new Date(activeTime).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+                            // Правая часть: либо зелёная точка для текущего устройства, либо кружок с минусом для остальных
+                            let rightActionHtml = '';
+                            if (isCurrent) {
+                                rightActionHtml = `
+                                    <div style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; margin-right: 2px;">
+                                        <div style="width: 10px; height: 10px; border-radius: 50%; background-color: var(--color-green) !important; box-shadow: 0 0 6px var(--color-green);" title="Текущее устройство"></div>
+                                    </div>
+                                `;
+                            } else {
+                                rightActionHtml = `
+                                    <button class="delete-device-btn" data-id="${id}" style="width: 32px; height: 32px; border-radius: 50% !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: rgba(255, 59, 48, 0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255, 59, 48, 0.2) !important; padding: 0 !important; margin: 0 !important; cursor: pointer; flex-shrink: 0; box-shadow: none !important; transition: background-color 0.2s;">
+                                        <span class="material-icons" style="font-size: 1.8rem !important; margin: 0 !important; padding: 0 !important; line-height: 1 !important; color: inherit !important;">remove</span>
+                                    </button>
+                                `;
+                            }
+
+                            devicesHtml += `
+                                <div class="ios-settings-row" style="cursor: default !important; padding: 1.4rem 1.6rem !important;">
+                                    <div style="text-align: left; display:flex; align-items:center; gap:12px; overflow:hidden; flex:1;">
+                                        <span class="material-icons" style="color:var(--color-text-secondary); font-size:2.4rem; flex-shrink:0;">
+                                            ${dev.os.toLowerCase().includes('android') || dev.os.toLowerCase().includes('ios') ? 'smartphone' : 'laptop'}
+                                        </span>
+                                        <div style="overflow:hidden; flex:1;">
+                                            <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); display:flex; align-items:center; gap:6px; overflow:hidden;">
+                                                <!-- Принудительно заблокировали нижнее подчеркивание инпута от глобальных стилей ЕТИСа -->
+                                                <input type="text" class="device-rename-input" data-id="${id}" value="${dev.name}" style="background:transparent !important; border:none !important; box-shadow:none !important; color:inherit !important; font-size:inherit !important; font-weight:inherit !important; padding:0 !important; margin:0 !important; outline:none !important; text-overflow:ellipsis; width: 100%; max-width: 180px;" ${isCurrent ? '' : 'disabled'}>
+                                            </div>
+                                            <div style="font-size: 1.15rem; color: var(--color-text-secondary); margin-top: 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                                ${dev.os} • В сети: ${dateStr}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ${rightActionHtml}
+                                </div>
+                            `;
+                        }
+                        devicesHtml += `</div>`;
+                    }
+
+                    contentHTML = `
+                        ${devicesHtml}
+                        <div style="height: 12px; width: 100%;"></div> <!-- Невидимый разделитель вместо заголовка -->
+                        <div class="ios-settings-group">
+                            ${makeToggle('custom_pairs', 'Свои пары', 'Синхронизация созданных вручную занятий')}
+                            ${makeToggle('subject_notes', 'Заметки и ДЗ', 'Синхронизация заметок, ДЗ и важных пар')}
+                            ${makeToggle('accent_config', 'Цветовая тема', 'Синхронизация выбранных цветов и градиентов')}
+                            ${makeToggle('general_config', 'Настройки интерфейса', 'Синхронизация настроек (окна, сокращения и т.д.)')}
+                            ${makeToggle('grades_snapshot', 'История оценок', 'Синхронизация баллов в триместрах и сессиях')}
+                            ${makeToggle('consultation_files', 'Файлы консультаций', 'Синхронизация загруженных DOCX-календарей')}
+                            ${makeToggle('external_cals', 'Внешние календари', 'Синхронизация импортируемых .ics-ссылок')}
+                            ${makeToggle('weekly_pairs_history', 'История расписания', 'Синхронизация сводки по нагрузке')}
                         </div>
                     `;
+                } else if (currentView === 'achievements') {
+                    title = 'Мои достижения';
+                    backTarget = 'main';
+
+                    const unlockDates = JSON.parse(localStorage.getItem('etis_statuses_unlocked_dates_v1') || '{}');
+
+                    // Вспомогательная функция для приведения даты к короткому формату "ДД.ММ.ГГ"
+                    const formatShortDate = (dateStr) => {
+                        if (!dateStr) return '';
+                        const parts = dateStr.split('.');
+                        if (parts.length === 3 && parts[2].length === 4) {
+                            return `${parts[0]}.${parts[1]}.${parts[2].slice(-2)}`;
+                        }
+                        return dateStr;
+                    };
+
+                    const statusesList = [
+                        { level: 1, text: 'Новичок', emoji: '🌱', desc: 'Запуск расширения ЕТИС REBORN', cond: () => true },
+                        { level: 2, text: 'Наблюдатель', emoji: '🕵️', desc: 'Пользоваться скриптом более 3 дней', cond: () => daysPassed >= 3 },
+                        { level: 3, text: 'Заметочник', emoji: '📝', desc: 'Создать хотя бы одну заметку или домашнее задание', cond: () => notesCount >= 1 },
+                        { level: 4, text: 'Конструктор', emoji: '✏️', desc: 'Вручную добавить собственное занятие в расписание', cond: () => cpCount >= 1 },
+                        { level: 5, text: 'Отличник', emoji: '📚', desc: 'Достичь среднего балла в дипломе 4.5 или выше', cond: () => gpa >= 4.5 },
+                        { level: 6, text: 'Постоянный гость', emoji: '🚀', desc: 'Провести более 1 часа (60 минут) на страницах ЕТИСа', cond: () => totalSeconds >= 3600 },
+                        { level: 7, text: 'Писатель', emoji: '✍️', desc: 'Написать 5 или более заметок или ДЗ для предметов', cond: () => notesCount >= 5 },
+                        { level: 8, text: 'Свой график', emoji: '📅', desc: 'Создать в расписании не менее 5 собственных занятий', cond: () => cpCount >= 5 },
+                        { level: 9, text: 'Исследователь', emoji: '🤓', desc: 'Накопить историю из 50 или более оценок в архиве', cond: () => gradesCount >= 50 },
+                        { level: 10, text: 'Организатор', emoji: '🧩', desc: 'Импортировать хотя бы один файл консультаций', cond: () => consCount >= 1 },
+                        { level: 11, text: 'Пофигист', emoji: '🧘', desc: 'Иметь средний балл диплома ниже 3.5', cond: () => gpa > 0 && gpa < 3.5 },
+                        { level: 12, text: 'Хорошист', emoji: '😎', desc: 'Иметь средний балл диплома от 4.0 до 4.5', cond: () => gpa >= 4.0 && gpa < 4.5 },
+                        { level: 13, text: 'Старожил', emoji: '⏰', desc: 'Пользоваться расширением более 2 недель (14 дней)', cond: () => daysPassed >= 14 },
+                        { level: 14, text: 'Зависимый', emoji: '🔥', desc: 'Провести более 5 часов (300 минут) на страницах ЕТИСа', cond: () => totalSeconds >= 18000 },
+                        { level: 15, text: 'Архивариус', emoji: '📖', desc: 'Загрузить 3 или более файлов консультаций', cond: () => consCount >= 3 },
+                        { level: 16, text: 'Эстет', emoji: '🎨', desc: 'Провести в приложении более 1 часа и настроить тему', cond: () => totalSeconds >= 3600 && localStorage.getItem('etis_accent_config') !== null },
+                        { level: 17, text: 'Аналитик', emoji: '📈', desc: 'Накопить 100+ оценок и провести в приложении более 2 часов', cond: () => gradesCount >= 100 && totalSeconds >= 7200 },
+                        { level: 18, text: 'Перфекционист', emoji: '🎓', desc: 'Достичь отличного среднего балла диплома (4.75 или выше)', cond: () => gpa >= 4.75 },
+                        { level: 19, text: 'Ветеран REBORN', emoji: '🛡️', desc: 'Пользоваться скриптом более 30 дней и провести в нем 5+ часов', cond: () => daysPassed >= 30 && totalSeconds >= 18000 },
+                        { level: 20, text: 'Легенда ЕТИСа', emoji: '👑', desc: 'Провести в ЕТИСе 10+ часов, балл в диплом от 4.5 и 15+ заметок', cond: () => totalSeconds >= 36000 && gpa >= 4.5 && notesCount >= 15 }
+                    ];
+
+                    let listHtml = '<div style="display:flex; flex-direction:column; gap:1.2rem;">';
+                    statusesList.forEach(s => {
+                        const isUnlocked = s.cond();
+                        const opacity = isUnlocked ? '1.0' : '0.45';
+                        const uDate = unlockDates[s.level] || '';
+
+                        listHtml += `
+                            <div style="background:var(--color-card); padding:1.4rem 1.6rem; border-radius:var(--radius-large); border:1px solid var(--color-table-border); display:flex; align-items:center; gap:1.6rem; opacity:${opacity}; transition:opacity 0.2s;">
+                                <div style="font-size:2.8rem; width:44px; height:44px; background:var(--color-highlight); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                    ${s.emoji}
+                                </div>
+                                <div style="flex-grow:1; text-align:left;">
+                                    <div style="font-size:1.4rem; font-weight:800; color:var(--color-text-primary); margin-bottom:4px;">${s.text}</div>
+                                    <div style="font-size:1.15rem; color:var(--color-text-secondary); line-height:1.4;">${s.desc}</div>
+                                </div>
+                                ${isUnlocked ? `
+                                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                                        <span style="font-size:1.2rem; font-weight:700; color:var(--color-text-secondary);">${formatShortDate(uDate)}</span>
+                                        <span class="material-icons" style="color:var(--color-green); font-size:2.2rem;">check_circle</span>
+                                    </div>
+                                ` : `
+                                    <div style="display:flex; align-items:center; flex-shrink:0;">
+                                        <span class="material-icons" style="color:var(--color-text-secondary); font-size:2.2rem; opacity:0.5;">lock</span>
+                                    </div>
+                                `}
+                            </div>
+                        `;
+                    });
+                    listHtml += '</div>';
+
+                    contentHTML = listHtml;
                 }
 
                 const isMainMobile = currentView === 'menu';
                 const showBackBtnOnPC = currentView !== 'menu' && currentView !== 'main';
                 const backBtnClass = showBackBtnOnPC ? 'back-modal-btn' : 'back-modal-btn settings-mobile-header';
-                const backTarget = window.innerWidth <= 960 ? 'menu' : 'main';
 
-                // Иконка "Поделиться" встраивается прямо в шапку рядом с закрытием
+                // Форсируем показ стрелки назад на ПК только во вкладке достижений
+                const backBtnStyle = (currentView === 'achievements') ? 'display: inline-block !important;' : '';
+
+                // Пересчитываем кнопку возврата на мобильных
+                backTarget = (currentView === 'sync_options') ? 'data' : ((currentView === 'achievements') ? 'main' : (window.innerWidth <= 960 ? 'menu' : 'main'));
+
                 const shareBtnHtml = currentView === 'main' ? `
                     <button id="share-bento-btn" style="background:transparent!important; border:none!important; box-shadow:none!important; padding:0!important; margin:0!important; display:flex; align-items:center; justify-content:center; cursor:pointer;">
                         <span class="material-icons" style="color:var(--color-text-secondary); font-size:24px; transition:color 0.2s;">ios_share</span>
@@ -9574,10 +10734,10 @@
                             </div>
 
                             <div class="sidebar-tabs-container">
-                                <div class="settings-sidebar-btn ${currentView === 'main' ? 'active' : ''}" data-target="main">
+                                <div class="settings-sidebar-btn ${currentView === 'main' || currentView === 'achievements' ? 'active' : ''}" data-target="main">
                                     <span class="material-icons">account_circle</span><span class="sidebar-btn-text">Мой профиль</span><span class="material-icons chevron">chevron_right</span>
                                 </div>
-                                <div class="settings-sidebar-btn ${currentView === 'data' ? 'active' : ''}" data-target="data">
+                                <div class="settings-sidebar-btn ${currentView === 'data' || currentView === 'sync_options' ? 'active' : ''}" data-target="data">
                                     <span class="material-icons">storage</span><span class="sidebar-btn-text">Мои данные</span><span class="material-icons chevron">chevron_right</span>
                                 </div>
                             </div>
@@ -9587,7 +10747,7 @@
                             <div class="settings-content-scroll">
                                 <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
                                     <div style="display:flex; align-items:center; gap:12px;">
-                                        <span class="material-icons ${backBtnClass}" data-back="${backTarget}" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                        <span class="material-icons ${backBtnClass}" data-back="${backTarget}" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem; ${backBtnStyle}">arrow_back</span>
                                         <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">${title}</span>
                                     </div>
                                     <div style="display:flex; align-items:center; gap:16px;">
@@ -9595,8 +10755,7 @@
                                         <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
                                     </div>
                                 </div>
-                                <div style="padding: 0.8rem 0 4rem 0;">
-                                    ${contentHTML}
+                                <div style="padding: 0.8rem 0 4rem 0;">                                    ${contentHTML}
                                 </div>
                             </div>
                         </div>
@@ -9610,6 +10769,15 @@
                 });
 
                 if (currentView === 'main') {
+                    // Клик по блоку статуса открывает вкладку достижений
+                    const statusCard = modal.querySelector('#status-bento-card');
+                    if (statusCard) {
+                        statusCard.onclick = (e) => {
+                            e.preventDefault();
+                            renderView('achievements');
+                        };
+                    }
+
                     const shareBtn = modal.querySelector('#share-bento-btn');
                     if (shareBtn) {
                         shareBtn.onclick = (e) => {
@@ -9619,7 +10787,7 @@
                             bIcon.textContent = 'sync'; bIcon.style.animation = 'spin 1s linear infinite';
                             bIcon.style.color = 'var(--color-accent)';
                             const targetEl = document.getElementById('bento-capture-area');
-                            
+
                             const executeShare = () => {
                                 let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
                                 if (!h2c) {
@@ -9633,7 +10801,7 @@
                                     canvas.toBlob(blob => {
                                         const file = new File([blob], 'EtisProfile.png', { type: 'image/png' });
                                         if (window.innerWidth <= 960 && navigator.canShare && navigator.canShare({ files: [file] })) {
-                                            navigator.share({ files: [file], title: 'Мой профиль ЕТИС' }).catch(()=>{}); 
+                                            navigator.share({ files: [file], title: 'Мой профиль ЕТИС' }).catch(()=>{});
                                             bIcon.textContent = origIcon; bIcon.style.animation = 'none'; bIcon.style.color = 'var(--color-text-secondary)';
                                         } else {
                                             const link = document.createElement('a'); link.download = 'EtisProfile.png'; link.href = URL.createObjectURL(blob); link.click();
@@ -9653,20 +10821,286 @@
                     }
                 }
 
+                // ==========================================
+                // БЛОК УПРАВЛЕНИЯ ДАННЫМИ И СИНХРОНИЗАЦИЕЙ
+                // ==========================================
                 if (currentView === 'data') {
+                    // 1. Автоматический фоновый запрос на слияние данных при открытии вкладки
+                    if (syncCode) {
+                        downloadDataFromCloud(syncCode).then(success => {
+                            if (success) {
+                                // Если сзади открыто расписание, бесшумно перерисовываем его элементы на лету
+                                if (window.location.href.includes('timetable')) {
+                                    document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
+                                    if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
+                                    if (typeof window.injectConsultationPairs === 'function') window.injectConsultationPairs();
+                                    if (typeof window.loadExternalCalendar === 'function') window.loadExternalCalendar();
+                                    if (typeof window.renderNotes === 'function') window.renderNotes();
+                                    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                                }
+
+                                // Обновляем локальные счетчики точечно без перерисовки всей вкладки (предотвращает сброс скролла)
+                                const newCpCount = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]').length;
+                                const newNotesCount = Object.keys(JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{}}').specific || {}).length;
+                                const newGradesCount = Object.keys(JSON.parse(localStorage.getItem('etis_reborn_grades_snapshot_v3') || '{"grades":{}}').grades || {}).length;
+                                const newConsCount = JSON.parse(localStorage.getItem('etis_consultation_files_v1') || '[]').length;
+                                const newWeeklyCount = Object.keys(JSON.parse(localStorage.getItem('etis_weekly_pairs_history_v1') || '{}')).length;
+                                const newCalsCount = typeof migrateExternalCals === 'function' ? migrateExternalCals().length : 0;
+                                const newAccent = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'], isGlass: false, isColoredGlass: true };
+
+                                const cpLocEl = modal.querySelector('#local-val-etis-custom-pairs-v1');
+                                const notesLocEl = modal.querySelector('#local-val-etis-subject-notes-v2');
+                                const gradesLocEl = modal.querySelector('#local-val-etis-reborn-grades-snapshot-v3');
+                                const consLocEl = modal.querySelector('#local-val-etis-consultation-files-v1');
+                                const weeklyLocEl = modal.querySelector('#local-val-etis-weekly-pairs-history-v1');
+                                const calsLocEl = modal.querySelector('#local-val-etis-external-cals-v2');
+                                const themeLocEl = modal.querySelector('#local-val-etis-accent-config');
+
+                                if (cpLocEl) cpLocEl.textContent = newCpCount;
+                                if (notesLocEl) notesLocEl.textContent = newNotesCount;
+                                if (gradesLocEl) gradesLocEl.textContent = newGradesCount;
+                                if (consLocEl) consLocEl.textContent = newConsCount;
+                                if (weeklyLocEl) weeklyLocEl.textContent = newWeeklyCount;
+                                if (calsLocEl) calsLocEl.textContent = newCalsCount;
+                                if (themeLocEl) themeLocEl.innerHTML = getColorsIndicator(newAccent);
+                            }
+                        });
+                    }
+
+                    // 1.2 Очистка локального кэша
                     modal.querySelectorAll('.clear-data-btn').forEach(btn => {
                         btn.onclick = () => {
                             if (confirm('Очистить эти данные?')) {
-                                localStorage.removeItem(btn.getAttribute('data-key'));
-                                renderView('data'); 
+                                const key = btn.getAttribute('data-key');
+                                if (key === 'etis_quick_login_creds') {
+                                    GM_setValue('ql_accounts_v2', '[]');
+                                } else {
+                                    localStorage.removeItem(key);
+                                }
+                                renderView('data');
                             }
                         };
                     });
+
+                    // 2. Кнопка "Включить авто-синхронизацию"
+                    const enableSyncBtn = modal.querySelector('#enable-sync-btn');
+                    if (enableSyncBtn) {
+                        enableSyncBtn.onclick = async (e) => {
+                            e.preventDefault();
+                            enableSyncBtn.innerHTML = '<span class="material-icons" style="animation:spin 1s linear infinite;">sync</span> Подключение...';
+                            enableSyncBtn.style.pointerEvents = 'none';
+
+                            if (typeof GM_setValue !== 'undefined') {
+                                GM_setValue('etis_sync_enabled', true); // Включаем флаг
+                            }
+
+                            const code = await getAutomaticSyncCode();
+                            if (code) {
+                                localStorage.setItem('etis_sync_code', code);
+                                localStorage.setItem('etis_last_sync_time', Date.now().toString());
+
+                                await downloadDataFromCloud(code);
+                                await uploadDataToCloud(code);
+
+                                renderView('data'); // Обновляем экран
+
+                                // Мгновенно перерисовываем расписание на лету
+                                if (window.location.href.includes('timetable')) {
+                                    document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
+                                    document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
+                                    if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
+                                    if (typeof window.injectConsultationPairs === 'function') window.injectConsultationPairs();
+                                    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                                }
+                            } else {
+                                enableSyncBtn.innerHTML = '<span class="material-icons">error</span> Ошибка';
+                                setTimeout(() => renderView('data'), 2000);
+                            }
+                        };
+                    }
+
+                    // 3. Кнопка "Отключить синхронизацию"
+                    const resetSyncBtn = modal.querySelector('#reset-sync-code-btn');
+                    if (resetSyncBtn) {
+                        resetSyncBtn.onclick = (e) => {
+                            e.preventDefault();
+                            if (confirm('Отвязать устройство от облака? Локальные данные на этом устройстве останутся, но автоматический обмен прекратится.')) {
+                                localStorage.removeItem('etis_sync_code');
+                                localStorage.removeItem('etis_last_sync_time');
+                                localStorage.removeItem('etis_device_registered_in_cloud');
+
+                                // Отключаем флаг, но сохраняем логин в памяти для возможности быстрого переподключения
+                                if (typeof GM_setValue !== 'undefined') {
+                                    GM_setValue('etis_sync_enabled', false);
+                                }
+                                renderView('data');
+                            }
+                        };
+                    }
+
+                    // 3.5. Кнопка перехода к настройкам синхронизации
+                    const syncSettingsBtn = modal.querySelector('#sync-settings-btn');
+                    if (syncSettingsBtn) {
+                        syncSettingsBtn.onclick = (e) => {
+                            e.preventDefault();
+                            renderView('sync_options');
+                        };
+                    }
+
+                    // 4. Тихий фоновый запрос к Firebase для плавного обновления цифр и записи их в кэш
+                    if (syncCode) {
+                        fetch(`${FIREBASE_DB_URL}sync/${syncCode}.json`, {
+                            cache: 'no-store'
+                        })
+                            .then(res => res.json())
+                            .then(async rawData => {
+                                if (rawData) {
+                                    // Расшифровываем каждое поле индивидуально
+                                    const data = {};
+                                    for (const [key, value] of Object.entries(rawData)) {
+                                        if (value !== undefined && value !== null) {
+                                            if (typeof value === 'string' && value.length > 20 && !value.includes('{') && !value.includes('[')) {
+                                                try {
+                                                    data[key] = await decryptPayload(value, syncCode);
+                                                } catch (err) {
+                                                    data[key] = value;
+                                                }
+                                            } else {
+                                                data[key] = value;
+                                            }
+                                        }
+                                    }
+
+                                    const cloudWeekly = Object.keys(safeParseJSON(data.weekly_pairs_history, {})).length;
+                                    const cloudAccentObj = safeParseJSON(data.accent_config, null);
+
+                                    // Извлекаем и подсчитываем упакованные внешние календари из поля important_pairs
+                                    const parsedImp = safeParseJSON(data.important_pairs, null);
+                                    let cloudCalsCount = 0;
+                                    if (parsedImp && typeof parsedImp === 'object' && parsedImp.external_cals) {
+                                        cloudCalsCount = parsedImp.external_cals.length;
+                                    }
+
+                                    const cloudCP = safeParseJSON(data.custom_pairs, []).length;
+                                    const cloudNotes = Object.keys(safeParseJSON(data.subject_notes, {specific:{}}).specific || {}).length;
+                                    const cloudGrades = Object.keys(safeParseJSON(data.grades_snapshot, {grades:{}}).grades || {}).length;
+                                    const cloudCons = safeParseJSON(data.consultation_files, []).length;
+                                    const parts = data.install_date ? data.install_date.toString().split('|') : [];
+                                    const cloudTimeSpent = parts[1] ? `${Math.round(parseInt(parts[1], 10) / 60)} мин` : '—';
+
+                                    const cpValEl = modal.querySelector('#cloud-val-cp');
+                                    const notesValEl = modal.querySelector('#cloud-val-notes');
+                                    const gradesValEl = modal.querySelector('#cloud-val-grades');
+                                    const consValEl = modal.querySelector('#cloud-val-cons');
+                                    const weeklyValEl = modal.querySelector('#cloud-val-weekly');
+                                    const themeValEl = modal.querySelector('#cloud-val-theme');
+                                    const timeSpentValEl = modal.querySelector('#cloud-val-time-spent');
+                                    const calsValEl = modal.querySelector('#cloud-val-cals');
+
+                                    if (cpValEl) cpValEl.textContent = cloudCP;
+                                    if (notesValEl) notesValEl.textContent = cloudNotes;
+                                    if (gradesValEl) gradesValEl.textContent = cloudGrades;
+                                    if (consValEl) consValEl.textContent = cloudCons;
+                                    if (weeklyValEl) weeklyValEl.textContent = cloudWeekly;
+                                    if (themeValEl) themeValEl.innerHTML = getColorsIndicator(cloudAccentObj);
+                                    if (timeSpentValEl) timeSpentValEl.textContent = cloudTimeSpent;
+                                    if (calsValEl) calsValEl.textContent = cloudCalsCount;
+
+                                    // Записываем новые значения в локальный кэш
+                                    const newCloud = {
+                                        cp: cloudCP,
+                                        notes: cloudNotes,
+                                        grades: cloudGrades,
+                                        cons: cloudCons,
+                                        weekly: cloudWeekly,
+                                        theme: getColorsIndicator(cloudAccentObj),
+                                        timeSpent: cloudTimeSpent,
+                                        cals: cloudCalsCount
+                                    };
+                                    localStorage.setItem('etis_last_cloud_counts_v1', JSON.stringify(newCloud));
+
+                                    // Умное слияние даты установки (если в облаке она оказалась раньше)
+                                    if (data.install_date) {
+                                        const cloudInstall = parseInt(data.install_date, 10);
+                                        let localInstall = parseInt(localStorage.getItem('etis_reborn_install_date') || GM_getValue('etis_reborn_install_date') || '0', 10);
+                                        if (cloudInstall > 0 && cloudInstall < localInstall) {
+                                            localStorage.setItem('etis_reborn_install_date', cloudInstall.toString());
+                                            GM_setValue('etis_reborn_install_date', cloudInstall.toString());
+
+                                            const dateEl = modal.querySelector('#install-date-val');
+                                            if (dateEl) {
+                                                const newJoinDateStr = new Date(cloudInstall).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
+                                                dateEl.textContent = `Скрипт установлен: ${newJoinDateStr}`;
+                                            }
+                                        }
+                                    }
+                                }
+                            })
+                            .catch(err => console.error('[Sync] Ошибка фонового обновления:', err));
+                    }
                 }
+
+                // 5. Обработка переключателей на странице настроек синхронизации
+                if (currentView === 'sync_options') {
+                    modal.querySelectorAll('.sync-option-toggle').forEach(checkbox => {
+                        checkbox.onchange = (e) => {
+                            const key = e.target.getAttribute('data-key');
+                            const toggles = getSyncToggles(); // Используем хелпер
+                            toggles[key] = e.target.checked;
+                            localStorage.setItem('etis_sync_toggles', JSON.stringify(toggles));
+
+                            // Сразу сохраняем обновленные настройки и выгружаем данные на сервер
+                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                        };
+                    });
+                }
+
+                // Обработчик удаления устройства владельцем
+                modal.querySelectorAll('.delete-device-btn').forEach(btn => {
+                    btn.onclick = async (e) => {
+                        e.preventDefault();
+                        const id = btn.getAttribute('data-id');
+
+                        if (confirm('Отключить это устройство от аккаунта? Авто-синхронизация у него выключится при следующем обновлении.')) {
+                            let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
+                            if (meta.devices) {
+                                delete meta.devices[id];
+                                localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
+
+                                // Превращаем иконку удаления в крутящийся спиннер во время работы
+                                btn.innerHTML = '<span class="material-icons" style="animation:spin 1s linear infinite; font-size:1.8rem !important; margin:0 !important; padding:0 !important; line-height:1 !important;">sync</span>';
+                                btn.style.pointerEvents = 'none';
+
+                                await uploadDataToCloud(syncCode);
+                                renderView('sync_options');
+                            }
+                        }
+                    };
+                });
+
+                // Обработчик интерактивного переименования устройства
+                modal.querySelectorAll('.device-rename-input').forEach(input => {
+                    input.onchange = async () => {
+                        const id = input.getAttribute('data-id');
+                        const newName = input.value.trim();
+                        if (!newName) return;
+
+                        let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
+                        if (meta.devices && meta.devices[id]) {
+                            meta.devices[id].name = newName;
+                            localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
+                            localStorage.setItem('etis_device_name', newName);
+
+                            await uploadDataToCloud(syncCode);
+                            renderView('sync_options');
+                        }
+                    };
+                });
+
             };
 
             renderView(window.innerWidth <= 960 ? 'menu' : 'main');
-            
+
             requestAnimationFrame(() => {
                 overlay.classList.add('active');
                 modal.classList.add('active');
@@ -9732,6 +11166,72 @@
                                 </div>
                                 <input type="checkbox" id="setting-watermark" class="tumbler-checkbox" ${generalConfig.watermark ? 'checked' : ''}>
                             </label>
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Быстрый вход</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Автоматический вход без ввода пароля при запуске</span>
+                                </div>
+                                <input type="checkbox" id="setting-quick-login" class="tumbler-checkbox" ${generalConfig.quickLoginEnabled ? 'checked' : ''}>
+                            </label>
+                            <div class="ios-settings-row" id="quick-login-settings-btn-wrapper" style="display:${generalConfig.quickLoginEnabled ? 'flex' : 'none'} !important; padding-left: 2.4rem;" data-target="quick_login_settings">
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons" style="color:var(--color-blue);">manage_accounts</span>
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Настроить аккаунты</span>
+                                </div>
+                                <span class="material-icons chevron" style="color:var(--color-text-secondary);">chevron_right</span>
+                            </div>
+                        </div>
+                    `;
+                } else if (currentView === 'quick_login_settings') {
+                    title = 'Настройка аккаунтов';
+                    backTarget = 'general';
+
+                    // Получение и автоматическое сокращение имени пользователя
+                    let defaultName = '';
+                    const nameNode = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info b');
+                    if (nameNode) {
+                        const rawName = nameNode.childNodes[0].textContent.trim();
+                        const nameParts = rawName.split(' ');
+                        if (nameParts.length >= 2) {
+                            defaultName = `${nameParts[1]} ${nameParts[0].charAt(0)}.`;
+                        } else if (nameParts.length === 1) {
+                            defaultName = nameParts[0];
+                        }
+                    }
+
+                    contentHTML = `
+                        <!-- Список аккаунтов (полностью скрыт, если пуст) -->
+                        <div class="ios-settings-group" id="ql-accounts-list" style="margin-bottom: 2.4rem; display: none;">
+                            <!-- Список загрузится динамически -->
+                        </div>
+
+                        <!-- Кнопка "Добавить аккаунт" с принудительным выравниванием влево -->
+                        <div class="ios-settings-group" id="ql-show-add-btn-wrapper" style="margin-bottom: 2.4rem; display: none;">
+                            <div class="ios-settings-row" id="ql-show-add-form-btn" style="cursor: pointer; justify-content: flex-start !important; padding: 1.2rem 1.6rem !important; gap: 12px;">
+                                <span class="material-icons" style="color: var(--color-accent);">add_circle_outline</span>
+                                <span id="ql-add-btn-text" style="font-size: 1.4rem; font-weight: 600; color: var(--color-text-primary);">Добавить аккаунт</span>
+                            </div>
+                        </div>
+
+                        <!-- Обертка формы добавления -->
+                        <div id="ql-add-form-wrapper" style="display: block;">
+                            <div class="appearance-title" style="margin-bottom: 1.2rem; text-align: left; padding-left: 1.6rem;">Добавить новый аккаунт</div>
+
+                            <div class="ios-settings-group" style="margin-bottom: 0 !important;">
+                                <div class="ios-settings-row" style="cursor: default !important; padding: 1.2rem 1.6rem !important; display: flex !important; align-items: center !important; position: relative !important;">
+                                    <input type="text" id="ql-new-name" placeholder="Имя (например, Николай М.)" value="${defaultName}" style="flex: 1 !important; margin: 0 !important; border: none !important; background: transparent !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; outline: none !important; box-shadow: none !important; padding: 0 !important; text-align: left !important;">
+                                </div>
+
+                                <div class="ios-settings-row" style="cursor: default !important; padding: 1.2rem 1.6rem !important; display: flex !important; align-items: center !important; position: relative !important;">
+                                    <input type="text" id="ql-new-email" placeholder="Логин (Email / Фамилия)" style="flex: 1 !important; margin: 0 !important; border: none !important; background: transparent !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; outline: none !important; box-shadow: none !important; padding: 0 !important; text-align: left !important;">
+                                </div>
+
+                                <div class="ios-settings-row" style="cursor: default !important; padding: 1.2rem 1.6rem !important; display: flex !important; align-items: center !important; position: relative !important;">
+                                    <input type="password" id="ql-new-pass" placeholder="Пароль" style="flex: 1 !important; margin: 0 !important; border: none !important; background: transparent !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; outline: none !important; box-shadow: none !important; padding: 0 !important; text-align: left !important;">
+                                </div>
+                            </div>
+
+                            <button class="answer-btn-custom" id="ql-add-account-btn" style="background: var(--color-accent) !important; color: #fff !important; width: 100% !important; justify-content: center !important; box-shadow: none !important; margin-top: 1.6rem !important; height: 3.8rem !important; cursor: pointer !important;">Добавить</button>
                         </div>
                     `;
                 } else if (currentView === 'timetable') {
@@ -9850,7 +11350,7 @@
                 } else if (currentView === 'theme_settings') {
                     title = 'Тема интерфейса';
                     backTarget = 'appearance';
-                    
+
                     const makeThemeRow = (id, icon, label, isActive) => `
                         <div class="ios-settings-row theme-option-row" data-theme="${id}" style="cursor:pointer;">
                             <div style="display:flex; align-items:center; gap:12px;">
@@ -9860,7 +11360,7 @@
                             ${isActive ? `<span class="material-icons" style="color:var(--color-accent);">check</span>` : ''}
                         </div>
                     `;
-                    
+
                     contentHTML = `
                         <div class="ios-settings-group">
                             ${makeThemeRow('auto', 'brightness_auto', 'Системная', theme === 'auto')}
@@ -9871,13 +11371,13 @@
                 } else if (currentView === 'appearance') {
                     title = 'Внешний вид';
                     let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
-                    
+
                     let themeLabel = 'Системная';
                     if (theme === 'light') themeLabel = 'Светлая';
                     if (theme === 'dark') themeLabel = 'Темная';
 
                     contentHTML = `
-                        <div class="ios-settings-group" style="margin-bottom: 3.2rem;">
+                        <div class="ios-settings-group" style="margin-bottom: 0.8rem;">
                             <div class="ios-settings-row" data-target="theme_settings" style="cursor:pointer;">
                                 <div style="display:flex; align-items:center; gap:12px;">
                                     <span class="material-icons" style="color:var(--color-accent);">palette</span>
@@ -9889,9 +11389,8 @@
                                 </div>
                             </div>
                         </div>
-                        
-                        <div class="appearance-title">Настройки акцента</div>
-                        <div class="ios-settings-group">
+
+                        <div class="ios-settings-group" style="margin-bottom: 0.8rem;">
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:2px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Градиент</span>
@@ -9914,9 +11413,8 @@
                                 <input type="checkbox" id="colored-glass-toggle" class="tumbler-checkbox" ${config.isColoredGlass !== false ? 'checked' : ''}>
                             </label>
                         </div>
-                        
-                        <div class="appearance-title" style="margin-bottom: 1.2rem;">Цветовая палитра</div>
-                        <div class="ios-settings-group" style="margin-bottom: 3.2rem;">
+
+                        <div class="ios-settings-group" style="margin-bottom: 0.8rem;">
                             <div class="ios-settings-row" style="padding: 1.6rem; cursor: default; justify-content: center;">
                                 <div class="color-picker-grid" id="color-grid" style="margin: 0; width: 100%;"></div>
                             </div>
@@ -9930,7 +11428,6 @@
                         </div>
 
                         <!-- ИНТЕРАКТИВНЫЙ БЛОК ПРЕДПОКАЗА ИНТЕРФЕЙСА -->
-                        <div class="appearance-title" style="margin-bottom: 1.2rem;">Предпоказ</div>
                         <div id="accent-preview-box" style="
                             border: 1px solid var(--color-table-border);
                             background: var(--color-card);
@@ -9944,7 +11441,6 @@
                             box-shadow: var(--shadow-main);
                             overflow: hidden;
                         ">
-                            <!-- Интеграция класса .etis-preview-active-element для элемента меню -->
                             <div class="etis-preview-active-element" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-radius: var(--radius-small); font-weight: 700; transition: background 0.3s, color 0.3s;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="material-icons" style="font-size: 1.8rem; transition: color 0.3s;">account_circle</span>
@@ -9952,12 +11448,10 @@
                                 </div>
                                 <span class="material-icons" style="font-size: 1.6rem; transition: color 0.3s;">chevron_right</span>
                             </div>
-                            <!-- Интеграция классов .etis-preview-active-element и .etis-preview-glass-element для вкладок -->
                             <div style="display: flex; gap: 8px;">
                                 <div class="etis-preview-active-element" style="padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.1rem; font-weight: 700; transition: background 0.3s, box-shadow 0.3s;">Активный</div>
                                 <div class="etis-preview-glass-element" style="background: var(--color-highlight); color: var(--color-text-primary); padding: 0.6rem 1.2rem; border-radius: 50px; font-size: 1.1rem; font-weight: 600; border: 1px solid var(--color-table-border); transition: backdrop-filter 0.3s;">Обычный</div>
                             </div>
-                            <!-- Карточка-уведомление -->
                             <div style="display: flex; align-items: center; justify-content: space-between; background: var(--color-highlight); padding: 1.2rem; border-radius: var(--radius-medium);">
                                 <div style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
                                     <span style="font-size: 1.2rem; font-weight: 700; color: var(--color-text-primary);">Интерфейс</span>
@@ -9967,7 +11461,7 @@
                             </div>
                         </div>
                     `;
-                
+
                 } else if (currentView === 'version') {
                     title = 'Обновление';
                     contentHTML = `<div id="version-content-wrapper"></div>`;
@@ -10011,7 +11505,7 @@
                         </div>
 
                         <div class="settings-content-area ${isMainMobile ? 'hidden-on-mobile' : ''}">
-                            <div class="settings-content-scroll">
+                            <div class="settings-content-area-scroll settings-content-scroll">
                                 <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
                                     <div style="display:flex; align-items:center; gap:12px;">
                                         <span class="material-icons ${backBtnClass}" data-back="${backTarget}" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
@@ -10019,8 +11513,7 @@
                                     </div>
                                     <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
                                 </div>
-                                <div style="padding: 0.8rem 0 4rem 0;">
-                                    ${contentHTML}
+                                <div style="padding: 0.8rem 0 4rem 0;">                                    ${contentHTML}
                                 </div>
                             </div>
                         </div>
@@ -10047,16 +11540,158 @@
                 });
 
                 if (currentView === 'general') {
-                    modal.querySelector('#setting-watermark').onchange = (e) => { generalConfig.watermark = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); };
-                    modal.querySelector('#setting-generate-qr').onchange = (e) => { generalConfig.generateQR = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); };
-                    
+                    modal.querySelector('#setting-watermark').onchange = (e) => { generalConfig.watermark = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); };
+                    modal.querySelector('#setting-generate-qr').onchange = (e) => { generalConfig.generateQR = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); };
+
+                    const qlToggle = modal.querySelector('#setting-quick-login');
+                    if (qlToggle) {
+                        qlToggle.onchange = (e) => {
+                            generalConfig.quickLoginEnabled = e.target.checked;
+                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                            const wrapper = modal.querySelector('#quick-login-settings-btn-wrapper');
+                            if (wrapper) {
+                                wrapper.style.setProperty('display', e.target.checked ? 'flex' : 'none', 'important');
+                            }
+                        };
+                    }
+
                     const sidebarToggle = modal.querySelector('#setting-smart-sidebar');
                     if (sidebarToggle) {
                         sidebarToggle.onchange = (e) => {
                             generalConfig.smartSidebar = e.target.checked;
                             localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
                             applySmartSidebar();
                         };
+                    }
+
+                } else if (currentView === 'quick_login_settings') {
+                    const getAccounts = () => {
+                        let accounts = [];
+                        try {
+                            let raw = '';
+                            if (typeof GM_getValue !== 'undefined') {
+                                raw = GM_getValue('ql_accounts_v2', '');
+                            }
+                            // Полностью исключаем чтение из localStorage страницы
+                            accounts = JSON.parse(raw || '[]');
+                        } catch (e) {
+                            accounts = [];
+                        }
+                        return accounts;
+                    };
+
+                    const saveAccounts = (accounts) => {
+                        const str = JSON.stringify(accounts);
+                        if (typeof GM_setValue !== 'undefined') {
+                            try {
+                                GM_setValue('ql_accounts_v2', str);
+                            } catch (e) {
+                                console.error('Ошибка записи в GM_setValue:', e);
+                            }
+                        } else {
+                            // Если расширение не поддерживает GM_setValue, не сохраняем в LocalStorage из соображений безопасности
+                            alert('Ошибка безопасности: Хранилище расширения недоступно. Пароль не сохранен.');
+                        }
+                    };
+
+                    const renderQLAccountsInSettings = (listContainer) => {
+                        const accounts = getAccounts();
+                        const addFormWrapper = modal.querySelector('#ql-add-form-wrapper');
+                        const showAddBtnWrapper = modal.querySelector('#ql-show-add-btn-wrapper');
+
+                        // Полностью скрываем блок, если список пуст
+                        if (accounts.length === 0) {
+                            listContainer.style.setProperty('display', 'none', 'important');
+                            if (showAddBtnWrapper) showAddBtnWrapper.style.setProperty('display', 'none', 'important');
+                            if (addFormWrapper) addFormWrapper.style.setProperty('display', 'block', 'important');
+                            return;
+                        }
+
+                        listContainer.style.setProperty('display', 'flex', 'important');
+                        listContainer.innerHTML = accounts.map((acc, idx) => `
+                            <div class="ios-settings-row" style="cursor: default !important; padding: 1.2rem 1.6rem !important;">
+                                <div style="text-align: left;">
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">${acc.name}</div>
+                                    <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 2px;">${acc.email}</div>
+                                </div>
+                                <button class="answer-btn-custom ql-delete-acc-btn" data-idx="${idx}" style="background: rgba(255,59,48,0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important; padding: 6px 12px; font-size: 1.2rem; height: auto !important; margin: 0 !important; cursor: pointer;">
+                                    Удалить
+                                </button>
+                            </div>
+                        `).join('');
+
+                        // Если аккаунты есть, скрываем форму и показываем кнопку для раскрытия
+                        if (showAddBtnWrapper) showAddBtnWrapper.style.setProperty('display', 'block', 'important');
+                        if (addFormWrapper) addFormWrapper.style.setProperty('display', 'none', 'important');
+
+                        // Динамически подставляем правильный текст (например, "Добавить 2-й аккаунт")
+                        const btnTextEl = modal.querySelector('#ql-add-btn-text');
+                        if (btnTextEl) {
+                            btnTextEl.textContent = `Добавить ${accounts.length + 1}-й аккаунт`;
+                        }
+
+                        // Навешиваем событие на кнопку раскрытия формы
+                        const showAddFormBtn = modal.querySelector('#ql-show-add-form-btn');
+                        if (showAddFormBtn) {
+                            showAddFormBtn.onclick = (e) => {
+                                e.preventDefault();
+                                if (showAddBtnWrapper) showAddBtnWrapper.style.setProperty('display', 'none', 'important');
+                                if (addFormWrapper) addFormWrapper.style.setProperty('display', 'block', 'important');
+                            };
+                        }
+
+                        listContainer.querySelectorAll('.ql-delete-acc-btn').forEach(btn => {
+                            btn.onclick = (e) => {
+                                e.preventDefault();
+                                const idx = parseInt(btn.getAttribute('data-idx'), 10);
+                                let currentAccs = getAccounts();
+                                if (currentAccs[idx] && confirm(`Удалить аккаунт "${currentAccs[idx].name}"?`)) {
+                                    currentAccs.splice(idx, 1);
+                                    saveAccounts(currentAccs);
+                                    renderQLAccountsInSettings(listContainer);
+                                }
+                            };
+                        });
+                    };
+
+                    const accountsListEl = modal.querySelector('#ql-accounts-list');
+                    if (accountsListEl) {
+                        renderQLAccountsInSettings(accountsListEl);
+
+                        const addAccBtn = modal.querySelector('#ql-add-account-btn');
+                        if (addAccBtn) {
+                            addAccBtn.onclick = (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+
+                                const nameInput = modal.querySelector('#ql-new-name');
+                                const emailInput = modal.querySelector('#ql-new-email');
+                                const passInput = modal.querySelector('#ql-new-pass');
+
+                                const name = nameInput ? nameInput.value.trim() : '';
+                                const email = emailInput ? emailInput.value.trim() : '';
+                                const pass = passInput ? passInput.value.trim() : '';
+
+                                if (!name || !email || !pass) {
+                                    alert('Пожалуйста, заполните все поля!');
+                                    return;
+                                }
+
+                                let accounts = getAccounts();
+                                accounts.push({ name, email, password: pass });
+                                saveAccounts(accounts);
+
+                                if (nameInput) nameInput.value = '';
+                                if (emailInput) emailInput.value = '';
+                                if (passInput) passInput.value = '';
+
+                                renderQLAccountsInSettings(accountsListEl);
+                            };
+                        }
                     }
 
                 } else if (currentView === 'timetable') {
@@ -10065,21 +11700,31 @@
                         const wrap = modal.querySelector('#gaps-custom-wrapper');
                         if (wrap) wrap.style.setProperty('display', e.target.checked ? 'flex' : 'none', 'important');
                         localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
                         if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                     };
-                    modal.querySelector('#setting-show-gaps-custom').onchange = (e) => { generalConfig.showGapsCustom = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable(); };
-                    modal.querySelector('#setting-hide-days').onchange = (e) => { generalConfig.hideDaysOff = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyHideDaysOff) window.applyHideDaysOff(); };
-                    modal.querySelector('#setting-dim-pairs').onchange = (e) => { generalConfig.dimPastPairs = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); if (window.applyDimming) window.applyDimming(); };
-                    modal.querySelector('#setting-short-aud').onchange = (e) => { generalConfig.shortAudFormat = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
-                    modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
-                    modal.querySelector('#setting-show-sunday').onchange = (e) => { generalConfig.showSunday = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
+                    modal.querySelector('#setting-show-gaps-custom').onchange = (e) => { generalConfig.showGapsCustom = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable(); };
+                    modal.querySelector('#setting-hide-days').onchange = (e) => { generalConfig.hideDaysOff = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); if (window.applyHideDaysOff) window.applyHideDaysOff(); };
+                    modal.querySelector('#setting-dim-pairs').onchange = (e) => { generalConfig.dimPastPairs = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); if (window.applyDimming) window.applyDimming(); };
+                    modal.querySelector('#setting-short-aud').onchange = (e) => { generalConfig.shortAudFormat = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
+                    modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
+                    modal.querySelector('#setting-show-sunday').onchange = (e) => { generalConfig.showSunday = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
                 } else if (currentView === 'grades') {
-                    modal.querySelector('#setting-grade-notifs').onchange = (e) => { generalConfig.gradeNotifications = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); };
-                    modal.querySelector('#setting-abs-scores').onchange = (e) => { generalConfig.absoluteScores = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig)); requiresReloadOnClose = true; };
+                    modal.querySelector('#setting-grade-notifs').onchange = (e) => { generalConfig.gradeNotifications = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); };
+                    modal.querySelector('#setting-abs-scores').onchange = (e) => { generalConfig.absoluteScores = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
                     modal.querySelector('#setting-compact-grades').onchange = (e) => {
                         generalConfig.compactGrades = e.target.checked;
                         modal.querySelector('#compact-settings-btn-wrapper').style.setProperty('display', e.target.checked ? 'flex' : 'none', 'important');
                         localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
                         requiresReloadOnClose = true;
                     };
                 } else if (currentView === 'compact_grades_settings') {
@@ -10093,13 +11738,14 @@
                             if (id === 'cfg-date') generalConfig.compactGradesConfig.showDate = e.target.checked;
                             if (id === 'cfg-teacher') generalConfig.compactGradesConfig.showTeacher = e.target.checked;
                             localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
                             requiresReloadOnClose = true;
                         }
                     });
                 } else if (currentView === 'theme_settings') {
                     modal.querySelectorAll('.theme-option-row').forEach(row => {
                         row.onclick = () => {
-                            theme = row.getAttribute('data-theme'); 
+                            theme = row.getAttribute('data-theme');
                             localStorage.setItem('theme', theme);
                             if (theme === 'auto') setSystemThemeDetection();
                             else { removeSystemThemeDetection(); document.documentElement.setAttribute('theme', theme); }
@@ -10118,27 +11764,27 @@
                             const colorKey = circle.getAttribute('data-color-key');
                             circle.classList.remove('selected');
                             circle.innerHTML = '';
-                            
+
                             const selectedIndex = currentConfig.colors.indexOf(colorKey);
                             if (selectedIndex !== -1) {
                                 circle.classList.add('selected');
-                                circle.innerHTML = currentConfig.isGradient 
-                                    ? (selectedIndex + 1).toString() 
+                                circle.innerHTML = currentConfig.isGradient
+                                    ? (selectedIndex + 1).toString()
                                     : '<span class="material-icons" style="font-size: 20px;">check</span>';
                             }
                         });
                     };
 
                     COLOR_ORDER.forEach(colorKey => {
-                        const circle = document.createElement('div'); 
-                        circle.className = 'color-picker-circle'; 
+                        const circle = document.createElement('div');
+                        circle.className = 'color-picker-circle';
                         circle.style.backgroundColor = ACCENT_COLORS[colorKey];
-                        circle.setAttribute('data-color-key', colorKey); 
+                        circle.setAttribute('data-color-key', colorKey);
 
                         const selectedIndex = config.colors.indexOf(colorKey);
-                        if (selectedIndex !== -1) { 
-                            circle.classList.add('selected'); 
-                            circle.innerHTML = config.isGradient ? (selectedIndex + 1).toString() : '<span class="material-icons" style="font-size: 20px;">check</span>'; 
+                        if (selectedIndex !== -1) {
+                            circle.classList.add('selected');
+                            circle.innerHTML = config.isGradient ? (selectedIndex + 1).toString() : '<span class="material-icons" style="font-size: 20px;">check</span>';
                         }
 
                         circle.onclick = () => {
@@ -10146,9 +11792,9 @@
                                 if (config.colors.includes(colorKey)) config.colors.reverse();
                                 else { if (config.colors.length < 2) { config.colors.push(colorKey); window._etisTargetIndex = 0; } else { config.colors[window._etisTargetIndex] = colorKey; window._etisTargetIndex = (window._etisTargetIndex === 0) ? 1 : 0; } }
                             } else { config.colors = [colorKey]; window._etisTargetIndex = 0; }
-                            localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
-                            applyAccentColor(); 
-                            
+                            saveSyncData('etis_accent_config', JSON.stringify(config));
+                            applyAccentColor(); // 1. Выгрузка при клике на кружок цвета
+
                             // Локальное обновление
                             updateColorGridSelection(grid, config);
                         };
@@ -10158,13 +11804,13 @@
                     // Кнопка рандомайзера
                     modal.querySelector('#random-color-row').onclick = (e) => {
                         e.preventDefault();
-                        const r1 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)]; 
+                        const r1 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
                         let r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
                         while (config.isGradient && r2 === r1) r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
-                        config.colors = config.isGradient ? [r1, r2] : [r1]; 
-                        localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
-                        applyAccentColor(); 
-                        
+                        config.colors = config.isGradient ? [r1, r2] : [r1];
+                        saveSyncData('etis_accent_config', JSON.stringify(config)); // Используем безопасную запись
+                        applyAccentColor();
+
                         updateColorGridSelection(grid, config);
                     };
 
@@ -10173,9 +11819,9 @@
                         config.isGradient = e.target.checked;
                         if (!config.isGradient && config.colors.length > 1) config.colors = [config.colors[0]];
                         if (config.isGradient && config.colors.length < 2) config.colors.push('lightblue');
-                        localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
-                        applyAccentColor(); 
-                        
+                        saveSyncData('etis_accent_config', JSON.stringify(config)); // Используем безопасную запись
+                        applyAccentColor();
+
                         updateColorGridSelection(grid, config);
                     };
 
@@ -10183,10 +11829,10 @@
                     const glassToggle = modal.querySelector('#glass-toggle');
                     if (glassToggle) {
                         glassToggle.onchange = (e) => {
-                            config.isGlass = e.target.checked; 
-                            localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
-                            applyAccentColor(); 
-                            
+                            config.isGlass = e.target.checked;
+                            saveSyncData('etis_accent_config', JSON.stringify(config)); // Используем безопасную запись
+                            applyAccentColor(); // 4. Выгрузка при переключении стекла
+
                             // Локальное скрытие/отображение настроек цвета стекла
                             const wrapper = modal.querySelector('#colored-glass-wrapper');
                             if (wrapper) {
@@ -10199,9 +11845,9 @@
                     const coloredGlassToggle = modal.querySelector('#colored-glass-toggle');
                     if (coloredGlassToggle) {
                         coloredGlassToggle.onchange = (e) => {
-                            config.isColoredGlass = e.target.checked; 
-                            localStorage.setItem('etis_accent_config', JSON.stringify(config)); 
-                            applyAccentColor(); 
+                            config.isColoredGlass = e.target.checked;
+                            saveSyncData('etis_accent_config', JSON.stringify(config)); // Используем безопасную запись
+                            applyAccentColor();
                         };
                     }
                 } else if (currentView === 'version') {
@@ -10290,14 +11936,14 @@
                             <b style="display:block; margin-bottom: 8px;">Вставьте ссылку на ваш публичный календарь в формате .ics, чтобы видеть личные события в расписании ЕТИС.</b>
                             <span style="color: var(--color-text-secondary);">В Apple Calendar: нажмите иконку «i» у календаря ➔ Включите «Публичный календарь» ➔ Поделиться ссылкой ➔ Вставить сюда.</span>
                         </div>
-                        
+
                         <div style="display: flex; gap: 1rem; margin-bottom: 2.4rem; flex-wrap: wrap; align-items: stretch;">
                             <input type="text" id="ext-cal-input" placeholder="webcal://... или https://..." style="flex: 1; min-width: 200px; padding: 1.2rem 1.6rem !important; border-radius: 50px !important; border: 1px solid var(--color-table-border) !important; background: var(--color-card) !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; box-shadow: var(--shadow-main) !important; margin: 0 !important;">
                             <button class="answer-btn-custom" id="ext-cal-add" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important; height: auto !important; margin: 0 !important;">
                                 <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">add</span>Добавить
                             </button>
                         </div>
-                        
+
                         <div id="ext-cals-list" class="ios-settings-group" style="display:none; margin-bottom: 2.4rem;"></div>
                     `;
                 }
@@ -10412,10 +12058,10 @@
                                         let currentCals = migrateExternalCals();
                                         if(currentCals[idx]) {
                                             currentCals[idx].color = c.hex;
-                                            localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
+                                            saveSyncData('etis_external_cals_v2', JSON.stringify(currentCals));
                                             popup.remove();
                                             renderView('import');
-                                            window.location.reload(); 
+                                            window.location.reload();
                                         }
                                     };
                                     popup.appendChild(circle);
@@ -10436,7 +12082,7 @@
                                 let currentCals = migrateExternalCals();
                                 if (confirm('Удалить этот календарь?')) {
                                     currentCals.splice(idx, 1);
-                                    localStorage.setItem('etis_external_cals_v2', JSON.stringify(currentCals));
+                                    saveSyncData('etis_external_cals_v2', JSON.stringify(currentCals));
                                     renderView('import');
                                     window.location.reload();
                                 }
@@ -10452,7 +12098,7 @@
                         let cals = migrateExternalCals();
                         if (!cals.some(c => c.url === val)) {
                             cals.push({ url: val, color: getRandomExtColor() });
-                            localStorage.setItem('etis_external_cals_v2', JSON.stringify(cals));
+                            saveSyncData('etis_external_cals_v2', JSON.stringify(cals));
                         }
                         extInput.value = '';
                         renderView('import');
@@ -10495,7 +12141,7 @@
                         <div class="push-detail">${body}</div>
                     </div>
                 `;
-                
+
                 // Модифицированный обработчик клика по уведомлению
                 toast.onclick = (e) => {
                     toast.classList.remove('show');
@@ -10504,7 +12150,7 @@
                         onClick(e);
                     }
                 };
-                
+
                 pushContainer.appendChild(toast);
                 requestAnimationFrame(() => setTimeout(() => toast.classList.add('show'), 50));
                 setTimeout(() => {
@@ -10533,12 +12179,12 @@
 
                 // Определяем, является ли пара событием из объявлений
                 const isAnnouncementEvent = !!(existingPair && existingPair.msgHash);
-                
+
                 // Корректное название окна
-                const title = isAnnouncementEvent 
-                    ? `Редактировать событие` 
+                const title = isAnnouncementEvent
+                    ? `Редактировать событие`
                     : (existingPair ? `Редактировать пару` : (isFromToolbar ? `Добавить пару` : `Добавить на ${dayName}`));
-                    
+
                 const pairId = existingPair ? existingPair.id : ('cp_' + Date.now());
 
                 let defStart = existingPair ? existingPair.startTime : "08:00";
@@ -10570,8 +12216,8 @@
                     }
                 });
 
-                const placeholders = isFromToolbar ? 
-                    [`Практика по математике в 13:30 в ${todayNamePlaceholder.toLowerCase()}...`, "Физ-ра в 9:45..."] : 
+                const placeholders = isFromToolbar ?
+                    [`Практика по математике в 13:30 в ${todayNamePlaceholder.toLowerCase()}...`, "Физ-ра в 9:45..."] :
                     ["Практика по математике в 13:30...", "Физ-ра в 9:45..."];
 
                 let placeholderTimer = null;
@@ -10787,7 +12433,6 @@
                     const subject = subjectInput.value.trim();
                     if (!subject) return alert('Введите название предмета!');
 
-                    // Если это существующее событие, сохраняем его оригинальный день и неделю, а не сбрасываем на 1
                     let finalDayName = existingPair ? existingPair.dayName : dayName;
                     let finalAddedWeek = existingPair ? existingPair.addedWeek : parseInt(document.querySelector('.week.current')?.textContent.trim() || '1', 10);
 
@@ -10815,8 +12460,18 @@
                     let cp = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
                     if (existingPair) cp = cp.filter(p => p.id !== pairId);
                     cp.push(pair);
-                    localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
-                    closeModal(); window.location.reload();
+                    saveSyncData('etis_custom_pairs_v1', JSON.stringify(cp));
+
+                    closeModal();
+
+                    // Бесшумно и мгновенно перерисовываем расписание на экране на лету
+                    if (window.location.href.includes('timetable')) {
+                        document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
+                        if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
+                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                        if (typeof window.renderNotes === 'function') window.renderNotes();
+                        if (typeof window.applyDimming === 'function') window.applyDimming();
+                    }
                 };
 
                 overlay.classList.add('active');
@@ -11015,10 +12670,10 @@
                             // Показываем уведомление
                             if (window.showEtisPush) {
                                 window.showEtisPush(
-                                    'Добавлено в расписание', 
-                                    title, 
-                                    `${targetWeek} неделя, ${pair.dayName} (Нажмите для настройки)`, 
-                                    'success', 
+                                    'Добавлено в расписание',
+                                    title,
+                                    `${targetWeek} неделя, ${pair.dayName} (Нажмите для настройки)`,
+                                    'success',
                                     'event_available',
                                     () => {
                                         if (typeof window.openCustomPairModal === 'function') {
@@ -11074,7 +12729,22 @@
                 document.body.innerHTML = '<div class ="login-container">' + document.body.innerHTML + '</div>';
                 const loginContainer = document.querySelector('div.login-container');
                 const loginForm = document.getElementById('form');
-                
+
+                if (loginForm) {
+                    loginForm.addEventListener('submit', () => {
+                        const loginInput = loginForm.querySelector('input[name="p_login"]') || loginForm.querySelector('input[type="text"]');
+                        if (loginInput && loginInput.value) {
+                            const cleanLogin = loginInput.value.trim().toLowerCase();
+                            // Безопасно сохраняем логин в изолированное хранилище расширения
+                            if (typeof GM_setValue !== 'undefined') {
+                                GM_setValue('etis_secure_login_id', cleanLogin);
+                            }
+                        }
+                    });
+                }
+
+                let inputsWrapper = null;
+
                 // Ищем все блоки .items, так как ЕТИС теперь выводит предупреждения в таком же блоке
                 const allItemsBlocks = loginForm.querySelectorAll('div.items');
                 let loginItems = null;
@@ -11109,7 +12779,7 @@
                     const oldTitle = loginForm.querySelector('.choose');
                     if (oldTitle) oldTitle.remove();
 
-                    const inputsWrapper = document.createElement('div');
+                    inputsWrapper = document.createElement('div');
                     inputsWrapper.className = 'login-inputs-wrapper';
 
                     const allItems = loginItems.querySelectorAll('.item');
@@ -11227,6 +12897,109 @@
                         alertsContainer.appendChild(alertCard);
                         alertBlock.remove(); // Удаляем оригинал из формы, чтобы не ломать верстку
                     });
+                }
+
+                const qlEnabled = generalConfig.quickLoginEnabled;
+                let qlAccounts = [];
+                try {
+                    let raw = '';
+                    if (typeof GM_getValue !== 'undefined') {
+                        raw = GM_getValue('ql_accounts_v2', '');
+                    }
+                    if (!raw) {
+                        raw = localStorage.getItem('ql_accounts_v2') || '[]';
+                    }
+                    qlAccounts = JSON.parse(raw);
+                } catch (e) {
+                    qlAccounts = [];
+                }
+
+                // Если быстрый вход включен и есть сохраненные аккаунты, перестраиваем интерфейс
+                if (qlEnabled && qlAccounts.length > 0) {
+                    if (inputsWrapper) inputsWrapper.style.setProperty('display', 'none', 'important');
+                    if (loginActions) loginActions.style.setProperty('display', 'none', 'important');
+
+                    const qlBlock = document.createElement('div');
+                    qlBlock.id = 'quick-login-block';
+                    qlBlock.style.cssText = 'display: flex; flex-direction: column; gap: 1.6rem; width: 100%; align-items: center; margin-top: 1rem;';
+
+                    if (qlAccounts.length === 1) {
+                        // Один аккаунт: сразу показываем кнопку входа для него
+                        const qlBtn = document.createElement('button');
+                        qlBtn.className = 'answer-btn-custom ql-login-btn';
+                        qlBtn.setAttribute('data-idx', '0');
+                        qlBtn.style.cssText = 'width: 100%; height: 48px; font-size: 1.5rem; font-weight: 700; border-radius: 24px; background: var(--color-accent) !important; color: #fff !important; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none; cursor: pointer;';
+                        qlBtn.innerHTML = `<span class="material-symbols-rounded" style="margin-right: 8px; font-size: 20px;">flash_on</span> Войти как ${qlAccounts[0].name}`;
+                        qlBlock.appendChild(qlBtn);
+                    } else {
+                        // Несколько аккаунтов: показываем кнопку раскрытия меню
+                        const expanderBtn = document.createElement('button');
+                        expanderBtn.id = 'ql-expander-btn';
+                        expanderBtn.className = 'answer-btn-custom';
+                        expanderBtn.style.cssText = 'width: 100%; height: 48px; font-size: 1.5rem; font-weight: 700; border-radius: 24px; background: var(--color-accent) !important; color: #fff !important; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none; cursor: pointer;';
+                        expanderBtn.innerHTML = '<span class="material-symbols-rounded" style="margin-right: 8px; font-size: 20px;">flash_on</span> Быстрый вход';
+
+                        const accountsMenu = document.createElement('div');
+                        accountsMenu.id = 'ql-accounts-menu';
+                        accountsMenu.style.cssText = 'display: none; flex-direction: column; gap: 1rem; width: 100%; margin-top: 0.5rem;';
+
+                        qlAccounts.forEach((acc, idx) => {
+                            const accBtn = document.createElement('button');
+                            accBtn.className = 'answer-btn-custom ql-login-btn';
+                            accBtn.setAttribute('data-idx', idx.toString());
+                            accBtn.style.cssText = 'width: 100%; height: 44px; font-size: 1.4rem; font-weight: 600; border-radius: 20px; justify-content: center; background: var(--color-highlight) !important; color: var(--color-text-primary) !important; border: 1px solid var(--color-table-border) !important; cursor: pointer;';
+                            accBtn.textContent = `Войти как ${acc.name}`;
+                            accountsMenu.appendChild(accBtn);
+                        });
+
+                        expanderBtn.onclick = (e) => {
+                            e.preventDefault();
+                            expanderBtn.style.setProperty('display', 'none', 'important');
+                            accountsMenu.style.display = 'flex';
+                        };
+
+                        qlBlock.appendChild(expanderBtn);
+                        qlBlock.appendChild(accountsMenu);
+                    }
+
+                    const manualBtn = document.createElement('a');
+                    manualBtn.href = '#';
+                    manualBtn.className = 'forgot-password';
+                    manualBtn.style.cssText = 'font-size: 1.3rem; margin-top: 0.5rem; text-decoration: underline; cursor: pointer;';
+                    manualBtn.textContent = 'Войти под другим аккаунтом';
+
+                    qlBlock.appendChild(manualBtn);
+                    loginItems.appendChild(qlBlock);
+
+                    const performQuickLogin = (email, password) => {
+                        const emailInput = loginForm.querySelector('input[name="p_login"]') || loginForm.querySelector('input[type="text"]');
+                        const passwordInput = loginForm.querySelector('input[name="p_pass"]') || loginForm.querySelector('input[type="password"]');
+                        if (emailInput && passwordInput) {
+                            if (typeof GM_setValue !== 'undefined') { GM_setValue('etis_secure_login_id', email.trim().toLowerCase()); }
+
+                            emailInput.value = email;
+                            passwordInput.value = password;
+                            loginForm.submit();
+                        }
+                    };
+
+                    qlBlock.querySelectorAll('.ql-login-btn').forEach(btn => {
+                        btn.onclick = (e) => {
+                            e.preventDefault();
+                            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+                            const acc = qlAccounts[idx];
+                            if (acc) {
+                                performQuickLogin(acc.email, acc.password);
+                            }
+                        };
+                    });
+
+                    manualBtn.onclick = (e) => {
+                        e.preventDefault();
+                        qlBlock.style.setProperty('display', 'none', 'important');
+                        if (inputsWrapper) inputsWrapper.style.setProperty('display', 'block', 'important');
+                        if (loginActions) loginActions.style.setProperty('display', 'flex', 'important');
+                    };
                 }
 
             } else {
@@ -12285,23 +14058,23 @@
                             const exportStyles = document.createElement('style');
                             exportStyles.innerHTML = `
                                 * { transition: none !important; animation: none !important; opacity: 1 !important; }
-                                .day, .teacher-card { 
-                                    box-shadow: none !important; 
-                                    border: 1px solid var(--color-table-border) !important; 
+                                .day, .teacher-card {
+                                    box-shadow: none !important;
+                                    border: 1px solid var(--color-table-border) !important;
                                     border-radius: 24px !important;
-                                    overflow: hidden !important; 
+                                    overflow: hidden !important;
                                 }
                                 .day h3 {
                                     border-top-left-radius: 23px !important;
                                     border-top-right-radius: 23px !important;
                                 }
-                                
+
                                 .timetable-grid { table-layout: fixed !important; width: 100% !important; border-spacing: 0 !important; border-collapse: collapse !important; }
                                 .timetable-grid td { white-space: normal !important; word-wrap: break-word !important; border-bottom: none !important; padding: 12px 0 !important; }
-                                
+
                                 /* Даем воздух снизу, чтобы html2canvas не срезал закругления */
                                 .timetable-grid tr:last-child td { padding-bottom: 20px !important; }
-                                
+
                                 .timetable-grid td.pair_num { width: 90px !important; min-width: 90px !important; font-size: 1.1rem !important; text-align: center !important; padding: 12px 5px !important; }
                                 .timetable-grid td.pair_info { width: auto !important; padding-left: 5px !important; padding-right: 5px !important; text-align: left !important; }
                                 .timetable-grid td.pair_teacher { width: 250px !important; min-width: 200px !important; text-align: right !important; padding-right: 16px !important; display: table-cell !important; }
@@ -12309,7 +14082,7 @@
                                     background-image: linear-gradient(to right, transparent 90px, var(--color-table-border) 90px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)) !important;
                                     background-position: bottom !important; background-size: 100% 1px !important; background-repeat: no-repeat !important; background-color: transparent !important;
                                 }
-                                
+
                                 .timetable-gap-capsule {
                                     display: inline-flex !important; align-items: center !important;
                                     width: auto !important; flex: 0 0 auto !important;
@@ -12761,11 +14534,11 @@
                         const exportStyles = document.createElement('style');
                         exportStyles.innerHTML = `
                             * { transition: none !important; animation: none !important; opacity: 1 !important; }
-                            .msg-card { 
-                                box-shadow: none !important; 
-                                border: 1px solid var(--color-table-border) !important; 
+                            .msg-card {
+                                box-shadow: none !important;
+                                border: 1px solid var(--color-table-border) !important;
                                 border-radius: 24px !important;
-                                overflow: hidden !important; 
+                                overflow: hidden !important;
                             }
                             .msg-header {
                                 border-top-left-radius: 23px !important;
@@ -13259,7 +15032,7 @@
                                 const searchInput = searchContainer.querySelector('#plan-short-search');
                                 searchInput.addEventListener('input', (e) => {
                                     const val = e.target.value.toLowerCase().trim();
-                                    
+
                                     document.querySelectorAll('.plan-short-table-group').forEach(wrapper => {
                                         // Чтение названия триместра/курса перед таблицей
                                         const prevH3 = wrapper.previousElementSibling;
@@ -13346,7 +15119,7 @@
                                     width: 95px !important;
                                     min-width: 95px !important;
                                 }
-                                .detail-schedule-container .day, 
+                                .detail-schedule-container .day,
                                 div[style*="max-width: 900px"] {
                                     border: none !important;
                                 }
@@ -13435,15 +15208,15 @@
                         container.querySelectorAll('br, style').forEach(el => el.remove());
 
                         const allH1 = container.querySelectorAll('h1');
-                        const mainTitle = allH1[0]; 
+                        const mainTitle = allH1[0];
                         const h2 = container.querySelector('h2');
 
                         let headerTitle = '';
                         if (mainTitle && mainTitle.textContent.includes('Группа')) {
                             headerTitle = mainTitle.textContent.trim();
-                            mainTitle.remove(); 
+                            mainTitle.remove();
                         }
-                        
+
                         allH1.forEach(h1 => {
                             if (h1.textContent.includes('Распределение')) h1.remove();
                         });
@@ -13498,7 +15271,7 @@
                         const statsHeader = Array.from(container.querySelectorAll('b')).find(b => b.textContent.includes('На выбранной неделе'));
                         if (statsHeader) {
                             const wrapperTable = statsHeader.closest('table');
-                            
+
                             if (wrapperTable && !wrapperTable.classList.contains('slimtab_nice')) {
                                 const gridContainer = document.createElement('div');
                                 gridContainer.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem; margin: 0 auto 2.4rem auto; max-width: 900px; box-sizing: border-box;';
@@ -13520,10 +15293,10 @@
 
                                         innerTable.className = 'common';
                                         innerTable.style.cssText = 'margin: 0; width: 100%; box-shadow: none; border: none; background: transparent;';
-                                        
+
                                         innerTable.querySelectorAll('tr').forEach((tr, index, rows) => {
                                             tr.style.backgroundImage = 'none';
-                                            
+
                                             const tds = tr.querySelectorAll('td');
                                             tds.forEach(td => {
                                                 td.style.cssText = `padding: 1.2rem 0; border-bottom: ${index === rows.length - 1 ? 'none' : '1px solid var(--color-table-border)'}; font-size: 1.3rem; background: transparent;`;
@@ -13534,7 +15307,7 @@
                                                 tds[1].style.fontWeight = '700';
                                                 tds[1].style.color = 'var(--color-text-primary)';
                                                 tds[1].style.textAlign = 'right';
-                                                
+
                                                 if (tds[0].querySelector('b')) {
                                                     tds[0].style.fontWeight = '800';
                                                     tds[0].style.color = 'var(--color-text-primary)';
@@ -13551,21 +15324,21 @@
                             }
                         }
 
-                        // Умное скрытие пустых графиков 
+                        // Умное скрытие пустых графиков
                         container.querySelectorAll('div[id^="chart_div"]').forEach(chart => {
                             chart.style.cssText = 'width: 100% !important; min-width: 1000px !important; height: auto !important; min-height: 0 !important;';
-                            
+
                             const wrapper = document.createElement('div');
                             wrapper.className = 'google-chart-wrapper';
                             wrapper.style.cssText = 'display: none; background: var(--color-card); border-radius: var(--radius-large); box-shadow: var(--shadow-main); padding: 2.4rem 1rem; margin: 0 auto 2.4rem auto; max-width: 900px; box-sizing: border-box; overflow-x: auto;';
-                            
+
                             chart.parentNode.insertBefore(wrapper, chart);
                             wrapper.appendChild(chart);
-                            
+
                             const observer = new MutationObserver(() => {
                                 if (chart.innerHTML.trim() !== '') {
                                     wrapper.style.display = 'block';
-                                    chart.style.height = '500px'; 
+                                    chart.style.height = '500px';
                                     observer.disconnect();
                                 }
                             });
@@ -13590,7 +15363,7 @@
 
                                 const timeRaw = cells[0].textContent.trim();
                                 const originalPairNum = parseInt(timeRaw, 10) || 1;
-                                
+
                                 // Маппинг времени пар
                                 const timeMap = {1: '08:00', 2: '09:45', 3: '11:30', 4: '13:30', 5: '15:15', 6: '17:00', 7: '18:40', 8: '20:25'};
                                 const mappedTime = timeMap[originalPairNum] || "00:00";
@@ -13603,7 +15376,7 @@
                                     if (!bNode) continue;
 
                                     let subjectText = bNode.textContent.trim();
-                                    
+
                                     // Обработка УМК
                                     let umkNumber = '';
                                     const umkMatch = subjectText.match(/УМК\s*№?(\d+)/i);
@@ -13701,7 +15474,7 @@
                                 dayDiv.className = 'day';
                                 dayDiv.style.cssText = 'border-radius: var(--radius-large) !important; background-color: var(--color-card) !important; box-shadow: var(--shadow-main) !important; overflow: hidden !important; padding: 0 !important; margin-bottom: 2rem !important; border: none !important;';
                                 const h3 = document.createElement('h3');
-                                
+
                                 let leftDateHTML = '';
                                 let rightDateHTML = '';
 
@@ -13751,7 +15524,7 @@
                                         const tr = document.createElement('tr');
                                         const isLast = pairIdx === day.pairs.length - 1;
                                         const borderStyle = isLast ? '' : 'background-image: linear-gradient(to right, transparent 85px, var(--color-table-border) 85px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)); background-position: bottom; background-size: 100% 1px; background-repeat: no-repeat;';
-                                        
+
                                         tr.style.cssText = borderStyle;
 
                                         tr.innerHTML = `
@@ -13768,7 +15541,7 @@
                                                     ${pair.infoIconHtml}
                                                 </div>
                                                 ${pair.theme ? `<div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 6px; line-height: 1.4; text-align: left !important;">${pair.theme}</div>` : ''}
-                                                
+
                                                 ${(pair.aud || pair.extraNotes) ? `
                                                 <div style="display: flex; align-items: center; justify-content: flex-start; margin-top: 8px; flex-wrap: wrap; gap: 10px; width: 100%;">
                                                     ${pair.aud ? `
@@ -13831,7 +15604,7 @@
                                         if (match) {
                                             const subj = match[1];
                                             const type = match[2].toLowerCase();
-                                            
+
                                             let bg = 'var(--color-highlight)', color = 'var(--color-text-secondary)';
                                             if (type === 'лек') { bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)'; }
                                             else if (type === 'практ') { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
@@ -13890,7 +15663,7 @@
                             // Перебиваем глобальные стили ширины и выравнивания первой колонки
                             table.querySelectorAll('th, td').forEach(cell => {
                                 cell.style.setProperty('text-align', 'center', 'important');
-                                cell.style.setProperty('min-width', 'max-content', 'important'); 
+                                cell.style.setProperty('min-width', 'max-content', 'important');
                                 cell.style.setProperty('white-space', 'nowrap', 'important');
                                 cell.style.setProperty('word-break', 'normal', 'important');
                                 cell.style.verticalAlign = 'middle';
@@ -14308,7 +16081,7 @@
                                         }
                                     });
 
-                                    // Заменяем страшную таблицу ЕТИСа на наш новый список
+                                    // Заменяем страшную таблицу ЕТИСа на новый список
                                     table.replaceWith(listContainer);
                                 });
 
@@ -14493,7 +16266,7 @@
                                     card.style.display = 'none';
                                 }
                             });
-                            
+
                             // Использование умного плейсхолдера вместо простого текста
                             updateEmptyState(listContainer, foundCount > 0, term, 'teachers');
                         });
@@ -14505,7 +16278,7 @@
                         while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
                             span9.firstChild.remove();
                         }
-                        
+
                         // Обнуляем отступ у главного заголовка "Результаты..."
                         const mainH3 = span9.querySelector('h3');
                         if (mainH3 && !mainH3.querySelector('a.dashed')) {
@@ -14860,6 +16633,7 @@
                             let history = JSON.parse(localStorage.getItem(storageKey) || '{}');
                             history[weekNum] = totalCount;
                             localStorage.setItem(storageKey, JSON.stringify(history));
+                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
                         }
                     };
 
@@ -15234,7 +17008,36 @@
 
                     // --- ЛОГИКА КАСТОМНЫХ ПАР ---
                     const CUSTOM_PAIRS_KEY = 'etis_custom_pairs_v1';
-                    let customPairs = JSON.parse(localStorage.getItem(CUSTOM_PAIRS_KEY) || '[]');
+                    let customPairsRaw = JSON.parse(localStorage.getItem(CUSTOM_PAIRS_KEY) || '[]');
+
+                    // Умная функция дедупликации (помогает при слиянии данных с разных устройств)
+                    const deduplicatePairs = (pairs) => {
+                        const seenIds = new Set();
+                        const seenSignatures = new Set();
+                        return pairs.filter(p => {
+                            const cleanSubj = (p.subject || '').trim().toLowerCase();
+                            const cleanDay = (p.dayName || '').trim().toLowerCase();
+                            const cleanTime = (p.startTime || '').trim();
+                            const rec = (p.recurrence || 'once').trim().toLowerCase();
+
+                            // Формируем признак недели в зависимости от типа повторения
+                            const week = rec === 'every' ? 'every' : (rec === 'biweekly' ? ('biweekly_' + (p.addedWeek % 2)) : p.addedWeek);
+                            const signature = `${cleanDay}_${week}_${cleanTime}_${cleanSubj}`;
+
+                            if (seenIds.has(p.id) || seenSignatures.has(signature)) {
+                                return false;
+                            }
+                            seenIds.add(p.id);
+                            seenSignatures.add(signature);
+                            return true;
+                        });
+                    };
+
+                    let customPairs = deduplicatePairs(customPairsRaw);
+                    // Если локально были обнаружены и убраны дубликаты, перезаписываем чистую версию
+                    if (customPairs.length !== customPairsRaw.length) {
+                        localStorage.setItem(CUSTOM_PAIRS_KEY, JSON.stringify(customPairs));
+                    }
 
                     function saveCustomPair(pair) {
                         const existingIndex = customPairs.findIndex(p => p.id === pair.id);
@@ -15246,10 +17049,14 @@
                     function removeCustomPair(id) {
                         customPairs = customPairs.filter(p => p.id !== id);
                         localStorage.setItem(CUSTOM_PAIRS_KEY, JSON.stringify(customPairs));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
                     }
 
                     // Вставка кастомных пар в DOM
-                    function injectCustomPairs() {
+                    window.injectCustomPairs = function() {
+                        // Принудительно читаем самые свежие данные перед рендером
+                        customPairs = safeParseJSON(localStorage.getItem('etis_custom_pairs_v1'), []);
+
                         const currentWeekEl = document.querySelector('.week.current');
                         const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 1;
 
@@ -15324,7 +17131,6 @@
                                         <td class="pair_info">
                                             <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
                                                 <a href="#" style="pointer-events: none;">${pair.subject}</a>
-                                                <span class="material-icons delete-custom-pair-btn" title="Удалить пару">close</span>
                                             </div>
                                             ${displayAud ? `
                                             <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">
@@ -15337,23 +17143,6 @@
                                             ${pair.teacher ? `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${pair.teacher}</a>` : ''}
                                         </td>
                                     `;
-
-                                    // Логика удаления (крестик)
-                                    tr.querySelector('.delete-custom-pair-btn').addEventListener('click', (e) => {
-                                        e.stopPropagation();
-                                        if(confirm(`Удалить пару "${pair.subject}"?`)) {
-                                            removeCustomPair(pair.id);
-
-                                            if (pair.msgHash) {
-                                                let addedMsgs = JSON.parse(localStorage.getItem('etis_added_msg_events') || '[]');
-                                                addedMsgs = addedMsgs.filter(h => h !== pair.msgHash);
-                                                localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
-                                            }
-
-                                            tr.remove();
-                                            window.location.reload();
-                                        }
-                                    });
 
                                     tbody.appendChild(tr);
                                 }
@@ -15371,6 +17160,9 @@
                     }
 
                     window.injectConsultationPairs = function() {
+                        // Принудительно читаем самые свежие данные перед рендером
+                        consultationsFiles = safeParseJSON(localStorage.getItem('etis_consultation_files_v1'), []);
+
                         const currentWeekEl = document.querySelector('.week.current');
                         const currentWeekNum = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 1;
                         const isEvenWeek = currentWeekNum % 2 === 0;
@@ -15625,7 +17417,7 @@
                     });
 
                     // Вставляем кастомные пары до пересчета расписания
-                    injectCustomPairs();
+                    if (window.injectCustomPairs) window.injectCustomPairs();
 
                     // --- ЛОГИКА ОПРЕДЕЛЕНИЯ ДЛИННЫХ СТРОК (ДЛЯ СДВИГА ПРЕПОДАВАТЕЛЯ) ---
                     function markLongRows() {
@@ -15647,8 +17439,8 @@
                     }
                     markLongRows();
                     // Также вызываем это при рендере заметок, так как карандаш тоже удлиняет строку
-                    const oldRenderNotes = renderNotes;
-                    renderNotes = function() {
+                    const oldRenderNotes = window.renderNotes;
+                    window.renderNotes = function() {
                         oldRenderNotes();
                         markLongRows();
                     };
@@ -16027,7 +17819,7 @@
                     };
 
                     // --- УМНЫЕ ЗАМЕТКИ И РЕДАКТОР ПАР ---
-                    function renderNotes() {
+                    window.renderNotes = function() {
                         let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
                         const seenSubjects = new Set();
                         const allRowsArray = Array.from(document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
@@ -16122,7 +17914,7 @@
                             let tempSubjEl = targetEl.cloneNode(true);
                             tempSubjEl.querySelectorAll('.material-icons, .note-btn-wrapper, .delete-custom-pair-btn').forEach(el => el.remove());
                             const cleanSubjectName = tempSubjEl.textContent.trim();
-                            
+
                             let pairId = `${dayDateStr}_${rawPairNum}_${cleanSubjectName}`;
                             if (cleanSubjectName.toLowerCase().includes('консультация')) {
                                 const timeEl = row.querySelector('.eval');
@@ -16196,7 +17988,7 @@
                                     let imp = JSON.parse(localStorage.getItem('etis_important_pairs_v1') || '[]');
                                     if (imp.includes(pairId)) imp = imp.filter(id => id !== pairId);
                                     else imp.push(pairId);
-                                    localStorage.setItem('etis_important_pairs_v1', JSON.stringify(imp));
+                                    saveSyncData('etis_important_pairs_v1', JSON.stringify(imp));
                                     renderNotes();
                                 });
 
@@ -16352,7 +18144,11 @@
 
                                     <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
                                         ${!isPureCustom ? `<button class="answer-btn-custom reset-edit-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Сбросить</button>` : ''}
-                                        <button class="answer-btn-custom save-edit-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить настройки</button>
+                                        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                                            ${isPureCustom ? `<button class="answer-btn-custom delete-cp-btn-modal" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important; padding: 10px 20px;">Удалить пару</button>` : ''}
+                                            ${!isPureCustom ? `<button class="answer-btn-custom reset-edit-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Сбросить</button>` : ''}
+                                            <button class="answer-btn-custom save-edit-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить настройки</button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -16361,7 +18157,9 @@
                         const closeModal = () => {
                             overlay.classList.remove('active');
                             modal.classList.remove('active');
-                            document.body.classList.remove('modal-open-body');
+                            setTimeout(() => {
+                                document.body.classList.remove('modal-open-body');
+                            }, 150);
                         };
                         overlay.onclick = closeModal;
                         modal.querySelector('.close-notes').onclick = closeModal;
@@ -16418,62 +18216,106 @@
                                     notesData.specific[pairId] = val;
                                 }
                             }
-                            localStorage.setItem('etis_subject_notes_v2', JSON.stringify(notesData));
+                            saveSyncData('etis_subject_notes_v2', JSON.stringify(notesData));
                             closeModal(); renderNotes();
                         };
 
-                        modal.querySelector('.clear-note-btn').onclick = () => {
+                        modal.querySelector('.clear-note-btn').onclick = (e) => {
+                            if (e) { e.preventDefault(); e.stopPropagation(); }
                             modal.querySelector('#cp-notes-area').value = '';
                             modal.querySelector('.save-note-btn').click();
                         };
 
-                        // --- ЛОГИКА НАСТРОЕК (ПЕРЕОПРЕДЕЛЕНИЕ) ---
-                        modal.querySelector('.save-edit-btn').onclick = () => {
-                            const newTitle = modal.querySelector('#cp-subject-edit').value.trim();
-                            const newLoc = modal.querySelector('#cp-aud-edit').value.trim();
-                            const newTeacher = modal.querySelector('#cp-teacher-edit').value.trim();
-                            const newType = modal.querySelector('#cp-type-edit').value.trim();
-                            if (!newTitle) return alert('Введите название!');
+                        // Навешиваем обработчик удаления для кастомной пары
+                        const deleteCpBtn = modal.querySelector('.delete-cp-btn-modal');
+                        if (deleteCpBtn) {
+                            deleteCpBtn.onclick = () => {
+                                if (confirm(`Удалить кастомную пару "${dispSubject}"?`)) {
+                                    const cpId = row.getAttribute('data-custom-id');
 
-                            if (isPureCustom) {
-                                let customPairs = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
-                                const cpId = row.getAttribute('data-custom-id');
-                                const cpIndex = customPairs.findIndex(p => p.id === cpId);
-                                if (cpIndex > -1) {
-                                    customPairs[cpIndex].subject = newTitle;
-                                    customPairs[cpIndex].aud = newLoc;
-                                    customPairs[cpIndex].teacher = newTeacher;
-                                    customPairs[cpIndex].type = newType;
-                                    localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(customPairs));
+                                    let cp = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
+                                    cp = cp.filter(p => p.id !== cpId);
+                                    saveSyncData('etis_custom_pairs_v1', JSON.stringify(cp));
+
+                                    closeModal();
+
+                                    // Бесшумно перерисовываем на лету
+                                    if (window.location.href.includes('timetable')) {
+                                        document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
+                                        if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
+                                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                                        if (typeof window.renderNotes === 'function') window.renderNotes();
+                                        if (typeof window.applyDimming === 'function') window.applyDimming();
+                                    }
+                                }
+                            };
+                        }
+
+                        // --- ЛОГИКА НАСТРОЕК (ПЕРЕОПРЕДЕЛЕНИЕ) ---
+                        const saveEditBtn = modal.querySelector('.save-edit-btn');
+                        if (saveEditBtn) {
+                            saveEditBtn.onclick = () => {
+                                const newTitle = modal.querySelector('#cp-subject-edit').value.trim();
+                                const newLoc = modal.querySelector('#cp-aud-edit').value.trim();
+                                const newTeacher = modal.querySelector('#cp-teacher-edit').value.trim();
+                                const newType = modal.querySelector('#cp-type-edit').value.trim();
+                                if (!newTitle) return alert('Введите название!');
+
+                                if (isPureCustom) {
+                                    let customPairs = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
+                                    const cpId = row.getAttribute('data-custom-id');
+                                    const cpIndex = customPairs.findIndex(p => p.id === cpId);
+                                    if (cpIndex > -1) {
+                                        customPairs[cpIndex].subject = newTitle;
+                                        customPairs[cpIndex].aud = newLoc;
+                                        customPairs[cpIndex].teacher = newTeacher;
+                                        customPairs[cpIndex].type = newType;
+                                        localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(customPairs));
+
+                                        // Запускаем тихую выгрузку в облако
+                                        if (typeof triggerSilentCloudUpload === 'function') {
+                                            triggerSilentCloudUpload();
+                                        }
+
+                                        closeModal();
+
+                                        // Бесшумно перерисовываем на лету!
+                                        if (window.location.href.includes('timetable')) {
+                                            document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
+                                            if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
+                                            if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                                            if (typeof window.renderNotes === 'function') window.renderNotes();
+                                            if (typeof window.applyDimming === 'function') window.applyDimming();
+                                        }
+                                    }
+                                } else {
+                                    // Логика обычных переопределений (оставляем без изменений)
+                                    const applyAll = document.getElementById('ext-apply-all').checked;
+                                    let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
+
+                                    let timeKey = rawPairNum;
+                                    let dateKey = dayDateStr;
+                                    if (isExternal) {
+                                        timeKey = row.getAttribute('data-ext-time');
+                                        dateKey = row.getAttribute('data-ext-date');
+                                    }
+
+                                    const singleKey = `SINGLE_${dateKey}_${timeKey}_${origSubject}`;
+                                    const seriesKey = `SERIES_ALL_${origSubject}`;
+
+                                    if (applyAll) {
+                                        overrides[seriesKey] = { title: newTitle };
+                                        overrides[singleKey] = { loc: newLoc, teacher: newTeacher, type: newType };
+                                    } else {
+                                        overrides[singleKey] = { title: newTitle, loc: newLoc, teacher: newTeacher, type: newType };
+                                    }
+                                    localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
+
+                                    closeModal();
                                     window.location.reload();
                                 }
-                            } else {
-                                const applyAll = document.getElementById('ext-apply-all').checked;
-                                let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
-
-                                let timeKey = rawPairNum;
-                                let dateKey = dayDateStr;
-                                if (isExternal) {
-                                    timeKey = row.getAttribute('data-ext-time');
-                                    dateKey = row.getAttribute('data-ext-date');
-                                }
-
-                                const singleKey = `SINGLE_${dateKey}_${timeKey}_${origSubject}`;
-                                const seriesKey = `SERIES_ALL_${origSubject}`;
-
-                                if (applyAll) {
-                                    // Сохраняем название глобально для всех пар
-                                    overrides[seriesKey] = { title: newTitle };
-                                    // А аудиторию, препода и тип сохраняем точечно для текущей редактируемой ячейки
-                                    overrides[singleKey] = { loc: newLoc, teacher: newTeacher, type: newType };
-                                } else {
-                                    // Если галочка не стоит, сохраняем всё точечно
-                                    overrides[singleKey] = { title: newTitle, loc: newLoc, teacher: newTeacher, type: newType };
-                                }
-                                localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
-                                window.location.reload();
-                            }
-                        };
+                            };
+                        }
 
                         if (!isPureCustom) {
                             modal.querySelector('.reset-edit-btn').onclick = () => {
@@ -16772,10 +18614,10 @@
                     recalculateTimetable();
 
                     // Запускаем отрисовку заметок при загрузке страницы
-                    renderNotes();
+                    if (window.renderNotes) window.renderNotes();
 
                     // --- 10. ИМПОРТ И ПАРСИНГ ВНЕШНЕГО КАЛЕНДАРЯ (iCloud / Google) ---
-                    function loadExternalCalendar() {
+                    window.loadExternalCalendar = function() {
                         let cals = migrateExternalCals();
                         if (cals.length === 0) return;
 
@@ -17163,7 +19005,7 @@
                     }
 
                     // Запуск логики
-                    loadExternalCalendar();
+                    if (window.loadExternalCalendar) window.loadExternalCalendar();
 
                     updateLiveTimetable();
 
@@ -17333,33 +19175,33 @@
                         const exportStyles = document.createElement('style');
                         exportStyles.innerHTML = `
                             * { transition: none !important; animation: none !important; opacity: 1 !important; }
-                            .day { 
-                                box-shadow: ${shadowCSS} !important; 
-                                border: 1px solid transparent !important; 
+                            .day {
+                                box-shadow: ${shadowCSS} !important;
+                                border: 1px solid transparent !important;
                                 border-radius: 24px !important;
-                                overflow: hidden !important; 
+                                overflow: hidden !important;
                             }
                             .day h3 {
                                 border-top-left-radius: 23px !important;
                                 border-top-right-radius: 23px !important;
                             }
-                            
+
                             .timetable-grid { table-layout: fixed !important; width: 100% !important; border-spacing: 0 !important; border-collapse: collapse !important; }
                             .timetable-grid td { white-space: normal !important; word-wrap: break-word !important; border-bottom: none !important; padding: 12px 0 !important; }
-                            
+
                             /* Даем воздух снизу, чтобы html2canvas не срезал закругления */
                             .timetable-grid tr:last-child td { padding-bottom: 20px !important; }
-                            
+
                             .timetable-grid td.pair_num {
                                 width: 90px !important; min-width: 90px !important;
-                                font-size: 1.1rem !important; 
+                                font-size: 1.1rem !important;
                                 text-align: center !important; padding: 12px 5px !important;
                             }
-                            
+
                             .timetable-grid td.pair_info {
                                 width: auto !important; padding-left: 5px !important; padding-right: 5px !important; text-align: left !important;
                             }
-                            
+
                             .timetable-grid td.pair_teacher {
                                 width: 200px !important; min-width: 200px !important;
                                 text-align: right !important; padding-right: 16px !important;
@@ -17381,12 +19223,12 @@
                                 color: var(--color-text-secondary) !important;
                                 border: 1px solid var(--color-table-border) !important;
                                 display: inline-flex !important; align-items: center !important;
-                                width: auto !important; 
+                                width: auto !important;
                                 flex: 0 0 auto !important;
                             }
                             .aud a, .btn-generic-online {
                                 display: inline-flex !important; align-items: center !important;
-                                width: auto !important; 
+                                width: auto !important;
                                 flex: 0 0 auto !important;
                                 text-decoration: none !important;
                             }
@@ -17726,7 +19568,7 @@
                             updateEmptyState(span9, false, '', 'messages');
                             break;
                         }
-                        
+
                         // Удаляем точку уведомлений из сайдбара
                         const activeLink = document.querySelector('.span3 > .nav.nav-tabs.nav-stacked > li.active > a');
                         if (activeLink) {
@@ -18135,7 +19977,7 @@
                                     opacity: 1;
                                     visibility: visible;
                                 }
-                                
+
                                 html body table td.align-right-cell,
                                 html body table th.align-right-cell,
                                 html body div.span9 table.common tr td.align-right-cell,
@@ -18686,7 +20528,7 @@
                                                     layout: {
                                                         padding: { top: 15, right: 15, left: 5, bottom: 0 }
                                                     },
-                                                    plugins: { 
+                                                    plugins: {
                                                         legend: { display: false },
                                                         tooltip: {
                                                             displayColors: false,
@@ -18704,8 +20546,8 @@
                                                         y: {
                                                             min: 2.0,
                                                             max: 5.0,
-                                                            ticks: { 
-                                                                color: textColor, 
+                                                            ticks: {
+                                                                color: textColor,
                                                                 font: {size: 13},
                                                                 stepSize: 1
                                                             },
@@ -18867,7 +20709,7 @@
                                         totalVisible += w.querySelectorAll('tbody tr:not([style*="display: none"])').length;
                                     }
                                 });
-                                
+
                                 updateEmptyState(span9, totalVisible > 0, val, 'grades');
                             });
 
@@ -18946,7 +20788,7 @@
                                     if (r === totalRow) return;
 
                                     const cells = r.querySelectorAll('th, td');
-                                    
+
                                     // Логика определения типа предмета (Зачет)
                                     if (cells.length >= 7 && cells[2]) {
                                         if (cells[2].textContent.toLowerCase().includes('зачет') || cells[2].textContent.toLowerCase().includes('зачёт')) {
@@ -19119,7 +20961,7 @@
 
                                 const subjectsReportType = JSON.parse(localStorage.getItem('etis_subjects_report_type_v1') || '{}');
                                 const cleanSubjName = h3.textContent.replace(/\[.*?\]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
-                                
+
                                 if (subjectsReportType[cleanSubjName] === 'зачет') {
                                     isZachet = true;
                                 } else {
@@ -19349,7 +21191,7 @@
                                         totalVisible += w.querySelectorAll('tbody tr:not([style*="display: none"]):not(:has(th))').length;
                                     }
                                 });
-                                
+
                                 updateEmptyState(span9, totalVisible > 0, val, 'grades');
                             });
 
@@ -19943,7 +21785,7 @@
                                 }
                             }
 
-                            localStorage.setItem(storageKey, JSON.stringify(storedData));
+                            saveSyncData(storageKey, JSON.stringify(storedData));
 
                             // 6. Вывод аналитики в консоль
                             console.log('--- ETIS Reborn: Отслеживание оценок ---');
@@ -20463,14 +22305,14 @@
                                 filterInput.addEventListener('input', (e) => {
                                     const val = e.target.value.toLowerCase().trim();
                                     let totalVisible = 0;
-                                    
+
                                     historyTable.querySelectorAll('tbody tr').forEach(row => {
                                         if (row.querySelector('th')) return;
                                         const match = (val === "" || row.textContent.toLowerCase().includes(val));
                                         row.style.display = match ? "" : "none";
                                         if (match) totalVisible++;
                                     });
-                                    
+
                                     updateEmptyState(span9, totalVisible > 0, val, 'library');
                                 });
                             }
@@ -20670,7 +22512,7 @@
                                 if (match) {
                                     cleanTitle = fullTitle.replace(match[0], '').trim();
                                     const typesArr = match[1].toLowerCase().split(',').map(t => t.trim()).filter(t => t);
-                                    
+
                                     typesArr.forEach(t => {
                                         if (t.includes('лек')) badgeTypes.push('лек');
                                         else if (t.includes('практ')) badgeTypes.push('практ');
@@ -20681,7 +22523,7 @@
 
                                 let badgesHtml = '';
                                 let titleColor = 'var(--color-text-primary)';
-                                
+
                                 const mainType = badgeTypes[0] || '';
                                 if (mainType === 'лек') titleColor = 'var(--color-blue)';
                                 else if (mainType === 'практ') titleColor = 'var(--color-green)';
@@ -20694,7 +22536,7 @@
                                     else if (t === 'практ') { bg = 'rgba(52, 199, 89, 0.12)'; color = 'var(--color-green)'; }
                                     else if (t === 'лаб') { bg = 'rgba(255, 149, 0, 0.12)'; color = 'var(--color-warning)'; }
                                     else if (t === 'экз') { bg = 'rgba(255, 59, 48, 0.12)'; color = 'var(--color-red)'; label = 'ЗАЧ/ЭКЗ'; }
-                                    
+
                                     badgesHtml += `<span style="background: ${bg}; color: ${color}; padding: 0.3rem 0.8rem; border-radius: 50px; font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; line-height: 1;">${label}</span>`;
                                 });
 
@@ -21185,7 +23027,7 @@
                         break;
                     }
 
-                    case 'stu.dis_stat': 
+                    case 'stu.dis_stat':
                     case 'stu.teacher_stats': {
                         const table = span9.querySelector('table.common');
                         // Таблица считается пустой, если в ней нет строк с ячейками данных (td), только заголовки (th)
@@ -21442,7 +23284,7 @@
                                 if (submenu) submenu.after(container);
                                 else span9.appendChild(container);
                             }
-                            
+
                             // Вызов заглушки для комментариев
                             updateEmptyState(span9, feedbackMsgs.length > 0, '', 'comments');
                         }
@@ -21450,7 +23292,7 @@
                         // Логика вкладки "Рейтинг факультетов и кафедр"
                         if (isRatingTab) {
                             const ratingH4 = span9.querySelector('h4');
-                            
+
                             // Проверяем, есть ли реальные числовые оценки в таблице (хотя бы одна строка с colspan или > 1 ячейкой)
                             let hasRatingData = false;
                             if (ratingTable) {
@@ -21473,7 +23315,7 @@
                                     newTitle.style.fontWeight = '800';
                                     newTitle.style.color = 'var(--color-text-primary)';
                                     newTitle.style.lineHeight = '1.4';
-                                    
+
                                     const infoBlock = document.createElement('div');
                                     infoBlock.style.cssText = `
                                         background: var(--color-card);
@@ -21486,7 +23328,7 @@
                                         line-height: 1.6;
                                         font-size: 1.35rem;
                                     `;
-                                    
+
                                     infoBlock.innerHTML = `
                                         <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px; font-weight:800; font-size:1.6rem; color:var(--color-text-primary);">
                                             <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">help_outline</span>
@@ -21510,7 +23352,7 @@
 
                                     ratingH4.replaceWith(newTitle);
                                     newTitle.after(infoBlock);
-                                    
+
                                     let nextSibling = infoBlock.nextSibling;
                                     while (nextSibling && nextSibling.tagName === 'BR') {
                                         const toRemove = nextSibling;
@@ -21599,7 +23441,7 @@
                                                 const td = document.createElement('td');
                                                 td.style.textAlign = 'center';
                                                 td.style.verticalAlign = 'middle';
-                                                
+
                                                 if (!origTd) {
                                                     td.innerHTML = '<span style="color: var(--color-table-border);">-</span>';
                                                     return td;
@@ -21659,7 +23501,7 @@
                                 // Если данных нет, полностью очищаем оригинальный заголовок, пустую таблицу и лишние BR
                                 if (ratingH4) ratingH4.remove();
                                 if (ratingTable) ratingTable.remove();
-                                
+
                                 span9.querySelectorAll('br').forEach(br => {
                                     if (br.parentNode === span9) br.remove();
                                 });
@@ -21676,7 +23518,7 @@
                         while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
                             span9.firstChild.remove();
                         }
-                        
+
                         const table = span9.querySelector('table.slimtab_nice');
                         // Таблица пуста, если в ней нет ячеек с данными (td), а есть только заголовки (th)
                         const hasData = table && table.querySelectorAll('td').length > 0;
@@ -21794,7 +23636,7 @@
                 const reviewContainer = document.querySelector('.span9 > .review');
                 if (reviewContainer) {
                     reviewContainer.querySelectorAll('style').forEach(s => s.remove());
-                    
+
                     const introParagraphs = [];
                     for (let node of reviewContainer.childNodes) {
                         if (node.tagName === 'P') introParagraphs.push(node);
@@ -21804,7 +23646,7 @@
                     if (introParagraphs.length > 0) {
                         const introCard = document.createElement('div');
                         introCard.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); box-shadow: var(--shadow-main); padding: 2.4rem; margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);';
-                        
+
                         const title = document.createElement('div');
                         title.style.cssText = 'display: flex; align-items: center; gap: 12px; margin-bottom: 16px; font-weight: 800; font-size: 1.8rem; color: var(--color-text-primary);';
                         title.innerHTML = '<span class="material-icons" style="color: var(--color-accent); font-size: 2.4rem;">assignment</span> Анкетирование';
@@ -21814,7 +23656,7 @@
                             p.style.cssText = 'font-size: 1.4rem; color: var(--color-text-primary); line-height: 1.6; margin-bottom: 1.2rem; opacity: 0.9;';
                             introCard.appendChild(p);
                         });
-                        
+
                         reviewContainer.prepend(introCard);
 
                         const rejectForm = document.getElementById('reject_form');
@@ -21849,16 +23691,16 @@
                                 qTable.parentNode.insertBefore(wrapper, qTable);
                                 wrapper.appendChild(qTable);
                             }
-                            
+
                             qTable.style.cssText = 'margin: 0 !important; border: none !important; box-shadow: none !important; border-radius: 0 !important; width: 100% !important; border-collapse: collapse !important; table-layout: fixed;';
-                            
+
                             const rows = qTable.querySelectorAll('tr');
                             rows.forEach((tr, rowIndex) => {
                                 const isHeader = rowIndex === 0;
-                                
+
                                 tr.querySelectorAll('th, td').forEach((cell, cellIndex) => {
                                     cell.style.padding = isHeader ? '1.6rem 1rem' : '1.4rem';
-                                    
+
                                     // Первая колонка (текст вопроса) - шире остальных
                                     if (cellIndex === 0) {
                                         cell.style.width = '40%';
@@ -21883,15 +23725,15 @@
 
                 // === УМНАЯ АНИМАЦИЯ ПОЯВЛЕНИЯ ПРИ СКРОЛЛЕ ===
                 const animatedSelectors =[
-                    '.day', '.teacher-card', '.msg-card', '.advice-card', '.order-card', '.jour-card', 
-                    '.review-item', '.contract-card', '.form-card', '.calendar-card', '.about-card', 
-                    '.survey-card', '.jour-info-card', '.wide-table-wrapper', '.subject-header-flex', 
-                    '.question', '.comment', '.cert-footer-card', '.absence-stat', '.portfolio-header', 
+                    '.day', '.teacher-card', '.msg-card', '.advice-card', '.order-card', '.jour-card',
+                    '.review-item', '.contract-card', '.form-card', '.calendar-card', '.about-card',
+                    '.survey-card', '.jour-info-card', '.wide-table-wrapper', '.subject-header-flex',
+                    '.question', '.comment', '.cert-footer-card', '.absence-stat', '.portfolio-header',
                     'form.form', '.cert-alert-box', '.electr-description', '.info-block-anim'
                 ].join(', ');
 
                 const animatedElements = document.querySelectorAll(animatedSelectors);
-                
+
                 // Отсеиваем вложенные элементы (чтобы таблица внутри карточки не прыгала второй раз)
                 const topLevelElements = Array.from(animatedElements).filter(el => {
                     let parent = el.parentElement;
@@ -22033,12 +23875,12 @@
                     if (activeModal) {
                         const id = activeModal.id;
                         let overlay = null;
-                        
+
                         if (id === 'etis-settings-modal') overlay = document.getElementById('etis-settings-overlay');
                         else if (id === 'etis-profile-modal') overlay = document.getElementById('etis-profile-overlay');
                         else if (id === 'etis-sync-modal') overlay = document.getElementById('etis-sync-overlay');
                         else if (id === 'etis-cons-modal') overlay = document.getElementById('etis-cons-overlay');
-                        
+
                         if (!overlay) overlay = document.querySelector('.analytics-overlay.active');
 
                         if (activeModal) activeModal.classList.remove('active');
