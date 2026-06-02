@@ -222,7 +222,17 @@
                 color: var(--text-color);
             }
 
-            .modal-footer-stats { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: var(--text-secondary); margin-top: 25px; opacity: 0.7; }
+            .modal-footer-stats { 
+                display: flex; 
+                justify-content: center; 
+                align-items: center; 
+                flex-wrap: wrap; 
+                gap: 12px; 
+                font-size: 0.8rem; 
+                color: var(--text-secondary); 
+                margin-top: 15px;
+                opacity: 0.7; 
+            }
             .stats-divider { opacity: 0.5; }
 
             @media (max-width: 768px) {
@@ -469,7 +479,7 @@
                 background: var(--modal-bg); 
                 width: 90%; 
                 max-width: 600px; 
-                padding: 40px;
+                padding: 40px 40px 24px 40px;
                 border-radius: 24px; 
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
                 position: relative; 
@@ -494,7 +504,7 @@
                     width: 100%;
                     max-width: 100%;
                     border-radius: 24px 24px 0 0;
-                    padding: 32px 20px 40px 20px;
+                    padding: 32px 20px 20px 20px;
                     border-bottom: none;
                     border-left: none;
                     border-right: none;
@@ -1303,8 +1313,8 @@
                     <h2 class="block-title">🔒 Технологии и безопасность</h2>
                     <div class="block-features">
                         <div class="bf-item">
-                            <div class="bf-title">🛡️ Local-only</div>
-                            <div class="bf-desc">Все данные (заметки, кастомные пары) хранятся только в браузере. Скрипт не передает пароли или оценки на сторонние серверы.</div>
+                            <div class="bf-title">🛡️ Local First</div>
+                            <div class="bf-desc">Все данные (заметки, кастомные пары) хранятся только в браузере. По желанию, можешь активировать облачную синхронизацию данных скрипта между устройствами (но пароль и логин остаются локальными).</div>
                         </div>
                         <div class="bf-item">
                             <div class="bf-title">🔄 Авто-обновление</div>
@@ -2179,7 +2189,8 @@
 
             function initRevealAnimations() {
                 const observerOptions = {
-                    threshold: 0.1
+                    rootMargin: '0px 0px 200px 0px',
+                    threshold: 0.01             
                 };
 
                 const observer = new IntersectionObserver((entries) => {
@@ -2192,7 +2203,14 @@
                 }, observerOptions);
 
                 const targets = document.querySelectorAll('.hero, .comparison-block, .reviews-section, .faq-section');
-                targets.forEach(target => observer.observe(target));
+                
+                targets.forEach((target, index) => {
+                    if (index <= 2) {
+                        target.classList.add('reveal-active');
+                    } else {
+                        observer.observe(target);
+                    }
+                });
             }
 
             // --- ЛОГИКА ДЛЯ ПРУЖИННОЙ ШАПКИ ---
