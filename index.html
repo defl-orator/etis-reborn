@@ -2,7 +2,7 @@
     <html lang="ru">
     <head>
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
         
         <!-- SEO -->
         <title>ЕТИС REBORN — Современный интерфейс для студентов ПГНИУ</title>
@@ -168,43 +168,34 @@
 
             @media (max-width: 768px) {
                 body {
-                    padding-top: 110px;
+                    padding-top: 85px;
                 }
 
                 header {
                     top: 0;
                     bottom: auto;
-                    height: 80px;
-                    padding-top: calc(16px * (1 - var(--scroll-progress, 0)) + 10px * var(--scroll-progress, 0));
+                    height: 60px;
+                    background: transparent !important;
+                    padding-top: calc(10px * (1 - var(--scroll-progress, 0)) + 6px * var(--scroll-progress, 0));
                     align-items: flex-start;
                 }
 
-                header::before {
-                    content: '';
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background-color: var(--bg-color);
-                    opacity: var(--bottom-opacity, 0);
-                    z-index: -1;
-                    pointer-events: none;
-                    transition: background-color 0.3s;
-                }
-
                 .header-content {
-                    padding: 0 calc(20px * (1 - var(--scroll-progress, 0)) + 15px * var(--scroll-progress, 0));
+                    padding: 0 calc(16px * (1 - var(--scroll-progress, 0)) + 12px * var(--scroll-progress, 0));
                 }
 
                 .logo {
-                    padding: calc(6px * var(--scroll-progress, 0)) calc(14px * var(--scroll-progress, 0));
+                    padding: calc(5px * var(--scroll-progress, 0)) calc(12px * var(--scroll-progress, 0));
+                    gap: calc(6px * var(--scroll-progress, 0));
                 }
+
                 .logo-img-wrapper img {
-                    height: calc(24px + 6px * (1 - var(--scroll-progress, 0)));
+                    height: calc(18px + 4px * (1 - var(--scroll-progress, 0)));
                 }
+
                 .logo-text-wrapper {
-                    font-size: calc(1.05rem + 0.15rem * (1 - var(--scroll-progress, 0)));
+                    font-size: calc(0.9rem + 0.15rem * (1 - var(--scroll-progress, 0)));
+                    letter-spacing: 0.5px;
                 }
 
                 footer {
@@ -253,10 +244,7 @@
             }
 
             .modal-footer-stats { 
-                position: absolute;
-                bottom: 12px;
-                left: 0;
-                width: 100%;
+                position: static;
                 display: flex; 
                 justify-content: center; 
                 align-items: center; 
@@ -264,7 +252,8 @@
                 gap: 12px; 
                 font-size: 0.8rem; 
                 color: var(--text-secondary); 
-                margin: 0;
+                margin-top: 18px;
+                margin-bottom: 4px;
                 opacity: 0.75; 
             }
 
@@ -320,8 +309,28 @@
                 border-radius: 50%; top: 50%; left: 50%; transform: translate(-50%, -50%); 
                 display: flex; align-items: center; justify-content: center;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.4); border: 3px solid #fff;
+                transition: background-color 0.2s ease, transform 0.15s ease;
+                touch-action: none;
             }
-            .img-comp-slider::before { content: "↔"; color: white; font-size: 24px; line-height: 1; font-weight: bold; }
+
+            .img-comp-slider::before { 
+                content: "↔"; 
+                color: white; 
+                font-size: 22px; 
+                line-height: 1; 
+                font-weight: bold;
+                transition: transform 0.2s ease, opacity 0.2s ease;
+                display: inline-block;
+                user-select: none;
+            }
+
+            .img-comp-slider[data-dir="right"]::before {
+                content: "→";
+            }
+
+            .img-comp-slider[data-dir="left"]::before {
+                content: "←";
+            }
 
             .label {
                 position: absolute; top: 15px; padding: 8px 18px; border-radius: 30px;
@@ -552,7 +561,7 @@
                     width: 100%;
                     max-width: 100%;
                     border-radius: 24px 24px 0 0;
-                    padding: 24px 20px 48px 20px;
+                    padding: 24px 20px 24px 20px;
                     border-bottom: none;
                     border-left: none;
                     border-right: none;
@@ -1814,11 +1823,14 @@
             }
 
             function setupSlider(container) {
-                if(container.querySelector('.img-comp-slider')) return; 
+                if (container.querySelector('.img-comp-slider')) return; 
 
                 let slider, w, h;
                 let clicked = false;
+                let hasMoved = false;
+                let startClientX = 0;
                 let currentPercent = 0.5;
+                let animFrame = null;
                 
                 const imgWrapper = container.querySelector('.img-result');
                 const imgInside = imgWrapper.querySelector('img');
@@ -1828,6 +1840,7 @@
 
                 slider = document.createElement("DIV");
                 slider.className = "img-comp-slider";
+                slider.setAttribute("data-dir", "both");
                 container.appendChild(slider);
 
                 function updateDimensions() {
@@ -1845,42 +1858,111 @@
                 new ResizeObserver(updateDimensions).observe(container);
                 imgInside.addEventListener('load', updateDimensions);
 
-                function slideStart(e) {
-                    e.preventDefault();
-                    clicked = true;
+                // Бесшовное сглаживание движения кнопки без эффекта "залипания"
+                function calculateButtonX(dividerX, width, radius) {
+                    const margin = radius + 6;
+                    const zone = radius * 3.5; 
+                    const threshold = margin + zone;
+
+                    if (width <= margin * 2) return width / 2;
+
+                    const a = 2 * margin - threshold;
+                    const b = 2 * threshold - 3 * margin;
+
+                    if (dividerX < threshold) {
+                        let t = Math.max(0, dividerX) / threshold;
+                        return a * Math.pow(t, 3) + b * Math.pow(t, 2) + margin;
+                    } else if (dividerX > width - threshold) {
+                        let dist = Math.max(0, width - dividerX);
+                        let t = dist / threshold;
+                        let buttonDist = a * Math.pow(t, 3) + b * Math.pow(t, 2) + margin;
+                        return width - buttonDist;
+                    } else {
+                        return dividerX;
+                    }
                 }
 
-                function slideEnd() {
+                // Плавная анимация сдвига слайдера
+                function animateToPercent(targetP, duration = 380) {
+                    if (animFrame) cancelAnimationFrame(animFrame);
+                    let startP = currentPercent;
+                    let startTime = performance.now();
+
+                    function step(now) {
+                        let elapsed = now - startTime;
+                        let progress = Math.min(elapsed / duration, 1);
+                        let ease = 1 - Math.pow(1 - progress, 3); // Плавный cubic ease-out
+                        let currentP = startP + (targetP - startP) * ease;
+                        slide(w * currentP);
+                        if (progress < 1) {
+                            animFrame = requestAnimationFrame(step);
+                        } else {
+                            animFrame = null;
+                        }
+                    }
+                    animFrame = requestAnimationFrame(step);
+                }
+
+                function slideStart(e) {
+                    if (animFrame) cancelAnimationFrame(animFrame);
+                    clicked = true;
+                    hasMoved = false;
+                    startClientX = (e.changedTouches) ? e.changedTouches[0].clientX : e.clientX;
+                }
+
+                function slideEnd(e) {
+                    if (!clicked) return;
                     clicked = false;
+
+                    // Если был просто клик/тап по кнопке со стрелкой у края — плавно сдвигаем от края
+                    if (!hasMoved) {
+                        const dir = slider.getAttribute("data-dir");
+                        if (dir === "right") {
+                            animateToPercent(0.35); // Сдвиг вправо к центру
+                        } else if (dir === "left") {
+                            animateToPercent(0.65); // Сдвиг влево к центру
+                        }
+                    }
                 }
 
                 function slideMove(e) {
                     if (!clicked) return;
                     let clientX = (e.changedTouches) ? e.changedTouches[0].clientX : e.clientX;
+                    if (Math.abs(clientX - startClientX) > 4) {
+                        hasMoved = true;
+                    }
                     let rect = container.getBoundingClientRect();
-                    let x = clientX - rect.left;
-                    if (x < 0) x = 0;
-                    if (x > w) x = w;
-                    slide(x);
+                    let rawX = clientX - rect.left;
+                    slide(rawX);
                 }
 
-                function slide(x) {
-                    if (w > 0) currentPercent = x / w;
-                    imgWrapper.style.width = x + "px";
-                    slider.style.left = x + "px";
+                function slide(rawX) {
+                    let dividerX = Math.max(0, Math.min(rawX, w));
+                    if (w > 0) currentPercent = dividerX / w;
+                    imgWrapper.style.width = dividerX + "px";
                     
-                    const threshold = 140; 
+                    const radius = (slider.offsetWidth ? slider.offsetWidth / 2 : 24);
+                    const buttonX = calculateButtonX(dividerX, w, radius);
+                    slider.style.left = buttonX + "px";
 
-                    // Логика плавающей левой капсулы
-                    if (labelNewWrapper) {
-                        labelNewWrapper.style.left = (x / 2) + "px";
-                        labelNewWrapper.style.opacity = x < threshold ? '0' : '1';
+                    // Переключение стрелок на кнопке
+                    if (dividerX <= 28) {
+                        slider.setAttribute("data-dir", "right");
+                    } else if (dividerX >= w - 28) {
+                        slider.setAttribute("data-dir", "left");
+                    } else {
+                        slider.setAttribute("data-dir", "both");
                     }
                     
-                    // Логика плавающей правой капсулы
+                    // Плавающие плашки REBORN / Original
+                    const labelThreshold = 140; 
+                    if (labelNewWrapper) {
+                        labelNewWrapper.style.left = (dividerX / 2) + "px";
+                        labelNewWrapper.style.opacity = dividerX < labelThreshold ? '0' : '1';
+                    }
                     if (labelOldWrapper) {
-                        labelOldWrapper.style.left = (x + (w - x) / 2) + "px";
-                        labelOldWrapper.style.opacity = (w - x) < threshold ? '0' : '1';
+                        labelOldWrapper.style.left = (dividerX + (w - dividerX) / 2) + "px";
+                        labelOldWrapper.style.opacity = (w - dividerX) < labelThreshold ? '0' : '1';
                     }
                 }
 
@@ -1894,7 +1976,7 @@
                 
                 updateDimensions();
             }
-
+            
             document.addEventListener("DOMContentLoaded", initComparisons);
 
             // --- МОДАЛКА ---
