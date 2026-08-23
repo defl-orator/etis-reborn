@@ -167,6 +167,18 @@
             }
 
             @media (max-width: 768px) {
+                body {
+                    padding-top: 110px;
+                }
+
+                header {
+                    top: 0;
+                    bottom: auto;
+                    height: 80px;
+                    padding-top: calc(16px * (1 - var(--scroll-progress, 0)) + 10px * var(--scroll-progress, 0));
+                    align-items: flex-start;
+                }
+
                 header::before {
                     content: '';
                     position: absolute;
@@ -175,10 +187,28 @@
                     width: 100%;
                     height: 100%;
                     background-color: var(--bg-color);
-                    opacity: calc(1 - var(--scroll-progress, 0));
+                    opacity: var(--bottom-opacity, 0);
                     z-index: -1;
                     pointer-events: none;
                     transition: background-color 0.3s;
+                }
+
+                .header-content {
+                    padding: 0 calc(20px * (1 - var(--scroll-progress, 0)) + 15px * var(--scroll-progress, 0));
+                }
+
+                .logo {
+                    padding: calc(6px * var(--scroll-progress, 0)) calc(14px * var(--scroll-progress, 0));
+                }
+                .logo-img-wrapper img {
+                    height: calc(24px + 6px * (1 - var(--scroll-progress, 0)));
+                }
+                .logo-text-wrapper {
+                    font-size: calc(1.05rem + 0.15rem * (1 - var(--scroll-progress, 0)));
+                }
+
+                footer {
+                    padding-bottom: 40px;
                 }
             }
 
@@ -223,6 +253,10 @@
             }
 
             .modal-footer-stats { 
+                position: absolute;
+                bottom: 12px;
+                left: 0;
+                width: 100%;
                 display: flex; 
                 justify-content: center; 
                 align-items: center; 
@@ -230,17 +264,24 @@
                 gap: 12px; 
                 font-size: 0.8rem; 
                 color: var(--text-secondary); 
-                margin-top: 15px;
-                opacity: 0.7; 
+                margin: 0;
+                opacity: 0.75; 
             }
-            .stats-divider { opacity: 0.5; }
 
-            @media (max-width: 768px) {
-                .header-content { padding: 0 calc(20px * (1 - var(--scroll-progress, 0)) + 15px * var(--scroll-progress, 0)); }
-                .logo { padding: calc(8px * var(--scroll-progress, 0)) calc(16px * var(--scroll-progress, 0)); }
-                .logo-img-wrapper img { height: calc(28px + 8px * (1 - var(--scroll-progress, 0))); }
-                .logo-text-wrapper { font-size: calc(1.1rem + 0.3rem * (1 - var(--scroll-progress, 0))); }
+            .stat-item {
+                display: inline-flex;
+                align-items: center;
+                gap: 5px;
             }
+
+            .stat-item svg {
+                width: 13px;
+                height: 13px;
+                opacity: 0.85;
+                flex-shrink: 0;
+            }
+
+            .stats-divider { opacity: 0.5; }
 
             /* --- HERO --- */
             .hero { text-align: center; padding: 20px 0 60px; }
@@ -318,6 +359,9 @@
                 gap: 15px;
                 margin-top: 25px;
                 text-align: left;
+                padding: 10px 6px;
+                margin-left: -6px;
+                margin-right: -6px;
             }
 
             .bf-item {
@@ -327,6 +371,10 @@
                 border-radius: 24px;
                 box-shadow: 0 8px 24px var(--shadow);
                 transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+                
+                transform: translateZ(0);
+                will-change: transform;
+                backface-visibility: hidden;
             }
 
             @media (hover: hover) {
@@ -479,8 +527,8 @@
                 background: var(--modal-bg); 
                 width: 90%; 
                 max-width: 600px; 
-                padding: 40px 40px 24px 40px;
-                border-radius: 24px; 
+                padding: 32px 36px 36px 36px;
+                border-radius: 28px; 
                 box-shadow: 0 20px 60px rgba(0,0,0,0.3);
                 position: relative; 
                 color: var(--text-color); 
@@ -504,7 +552,7 @@
                     width: 100%;
                     max-width: 100%;
                     border-radius: 24px 24px 0 0;
-                    padding: 32px 20px 20px 20px;
+                    padding: 24px 20px 48px 20px;
                     border-bottom: none;
                     border-left: none;
                     border-right: none;
@@ -515,6 +563,11 @@
                     
                     transform: translateY(100%);
                     transition: transform 0.35s cubic-bezier(0.15, 1, 0.3, 1);
+                }
+
+                .modal-footer-stats {
+                    bottom: 14px;
+                    font-size: 0.75rem;
                 }
 
                 .modal-overlay.active .modal-window {
@@ -530,19 +583,55 @@
                     border-radius: 10px;
                     margin: -16px auto 20px auto;
                 }
-
-                .modal-close {
-                    position: absolute;
-                    top: 16px;
-                    right: 16px;
-                    z-index: 10;
-                }
             }
-            .modal-close { position: absolute; top: 20px; right: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: var(--text-secondary); }
-            .modal-title { font-size: 1.8rem; margin-bottom: 20px; text-align: center; }
+            
+            .modal-header {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                position: relative;
+                margin-bottom: 20px;
+                width: 100%;
+            }
+            .modal-title {
+                font-size: 1.8rem;
+                margin: 0;
+                text-align: center;
+                line-height: 1.2;
+            }
+
+            .modal-close {
+                position: absolute;
+                right: 0;
+                top: 50%;
+                transform: translateY(-50%);
+                background: none;
+                border: none;
+                font-size: 32px;
+                cursor: pointer;
+                color: var(--text-secondary);
+                transition: color 0.2s;
+                line-height: 1;
+                z-index: 10;
+            }
+            .modal-close:hover { color: var(--text-color); }
+
             .os-switcher { display: flex; background: rgba(128,128,128,0.1); padding: 4px; border-radius: 50px; margin-bottom: 25px; }
-            .os-btn { flex: 1; border: none; background: none; padding: 10px; border-radius: 50px; cursor: pointer; font-weight: 600; color: var(--text-secondary); transition: 0.2s; }
+            .os-btn { flex: 1; border: none; background: none; padding: 10px; border-radius: 50px; cursor: pointer; font-weight: 600; color: var(--text-secondary); transition: 0.2s; position: relative; }
             .os-btn.active { background: var(--bg-color); color: var(--text-color); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+            
+            /* Разделитель между неактивными вкладками ОС */
+            .os-btn:not(.active) + .os-btn:not(.active)::before {
+                content: '';
+                position: absolute;
+                left: 0;
+                top: 25%;
+                height: 50%;
+                width: 1px;
+                background-color: var(--text-secondary);
+                opacity: 0.3;
+            }
+
             .instruction-content { display: none; }
             .instruction-content.active { display: block; }
             .step-list { margin-bottom: 25px; padding-left: 20px; }
@@ -953,9 +1042,10 @@
             /* --- БЛОК ЧЕЙНДЖЛОГА В МОДАЛКЕ --- */
             .changelog-box {
                 margin-top: 20px;
+                margin-bottom: 0;
                 padding: 18px 20px;
                 background: #ffffff;
-                border-radius: 28px;
+                border-radius: 24px;
                 border: 1px solid rgba(128, 128, 128, 0.08);
                 box-shadow: 0 8px 24px var(--shadow);
                 font-size: 0.9rem;
@@ -1437,8 +1527,10 @@
         <!-- МОДАЛЬНОЕ ОКНО -->
         <div class="modal-overlay" id="installModal">
             <div class="modal-window">
-                <button class="modal-close" onclick="closeModal()">×</button>
-                <h3 class="modal-title">Установка</h3>
+                <div class="modal-header">
+                    <h3 class="modal-title">Установка</h3>
+                    <button class="modal-close" onclick="closeModal()">×</button>
+                </div>
                 
                 <div class="os-switcher">
                     <button class="os-btn active" onclick="switchTab('android')">Android</button>
@@ -1456,6 +1548,7 @@
                         <li>Установи и настрой расширение по ссылке выше.</li>
                         <li>Нажми кнопку ниже — скрипт откроется автоматически.</li>
                         <li>Нажми "Установить" ("Install").</li>
+                        <li>Обнови страницу ЕТИСа и подожди несколько секунд.</li>
                     </ol>
                     <div class="action-buttons">
                         <a href="https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js" target="_blank" class="download-btn install-btn">Установить</a>
@@ -1474,6 +1567,7 @@
                         <li>Установи расширение для своего браузера.</li>
                         <li>Нажми кнопку ниже — скрипт откроется автоматически.</li>
                         <li>Нажми "Установить" ("Install").</li>
+                        <li>Обнови страницу ЕТИСа и подожди несколько секунд.</li>
                     </ol>
                     <div class="action-buttons">
                         <a href="https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js" target="_blank" class="download-btn install-btn">Установить</a>
@@ -1487,6 +1581,7 @@
                         <li>Установи и настрой <b>Stay</b> из App Store.</li>
                         <li>Нажми кнопку ниже, чтобы скопировать ссылку на скрипт.</li>
                         <li>В приложении нажми <b>«+»</b>, выбери <b>«Link»</b> и вставь скопированную ссылку.</li>
+                        <li>Обнови страницу ЕТИСа и подожди несколько секунд.</li>
                     </ol>
                     <div class="action-buttons">
                         <button onclick="copyScriptUrl(this)" class="download-btn" style="width: 100%; border: none; cursor: pointer;">
@@ -1497,15 +1592,30 @@
                 
                 <div class="changelog-box" id="modal-changelog-box" style="display: none;">
                     <div class="changelog-title">
-                        <span>✨ Что нового в этой версии:</span>
+                        <span>✨ Что нового:</span>
                     </div>
                     <div class="changelog-text" id="modal-changelog-text"></div>
                 </div>
                 
                 <div class="modal-footer-stats">
-                    <span id="script-version-info">Загрузка версии...</span>
+                    <span class="stat-item">
+                        <!-- Иконка тега/версии -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8 8a2 2 0 0 0 2.828 0l7.172-7.172a2 2 0 0 0 0-2.828l-8-8z"/>
+                            <circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/>
+                        </svg>
+                        <span id="script-version-info">...</span>
+                    </span>
                     <span class="stats-divider">•</span>
-                    <span>Установок: <b id="install-counter">...</b></span>
+                    <span class="stat-item">
+                        <!-- Иконка загрузок -->
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="7 10 12 15 17 10"/>
+                            <line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        <b id="install-counter">...</b>
+                    </span>
                 </div>
             </div>
         </div>
@@ -1519,8 +1629,10 @@
         <!-- Модальное окно контактов -->
         <div class="modal-overlay" id="bugModal">
             <div class="modal-window" style="max-width: 450px; text-align: center;">
-                <button class="modal-close" onclick="closeBugModal()">×</button>
-                <h3 class="modal-title" style="margin-bottom: 15px;">Сообщить о проблеме</h3>
+                <div class="modal-header" style="margin-bottom: 15px;">
+                    <h3 class="modal-title">Сообщить о проблеме</h3>
+                    <button class="modal-close" onclick="closeBugModal()">×</button>
+                </div>
                 <p style="color: var(--text-secondary); margin-bottom: 25px; font-size: 0.95rem; line-height: 1.5;">
                     Если вы обнаружили баг, хотите предложить улучшение или задать вопрос, свяжитесь со мной напрямую удобным способом:
                 </p>
@@ -1550,8 +1662,10 @@
         <!-- Модальное окно для отзыва -->
         <div class="modal-overlay" id="reviewModal">
             <div class="modal-window" style="max-width: 500px;">
-                <button class="modal-close" onclick="closeReviewModal()">×</button>
-                <h3 class="modal-title">Твой отзыв</h3>
+                <div class="modal-header">
+                    <h3 class="modal-title">Твой отзыв</h3>
+                    <button class="modal-close" onclick="closeReviewModal()">×</button>
+                </div>
                 
                 <div id="review-form-content">
                     <!-- Звезды -->
@@ -1931,16 +2045,16 @@
                     const verMatch = text.match(/@version\s+([\d\.]+)/);
                     const version = verMatch ? verMatch[1] : '1.0';
                     
-                    // Поиск чейнджлога (парсит строку после @changelog)
+                    // Поиск чейнджлога
                     const changelogMatch = text.match(/@changelog\s+(.+)/);
                     if (changelogMatch && changelogMatch[1] && changelogText && changelogBox) {
                         changelogText.textContent = changelogMatch[1].trim();
-                        changelogBox.style.display = 'block'; // Показываем блок, если данные найдены
+                        changelogBox.style.display = 'block';
                     } else if (changelogBox) {
-                        changelogBox.style.display = 'none'; // Скрываем, если чейнджлога нет
+                        changelogBox.style.display = 'none';
                     }
                     
-                    let dateStr = "н/д";
+                    let dateStr = "";
                     try {
                         const apiResponse = await fetch(API_URL);
                         if (apiResponse.ok) {
@@ -1948,17 +2062,27 @@
                             if (data && data.length > 0) {
                                 const dateIso = data[0].commit.committer.date;
                                 const d = new Date(dateIso);
-                                dateStr = `${String(d.getDate()).padStart(2, '0')}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
+                                const currentYear = new Date().getFullYear();
+                                
+                                const day = String(d.getDate()).padStart(2, '0');
+                                const month = String(d.getMonth() + 1).padStart(2, '0');
+                                
+                                // Если год совпадает с текущим — скрываем его, иначе отображаем .YY
+                                if (d.getFullYear() === currentYear) {
+                                    dateStr = ` от ${day}.${month}`;
+                                } else {
+                                    dateStr = ` от ${day}.${month}.${String(d.getFullYear()).slice(2)}`;
+                                }
                             }
                         }
                     } catch (e) {
                         console.warn('Не удалось получить дату из API GitHub', e);
                     }
                     
-                    versionEl.textContent = `Версия ${version} от ${dateStr}`;
+                    versionEl.textContent = `${version}${dateStr}`;
                 } catch (error) {
                     console.error('Не удалось получить версию скрипта:', error);
-                    versionEl.textContent = 'Не удалось загрузить данные о версии';
+                    versionEl.textContent = 'Ошибка загрузки';
                     if (changelogBox) changelogBox.style.display = 'none';
                 }
             }
@@ -2190,13 +2314,13 @@
             // --- ЛОГИКА ДЛЯ ПРУЖИННОЙ ШАПКИ ---
             let targetProgress = 0;
             let currentProgress = 0;
+            let targetBottomOpacity = 0;
+            let currentBottomOpacity = 0;
             let velocity = 0;
             let isAnimating = false;
 
             const tension = 0.05;   
             const friction = 0.80; 
-
-            const maxVelocity = 0.06; 
 
             function updatePhysics() {
                 const diff = targetProgress - currentProgress;
@@ -2223,9 +2347,14 @@
 
                 document.documentElement.style.setProperty('--scroll-progress', currentProgress);
 
-                if (Math.abs(diff) < 0.001 && Math.abs(velocity) < 0.001) {
+                currentBottomOpacity += (targetBottomOpacity - currentBottomOpacity) * 0.12;
+                document.documentElement.style.setProperty('--bottom-opacity', currentBottomOpacity);
+
+                if (Math.abs(diff) < 0.001 && Math.abs(velocity) < 0.001 && Math.abs(targetBottomOpacity - currentBottomOpacity) < 0.001) {
                     currentProgress = targetProgress;
+                    currentBottomOpacity = targetBottomOpacity;
                     document.documentElement.style.setProperty('--scroll-progress', currentProgress);
+                    document.documentElement.style.setProperty('--bottom-opacity', currentBottomOpacity);
                     isAnimating = false;
                 } else {
                     requestAnimationFrame(updatePhysics);
@@ -2250,6 +2379,8 @@
                 const progressBottom = Math.min(Math.max(distFromBottom / 150, 0), 1);
                 
                 targetProgress = Math.min(progressTop, progressBottom);
+
+                targetBottomOpacity = 1 - progressBottom;
 
                 if (!isAnimating) {
                     isAnimating = true;
