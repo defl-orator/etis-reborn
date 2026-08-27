@@ -4,11 +4,11 @@
   # ЕТИС REBORN
   **Сделай ЕТИС великим снова**
 
-  [![Version](https://img.shields.io/badge/Версия-2.7-blue.svg)](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)
+  [![Version](https://img.shields.io/badge/Версия-2.8-blue.svg)](https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js)
   [![Website](https://img.shields.io/badge/Сайт-etisreborn.ru-success.svg)](https://etisreborn.ru/)
   [![License](https://img.shields.io/badge/Лицензия-MIT-green.svg)](LICENSE)
 
-  *Бесплатное браузерное расширение (userscript), которое полностью обновляет личный кабинет студента ПГНИУ. Современный дизайн, адаптация для смартфонов, полная кастомизация, синхронизация с календарями и умная аналитика.*
+  *Бесплатное браузерное расширение (userscript), которое полностью обновляет личный кабинет студента ПГНИУ. Современный дизайн, адаптация для смартфонов, полная кастомизация, синхронизация и аналитика.*
 
   [**🌐 Официальный сайт с установкой**](https://etisreborn.ru/) • [**🐛 Сообщить об ошибке**](https://etisreborn.ru/#bugreport)
 
