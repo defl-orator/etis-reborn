@@ -1,12 +1,12 @@
     // ==UserScript==
     // @name         ЕТИС REBORN
     // @namespace    http://tampermonkey.net/
-    // @version      2.7
-    // @changelog    Облачная синхронизация данных (Beta). Быстрый вход без ввода пароля. Доработка управления данными. 20 достижений в профиле.
-    // @description  Глобальный редизайн ЕТИСа
+    // @version      2.8
+    // @changelog    Обновлённая навигация на телефонах. Напоминания. Центр уведомлений. Тестирование бета-функций. ИИ-сводка объявлений. Вкладка с обучением. Подробное управление данными. Демо режим без входа в аккаунт.
+    // @description  Глобальное обновление ЕТИСа
     // @author       dya_dya
-    // @icon         https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
-    // @icon64       https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo.png
+    // @icon         https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png
+    // @icon64       https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png
     // @match        https://student.psu.ru/*
     // @run-at       document-start
     // @grant        GM_xmlhttpRequest
@@ -24,8 +24,157 @@
     (function() {
         'use strict';
 
-        // Флаг блокировки таймстампов во время инициализации и слияния
         let isSyncLocked = true;
+
+        // ==========================================
+        // ПРОВЕРКА ДЕМО-РЕЖИМА И ФИКТИВНОГО СТУДЕНТА
+        // ==========================================
+        const isDemoUser = () => {
+            if (sessionStorage.getItem('etis_demo_mode') === 'true') return true;
+            const infoText = (document.querySelector('.navbar-static-top .span12 > span')?.textContent ||
+                              document.querySelector('.sidebar-user-info')?.textContent || '').toLowerCase();
+            return infoText.includes('иванов иван иванович') && infoText.includes('программная инженерия');
+        };
+
+        // ==========================================
+        // МЕНЕДЖЕР ПРОФИЛЕЙ ДАННЫХ
+        // ==========================================
+        const ACCOUNT_DATA_KEYS = [
+            'etis_custom_pairs_v1',
+            'etis_subject_notes_v2',
+            'etis_important_pairs_v1',
+            'etis_reborn_grades_snapshot_v3',
+            'etis_consultation_files_v1',
+            'etis_weekly_pairs_history_v1',
+            'etis_ai_summaries_v1',
+            'etis_external_cals_v2',
+            'etis_notifications_history_v1',
+            'etis_accent_config',
+            'etis_sync_meta',
+            'etis_sync_code',
+            'etis_sync_toggles',
+            'etis_diploma_gpa',
+            'etis_added_msg_events',
+            'etis_last_cloud_counts_v1',
+            'etis_device_registered_in_cloud'
+        ];
+
+        function getStudentIdentityString() {
+            if (isDemoUser()) return 'demo_ivanov_ii_2022';
+
+            const nameNode = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info b');
+            if (nameNode) {
+                const clone = nameNode.cloneNode(true);
+                clone.querySelectorAll('span').forEach(s => s.remove());
+                const rawName = clone.textContent.replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim().toLowerCase();
+
+                let dir = '';
+                const originalInfo = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info');
+                if (originalInfo) {
+                    const spans = Array.from(originalInfo.querySelectorAll('span'));
+                    for (let span of spans) {
+                        const t = span.textContent.trim().toLowerCase();
+                        if (/^(очная|заочная|очно-заочная|вечерняя|\d{4}|курс|факультет)/i.test(t)) continue;
+                        dir = t.replace(/^(направление|специальность|профиль)\s*/i, '').trim();
+                        if (dir) break;
+                    }
+                }
+                if (rawName && dir) {
+                    const idStr = `${rawName}_${dir}`;
+                    if (typeof GM_setValue !== 'undefined') GM_setValue('etis_last_identity_str', idStr);
+                    return idStr;
+                }
+            }
+            if (typeof GM_getValue !== 'undefined') {
+                return GM_getValue('etis_last_identity_str', '');
+            }
+            return '';
+        }
+
+        function checkAndSwitchAccountProfile() {
+            const identityStr = getStudentIdentityString();
+            if (!identityStr) return;
+
+            let hash = 0;
+            for (let i = 0; i < identityStr.length; i++) {
+                hash = ((hash << 5) - hash) + identityStr.charCodeAt(i);
+                hash |= 0;
+            }
+            const currentProfileId = 'profile_' + Math.abs(hash);
+            const activeProfileId = localStorage.getItem('etis_active_profile_id');
+
+            if (activeProfileId !== currentProfileId) {
+                console.log(`%c[Data Profiles] Переключение профиля: ${activeProfileId || 'нет'} -> ${currentProfileId}`, 'color: #007AFF; font-weight: bold;');
+
+                // 1. Сохраняем текущие данные старого профиля в изолированное хранилище
+                if (activeProfileId) {
+                    const oldStore = {};
+                    ACCOUNT_DATA_KEYS.forEach(key => {
+                        const val = localStorage.getItem(key);
+                        if (val !== null) oldStore[key] = val;
+                    });
+                    localStorage.setItem(`etis_store_${activeProfileId}`, JSON.stringify(oldStore));
+                }
+
+                // 2. Очищаем активный localStorage
+                ACCOUNT_DATA_KEYS.forEach(key => localStorage.removeItem(key));
+
+                // 3. Загружаем данные нового профиля (если они уже были сохранены)
+                const newStoreRaw = localStorage.getItem(`etis_store_${currentProfileId}`);
+                if (newStoreRaw) {
+                    try {
+                        const newStore = JSON.parse(newStoreRaw);
+                        for (const [k, v] of Object.entries(newStore)) {
+                            localStorage.setItem(k, v);
+                        }
+                    } catch (e) {
+                        console.error('[Data Profiles] Ошибка чтения профиля:', e);
+                    }
+                }
+
+                // 4. Фиксируем активный профиль
+                localStorage.setItem('etis_active_profile_id', currentProfileId);
+
+                // 5. Переприменяем тему под новый профиль
+                if (typeof applyAccentColor === 'function') applyAccentColor();
+            }
+        }
+
+        // ==========================================
+        // КОМАНДА ДЛЯ ДЕМО-РЕЖИМА
+        // ==========================================
+        const targetWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+
+        targetWindow.e = targetWindow.etisDemo = (pageOrEnable = true) => {
+            if (pageOrEnable === false) {
+                sessionStorage.removeItem('etis_demo_mode');
+                sessionStorage.removeItem('etis_demo_page');
+                console.log('%c[ETIS Reborn] Демо-режим отключен. Перезагрузка...', 'color: #FF3B30; font-weight: bold;');
+            } else {
+                sessionStorage.setItem('etis_demo_mode', 'true');
+                if (typeof pageOrEnable === 'string') {
+                    sessionStorage.setItem('etis_demo_page', pageOrEnable);
+                } else if (!sessionStorage.getItem('etis_demo_page')) {
+                    sessionStorage.setItem('etis_demo_page', 'timetable');
+                }
+                console.log('%c[ETIS Reborn] Демо-режим активирован. Перезагрузка...', 'color: #34C759; font-weight: bold;');
+            }
+            window.location.reload();
+        };
+
+        targetWindow.ex = targetWindow.etisExitDemo = () => targetWindow.e(false);
+
+        // Команда переключения на тестовую ветку разработки
+        targetWindow.devBeta = targetWindow.etisDevBeta = (enable = true) => {
+            if (enable) {
+                localStorage.setItem('etis_dev_beta_branch', 'true');
+                console.log('%c[ETIS Reborn] Режим тестирования активен. Проверка обновлений переключена на etis-test.user.js', 'color: #34C759; font-weight: bold;');
+            } else {
+                localStorage.removeItem('etis_dev_beta_branch');
+                console.log('%c[ETIS Reborn] Режим тестирования отключен. Возврат на стабильную ветку etis.user.js', 'color: #FF3B30; font-weight: bold;');
+            }
+            initAutoUpdateCheck(true);
+        };
 
         // ==========================================
         // РЕГИСТРАЦИЯ И УПРАВЛЕНИЕ УСТРОЙСТВАМИ
@@ -60,7 +209,7 @@
         };
 
         // ==========================================
-        // БЕЗОПАСНОЕ ПОЛУЧЕНИЕ НАСТРОЕК СИНХРОНИЗАЦИИ
+        // ПОЛУЧЕНИЕ НАСТРОЕК СИНХРОНИЗАЦИИ
         // ==========================================
         const getSyncToggles = () => {
             const defaults = {
@@ -94,10 +243,8 @@
         document.documentElement.setAttribute('theme', initialTheme);
         const bgColor = initialTheme === 'dark' ? '#16181A' : '#F2F2F6';
 
-        // 1. Мгновенно красим html инлайново
         document.documentElement.style.setProperty('background-color', bgColor, 'important');
 
-        // 2. Жестко скрываем всё через стили максимально быстро
         const foucStyle = document.createElement('style');
         foucStyle.textContent = `
             html { background-color: ${bgColor} !important; }
@@ -110,7 +257,6 @@
             document.documentElement.appendChild(foucStyle);
         }
 
-        // 3. Перехватываем появление body и прячем инлайново
         const hideBody = () => {
             if (document.body) {
                 document.body.style.setProperty('opacity', '0', 'important');
@@ -118,7 +264,7 @@
                 document.body.style.setProperty('background-color', bgColor, 'important');
             }
         };
-        hideBody(); // На случай, если body уже есть
+        hideBody();
         const foucObserver = new MutationObserver(() => {
             if (document.body) {
                 hideBody();
@@ -128,12 +274,1605 @@
         foucObserver.observe(document.documentElement, { childList: true });
 
         // ==========================================
-        // НАСТРОЙКИ ОБНОВЛЕНИЯ И ТЕСТИРОВАНИЯ
+        // ЛОГИКА ОБНОВЛЕНИЯ И ТЕСТИРОВАНИЯ
         // ==========================================
-        const IS_TEST_MODE = false;
 
         const BASE_REPO_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/';
-        const UPDATE_URL = IS_TEST_MODE ? BASE_REPO_URL + 'etis-test.user.js' : BASE_REPO_URL + 'etis.user.js';
+        const RELEASE_URL = BASE_REPO_URL + 'etis.user.js';
+        const BETA_URL = BASE_REPO_URL + 'etis-test.user.js';
+
+        let updateState = {
+            status: 'idle',
+            hasUpdate: false,
+            isBeta: false,
+            remoteVer: '',
+            remoteDate: '',
+            remoteLog: '',
+            updateUrl: RELEASE_URL,
+            details: ''
+        };
+
+        const DEMO_TIMETABLE_HTML = `
+                    <div class="navbar navbar-static-top">
+                    <div class="navbar-inner">
+                        <div class="container">
+                            <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                            <div class="row" style="clear:both;">
+                                <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                                    <span style="color: #808080;white-space:nowrap;">Иванов Иван Иванович (01.01.2000 г.р.)
+                                        <span style="margin-left: 10px;">Программная инженерия</span>
+                                        <span style="margin-left: 10px;">очная</span>
+                                        <span style="margin-left: 10px;">2022</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+        <div class="container" style="padding-top: 20px;">
+                    <div class="row">
+                        <div class="span3">
+                            <ul class="nav nav-tabs nav-stacked">
+        <li><a href="stu.teach_plan">Мой учебный план</a></li>
+        <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+        <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+        <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+        <li class="active"><a href="stu.timetable">Мое расписание</a></li>
+        <li><a href="stu.signs">Мои оценки</a></li>
+        <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+        <li><a href="stu.orders">Приказы</a></li>
+        <li><a href="stu.library">Библиотека</a></li>
+        <li><a href="stu.teachers">Преподаватели</a></li>
+        <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+        <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+        <li><a href="stu_ann.announces">Объявления</a></li>
+        <li><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+        <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+        <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+        <li><a href="stu.electr">Электронные ресурсы</a></li>
+        <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+        <li><a href="stu_pay.contract_list">Договоры</a></li>
+        <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+        <li><a href="stu.sc_portfolio">Портфолио</a></li>
+        <li><a href="stu.about">О ресурсе</a></li>
+        </ul>
+        <ul class="nav nav-tabs nav-stacked">
+        <li><a style="background-color: #cd0a0a;color: white;" href="stu.term_test?p_toes_id=15" class="need_redirect">Анкетирование по прошедшему семестру</a></li>
+        <li><a href="stu.special_est_list" class="need_redirect">Опросы <span class="badge">1</span></a></li>
+        <li class="warn_menu"><a href="stu.term_test?p_toes_id=17" class="need_redirect">Пожалуйста, оцените дистанционное обучение!</a></li>
+        </ul>
+        <ul class="nav nav-tabs nav-stacked">
+        <li><a href="stu.change_pass_form">Смена пароля</a></li>
+        <li><a href="stu_email_pkg.change_email">Указать email</a></li>
+        <li><a href="stu.change_pr_page">Смена личной записи</a></li>
+        <li><a href="stu.logout" class="need_redirect">Выход</a></li>
+        </ul>
+        </div>
+
+        <div class="span9">
+        <div>
+            <h2>Синхронизация календаря с внешними сервисами &nbsp&nbsp <input id="tb_show" onclick="table_show()" type="button" value="показать"></h2>
+            <div id="resources" hidden>
+                <h3>С помощью стандарта iCalendar</h3>
+                <div style="margin-left: 1em;">
+                    <p>Чтобы подключить своё расписание к различным сервисам календарей...</p>
+                    <div id="calendar"><input type="text" id="textbox" value="https://ical.psu.ru/calendars/DEMO_CALENDAR_TOKEN" disabled>
+                        <button onclick="copyText()">Скопировать</button>
+                        <button onclick="del()">Отписаться</button>
+                    </div>
+                </div>
+            </div>
+        </div><br>
+        <a href="stu.schedule_detail?p_week=1" style="float: right;">Подробное расписание</a>
+        <div style="float: right;margin-right:15px;color:#0088CC;cursor:pointer;"><input type=checkbox checked> Консультации</div>
+        <a class="estimate_tt" href="cust.estimate_tt_form?p_tfg_id=375918">Напишите, что вы думаете о расписании!</a>
+        <div class="week-select">
+        <h3>Недели</h3>
+        <ul class="weeks">
+        <li class="week pract current" title="Теоретическое обучение">1</li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=2">2</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=3">3</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=4">4</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=5">5</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=6">6</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=7">7</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=8">8</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=9">9</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=10">10</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=11">11</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=12">12</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=13">13</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=14">14</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=15">15</a></li>
+        <li class="week pract" title="Теоретическое обучение"><a href="stu.timetable?p_cons=y&p_week=16">16</a></li>
+        <li class="week session" title="Экзаменационная сессия"><a href="stu.timetable?p_cons=y&p_week=17">17</a></li>
+        <li class="week session" title="Экзаменационная сессия"><a href="stu.timetable?p_cons=y&p_week=18">18</a></li>
+        <li class="week holiday" title="Каникулы"><a href="stu.timetable?p_cons=y&p_week=19">19</a></li>
+        <li class="week holiday" title="Каникулы"><a href="stu.timetable?p_cons=y&p_week=20">20</a></li>
+        </ul>
+        <div class="clear"></div>
+        <div style="margin-top: 5px;text-align:center;"><span>Неделя с 01.09.2025 по 07.09.2025</span></div>
+        </div>
+
+        <div class="timetable">
+        <div class="day">
+        <h3>Понедельник, 1 сентября</h3>
+        <table style="border-collapse:collapse;">
+        <tr>
+        <td class="pair_num">1 пара<br><font class="eval">8:00</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10103">Морозов Д. И.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10001">Архитектура распределенных систем (лек)</a></span></div><div class="aud">ауд. 501/8 (8 корпус, 5 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">3 пара<br><font class="eval">11:30</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10102">Кузнецова Е. Д.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10004">Алгоритмы и структуры данных (лек)</a></span></div><div class="aud">ауд. 107/5 (5 корпус, 1 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">4 пара<br><font class="eval">13:30</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10108">Смирнов Д. А.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10000">Основы алгоритмизации и процедурного программирования (практ)</a></span></div><div class="aud">ауд. 240/5 (5 корпус, 2 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        </table>
+        </div>
+
+        <div class="day">
+        <h3>Вторник, 2 сентября</h3>
+        <table style="border-collapse:collapse;">
+        <tr>
+        <td class="pair_num">1 пара<br><font class="eval">8:00</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10104">Васильева О. Н.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10002">Иностранный язык в сфере IT (лек)</a></span></div><div class="aud"><a href="https://us04web.zoom.us/j/5614978692?pwd=test" target="_blank">zoom</a></div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">2 пара<br><font class="eval">9:45</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10107">Федоров К. А.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10005">Проектирование высоконагруженных баз данных (лек)</a></span></div><div class="aud">ауд. 419/1 (1 корпус, 4 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">4 пара<br><font class="eval">13:30</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10101">Соколов А. В.</a></span><span class="dis">Консультация</span></div><div class="aud">ауд. 329/12 (12 корпус, 3 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">5 пара<br><font class="eval">15:15</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10107">Федоров К. А.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10005">Проектирование высоконагруженных баз данных (практ)</a></span></div><div class="aud">ауд. 308/8 (8 корпус, 3 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        </table>
+        </div>
+
+        <div class="day">
+        <h3>Среда, 3 сентября</h3>
+        <table style="border-collapse:collapse;">
+        <tr>
+        <td class="pair_num">3 пара<br><font class="eval">11:30</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10105">Павлов И. С.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10003">Инженерия машинного обучения (лек)</a></span></div><div class="aud">ауд. 501/8 (8 корпус, 5 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">4 пара<br><font class="eval">13:30</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10106">Григорьев М. П.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10003">Инженерия машинного обучения (практ)</a></span></div><div class="aud">ауд. 301/8 (8 корпус, 3 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">5 пара<br><font class="eval">15:15</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10102">Кузнецова Е. Д.</a></span><span class="dis">Консультация</span></div><div class="aud">ауд. 240/5 (5 корпус, 2 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        </table>
+        </div>
+
+        <div class="day">
+        <h3>Четверг, 4 сентября</h3>
+        <table style="border-collapse:collapse;">
+        <tr>
+        <td class="pair_num">2 пара<br><font class="eval">9:45</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10102">Кузнецова Е. Д.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10004">Алгоритмы и структуры данных (практ)</a></span></div><div class="aud">ауд. 240/5 (5 корпус, 2 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">4 пара<br><font class="eval">13:30</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10103">Морозов Д. И.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10001">Архитектура распределенных систем (практ)</a></span></div><div class="aud">ауд. 308/8 (8 корпус, 3 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">5 пара<br><font class="eval">15:15</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10109">Никитин К. В.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10007">Компьютерные сети и телекоммуникации (лек)</a></span></div><div class="aud">ауд. 107/5 (5 корпус, 1 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        </table>
+        </div>
+
+        <div class="day">
+        <h3>Пятница, 5 сентября</h3>
+        <div class="no_pairs">Пар нет!</div>
+        </div>
+
+        <div class="day">
+        <h3>Суббота, 6 сентября</h3>
+        <table style="border-collapse:collapse;">
+        <tr>
+        <td class="pair_num">1 пара<br><font class="eval">8:00</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10110">Андреев М. Г.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10015">Веб-технологии и клиентская разработка (лек)</a></span></div><div class="aud">ауд. 419/1 (1 корпус, 4 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">2 пара<br><font class="eval">9:45</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10110">Андреев М. Г.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10015">Веб-технологии и клиентская разработка (практ)</a></span></div><div class="aud">ауд. 303/8 (8 корпус, 3 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        <tr>
+        <td class="pair_num">4 пара<br><font class="eval">13:30</font></td>
+        <td class="pair_info"><div><div><span class="teacher"><a href="stu.teachers?#10107">Федоров К. А.</a></span><span class="dis"><a href="stu.tpr?p_tpr_id=10005">Проектирование высоконагруженных баз данных (практ)</a></span></div><div class="aud">ауд. 303/8 (8 корпус, 3 этаж)</div></div></td>
+        <td class="pair_jour">&nbsp;</td>
+        </tr>
+        </table>
+        </div>
+        </div>
+        </div>
+        </div>
+        </div>
+                `;
+
+        const DEMO_SIGNS_HTML = `
+            <div class="navbar navbar-static-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                    <div class="row" style="clear:both;">
+                        <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                            <span style="color: #808080;white-space:nowrap;">Иванов Иван Иванович (01.01.2000 г.р.)
+                                <span style="margin-left: 10px;">Программная инженерия</span>
+                                <span style="margin-left: 10px;">очная</span>
+                                <span style="margin-left: 10px;">2022</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            <div class="container" style="padding-top: 20px;">
+            <div class="row">
+            <div class="span3">
+                <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.teach_plan">Мой учебный план</a></li>
+            <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+            <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+            <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+            <li><a href="stu.timetable">Мое расписание</a></li>
+            <li class="active"><a href="stu.signs">Мои оценки</a></li>
+            <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+            <li><a href="stu.orders">Приказы</a></li>
+            <li><a href="stu.library">Библиотека</a></li>
+            <li><a href="stu.teachers">Преподаватели</a></li>
+            <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+            <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+            <li><a href="stu_ann.announces">Объявления</a></li>
+            <li><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+            <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+            <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+            <li><a href="stu.electr">Электронные ресурсы</a></li>
+            <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+            <li><a href="stu_pay.contract_list">Договоры</a></li>
+            <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+            <li><a href="stu.sc_portfolio">Портфолио</a></li>
+            <li><a href="stu.about">О ресурсе</a></li>
+            </ul>
+            <ul class="nav nav-tabs nav-stacked">
+            <li><a style="background-color: #cd0a0a;color: white;" href="stu.term_test?p_toes_id=15" class="need_redirect">Анкетирование по прошедшему семестру</a></li>
+            <li><a href="stu.special_est_list" class="need_redirect">Опросы <span class="badge">1</span></a></li>
+            <li class="warn_menu"><a href="stu.term_test?p_toes_id=17" class="need_redirect">Пожалуйста, оцените дистанционное обучение!</a></li>
+            </ul>
+            <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.change_pass_form">Смена пароля</a></li>
+            <li><a href="stu_email_pkg.change_email">Указать email</a></li>
+            <li><a href="stu.change_pr_page">Смена личной записи</a></li>
+            <li><a href="stu.logout" class="need_redirect">Выход</a></li>
+            </ul>
+            </div>
+
+            <div class="span9">
+            <div class="submenu">
+            <span class="submenu-item">
+            оценки за сессии
+            </span>
+            <span class="submenu-item">
+            <a class="dashed" href="stu.signs?p_mode=current">оценки в семестре</a>
+            </span>
+            <span class="submenu-item">
+            <a class="dashed" href="stu.signs?p_mode=rating">итоговый рейтинг за семестр</a>
+            </span>
+            <span class="submenu-item">
+            <a class="dashed" href="stu.signs?p_mode=diplom">оценки в диплом</a>
+            </span>
+            </div>
+            <table class="common">
+            <tr><th colspan="4" align="left">1 семестр (1 курс)
+            , конец промежуточной аттестации 25.01.2023
+            </th></tr>
+            <tr><th class="subheader">Дисциплина</th><th class="subheader">Оценка</th><th class="subheader">Дата</td><th class="subheader">Преподаватель</td></tr>
+            <tr><td>Основы алгоритмизации и процедурного программирования</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>22.01.2023</font></td><td>Смирнов Д.А.</td></tr>
+            <tr><td>Математический анализ</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>20.01.2023</font></td><td>Кузнецова Е.В.</td></tr>
+            <tr><td>Линейная алгебра и аналитическая геометрия</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>18.01.2023</font></td><td>Попов М.И.</td></tr>
+            <tr><td>Введение в специальность и цифровую этику</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>15.01.2023</font></td><td>Васильев А.С.</td></tr>
+            <tr><td>Дискретная математика</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>15.01.2023</font></td><td>Новикова О.П.</td></tr>
+            <tr><td>История России и инженерной мысли</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>14.01.2023</font></td><td>Морозов К.Н.</td></tr>
+            <tr><td>Иностранный язык (базовый курс)</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>15.01.2023</font></td><td>Федоров В.Л.</td></tr>
+            <tr><th colspan="4" align="left">2 семестр (1 курс)
+            , конец промежуточной аттестации 30.06.2023
+            </th></tr>
+            <tr><th class="subheader">Дисциплина</th><th class="subheader">Оценка</th><th class="subheader">Дата</td><th class="subheader">Преподаватель</td></tr>
+            <tr><td>Объектно-ориентированное программирование</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>25.06.2023</font></td><td>Смирнов Д.А.</td></tr>
+            <tr><td>Теория вероятностей и математическая статистика</td><td align=center><font color=blue>3</font></td><td align=center><font color=gray>28.06.2023</font></td><td>Михайлова Т.И.</td></tr>
+            <tr><td>Физические основы вычислительных систем</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>20.06.2023</font></td><td>Соколов Р.Е.</td></tr>
+            <tr><td>Алгоритмы и структуры данных</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>24.06.2023</font></td><td>Кузнецова Е.Д.</td></tr>
+            <tr><td>Экономика программных проектов</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>15.06.2023</font></td><td>Алексеев Г.М.</td></tr>
+            <tr><td>Прикладная физическая культура</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>20.06.2023</font></td><td>Лебедева Н.В.</td></tr>
+            <tr><td>Психология деловых коммуникаций</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>16.06.2023</font></td><td>Семенов Д.К.</td></tr>
+            <tr><td>Архитектура ЭВМ и операционные системы</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>27.06.2023</font></td><td>Егоров П.С.</td></tr>
+            <tr><th colspan="4" align="left">3 семестр (2 курс)
+            , конец промежуточной аттестации 25.01.2024
+            </th></tr>
+            <tr><th class="subheader">Дисциплина</th><th class="subheader">Оценка</th><th class="subheader">Дата</td><th class="subheader">Преподаватель</td></tr>
+            <tr><td>Веб-технологии и клиентская разработка</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>20.01.2024</font></td><td>Андреев М.Г.</td></tr>
+            <tr><td>Реляционные базы данных</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>22.01.2024</font></td><td>Захаров Д.О.</td></tr>
+            <tr><td>Компьютерные сети и телекоммуникации</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>24.01.2024</font></td><td>Никитин К.В.</td></tr>
+            <tr><td>Профессиональный иностранный язык</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>16.01.2024</font></td><td>Федоров В.Л.</td></tr>
+            <tr><td>Информационная безопасность и защита данных</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>14.01.2024</font></td><td>Орлов С.В.</td></tr>
+            <tr><td>Теория графов и комбинаторная оптимизация</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>15.01.2024</font></td><td>Зайцева А.Н.</td></tr>
+            <tr><td>Прикладная физическая культура</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>18.01.2024</font></td><td>Лебедева Н.В.</td></tr>
+            <tr><th colspan="4" align="left">4 семестр (2 курс)
+            , конец промежуточной аттестации 30.06.2024
+            </th></tr>
+            <tr><th class="subheader">Дисциплина</th><th class="subheader">Оценка</th><th class="subheader">Дата</td><th class="subheader">Преподаватель</td></tr>
+            <tr><td>Разработка серверных приложений</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>26.06.2024</font></td><td>Андреев М.Г.</td></tr>
+            <tr><td>Параллельное и распределенное программирование</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>24.06.2024</font></td><td>Соколов Р.Е.</td></tr>
+            <tr><td>Курсовой проект по базам данных</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>28.06.2024</font></td><td>Захаров Д.О.</td></tr>
+            <tr><td>Мобильная разработка (Android / iOS)</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>18.06.2024</font></td><td>Смирнов Д.А.</td></tr>
+            <tr><td>Тестирование и верификация ПО</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>20.06.2024</font></td><td>Козлова М.Ю.</td></tr>
+            <tr><td>Управление программными проектами</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>16.06.2024</font></td><td>Алексеев Г.М.</td></tr>
+            <tr><td>Введение в машинное обучение</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>19.06.2024</font></td><td>Кузнецова Е.В.</td></tr>
+            <tr><td>Научно-исследовательская работа (НИР)</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>25.06.2024</font></td><td>Смирнов Д.А.</td></tr>
+            <tr><th colspan="4" align="left">5 семестр (3 курс)
+            , конец промежуточной аттестации 25.01.2025
+            </th></tr>
+            <tr><th class="subheader">Дисциплина</th><th class="subheader">Оценка</th><th class="subheader">Дата</td><th class="subheader">Преподаватель</td></tr>
+            <tr><td>Глубокое обучение и нейросети</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>22.01.2025</font></td><td>Кузнецова Е.В.</td></tr>
+            <tr><td>Анализ больших данных (Big Data)</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>24.01.2025</font></td><td>Попов М.И.</td></tr>
+            <tr><td>Микросервисная архитектура</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>16.01.2025</font></td><td>Андреев М.Г.</td></tr>
+            <tr><td>DevOps и практики непрерывной интеграции (CI/CD)</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>18.01.2025</font></td><td>Никитин К.В.</td></tr>
+            <tr><td>Промышленный Python и асинхронность</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>15.01.2025</font></td><td>Смирнов Д.А.</td></tr>
+            <tr><td>Криптографические протоколы</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>20.01.2025</font></td><td>Орлов С.В.</td></tr>
+            <tr><th colspan="4" align="left">6 семестр (3 курс)
+            , конец промежуточной аттестации 30.06.2025
+            </th></tr>
+            <tr><th class="subheader">Дисциплина</th><th class="subheader">Оценка</th><th class="subheader">Дата</td><th class="subheader">Преподаватель</td></tr>
+            <tr><td>Архитектура распределенных систем</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>26.06.2025</font></td><td>Морозов Д.И.</td></tr>
+            <tr><td>Компьютерное зрение (Computer Vision)</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>28.06.2025</font></td><td>Кузнецова Е.В.</td></tr>
+            <tr><td>Обработка естественного языка (NLP)</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>24.06.2025</font></td><td>Попов М.И.</td></tr>
+            <tr><td>Командная разработка программного продукта</td><td align=center><font color=green>5</font></td><td align=center><font color=gray>29.06.2025</font></td><td>Смирнов Д.А.</td></tr>
+            <tr><td>Архитектура высоконагруженных систем</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>20.06.2025</font></td><td>Андреев М.Г.</td></tr>
+            <tr><td>Курсовой проект по программной инженерии</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>25.06.2025</font></td><td>Смирнов Д.А.</td></tr>
+            <tr><th colspan="4" align="left">7 семестр (4 курс)
+            , конец промежуточной аттестации 25.01.2026
+            </th></tr>
+            <tr><th class="subheader">Дисциплина</th><th class="subheader">Оценка</th><th class="subheader">Дата</td><th class="subheader">Преподаватель</td></tr>
+            <tr><td>Управление IT-инфраструктурой и SLA</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>20.01.2026</font></td><td>Алексеев Г.М.</td></tr>
+            <tr><td>Генеративный искусственный интеллект</td><td align=center><font color=green>зачет</font></td><td align=center><font color=gray>22.01.2026</font></td><td>Кузнецова Е.В.</td></tr>
+            <tr><td>Научно-исследовательская работа выпускника</td><td align=center><font color=green>4</font></td><td align=center><font color=gray>24.01.2026</font></td><td>Смирнов Д.А.</td></tr>
+            <tr><td>Архитектура корпоративных решений (Enterprise)</td><td align=center><font color=red>незачет</font></td><td align=center><font color=gray>25.01.2026</font></td><td>Андреев М.Г.</td></tr>
+            <tr><td>Квантовые вычисления и алгоритмы</td><td align=center><font color=red>незачет</font></td><td align=center><font color=gray>23.01.2026</font></td><td>Попов М.И.</td></tr>
+            <tr><th colspan="4" align="left">8 семестр (4 курс)
+            </th></tr>
+            <tr><th class="subheader">Дисциплина</th><th class="subheader">Оценка</th><th class="subheader">Дата</td><th class="subheader">Преподаватель</td></tr>
+            </table>
+            <p>
+            &nbsp;&nbsp;&nbsp;Показанные здесь оценки являются официальными и на основе этих результатов администрация вуза принимает решения о назначениях стипендий, переводах и отчислении. Если вы считаете, что какая – либо из ваших оценок указана неверно, то вам необходимо не откладывая принять меры по уточнению этой оценки.
+            </p>
+            </div>
+            </div>
+            </div>
+        `;
+
+        const DEMO_SIGNS_CURRENT_HTML = `
+            <div class="navbar navbar-static-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                    <div class="row" style="clear:both;">
+                        <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                            <span style="color: #808080;white-space:nowrap;">Иванов Иван Иванович (01.01.2000 г.р.)
+                                <span style="margin-left: 10px;">Программная инженерия</span>
+                                <span style="margin-left: 10px;">очная</span>
+                                <span style="margin-left: 10px;">2022</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            <div class="container" style="padding-top: 20px;">
+            <div class="row">
+            <div class="span3">
+                <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.teach_plan">Мой учебный план</a></li>
+            <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+            <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+            <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+            <li><a href="stu.timetable">Мое расписание</a></li>
+            <li class="active"><a href="stu.signs">Мои оценки</a></li>
+            <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+            <li><a href="stu.orders">Приказы</a></li>
+            <li><a href="stu.library">Библиотека</a></li>
+            <li><a href="stu.teachers">Преподаватели</a></li>
+            <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+            <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+            <li><a href="stu_ann.announces">Объявления</a></li>
+            <li><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+            <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+            <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+            <li><a href="stu.electr">Электронные ресурсы</a></li>
+            <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+            <li><a href="stu_pay.contract_list">Договоры</a></li>
+            <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+            <li><a href="stu.sc_portfolio">Портфолио</a></li>
+            <li><a href="stu.about">О ресурсе</a></li>
+            </ul>
+            </div>
+
+            <div class="span9">
+            <div class="submenu">
+            <span class="submenu-item"><a class="dashed" href="stu.signs">оценки за сессии</a></span>
+            <span class="submenu-item">оценки в семестре</span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=rating">итоговый рейтинг за семестр</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=diplom">оценки в диплом</a></span>
+            </div>
+
+            <h3>Архитектура распределенных систем</h3>
+            <table class="common">
+            <tr><th class="subheader" rowspan=2>Тема</th><th class="subheader" rowspan=2>Вид работы</th><th class="subheader" rowspan=2>Вид контроля</th><th class="subheader" rowspan=2>Оценка</th><th class="subheader" rowspan=2>Проходной балл</th><th class="subheader" colspan=2>Балл в рейтинг</th><th class="subheader" rowspan=2>Дата</th><th class="subheader" rowspan=2>Преподаватель</th></tr>
+            <tr><th class="subheader">текущий</th><th class="subheader">максимальный</th></tr>
+            <tr><td>Тема 1. Микросервисы и gRPC взаимодействие</td><td align=center>лек</td><td align=center>текущее контрольное мероприятие</td><td align=center><font color=green>20</font></td><td align=center>12</td><td align=center>20</td><td align=center>20</td><td align=center><font color=gray>15.02.2026</font></td><td>Морозов Д. И.</td></tr>
+            <tr><td>Тема 2. Брокеры сообщений Kafka и RabbitMQ</td><td align=center>практ</td><td align=center>текущее контрольное мероприятие</td><td align=center><font color=green>27</font></td><td align=center>18</td><td align=center>27</td><td align=center>30</td><td align=center><font color=gray>22.02.2026</font></td><td>Морозов Д. И.</td></tr>
+            <tr><td>Тема 3. Отказоустойчивость и CAP-теорема</td><td align=center>практ</td><td align=center>итоговое контрольное мероприятие</td><td align=center><font color=green>45</font></td><td align=center>30</td><td align=center>45</td><td align=center>50</td><td align=center><font color=gray>28.02.2026</font></td><td>Морозов Д. И.</td></tr>
+            <tr><td colspan=5 align=right><b>Всего:</b></td><td align=center>92</td><td align=center>100</td><td colspan=2></td></tr>
+            </table>
+
+            <h3>Алгоритмы и структуры данных</h3>
+            <table class="common">
+            <tr><th class="subheader" rowspan=2>Тема</th><th class="subheader" rowspan=2>Вид работы</th><th class="subheader" rowspan=2>Вид контроля</th><th class="subheader" rowspan=2>Оценка</th><th class="subheader" rowspan=2>Проходной балл</th><th class="subheader" colspan=2>Балл в рейтинг</th><th class="subheader" rowspan=2>Дата</th><th class="subheader" rowspan=2>Преподаватель</th></tr>
+            <tr><th class="subheader">текущий</th><th class="subheader">максимальный</th></tr>
+            <tr><td>Тема 1. Красно-черные деревья и B-деревья</td><td align=center>лек</td><td align=center>текущее контрольное мероприятие</td><td align=center><font color=green>25</font></td><td align=center>15</td><td align=center>25</td><td align=center>25</td><td align=center><font color=gray>10.02.2026</font></td><td>Кузнецова Е. Д.</td></tr>
+            <tr><td>Тема 2. Графовые алгоритмы (Дейкстра, А*)</td><td align=center>практ</td><td align=center>итоговое контрольное мероприятие</td><td align=center><font color=green>55</font></td><td align=center>40</td><td align=center>55</td><td align=center>75</td><td align=center><font color=gray>20.02.2026</font></td><td>Кузнецова Е. Д.</td></tr>
+            <tr><td colspan=5 align=right><b>Всего:</b></td><td align=center>80</td><td align=center>100</td><td colspan=2></td></tr>
+            </table>
+
+            <h3>Проектирование высоконагруженных баз данных</h3>
+            <table class="common">
+            <tr><th class="subheader" rowspan=2>Тема</th><th class="subheader" rowspan=2>Вид работы</th><th class="subheader" rowspan=2>Вид контроля</th><th class="subheader" rowspan=2>Оценка</th><th class="subheader" rowspan=2>Проходной балл</th><th class="subheader" colspan=2>Балл в рейтинг</th><th class="subheader" rowspan=2>Дата</th><th class="subheader" rowspan=2>Преподаватель</th></tr>
+            <tr><th class="subheader">текущий</th><th class="subheader">максимальный</th></tr>
+            <tr><td>Тема 1. Шардирование и партиционирование PostgreSQL</td><td align=center>лек</td><td align=center>текущее контрольное мероприятие</td><td align=center><font color=green>30</font></td><td align=center>18</td><td align=center>30</td><td align=center>30</td><td align=center><font color=gray>14.02.2026</font></td><td>Федоров К. А.</td></tr>
+            <tr><td>Тема 2. NoSQL хранилища и оптимизация индексов</td><td align=center>практ</td><td align=center>итоговое контрольное мероприятие</td><td align=center><font color=green>40</font></td><td align=center>35</td><td align=center>40</td><td align=center>70</td><td align=center><font color=gray>25.02.2026</font></td><td>Федоров К. А.</td></tr>
+            <tr><td colspan=5 align=right><b>Всего:</b></td><td align=center>70</td><td align=center>100</td><td colspan=2></td></tr>
+            </table>
+
+            <h3>Инженерия машинного обучения</h3>
+            <table class="common">
+            <tr><th class="subheader" rowspan=2>Тема</th><th class="subheader" rowspan=2>Вид работы</th><th class="subheader" rowspan=2>Вид контроля</th><th class="subheader" rowspan=2>Оценка</th><th class="subheader" rowspan=2>Проходной балл</th><th class="subheader" colspan=2>Балл в рейтинг</th><th class="subheader" rowspan=2>Дата</th><th class="subheader" rowspan=2>Преподаватель</th></tr>
+            <tr><th class="subheader">текущий</th><th class="subheader">максимальный</th></tr>
+            <tr><td>Тема 1. Пайплайны предобработки и Feature Engineering</td><td align=center>лек</td><td align=center>текущее контрольное мероприятие</td><td align=center><font color=green>35</font></td><td align=center>20</td><td align=center>35</td><td align=center>35</td><td align=center><font color=gray>16.02.2026</font></td><td>Павлов И. С.</td></tr>
+            <tr><td>Тема 2. Обучение градиентного бустинга и валидация</td><td align=center>практ</td><td align=center>итоговое контрольное мероприятие</td><td align=center><font color=green>60</font></td><td align=center>40</td><td align=center>60</td><td align=center>65</td><td align=center><font color=gray>26.02.2026</font></td><td>Григорьев М. П.</td></tr>
+            <tr><td colspan=5 align=right><b>Всего:</b></td><td align=center>95</td><td align=center>100</td><td colspan=2></td></tr>
+            </table>
+
+            <p>
+            &nbsp;&nbsp;&nbsp;Показанные здесь оценки являются официальными и на основе этих результатов администрация вуза принимает решения о назначениях стипендий, переводах и отчислении.
+            </p>
+            </div>
+            </div>
+            </div>
+        `;
+
+        const DEMO_SIGNS_RATING_HTML = `
+            <div class="navbar navbar-static-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                    <div class="row" style="clear:both;">
+                        <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                            <span style="color: #808080;white-space:nowrap;">Иванов Иван Иванович (01.01.2000 г.р.)
+                                <span style="margin-left: 10px;">Программная инженерия</span>
+                                <span style="margin-left: 10px;">очная</span>
+                                <span style="margin-left: 10px;">2022</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            <div class="container" style="padding-top: 20px;">
+            <div class="row">
+            <div class="span3">
+                <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.teach_plan">Мой учебный план</a></li>
+            <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+            <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+            <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+            <li><a href="stu.timetable">Мое расписание</a></li>
+            <li class="active"><a href="stu.signs">Мои оценки</a></li>
+            <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+            <li><a href="stu.orders">Приказы</a></li>
+            <li><a href="stu.library">Библиотека</a></li>
+            <li><a href="stu.teachers">Преподаватели</a></li>
+            <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+            <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+            <li><a href="stu_ann.announces">Объявления</a></li>
+            <li><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+            <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+            <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+            <li><a href="stu.electr">Электронные ресурсы</a></li>
+            <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+            <li><a href="stu_pay.contract_list">Договоры</a></li>
+            <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+            <li><a href="stu.sc_portfolio">Портфолио</a></li>
+            <li><a href="stu.about">О ресурсе</a></li>
+            </ul>
+            </div>
+
+            <div class="span9">
+            <div class="submenu">
+            <span class="submenu-item"><a class="dashed" href="stu.signs">оценки за сессии</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current">оценки в семестре</a></span>
+            <span class="submenu-item">итоговый рейтинг за семестр</span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=diplom">оценки в диплом</a></span>
+            </div>
+
+            <table class="common">
+            <tr>
+                <th class="subheader">Совокупность студентов</th>
+                <th class="subheader">Место в рейтинге</th>
+            </tr>
+            <tr>
+                <td>Академическая группа (ПИ-1)</td>
+                <td align=center>2 из 24</td>
+            </tr>
+            <tr>
+                <td>Курс (4 курс)</td>
+                <td align=center>4 из 68</td>
+            </tr>
+            <tr>
+                <td>Направление подготовки (Программная инженерия)</td>
+                <td align=center>4 из 68</td>
+            </tr>
+            <tr>
+                <td>Факультет (механико-математический)</td>
+                <td align=center>12 из 285</td>
+            </tr>
+            </table>
+
+            <p>
+            &nbsp;&nbsp;&nbsp;Показанные здесь оценки являются официальными и на основе этих результатов администрация вуза принимает решения о назначениях стипендий, переводах и отчислении.
+            </p>
+            </div>
+            </div>
+            </div>
+        `;
+
+        const DEMO_SIGNS_DIPLOM_HTML = `
+            <div class="navbar navbar-static-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                    <div class="row" style="clear:both;">
+                        <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                            <span style="color: #808080;white-space:nowrap;">Иванов Иван Иванович (01.01.2000 г.р.)
+                                <span style="margin-left: 10px;">Программная инженерия</span>
+                                <span style="margin-left: 10px;">очная</span>
+                                <span style="margin-left: 10px;">2022</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            <div class="container" style="padding-top: 20px;">
+            <div class="row">
+            <div class="span3">
+                <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.teach_plan">Мой учебный план</a></li>
+            <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+            <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+            <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+            <li><a href="stu.timetable">Мое расписание</a></li>
+            <li class="active"><a href="stu.signs">Мои оценки</a></li>
+            <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+            <li><a href="stu.orders">Приказы</a></li>
+            <li><a href="stu.library">Библиотека</a></li>
+            <li><a href="stu.teachers">Преподаватели</a></li>
+            <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+            <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+            <li><a href="stu_ann.announces">Объявления</a></li>
+            <li><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+            <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+            <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+            <li><a href="stu.electr">Электронные ресурсы</a></li>
+            <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+            <li><a href="stu_pay.contract_list">Договоры</a></li>
+            <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+            <li><a href="stu.sc_portfolio">Портфолио</a></li>
+            <li><a href="stu.about">О ресурсе</a></li>
+            </ul>
+            </div>
+
+            <div class="span9">
+            <div class="submenu">
+            <span class="submenu-item"><a class="dashed" href="stu.signs">оценки за сессии</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current">оценки в семестре</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=rating">итоговый рейтинг за семестр</a></span>
+            <span class="submenu-item">оценки в диплом</span>
+            </div>
+
+            <table class="common">
+            <tr>
+                <th class="subheader">Дисциплина</th>
+                <th class="subheader">Оценка</th>
+            </tr>
+            <tr><td>Основы алгоритмизации и процедурного программирования</td><td align=center>отлично</td></tr>
+            <tr><td>Математический анализ</td><td align=center>отлично</td></tr>
+            <tr><td>Линейная алгебра и аналитическая геометрия</td><td align=center>отлично</td></tr>
+            <tr><td>Объектно-ориентированное программирование</td><td align=center>отлично</td></tr>
+            <tr><td>Алгоритмы и структуры данных</td><td align=center>зачет</td></tr>
+            <tr><td>Реляционные базы данных</td><td align=center>хорошо</td></tr>
+            <tr><td>Компьютерные сети и телекоммуникации</td><td align=center>хорошо</td></tr>
+            <tr><td>Архитектура распределенных систем</td><td align=center>отлично</td></tr>
+            <tr><td>Инженерия машинного обучения</td><td align=center>отлично</td></tr>
+            <tr><td>Архитектура ЭВМ и операционные системы</td><td align=center>хорошо</td></tr>
+            <tr><td>Информационная безопасность и защита данных</td><td align=center>зачет</td></tr>
+            <tr><td>Разработка серверных приложений</td><td align=center>отлично</td></tr>
+            <tr><td>Командная разработка программного продукта</td><td align=center>отлично</td></tr>
+            <tr><td>Курсовой проект по базам данных</td><td align=center>хорошо</td></tr>
+            <tr><td>Производственная практика</td><td align=center>отлично</td></tr>
+            <tr><td>Выпускная квалификационная работа</td><td align=center>нет итоговой оценки</td></tr>
+            </table>
+
+            <p>
+            &nbsp;&nbsp;&nbsp;Итоговая оценка по дисциплине рассчитывается на основе оценок промежуточной аттестации.
+            </p>
+            </div>
+            </div>
+            </div>
+        `;
+
+        const DEMO_ANNOUNCES_HTML = `
+            <div class="navbar navbar-static-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                    <div class="row" style="clear:both;">
+                        <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                            <span style="color: #808080;white-space:nowrap;">Иванов Иван Иванович (01.01.2000 г.р.)
+                                <span style="margin-left: 10px;">Программная инженерия</span>
+                                <span style="margin-left: 10px;">очная</span>
+                                <span style="margin-left: 10px;">2022</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            <div class="container" style="padding-top: 20px;">
+            <div class="row">
+            <div class="span3">
+                <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.teach_plan">Мой учебный план</a></li>
+            <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+            <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+            <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+            <li><a href="stu.timetable">Мое расписание</a></li>
+            <li><a href="stu.signs">Мои оценки</a></li>
+            <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+            <li><a href="stu.orders">Приказы</a></li>
+            <li><a href="stu.library">Библиотека</a></li>
+            <li><a href="stu.teachers">Преподаватели</a></li>
+            <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+            <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+            <li class="active"><a href="stu_ann.announces">Объявления</a></li>
+            <li><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+            <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+            <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+            <li><a href="stu.electr">Электронные ресурсы</a></li>
+            <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+            <li><a href="stu_pay.contract_list">Договоры</a></li>
+            <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+            <li><a href="stu.sc_portfolio">Портфолио</a></li>
+            <li><a href="stu.about">О ресурсе</a></li>
+            </ul>
+            <ul class="nav nav-tabs nav-stacked">
+            <li><a style="background-color: #cd0a0a;color: white;" href="stu.term_test?p_toes_id=15" class="need_redirect">Анкетирование по прошедшему семестру</a></li>
+            <li><a href="stu.special_est_list" class="need_redirect">Опросы <span class="badge">1</span></a></li>
+            <li class="warn_menu"><a href="stu.term_test?p_toes_id=17" class="need_redirect">Пожалуйста, оцените дистанционное обучение!</a></li>
+            </ul>
+            <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.change_pass_form">Смена пароля</a></li>
+            <li><a href="stu_email_pkg.change_email">Указать email</a></li>
+            <li><a href="stu.change_pr_page">Смена личной записи</a></li>
+            <li><a href="stu.logout" class="need_redirect">Выход</a></li>
+            </ul>
+            </div>
+
+            <div class="span9">
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">24.02.2026 08:32:33</font>
+                        <br>
+                        <font style="font-weight:bold">перенос консультации по архитектуре распределенных систем на 26 февраля</font>
+                        <br>
+
+                        Уважаемые студенты.
+                        <br>
+                        Консультация у Морозова Д. И. переносится с 24 февраля на 26 февраля в 13.30, ауд. 421/2
+                        <br>
+                        <br>
+                        <br>
+
+                        Смирнов Д. А.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">24.02.2026 00:26:01</font>
+                        <br>
+                        <font style="font-weight:bold">Объявление</font>
+                        <br>
+
+                        Уважаемые студенты!
+                        <br>
+                        Вам необходимо подойти в деканат с 24-27 февраля в рабочее время
+                        <br>
+                        с 10.00 - 17.00 ч. (обед с 12.00 - 13.00 ч.)
+                        <br>
+                        кабинет 319 (корпус №2) для подписания 
+                        <br>
+                        Согласия на обработку персональных данных обучающегося в ПГНИУ.
+                        <br>
+                        <br>
+                        <br>
+                        <br>
+
+                        Иванова Е. С.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">19.02.2026 09:49:46</font>
+                        <br>
+                        <font style="font-weight:bold">VI Всероссийский хакатон по машинному обучению и Big Data</font>
+                        <br>
+
+                        ОПИСАНИЕ МЕРОПРИЯТИЯ
+                        <br>
+                        <br>
+                        Хакатон по анализу данных и искусственному интеллекту – проект для студентов и молодых специалистов, направленный на:
+                        <br>
+                        <br>
+                        1. решение реальных прикладных задач индустриальных партнеров в области анализа больших данных и компьютерного зрения;
+                        <br>
+                        <br>
+                        2. развитие профессионального IT-сообщества и обмен практическим опытом внедрения ML-моделей в продакшн;
+                        <br>
+                        <br>
+                        3. трудоустройство и стажировки: финалисты получают приглашения на интервью в ведущие IT-компании.
+                        <br>
+                        <br>
+                        Участие является бесплатным. Командам-финалистам предоставляется грант на проживание и проезд к месту очного финала.
+                        <br>
+                        <br>
+                        КТО МОЖЕТ ПРИНЯТЬ УЧАСТИЕ?
+                        <br>
+                        <br>
+                        Студенты бакалавриата, магистратуры и аспиранты технических направлений. Команды от 2 до 5 человек.
+                        <br>
+                        <br>
+                        СРОКИ ПРОВЕДЕНИЯ:
+                        <br>
+                        Подача заявки — до 5 марта (включительно).
+                        <br>
+                        Отборочный онлайн-этап — до 20 марта.
+                        <br>
+                        Очный финал — 30 марта – 3 апреля.
+                        <br>
+                        <br>
+                        ДОПОЛНИТЕЛЬНАЯ ИНФОРМАЦИЯ И РЕГИСТРАЦИЯ:
+                        <br>
+                        https://ai-hackathon.ru/2026
+                        <br>
+                        <br>
+                        <br>
+
+                        Кузнецова Е. В.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">18.02.2026 15:23:13</font>
+                        <br>
+
+                        Уважаемые студенты!
+                        <br>
+                        Для оперативного общения по учебным вопросам с деканатом созданы чаты групп в мессенджере MAX. Ссылка для подключения:
+                        <br>
+                        https://max.ru/join/demo-group-invite-link
+                        <br>
+                        Приглашаем присоединиться.
+                        <br>
+                        <br>
+                        <br>
+
+                        Васильев А. С.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">17.02.2026 17:36:21</font>
+                        <br>
+                        <font style="font-weight:bold">Подпишитесь на канал факультета в MAX</font>
+                        <br>
+
+                        Чтобы не потеряться на фоне ограничений сторонних сервисов, мы открыли официальный канал факультета. Здесь публикуются важные анонсы, дедлайны и расписание мероприятий.
+                        <br>
+                        <br>
+                        <a href="https://max.ru/permuniversity">ССЫЛКА НА КАНАЛ</a>
+                        <br>
+                        <br>
+                        <br>
+
+                        Козлова М. Ю.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">16.02.2026 18:42:52</font>
+                        <br>
+                        <font style="font-weight:bold">Образовательная среда будущего (опрос студентов)</font>
+                        <br>
+
+                        Здравствуйте, студенты!
+                        <br>
+                        <br>
+                        Просим вас оценить цифровую экосистему и инфраструктуру нашего университета. Опрос анонимный и займет не более 5 минут.
+                        <br>
+                        Опрос открыт до 28 февраля.
+                        <br>
+                        <br>
+                        <a href="https://anketolog.ru/s/demo-survey-2026">Ссылка на опрос</a>
+                        <br>
+                        <br>
+                        <br>
+
+                        Павлов А. В.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">09.02.2026 10:53:22</font>
+                        <br>
+                        <font style="font-weight:bold">важно! собрание по командному проекту 13 февраля в 15.15 в ауд.516/8</font>
+                        <br>
+
+                        Уважаемые студенты.
+                        <br>
+                        Информирую вас о том, что установочное собрание по командной проектной работе состоится 13 февраля в 15.15 в аудитории 516/8.
+                        <br>
+                        <br>
+                        <br>
+
+                        Смирнов Д. А.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">29.01.2026 12:29:26</font>
+                        <br>
+                        <font style="font-weight:bold">важно! официальная пересдача дисциплины "Параллельные вычисления"</font>
+                        <br>
+
+                        Уважаемые студенты.
+                        <br>
+                        Вам необходимо сдать лабораторные работы Соколову Р. Е. до 23 февраля.
+                        <br>
+                        Официальная пересдача — 24 февраля в 13.30, ауд. 421/2
+                        <br>
+                        <br>
+                        <br>
+
+                        Соколов Р. Е.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">28.01.2026 10:31:57</font>
+                        <br>
+                        <font style="font-weight:bold">важно! официальная пересдача дисциплины "Проектирование баз данных"</font>
+                        <br>
+
+                        Уважаемый Николай.
+                        <br>
+                        Сдать долги по контрольным точкам Захарову Д. О. необходимо до 25 февраля.
+                        <br>
+                        Для этого выполните задание из прикрепленного файла.
+                        <br>
+                        <br>
+                        <br>
+
+                        Захаров Д. О.
+                    </li>
+                    <li>
+                        <b>Прикреплённые файлы:</b>
+                    </li>
+                    <li>
+                        <a target="_blank" href="df_pkg.file_download?p_df_name=demo_db_task.docx&p_acc=sus&z_chk=12345">Задание по базам данных.docx</a>
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">18.01.2026 13:58:15</font>
+                        <br>
+                        <font style="font-weight:bold">график консультаций преподавателей кафедры программной инженерии</font>
+                        <br>
+
+                        Уважаемые студенты.
+                        <br>
+                        Высылаю график консультаций преподавателей кафедры программной инженерии на весенний семестр.
+                        <br>
+                        <br>
+                        <br>
+
+                        Смирнов Д. А.
+                    </li>
+                    <li>
+                        <b>Прикреплённые файлы:</b>
+                    </li>
+                    <li>
+                        <a target="_blank" href="df_pkg.file_download?p_df_name=cons_schedule_spring_2026.docx&p_acc=sus&z_chk=54321">график консультаций каф программной инженерии весна 2026.docx</a>
+                    </li>
+                </ul>
+            </div>
+            </div>
+            </div>
+        `;
+
+        const DEMO_NOTES_HTML = `
+            <div class="navbar navbar-static-top">
+            <div class="navbar-inner">
+                <div class="container">
+                    <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                    <div class="row" style="clear:both;">
+                        <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                            <span style="color: #808080;white-space:nowrap;">Иванов Иван Иванович (01.01.2000 г.р.)
+                                <span style="margin-left: 10px;">Программная инженерия</span>
+                                <span style="margin-left: 10px;">очная</span>
+                                <span style="margin-left: 10px;">2022</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            </div>
+            <div class="container" style="padding-top: 20px;">
+            <div class="row">
+            <div class="span3">
+                <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.teach_plan">Мой учебный план</a></li>
+            <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+            <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+            <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+            <li><a href="stu.timetable">Мое расписание</a></li>
+            <li><a href="stu.signs">Мои оценки</a></li>
+            <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+            <li><a href="stu.orders">Приказы</a></li>
+            <li><a href="stu.library">Библиотека</a></li>
+            <li><a href="stu.teachers">Преподаватели</a></li>
+            <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+            <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+            <li><a href="stu_ann.announces">Объявления</a></li>
+            <li class="active"><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+            <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+            <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+            <li><a href="stu.electr">Электронные ресурсы</a></li>
+            <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+            <li><a href="stu_pay.contract_list">Договоры</a></li>
+            <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+            <li><a href="stu.sc_portfolio">Портфолио</a></li>
+            <li><a href="stu.about">О ресурсе</a></li>
+            </ul>
+            <ul class="nav nav-tabs nav-stacked">
+            <li><a style="background-color: #cd0a0a;color: white;" href="stu.term_test?p_toes_id=15" class="need_redirect">Анкетирование по прошедшему семестру</a></li>
+            <li><a href="stu.special_est_list" class="need_redirect">Опросы <span class="badge">1</span></a></li>
+            <li class="warn_menu"><a href="stu.term_test?p_toes_id=17" class="need_redirect">Пожалуйста, оцените дистанционное обучение!</a></li>
+            </ul>
+            <ul class="nav nav-tabs nav-stacked">
+            <li><a href="stu.change_pass_form">Смена пароля</a></li>
+            <li><a href="stu_email_pkg.change_email">Указать email</a></li>
+            <li><a href="stu.change_pr_page">Смена личной записи</a></li>
+            <li><a href="stu.logout" class="need_redirect">Выход</a></li>
+            </ul>
+            </div>
+
+            <div class="span9">
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">22.02.2026 14:10:15</font>
+                        <br>
+                        <b><i>Морозов Д. И.</i></b>
+                        <br>
+                        <font color="#6A0035">Архитектура распределенных систем</font>
+                        <br>
+                        Уважаемые студенты! Лабораторная работа №2 загружена в репозиторий курса. Срок выполнения и защиты отчетов — до 10 марта включительно.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">15.02.2026 11:30:42</font>
+                        <br>
+                        <b><i>Кузнецова Е. Д.</i></b>
+                        <br>
+                        <font color="#6A0035">Алгоритмы и структуры данных</font>
+                        <br>
+                        Напоминаю, что на следующей практике состоится контрольное тестирование по теме «Красно-черные деревья и хеш-таблицы». Повторите материалы лекций №3 и №4.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">04.02.2026 16:45:00</font>
+                        <br>
+                        <b><i>Федоров К. А.</i></b>
+                        <br>
+                        <font color="#6A0035">Проектирование баз данных</font>
+                        <br>
+                        Студентам, выполняющим курсовой проект: высылайте концептуальные схемы баз данных (ER-диаграммы) на предварительную проверку до 20 февраля.
+                    </li>
+                </ul>
+                <br>
+                <ul class="nav msg">
+                    <li>
+                        <font color="#808080">28.01.2026 09:15:30</font>
+                        <br>
+                        <b><i>Смирнов Д. А.</i></b>
+                        <br>
+                        <font color="#6A0035">Основы алгоритмизации и процедурного программирования</font>
+                        <br>
+                        Итоговые баллы за 1-й модуль выставлены в систему. Если у вас возникли вопросы по оценкам за контрольные точки, приходите на консультацию в среду в 15:15 (ауд. 240/5).
+                    </li>
+                </ul>
+            </div>
+            </div>
+            </div>
+        `;
+
+        const DEMO_TEACH_PLAN_SHORT_HTML = `
+            <div class="navbar navbar-static-top">
+                <div class="navbar-inner">
+                    <div class="container">
+                        <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                        <div class="row" style="clear:both;">
+                            <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                                <span style="color: #808080;white-space:nowrap;">
+                                    Иванов Иван Иванович (01.01.2000 г.р.)
+                                    <span style="margin-left: 10px;">Программная инженерия</span>
+                                    <span style="margin-left: 10px;">очная</span>
+                                    <span style="margin-left: 10px;">2022</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container" style="padding-top: 20px;">
+                <div class="row">
+                    <div class="span3">
+                        <ul class="nav nav-tabs nav-stacked">
+                            <li class="active"><a href="stu.teach_plan">Мой учебный план</a></li>
+                            <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+                            <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+                            <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+                            <li><a href="stu.timetable">Мое расписание</a></li>
+                            <li><a href="stu.signs">Мои оценки</a></li>
+                            <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+                            <li><a href="stu.orders">Приказы</a></li>
+                            <li><a href="stu.library">Библиотека</a></li>
+                            <li><a href="stu.teachers">Преподаватели</a></li>
+                            <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+                            <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+                            <li><a href="stu_ann.announces">Объявления</a></li>
+                            <li><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+                            <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+                            <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+                            <li><a href="stu.electr">Электронные ресурсы</a></li>
+                            <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+                            <li><a href="stu_pay.contract_list">Договоры</a></li>
+                            <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+                            <li><a href="stu.sc_portfolio">Портфолио</a></li>
+                            <li><a href="stu.about">О ресурсе</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="span9">
+                        <div class="submenu">
+                            <span class="submenu-item"><a class="dashed" href="stu.teach_plan?p_mode=advanced">детально</a></span>
+                            <span class="submenu-item">кратко</span>
+                            <span class="submenu-item"><a class="dashed" href="stu.fcl_choice">факультативы</a></span>
+                            <span class="submenu-item"><a class="dashed" href="stu.teach_plan?p_mode=choose_dis">указать дисциплины по выбору</a></span>
+                        </div>
+                        <a href="cust.est_plan_form_stu?p_tp_id=11169" style="cursor:pointer;float:right;">оценить учебный план</a>
+
+                        <h3>1 семестр (1 курс)</h3>
+                        <table class="common">
+                            <tr><th class="subheader">Дисциплина</th><th class="subheader">Отчетность</th><th class="subheader">Часы</th></tr>
+                            <tr><td>Основы алгоритмизации и процедурного программирования</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Математический анализ</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Линейная алгебра и аналитическая геометрия</td><td align="center">экзамен</td><td align="center">144</td></tr>
+                            <tr><td>Дискретная математика</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Введение в специальность и цифровую этику</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>История России и инженерной мысли</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Иностранный язык (базовый курс)</td><td align="center">зачет</td><td align="center">72</td></tr>
+                        </table>
+
+                        <h3>2 семестр (1 курс)</h3>
+                        <table class="common">
+                            <tr><th class="subheader">Дисциплина</th><th class="subheader">Отчетность</th><th class="subheader">Часы</th></tr>
+                            <tr><td>Объектно-ориентированное программирование</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Теория вероятностей и математическая статистика</td><td align="center">экзамен</td><td align="center">144</td></tr>
+                            <tr><td>Алгоритмы и структуры данных</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Физические основы вычислительных систем</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Экономика программных проектов</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Архитектура ЭВМ и операционные системы</td><td align="center">экзамен</td><td align="center">144</td></tr>
+                            <tr><td>Психология деловых коммуникаций</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Прикладная физическая культура</td><td align="center">зачет</td><td align="center">72</td></tr>
+                        </table>
+
+                        <h3>3 семестр (2 курс)</h3>
+                        <table class="common">
+                            <tr><th class="subheader">Дисциплина</th><th class="subheader">Отчетность</th><th class="subheader">Часы</th></tr>
+                            <tr><td>Веб-технологии и клиентская разработка</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Реляционные базы данных</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Компьютерные сети и телекоммуникации</td><td align="center">экзамен</td><td align="center">144</td></tr>
+                            <tr><td>Профессиональный иностранный язык</td><td align="center">зачет</td><td align="center">72</td></tr>
+                            <tr><td>Информационная безопасность и защита данных</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Теория графов и комбинаторная оптимизация</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Безопасность жизнедеятельности</td><td align="center">зачет</td><td align="center">108</td></tr>
+                        </table>
+
+                        <h3>4 семестр (2 курс)</h3>
+                        <table class="common">
+                            <tr><th class="subheader">Дисциплина</th><th class="subheader">Отчетность</th><th class="subheader">Часы</th></tr>
+                            <tr><td>Разработка серверных приложений</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Параллельное и распределенное программирование</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Курсовой проект по базам данных</td><td align="center">экзамен</td><td align="center">108</td></tr>
+                            <tr><td>Мобильная разработка (Android / iOS)</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Тестирование и верификация ПО</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Управление программными проектами</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Введение в машинное обучение</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Научно-исследовательская работа (НИР)</td><td align="center">экзамен</td><td align="center">144</td></tr>
+                        </table>
+
+                        <h3>5 семестр (3 курс)</h3>
+                        <table class="common">
+                            <tr><th class="subheader">Дисциплина</th><th class="subheader">Отчетность</th><th class="subheader">Часы</th></tr>
+                            <tr><td>Глубокое обучение и нейросети</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Анализ больших данных (Big Data)</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Микросервисная архитектура</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>DevOps и практики непрерывной интеграции (CI/CD)</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Промышленный Python и асинхронность</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Криптографические протоколы</td><td align="center">экзамен</td><td align="center">144</td></tr>
+                        </table>
+
+                        <h3>6 семестр (3 курс)</h3>
+                        <table class="common">
+                            <tr><th class="subheader">Дисциплина</th><th class="subheader">Отчетность</th><th class="subheader">Часы</th></tr>
+                            <tr><td>Архитектура распределенных систем</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Компьютерное зрение (Computer Vision)</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Обработка естественного языка (NLP)</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Командная разработка программного продукта</td><td align="center">экзамен</td><td align="center">216</td></tr>
+                            <tr><td>Архитектура высоконагруженных систем</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Курсовой проект по программной инженерии</td><td align="center">экзамен</td><td align="center">108</td></tr>
+                        </table>
+
+                        <h3>7 семестр (4 курс)</h3>
+                        <table class="common">
+                            <tr><th class="subheader">Дисциплина</th><th class="subheader">Отчетность</th><th class="subheader">Часы</th></tr>
+                            <tr><td>Квантовые вычисления и алгоритмы</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Научно-исследовательская работа выпускника</td><td align="center">экзамен</td><td align="center">180</td></tr>
+                            <tr><td>Генеративный искусственный интеллект</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Управление IT-инфраструктурой и SLA</td><td align="center">зачет</td><td align="center">108</td></tr>
+                            <tr><td>Архитектура корпоративных решений (Enterprise)</td><td align="center">зачет</td><td align="center">108</td></tr>
+                        </table>
+
+                        <h3>8 семестр (4 курс)</h3>
+                        <table class="common">
+                            <tr><th class="subheader">Дисциплина</th><th class="subheader">Отчетность</th><th class="subheader">Часы</th></tr>
+                            <tr><td>Производственная преддипломная практика</td><td align="center">зачет</td><td align="center">216</td></tr>
+                            <tr><td>Выполнение и защита выпускной квалификационной работы</td><td align="center">экзамен</td><td align="center">216</td></tr>
+                            <tr><td>Подготовка к сдаче и сдача государственного экзамена</td><td align="center">экзамен</td><td align="center">108</td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const DEMO_TEACH_PLAN_ADVANCED_HTML = `
+            <div class="navbar navbar-static-top">
+                <div class="navbar-inner">
+                    <div class="container">
+                        <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                        <div class="row" style="clear:both;">
+                            <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                                <span style="color: #808080;white-space:nowrap;">
+                                    Иванов Иван Иванович (01.01.2000 г.р.)
+                                    <span style="margin-left: 10px;">Программная инженерия</span>
+                                    <span style="margin-left: 10px;">очная</span>
+                                    <span style="margin-left: 10px;">2022</span>
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container" style="padding-top: 20px;">
+                <div class="row">
+                    <div class="span3">
+                        <ul class="nav nav-tabs nav-stacked">
+                            <li class="active"><a href="stu.teach_plan">Мой учебный план</a></li>
+                            <li><a href="ebl_stu.ebl_choice"><font color=green><b>Элективы</b></font></a></li>
+                            <li><a href="stu.teach_plan?p_mode=choose_dis"><font color=green><b>Дисциплины по выбору</b></font></a></li>
+                            <li><a href="stu.fcl_choice"><font color=green><b>Факультативы</b></font></a></li>
+                            <li><a href="stu.timetable">Мое расписание</a></li>
+                            <li><a href="stu.signs">Мои оценки</a></li>
+                            <li><a href="stu.absence">Пропущенные занятия (2)</a></li>
+                            <li><a href="stu.orders">Приказы</a></li>
+                            <li><a href="stu.library">Библиотека</a></li>
+                            <li><a href="stu.teachers">Преподаватели</a></li>
+                            <li><a href="est_pkg.show_list">Обратная связь (3/0)</a></li>
+                            <li><a href="stu_jour.group_tt">Журнал посещений</a></li>
+                            <li><a href="stu_ann.announces">Объявления</a></li>
+                            <li><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+                            <li><a href="stu.ses?p_ses_id=1875&p_foe_id=1">Образовательный стандарт</a></li>
+                            <li><a href="stu_plus.advice"><font color=green><b>Рекомендации и советы обучающимся</b></font></a></li>
+                            <li><a href="stu.electr">Электронные ресурсы</a></li>
+                            <li><a href="cert_pkg.stu_certif">Заказ справок</a></li>
+                            <li><a href="stu_pay.contract_list">Договоры</a></li>
+                            <li><a href="stu_plus.blank_forms">Бланки форм и документов</a></li>
+                            <li><a href="stu.sc_portfolio">Портфолио</a></li>
+                            <li><a href="stu.about">О ресурсе</a></li>
+                        </ul>
+                    </div>
+
+                    <div class="span9">
+                        <div class="submenu">
+                            <span class="submenu-item">детально</span>
+                            <span class="submenu-item"><a class="dashed" href="stu.teach_plan?p_mode=short">кратко</a></span>
+                            <span class="submenu-item"><a class="dashed" href="stu.fcl_choice">факультативы</a></span>
+                            <span class="submenu-item"><a class="dashed" href="stu.teach_plan?p_mode=choose_dis">указать дисциплины по выбору</a></span>
+                        </div>
+                        <a href="cust.est_plan_form_stu?p_tp_id=11169" style="cursor:pointer;float:right;">оценить учебный план</a>
+                        <h3>Календарный учебный график. Курс 4</h3>
+                        <p>
+                            <b>осенний семестр</b>
+                            <div>01.09.2025 - 28.12.2025 теоретическое обучение и практики</div>
+                            <div>29.12.2025 - 25.01.2026 экзаменационная сессия</div>
+                            <div>26.01.2026 - 08.02.2026 каникулы</div>
+                        </p>
+                        <p>
+                            <b>весенний семестр</b>
+                            <div>09.02.2026 - 31.05.2026 теоретическое обучение и преддипломная практика</div>
+                            <div>01.06.2026 - 28.06.2026 итоговая государственная аттестация (защита ВКР)</div>
+                            <div>29.06.2026 - 31.08.2026 каникулы</div>
+                        </p>
+                        <br>
+                        <table class="teach_plan time_budget" bgcolor=#D0D0D0 border=0 cellpadding=2 cellspacing=1>
+                            <tr><td colspan=8 class=w align=center><b>СВОДНЫЕ ДАННЫЕ ПО БЮДЖЕТУ ВРЕМЕНИ (В НЕДЕЛЯХ)</b></td></tr>
+                            <tr>
+                                <td class=bg_bold valign=top align=center>Семестр</td>
+                                <td class=bg_bold valign=top align=center>Теоретическое<br>обучение</td>
+                                <td class=bg_bold valign=top align=center>Экзаменационные<br>сессии</td>
+                                <td class=bg_bold valign=top align=center>Гос. экзамены</td>
+                                <td class=bg_bold valign=top align=center>Практики</td>
+                                <td class=bg_bold valign=top align=center>Выпуск. квалиф.<br>работа</td>
+                                <td class=bg_bold valign=top align=center>Каникулы</td>
+                                <td class=bg_bold valign=top align=center>Всего</td>
+                            </tr>
+                            <tr><td align=center class=w>1</td><td class=w align=center>17</td><td class=w align=center>4</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w align=center>2</td><td class=w align=center>23</td></tr>
+                            <tr><td align=center class=w>2</td><td class=w align=center>17</td><td class=w align=center>4</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w align=center>8</td><td class=w align=center>29</td></tr>
+                            <tr><td align=center class=w>3</td><td class=w align=center>17</td><td class=w align=center>4</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w align=center>2</td><td class=w align=center>23</td></tr>
+                            <tr><td align=center class=w>4</td><td class=w align=center>17</td><td class=w align=center>4</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w align=center>8</td><td class=w align=center>29</td></tr>
+                            <tr><td align=center class=w>5</td><td class=w align=center>17</td><td class=w align=center>4</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w align=center>2</td><td class=w align=center>23</td></tr>
+                            <tr><td align=center class=w>6</td><td class=w align=center>17</td><td class=w align=center>4</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w align=center>8</td><td class=w align=center>29</td></tr>
+                            <tr><td align=center class=w>7</td><td class=w align=center>17</td><td class=w align=center>4</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w>&nbsp;</td><td class=w align=center>2</td><td class=w align=center>23</td></tr>
+                            <tr><td align=center class=w>8</td><td class=w align=center>12</td><td class=w>&nbsp;</td><td class=w align=center>2</td><td class=w align=center>4</td><td class=w align=center>4</td><td class=w align=center>8</td><td class=w align=center>30</td></tr>
+                            <tr><td class=bg_bold>&nbsp;</td><td class=bg_bold align=center>126</td><td class=bg_bold align=center>28</td><td class=bg_bold align=center>2</td><td class=bg_bold align=center>4</td><td class=bg_bold align=center>4</td><td class=bg_bold align=center>40</td><td class=bg_bold align=center>209</td></tr>
+                        </table>
+
+                        <h3>План учебного процесса</h3>
+                        <table class="teach_plan dis_table" border=0 cellpadding=2 cellspacing=1>
+                            <tr class=cgrlheaderrow>
+                                <th rowspan=3 align=center>Индекс</th>
+                                <th rowspan=3 align=center>Название блоков, модулей, дисциплин</th>
+                                <th colspan=3>Распределение<br>по семестрам</th>
+                                <th colspan=6 align=center>Всего часов</th>
+                                <th colspan=8 align=center>Распределение<br>по семестрам</th>
+                            </tr>
+                            <tr class=cgrlheaderrow>
+                                <th rowspan=2>экза-<br>менов</th>
+                                <th rowspan=2>зачетов</th>
+                                <th rowspan=2>курсо-<br>вых<br>работ</th>
+                                <th rowspan=2 align=center>Трудо<br>емк.</th>
+                                <th colspan=4 align=center>аудиторных</th>
+                                <th align=center valign=top rowspan=2>сам</th>
+                                <th align=center>1</th>
+                                <th align=center>2</th>
+                                <th align=center>3</th>
+                                <th align=center>4</th>
+                                <th align=center>5</th>
+                                <th align=center>6</th>
+                                <th align=center>7</th>
+                                <th align=center>8</th>
+                            </tr>
+                            <tr class=cgrlheaderrow>
+                                <th class=low align=center>Всего</th>
+                                <th align=center class=low>лек</th>
+                                <th align=center class=low>практ</th>
+                                <th align=center class=low>лаб</th>
+                                <th align=center>17</th>
+                                <th align=center>17</th>
+                                <th align=center>17</th>
+                                <th align=center>17</th>
+                                <th align=center>17</th>
+                                <th align=center>17</th>
+                                <th align=center>17</th>
+                                <th align=center>12</th>
+                            </tr>
+                            <tr height=1></tr>
+                            <tr class="cgrldatarow" bgcolor="#F6F6F6">
+                                <td class=bg_bold>Б.1</td>
+                                <td class=bg_bold><font class="fb">Дисциплины (модули)</font></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=right class=bg_bold><font color=red>210</font><br><font color=gray>7560</font></td>
+                                <td align=right>3120</td><td align=right>1340</td><td align=right>1200</td><td align=right>580</td><td align=right>4440</td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#FAFAFA">
+                                <td></td>
+                                <td style="padding-left:50px;"><a href="stu.tpr?p_tpr_id=10001">Основы алгоритмизации и процедурного программирования</a></td>
+                                <td align=center>1</td><td align=center></td><td align=center></td>
+                                <td align=right>180</td><td align=right>68</td><td align=right>34</td><td align=right>34</td><td align=right>0</td><td align=right>112</td>
+                                <td title="семестр 1" align=center>4<br><font color=gray>10.5</font></td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#FAFAFA">
+                                <td></td>
+                                <td style="padding-left:50px;"><a href="stu.tpr?p_tpr_id=10004">Объектно-ориентированное программирование</a></td>
+                                <td align=center>2</td><td align=center></td><td align=center></td>
+                                <td align=right>180</td><td align=right>68</td><td align=right>34</td><td align=right>34</td><td align=right>0</td><td align=right>112</td>
+                                <td></td><td title="семестр 2" align=center>4<br><font color=gray>10.5</font></td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#FAFAFA">
+                                <td></td>
+                                <td style="padding-left:50px;"><a href="stu.tpr?p_tpr_id=10005">Алгоритмы и структуры данных</a></td>
+                                <td align=center>2</td><td align=center></td><td align=center></td>
+                                <td align=right>180</td><td align=right>68</td><td align=right>34</td><td align=right>34</td><td align=right>0</td><td align=right>112</td>
+                                <td></td><td title="семестр 2" align=center>4<br><font color=gray>10.5</font></td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#FAFAFA">
+                                <td></td>
+                                <td style="padding-left:50px;"><a href="stu.tpr?p_tpr_id=10008">Архитектура распределенных систем</a></td>
+                                <td align=center>6</td><td align=center></td><td align=center></td>
+                                <td align=right>180</td><td align=right>68</td><td align=right>34</td><td align=right>34</td><td align=right>0</td><td align=right>112</td>
+                                <td></td><td></td><td></td><td></td><td></td>
+                                <td title="семестр 6" align=center>4<br><font color=gray>10.5</font></td>
+                                <td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#FAFAFA">
+                                <td></td>
+                                <td style="padding-left:50px;"><a href="stu.tpr?p_tpr_id=10009">Инженерия машинного обучения</a></td>
+                                <td align=center>5</td><td align=center></td><td align=center></td>
+                                <td align=right>180</td><td align=right>68</td><td align=right>34</td><td align=right>34</td><td align=right>0</td><td align=right>112</td>
+                                <td></td><td></td><td></td><td></td>
+                                <td title="семестр 5" align=center>4<br><font color=gray>10.5</font></td>
+                                <td></td><td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#F6F6F6">
+                                <td class=bg_bold>Б.2</td>
+                                <td class=bg_bold><font class="fb">Практики</font></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=right class=bg_bold><font color=red>21</font><br><font color=gray>756</font></td>
+                                <td align=right>112</td><td align=right>0</td><td align=right>112</td><td align=right>0</td><td align=right>644</td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#FAFAFA">
+                                <td></td>
+                                <td style="padding-left:50px;"><a href="stu.tpr?p_tpr_id=10010">Командная разработка программного продукта</a></td>
+                                <td align=center>6</td><td align=center></td><td align=center></td>
+                                <td align=right>216</td><td align=right>68</td><td align=right>0</td><td align=right>68</td><td align=right>0</td><td align=right>148</td>
+                                <td></td><td></td><td></td><td></td><td></td>
+                                <td title="семестр 6" align=center>4<br><font color=gray>8.5</font></td>
+                                <td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#F6F6F6">
+                                <td class=bg_bold>Б.3</td>
+                                <td class=bg_bold><font class="fb">Государственная итоговая аттестация</font></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=center class=bg_bold></td>
+                                <td align=right class=bg_bold><font color=red>9</font><br><font color=gray>324</font></td>
+                                <td align=right>0</td><td align=right>0</td><td align=right>0</td><td align=right>0</td><td align=right>324</td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                            </tr>
+                            <tr class="cgrldatarow" bgcolor="#FAFAFA">
+                                <td></td>
+                                <td style="padding-left:50px;"><a href="stu.tpr?p_tpr_id=10013">Выполнение и защита выпускной квалификационной работы</a></td>
+                                <td align=center>8</td><td align=center></td><td align=center></td>
+                                <td align=right>216</td><td align=right>0</td><td align=right>0</td><td align=right>0</td><td align=right>0</td><td align=right>216</td>
+                                <td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+                                <td title="семестр 8" align=center>0<br><font color=gray>12.7</font></td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Функция сравнения версий
+        function compareVersions(v1, v2) {
+            if (!v1 || !v2) return 0;
+            const p1 = v1.split('.');
+            const p2 = v2.split('.');
+
+            for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
+                let s1 = p1[i] || "0";
+                let s2 = p2[i] || "0";
+
+                if (s1.length !== s2.length) {
+                    const maxLen = Math.max(s1.length, s2.length);
+                    s1 = s1.padEnd(maxLen, '0');
+                    s2 = s2.padEnd(maxLen, '0');
+                }
+
+                const n1 = parseInt(s1, 10);
+                const n2 = parseInt(s2, 10);
+
+                if (n1 > n2) return 1;
+                if (n1 < n2) return -1;
+            }
+            return 0;
+        }
+
+        // Безопасное получение заголовков
+        function getHeaderSafe(res, headerName) {
+            if (typeof res.getResponseHeader === 'function') {
+                try { return res.getResponseHeader(headerName); } catch(e) {}
+            }
+            if (res.responseHeaders) {
+                const regex = new RegExp(headerName + ':\\s*(.*)', 'i');
+                const match = res.responseHeaders.match(regex);
+                return match ? match[1] : null;
+            }
+            return null;
+        }
+
+        // Загрузка метаданных скрипта
+        function fetchScriptMeta(url) {
+            return new Promise((resolve) => {
+                GM_xmlhttpRequest({
+                    method: "GET",
+                    url: url + '?t=' + Date.now(),
+                    timeout: 10000,
+                    onload: (res) => {
+                        if (res.status === 200) {
+                            const text = res.responseText;
+                            const verMatch = text.match(/@version\s+([\d\.]+)/);
+                            const logMatch = text.match(/@changelog\s+(.*)/);
+                            if (verMatch) {
+                                let dateStr = "н/д";
+                                const lastMod = getHeaderSafe(res, "Last-Modified") || getHeaderSafe(res, "Date");
+                                if (lastMod) {
+                                    const d = new Date(lastMod);
+                                    if (!isNaN(d.getTime())) {
+                                        dateStr = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
+                                    }
+                                }
+                                resolve({
+                                    success: true,
+                                    version: verMatch[1],
+                                    changelog: logMatch ? logMatch[1].trim() : "",
+                                    date: dateStr,
+                                    url: url
+                                });
+                                return;
+                            }
+                        }
+                        resolve({ success: false });
+                    },
+                    onerror: () => resolve({ success: false })
+                });
+            });
+        }
+
+        // Основная функция проверки обновлений
+        async function initAutoUpdateCheck(isManual = false) {
+            if (updateState.status === 'loading' && !isManual) return;
+            updateState.status = 'loading';
+            if (isManual) refreshModalUI();
+
+            try {
+                const currentVer = GM_info.script.version;
+                const checkBeta = generalConfig.betaUpdates === true;
+
+                // Проверяем тестовую ветку только если включен режим разработчика через консоль devBeta()
+                const isDevBeta = localStorage.getItem('etis_dev_beta_branch') === 'true';
+
+                // 1. Загружаем релизную ветку
+                const releaseData = await fetchScriptMeta(RELEASE_URL);
+
+                let targetData = null;
+                let isBetaUpdate = false;
+
+                // 2. Если включен режим тестирования — проверяем etis-test.user.js
+                if (isDevBeta) {
+                    const betaData = await fetchScriptMeta(BETA_URL);
+
+                    if (betaData.success && compareVersions(betaData.version, currentVer) > 0) {
+                        if (!releaseData.success || compareVersions(betaData.version, releaseData.version) >= 0) {
+                            targetData = betaData;
+                            isBetaUpdate = true;
+                        }
+                    }
+                }
+
+                // 3. Если тестовая ветка не нужна / не новее, предлагаем стабильный релиз
+                if (!targetData && releaseData.success) {
+                    if (compareVersions(releaseData.version, currentVer) > 0) {
+                        targetData = releaseData;
+                        isBetaUpdate = false;
+                    }
+                }
+
+                if (targetData) {
+                    updateState.remoteVer = targetData.version;
+                    updateState.remoteDate = targetData.date;
+                    updateState.remoteLog = targetData.changelog;
+                    updateState.updateUrl = targetData.url;
+                    updateState.isBeta = isBetaUpdate;
+                    updateState.hasUpdate = true;
+                    updateState.status = 'success';
+                    triggerUpdateIndicators();
+                } else {
+                    updateState.hasUpdate = false;
+                    updateState.status = 'success';
+                }
+            } catch (e) {
+                updateState.status = 'error';
+                updateState.details = e.message || "Ошибка сети";
+            }
+
+            refreshModalUI();
+        }
 
         // Детектор iOS устройств
         const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -145,14 +1884,12 @@
         if (isMacSafari) document.documentElement.classList.add('mac-safari');
 
         // ==========================================
-        // БЕЗОПАСНАЯ И АТОМАРНАЯ ЗАПИСЬ ДАННЫХ
+        // ЗАПИСЬ ДАННЫХ
         // ==========================================
         const saveSyncData = (key, value) => {
             try {
-                // 1. Записываем само значение в память
                 localStorage.setItem(key, value);
 
-                // 2. Напрямую обновляем таймстамп изменения в etis_sync_meta
                 const syncKeys = {
                     'etis_accent_config': 'accent_config',
                     'etis_subject_notes_v2': 'subject_notes',
@@ -162,7 +1899,10 @@
                     'etis_reborn_grades_snapshot_v3': 'grades_snapshot',
                     'etis_consultation_files_v1': 'consultation_files',
                     'etis_external_cals_v2': 'external_cals',
-                    'etis_weekly_pairs_history_v1': 'weekly_pairs_history'
+                    'etis_weekly_pairs_history_v1': 'weekly_pairs_history',
+                    'etis_ai_summaries_v1': 'ai_summaries',
+                    'etis_diploma_gpa': 'diploma_gpa',
+                    'etis_notifications_history_v1': 'notifications_history'
                 };
 
                 const metaKey = syncKeys[key];
@@ -174,7 +1914,6 @@
                     console.log(`[Sync] [${metaKey}] Таймстамп успешно обновлен вручную: ${now}`);
                 }
 
-                // 3. Запускаем тихую выгрузку в облако
                 triggerSilentCloudUpload();
             } catch (e) {
                 console.error('[Sync] Ошибка при безопасной записи данных:', e);
@@ -218,6 +1957,8 @@
             });
         };
 
+        const LOGO_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABAAAAAQACAYAAAB/HSuDAAAACXBIWXMAAAsTAAALEwEAmpwYAAAGoGlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgOS4xLWMwMDMgNzkuOTY5MGE4N2ZjLCAyMDI1LzAzLzA2LTIwOjUwOjE2ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjYuNiAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjYtMDMtMTVUMjE6MDY6NTcrMDU6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDI2LTAzLTE1VDIzOjQxOjIxKzA1OjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDI2LTAzLTE1VDIzOjQxOjIxKzA1OjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDoxOGM2MGIxYS1jODE0LTRiMTEtYjgwZi02MmQ0NGQ3NGMyZmIiIHhtcE1NOkRvY3VtZW50SUQ9ImFkb2JlOmRvY2lkOnBob3Rvc2hvcDoyYWQ1Mzg5ZC00MjhjLTE4NDYtODVlNS02YTY0ZDIzZWU3NGMiIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo3ODQzNmEzYS1lOWQ4LTQyZjItYjdkYy1lNTY2MDExMGJjN2EiPiA8eG1wTU06SGlzdG9yeT4gPHJkZjpTZXE+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJjcmVhdGVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjc4NDM2YTNhLWU5ZDgtNDJmMi1iN2RjLWU1NjYwMTEwYmM3YSIgc3RFdnQ6d2hlbj0iMjAyNi0wMy0xNVQyMTowNjo1NyswNTowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIDI2LjYgKE1hY2ludG9zaCkiLz4gPHJkZjpsaSBzdEV2dDphY3Rpb249InNhdmVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjAwMWFlYmE2LTJiMGQtNGQ3Mi1iMWY3LTdkZTM1YmJhZjMyMyIgc3RFdnQ6d2hlbj0iMjAyNi0wMy0xNVQyMToyODoxOSswNTowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIDI2LjYgKE1hY2ludG9zaCkiIHN0RXZ0OmNoYW5nZWQ9Ii8iLz4gPHJkZjpsaSBzdEV2dDphY3Rpb249InNhdmVkIiBzdEV2dDppbnN0YW5jZUlEPSJ4bXAuaWlkOjE4YzYwYjFhLWM4MTQtNGIxMS1iODBmLTYyZDQ0ZDc0YzJmYiIgc3RFdnQ6d2hlbj0iMjAyNi0wMy0xNVQyMzo0MToyMSswNTowMCIgc3RFdnQ6c29mdHdhcmVBZ2VudD0iQWRvYmUgUGhvdG9zaG9wIDI2LjYgKE1hY2ludG9zaCkiIHN0RXZ0OmNoYW5nZWQ9Ii8iLz4gPC9yZGY6U2VxPiA8L3htcE1NOkhpc3Rvcnk+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+et92bwABPpJJREFUeNrs3Qd8HNW593HNFmnVe7VkSZZt2bIty733hgFj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AAAAwAAAAAAAAAAAAAwAAAAAAAAAAMAAAAAAAAAAAAAMAAAAAAAAAAAMAAAAAAAAAADAAAAAAAAAAAAADAAAAAAAAAAAwAAAAAAAAAAAAAwAAAAAAAAAAMAAAAAAAAAAAAAMAAAAAAAAAADAAAAAAAAAAADAAAAAAAAAAAAADAAAAAAAAAAAwAAAAAAAAAAAAAwAAAAAAAAAAMAAAAAAAAAAAAAMAAAAAAAAAADAAAAAAAAAAAAADAAAAAAAAAAADABeBAAAAAAAAAAMAAAAAAAAAADAAAAAAAAAAAAADAAAAAAAAAAAwAAAAAAAAAAAAAwAAAAAAAAAAMAAAAAAAAAAAAAMAAAAAAAAAADAAAAAAAAAAADAAAAAAAAAAAAADAAAAAAAAAAAwAAAAAAAAAAAAAwAAAAAAAAAAMAAAAAAAAAAAAAMAAAAAAAAAADAAAAAAAAAAAAADAAAAAAAAAAADAAAAAAAAAAAwAAAAAAAAAAAAAwAAAAAAAAAAMAAAAAAAAAAAAAMAAAAAAAAAADAAAAAAAAAAAAADAAAAAAAAAAAwAAAAAAAAAAAwADgRQAAAAAAAADAAAAAAAAAAAAADAAAAAAAAAAAwAAAAAAAAAAAAAwAAAAAAAAAAMAAAAAAAAAAAAAMAAAAAAAAAADAAAAAAAAAAAAADAAAAAAAAACADOL/AVjY4Z7gQ4lPAAAAAElFTkSuQmCC";
+
         // ==========================================
         // 1. ВНЕДРЕНИЕ CSS СТИЛЕЙ
         // ==========================================
@@ -237,17 +1978,14 @@
     }
 
     [theme="light"] {
-        /* Основные цвета */
         --color-body: #F2F2F6;
         --color-card: #FFFFFF;
 
-        /* Акцент: ГОЛУБОЙ */
         --color-accent: #007AFF;
         --color-accent-dark: #0056b3;
         --color-accent-active: #E3F2FD;
         --color-text-link: #007AFF;
 
-        /* Элементы */
         --color-tooltip: #fff;
         --color-highlight: #F2F2F7;
         --color-highlight-light: #fff;
@@ -259,7 +1997,6 @@
         --color-table-header: #F9F9F9;
         --color-table-highlight: #F5F5F5;
 
-        /* Статусы */
         --color-red: #FF3B30;
         --color-green: #34C759;
         --color-blue: #007AFF;
@@ -268,7 +2005,6 @@
         --color-white: #fff;
         --color-error: #FF3B30;
 
-        /* Текст */
         --color-text-primary: #1C1C1E;
         --color-text-secondary: #8E8E93;
         --color-text-primary-invert: #fff;
@@ -281,17 +2017,14 @@
     }
 
     [theme="dark"] {
-        /* Основные цвета  */
         --color-body: #16181A;
         --color-card: #212325;
 
-        /* Акцент */
         --color-accent: #4B89DC;
         --color-accent-dark: #3565A8;
         --color-accent-active: rgba(75, 137, 220, 0.15);
         --color-text-link: #60A5FA;
 
-        /* Элементы интерфейса */
         --color-tooltip: #2A2C2F;
         --color-highlight: #2A2C2F;
         --color-highlight-light: #35383C;
@@ -303,7 +2036,6 @@
         --color-table-header: #1A1C1E;
         --color-table-highlight: #2A2C2F;
 
-        /* Статусы */
         --color-red: #E06C65;
         --color-green: #5BB974;
         --color-blue: #4B89DC;
@@ -312,7 +2044,6 @@
         --color-white: #ffffff;
         --color-error: #E06C65;
 
-        /* Текст */
         --color-text-primary: #EAECEE;
         --color-text-secondary: #8E9499;
         --color-text-primary-invert: #ffffff;
@@ -322,7 +2053,6 @@
         --border-input: 1px solid #3A3D40;
     }
 
-    /* Page Base */
     html {
         font-size: 10px !important;
         background-color: var(--color-body) !important;
@@ -336,7 +2066,6 @@
         min-height: 100dvh !important;
     }
 
-    /* Скрытие шеринга для macOS Safari из-за бага html2canvas */
     html.mac-safari .share-day-btn,
     html.mac-safari .share-all-btn,
     html.mac-safari .share-week-btn,
@@ -344,7 +2073,6 @@
         display: none !important;
     }
 
-    /* ПК версия скроллбара и layout */
     @media (min-width: 961px) {
         html, body {
             height: 100% !important;
@@ -399,7 +2127,6 @@
     .flex-row { display: flex !important; align-items: center !important; }
     *, *:before, *:after { box-sizing: border-box !important; }
 
-    /* Scrollbar */
     ::-webkit-scrollbar {
         display: none !important;
         width: 0 !important;
@@ -412,7 +2139,6 @@
 
     @supports (-moz-appearance:none) { .span3 { padding-right: 0.4rem !important; } }
 
-    /* Colors & Fonts */
     font[color="red"], tr[style="color:red;"], span[style="color:red;"], div[style="font-size:0.8em;color:red;"], font[style="color:red;font-weight:bold"], font[style="color:#d00;"] { color: var(--color-red) !important; }
     span[style="color:green;"], font[color="green"], div[style="font-size:0.8em;color:green;"] { color: var(--color-green) !important; }
     font[color="blue"], font[style="font-weight:bold;color:blue;cursor:pointer"], div[style="color:blue;font-size: 0.8em;"], span[style="color:blue;"] { color: var(--color-blue) !important; }
@@ -423,6 +2149,7 @@
     a.dashed { color: var(--color-text-secondary) !important; }
     a.dashed:hover { color: var(--color-text-highlight) !important; }
     .navbar-static-top { display: none !important; }
+
 
     /* --- TABLES --- */
     table {
@@ -449,7 +2176,6 @@
         background-color: transparent !important;
     }
 
-    /* Шапка таблицы */
     table th, .common th, .slimtab_nice th {
         background: var(--color-table-header) !important;
         color: var(--color-text-secondary) !important;
@@ -464,7 +2190,6 @@
         text-align: center !important;
     }
 
-    /* Ячейки */
     table td, .common td, .slimtab_nice td {
         border: none !important;
         border-bottom: 1px solid var(--color-table-border) !important;
@@ -472,7 +2197,7 @@
         vertical-align: middle !important;
         font-size: 1.3rem !important;
         color: var(--color-text-primary) !important;
-        text-align: center !important; /* Центрируем контент */
+        text-align: center !important;
     }
 
     table th:first-child, table td:first-child,
@@ -494,7 +2219,6 @@
         background-color: var(--color-card) !important;
     }
 
-    /* Отступы у разделителей во всех таблицах (кроме расписания) */
     .span9 table:not(.timetable-grid) tbody tr:not(:last-child) td,
     .wide-table-wrapper table:not(.timetable-grid) tbody tr:not(:last-child) td,
     .ui-dialog table tbody tr:not(:last-child) td {
@@ -539,7 +2263,6 @@
         margin-bottom: 1.6rem !important;
         border-bottom: none !important;
 
-        /* Индикация скролла по бокам */
         background-image:
             linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
             linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
@@ -562,7 +2285,6 @@
         display: none !important;
     }
 
-    /* Вкладки в подменю */
     .submenu a:not(.answer-btn-custom),
     .submenu .answer-btn-custom,
     .submenu b {
@@ -586,7 +2308,6 @@
         text-decoration: none !important;
     }
 
-    /* Обычная вкладка и кнопка оценки */
     .submenu a:not(.answer-btn-custom),
     .submenu .answer-btn-custom {
         background: var(--color-highlight) !important;
@@ -597,7 +2318,6 @@
         color: var(--color-accent) !important;
     }
 
-    /* Активная вкладка */
     .submenu b {
         color: var(--color-text-primary-invert) !important;
         font-weight: 600 !important;
@@ -768,7 +2488,6 @@
         scrollbar-width: none !important;
         -webkit-overflow-scrolling: touch !important;
 
-        /* Индикация скролла по бокам */
         background-image:
             linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
             linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
@@ -779,7 +2498,6 @@
     }
     .weeks::-webkit-scrollbar { display: none !important; }
 
-    /* Темная тема для градиентов скролла */
     [theme="dark"] .weeks {
         background:
             linear-gradient(to right, var(--color-card) 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local,
@@ -835,7 +2553,6 @@
         font-weight: 700 !important;
     }
 
-    /* Выделение актуальной (календарной) недели, если мы сейчас смотрим другую */
     .weeks .week.actual-week:not(.current) > a {
         color: var(--color-accent) !important;
         font-weight: 800 !important;
@@ -861,7 +2578,7 @@
     .span9 .day h3 {
         display: flex !important;
         align-items: center !important;
-        justify-content: space-between !important; /* День СЛЕВА, Дата СПРАВА */
+        justify-content: space-between !important;
 
         padding: 1.6rem 2rem !important;
         background: var(--color-table-header) !important;
@@ -914,7 +2631,6 @@
 
     /* --- TEACHERS --- */
 
-    /* карточка преподавателя */
     .teacher-card {
         display: flex;
         background: var(--color-card) !important;
@@ -933,7 +2649,6 @@
         border-color: var(--color-accent-active) !important;
     }
 
-    /* Блок фото */
     .teacher-avatar-box {
         flex-shrink: 0 !important;
         width: 110px !important;
@@ -948,7 +2663,6 @@
         box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
     }
 
-    /* Блок информации */
     .teacher-details {
         display: flex !important;
         flex-direction: column !important;
@@ -957,7 +2671,6 @@
         min-height: 150px !important;
     }
 
-    /* Имя */
     .teacher-name-link {
         font-size: 1.8rem !important;
         font-weight: 800 !important;
@@ -973,7 +2686,6 @@
         opacity: 0.8 !important;
     }
 
-    /* Кафедра */
     .teacher-dept-link {
         font-size: 1.3rem !important;
         color: var(--color-text-secondary) !important;
@@ -988,14 +2700,12 @@
         color: var(--color-text-primary) !important;
     }
 
-    /* Список предметов */
     .teacher-subjects {
         font-size: 1.5rem !important;
         line-height: 1.6 !important;
         color: var(--color-text-primary) !important;
     }
 
-    /* Кнопка статистики вверху */
     a[href="stu.dis_stat"] {
         display: inline-flex !important;
         align-items: center !important;
@@ -1016,7 +2726,6 @@
         color: var(--color-accent);
     }
 
-    /* Мобильная адаптация */
     @media (max-width: 600px) {
         .teacher-card {
             flex-direction: column !important;
@@ -1034,7 +2743,6 @@
         }
     }
 
-    /* Адаптация под мобильные */
     @media (max-width: 600px) {
         table.teacher_info tr {
             flex-direction: column !important;
@@ -1062,7 +2770,7 @@
     .ord-inactive { color: var(--color-text-secondary) !important; }
     .certificates-info { color: var(--color-green) !important; font-size: 1.2rem !important; display: block !important; margin-bottom: 2rem !important; }
 
-    /* Login */
+   /* Login */
     .login-container {
         display: flex !important;
         flex-direction: column !important;
@@ -1084,33 +2792,35 @@
     .psu-logo {
         display: flex !important;
         flex-direction: column !important;
-        align-items: center !important;
+        align-items: flex-start !important;
         width: 100% !important;
-        margin-bottom: 1.5rem !important;
-        opacity: 0.9 !important;
+        margin-bottom: 2.4rem !important;
     }
 
     .psu-logo::before {
         content: '' !important;
         display: block !important;
-        height: 13rem !important;
-        width: 100% !important;
-        background-image: url("https://raw.githubusercontent.com/defl-orator/etis-reborn/main/img/logo_fill.png") !important;
+        height: 4.4rem !important;
+        width: 4.4rem !important;
+        background-image: url("${LOGO_DATA_URI}") !important;
         background-size: contain !important;
-        background-position: center bottom !important;
+        background-position: left center !important;
         background-repeat: no-repeat !important;
         margin-bottom: 1.2rem !important;
     }
 
     .psu-logo::after {
-        content: 'Е Т И С' !important;
+        display: none !important;
+    }
+
+    .psu-logo-subtitle {
         display: block !important;
-        width: 80% !important;
-        text-align-last: justify !important;
-        font-size: 2.8rem !important;
-        font-weight: 800 !important;
+        font-size: 2.4rem !important;
+        line-height: 1.25 !important;
+        font-weight: 700 !important;
         color: var(--color-text-primary) !important;
-        line-height: 1 !important;
+        text-align: left !important;
+        letter-spacing: -0.3px !important;
     }
 
     html[theme="dark"] .psu-logo::before {
@@ -1169,10 +2879,6 @@
     .sign-tooltip-wrapper { position: fixed; display: flex; flex-direction: column; align-items: center; filter: drop-shadow(var(--shadow-tooltip)); }
     .sign-tooltip { padding: 0.8rem 1.6rem; max-width: 26rem; border-radius: var(--radius-large); font-size: 1.2rem; line-height: 1.8rem; text-align: center; color: var(--color-text-primary); background: var(--color-highlight); z-index: 12; }
 
-    .psu-logo-subtitle {
-        display: none !important;
-    }
-
     @media (min-width: 961px) {
         .login form {
             flex-direction: row !important;
@@ -1214,18 +2920,18 @@
             flex: 1 !important;
             display: flex !important;
             flex-direction: column !important;
-            justify-content: center !important;
+            justify-content: space-between !important;
             padding-left: 40px !important;
         }
 
         .login-inputs-wrapper {
-            margin-top: 0 !important;
-            margin-bottom: 0 !important;
+            margin-top: auto !important;
+            margin-bottom: auto !important;
             width: 100% !important;
         }
 
         .login-actions {
-            margin-top: 4rem !important;
+            margin-top: auto !important;     
             margin-bottom: 0 !important;
             display: flex !important;
             justify-content: space-between !important;
@@ -1278,7 +2984,6 @@
         gap: 8px !important;
         margin-bottom: 1.6rem !important;
 
-        /* Индикация скролла */
         background-image:
             linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
             linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
@@ -1335,7 +3040,6 @@
     }
     .timetable-toolbar .toolbar-item:hover { background: var(--color-highlight-light) !important; }
 
-    /* Кнопки-капсулы внутри тулбара */
     .timetable-toolbar .toolbar-item,
     .timetable-toolbar .sync-btn,
     .timetable-toolbar label.toolbar-item {
@@ -1411,14 +3115,16 @@
         transform: translateX(1rem) !important;
     }
 
-    /* --- СТИЛИ ДЛЯ ВКЛАДОК --- */
+    /* --- СТИЛИ ДЛЯ ВКЛАДОК И ГРУПП НАСТРОЕК --- */
     .ios-settings-group {
-        background: var(--color-card) !important; /* Белый цвет для блоков настроек */
+        background: var(--color-card) !important;
         border-radius: var(--radius-large) !important;
-        margin-bottom: 2.4rem !important;
-        border: 1px solid var(--color-table-border) !important;
+        margin-bottom: 2rem !important;
+        border: none !important;
+        box-shadow: var(--shadow-main) !important;
         display: flex !important;
         flex-direction: column !important;
+        overflow: hidden !important;
     }
 
     .ios-settings-group > label,
@@ -1435,11 +3141,17 @@
         transition: background-color 0.2s ease !important;
         text-decoration: none !important;
         border: none !important;
+        box-sizing: border-box !important;
     }
 
-    .ios-settings-group > label:hover,
-    .ios-settings-group > .ios-settings-row:hover {
-        background: transparent !important;
+    .ios-settings-row .chevron,
+    .settings-sidebar-btn .chevron {
+        margin-right: -4px !important;
+        margin-left: auto !important;
+        font-size: 20px !important;
+        color: var(--color-text-secondary) !important;
+        flex-shrink: 0 !important;
+        opacity: 0.5 !important;
     }
 
     .ios-settings-group > *::after {
@@ -1453,11 +3165,10 @@
         display: none !important;
     }
 
-    /* Отступ для обычных строк с иконками */
     .ios-settings-group > *:has(> div > .material-icons)::after {
         left: 5.2rem !important;
     }
-    /* Специфичный отступ для окна синхронизации */
+
     .ios-settings-group > [style*="padding-left: 2.4rem"]::after {
         left: 6.0rem !important;
     }
@@ -1532,7 +3243,6 @@
 
     /* --- MOBILE ADAPTATION --- */
     @media (max-width: 960px) {
-        /* 1. Нативная прокрутка */
         html, body {
             overflow-x: hidden !important;
             position: relative !important;
@@ -1544,10 +3254,10 @@
         .span9 {
             margin-left: 0 !important;
             margin-top: 2rem !important;
-            padding: 0 1rem 15rem !important;
+            padding: 0 1.2rem 16rem !important;
             width: 100% !important;
             max-width: 100vw !important;
-            overflow-x: hidden !important;
+            overflow: visible !important;       
             float: none !important;
             box-sizing: border-box !important;
         }
@@ -1559,7 +3269,6 @@
             margin-bottom: 1rem !important;
         }
 
-        /* Сайдбар */
         .span3 {
             display: block !important;
             position: fixed !important;
@@ -1783,7 +3492,7 @@
         }
 
         .container, .container .row {
-            overflow-x: hidden !important;
+            overflow-x: clip !important;        
         }
     }
 
@@ -1828,14 +3537,6 @@
         margin: 2px 12px !important;
         border-radius: var(--radius-small) !important;
         width: auto !important;
-    }
-
-    .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
-    .span3 > .nav.nav-tabs.nav-stacked > li.active > a *,
-    .span3 > .nav.nav-tabs.nav-stacked > li.active > a font {
-        color: var(--color-text-primary-invert) !important;
-        font-weight: 700 !important;
-        text-shadow: none !important;
     }
 
     .span3 > .nav.nav-tabs.nav-stacked > li.active > a .material-icons {
@@ -2018,45 +3719,110 @@
 
     /* --- LOGIN HELP BUTTON --- */
 
-    .login-help-icon {
-        width: 2.4rem !important;
-        height: 2.4rem !important;
+    .login-screen-footer {
+        position: fixed !important;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 24px) !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 1000 !important;
+        display: flex !important;
+        flex-direction: row !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        width: max-content !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .login-news-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        text-decoration: none !important;
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
+        color: var(--color-text-secondary) !important;
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        padding: 0 18px !important;
+        height: 38px !important;
+        border-radius: 50px !important;
+        box-shadow: var(--shadow-main) !important;
+        transition: all 0.2s ease !important;
+        white-space: nowrap !important;
+        cursor: pointer !important;
+        box-sizing: border-box !important;
+        position: static !important;
+        margin: 0 !important;
+    }
+
+    .login-news-btn:hover {
+        background: var(--color-highlight) !important;
+        color: var(--color-text-primary) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    .login-help-wrap {
+        position: relative !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .login-help-btn {
+        width: 38px !important;
+        height: 38px !important;
+        min-width: 38px !important;
+        min-height: 38px !important;
         border-radius: 50% !important;
-        border: 1.5px solid var(--color-text-secondary) !important;
+        border: 1px solid var(--color-table-border) !important;
+        background: var(--color-card) !important;
+        box-shadow: var(--shadow-main) !important;
         color: var(--color-text-secondary) !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
         cursor: pointer !important;
-        font-weight: bold !important;
+        font-weight: 700 !important;
         font-size: 1.4rem !important;
-        transition: all 0.2s !important;
+        transition: all 0.2s ease !important;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        position: static !important;
     }
 
-    .login-help-icon:hover {
-        color: var(--color-accent) !important;
-        border-color: var(--color-accent) !important;
+    .login-help-btn:hover {
         background: var(--color-highlight) !important;
+        color: var(--color-text-primary) !important;
+        transform: translateY(-2px) !important;
     }
 
-    .login-help-dropdown {
+    .login-help-menu {
         display: none !important;
         position: absolute !important;
-        top: 3.5rem !important;
+        bottom: calc(100% + 14px) !important;
         right: 0 !important;
         width: 30rem !important;
         background: var(--color-card) !important;
         box-shadow: var(--shadow-dialog) !important;
         padding: 1.6rem !important;
         border-radius: var(--radius-medium) !important;
+        border: 1px solid var(--color-table-border) !important;
         font-size: 1.2rem !important;
         color: var(--color-text-primary) !important;
         line-height: 1.5 !important;
-        z-index: 20 !important;
+        z-index: 1001 !important;
+        text-align: left !important;
     }
-    .login-help-dropdown.active { display: block !important; }
-    .login-help-dropdown p { margin-bottom: 1rem !important; }
-    .login-help-dropdown p:last-child { margin-bottom: 0 !important; }
+    .login-help-menu.active {
+        display: block !important;
+    }
+    .login-help-menu p { margin-bottom: 1rem !important; }
+    .login-help-menu p:last-child { margin-bottom: 0 !important; }
 
     .login-help-container {
         position: fixed !important;
@@ -2101,7 +3867,7 @@
         transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
 
-    .sidebar-logo span {
+    .sidebar-logo .sidebar-logo-title {
         font-size: 3.2rem !important;
         font-weight: 800 !important;
         color: var(--color-text-primary) !important;
@@ -2136,7 +3902,6 @@
         transform: translateY(0);
     }
 
-    /* Выпадающая карточка синхронизации в расписании */
     .sync-card {
         background: var(--color-card) !important;
         border-radius: var(--radius-large) !important;
@@ -2183,20 +3948,18 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* --- MESSAGES REFINEMENT --- */
+    /* --- MESSAGES --- */
 
-    /* Пагинация (страницы) */
     .message-pages {
         justify-content: center !important;
         gap: 1rem !important;
         margin: 2rem 0 !important;
     }
-    /* Скрываем текст "Страницы" */
+
     .message-pages li:first-child {
         display: none !important;
     }
 
-    /* Оформление вложений (файлов) */
     .file-attachment-link {
         display: inline-flex !important;
         align-items: center !important;
@@ -2276,7 +4039,6 @@
         font-weight: 600 !important;
     }
 
-    /* Текстовое поле ответа */
     .nav.msg textarea {
         width: 100% !important;
         border-radius: var(--radius-medium) !important;
@@ -2285,9 +4047,9 @@
         border: 1px solid var(--color-table-border) !important;
         background: var(--color-input) !important;
     }
+
     /* --- REPLY FORM STYLING --- */
 
-    /* Контейнер формы */
     div[id^="frm_"] {
         margin-top: 1.5rem !important;
         padding: 1.5rem !important;
@@ -2301,7 +4063,6 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Текстовое поле */
     div[id^="frm_"] textarea {
         width: 100% !important;
         min-height: 120px !important;
@@ -2323,7 +4084,6 @@
         outline: none !important;
     }
 
-    /* Вспомогательный текст про файлы */
     .reply-helper-text {
         display: block !important;
         font-size: 1.1rem !important;
@@ -2332,7 +4092,6 @@
         line-height: 1.4 !important;
     }
 
-    /* Кнопка "Отправить ответ" */
     .send-reply-btn {
         background: var(--color-accent) !important;
         color: var(--color-text-primary-invert) !important;
@@ -2348,7 +4107,7 @@
     .send-reply-btn:hover {
         opacity: 0.9 !important;
     }
-    /* --- SIDEBAR FOOTER --- */
+
     .sidebar-footer {
         position: relative !important;
         padding: 1.6rem 2.6rem !important;
@@ -2359,7 +4118,6 @@
         margin-top: 0 !important;
     }
 
-    /* Рисуем новый аккуратный разделитель с отступами */
     .sidebar-footer::before {
         content: '' !important;
         position: absolute !important;
@@ -2379,7 +4137,9 @@
     .sidebar-footer a:hover {
         color: var(--color-accent) !important;
     }
+
     /* --- TIMETABLE WINDOWS --- */
+
     .timetable-gap-row td {
         padding-top: 1rem !important;
         padding-bottom: 1rem !important;
@@ -2401,7 +4161,6 @@
         border: 1px solid var(--color-accent-active) !important;
     }
 
-    /* Блок с информацией о пользователе в сайдбаре */
     .sidebar-user-info {
         position: relative !important;
         padding: 1.6rem 2.6rem !important;
@@ -2412,7 +4171,6 @@
         margin-top: auto !important;
     }
 
-    /* Рисуем новый аккуратный разделитель с отступами */
     .sidebar-user-info::before {
         content: '' !important;
         position: absolute !important;
@@ -2451,7 +4209,6 @@
         box-sizing: border-box !important;
     }
 
-    /* Стили заголовков внутри таблицы ресурсов */
     #resources th[colspan="3"] {
         background: var(--color-highlight) !important;
         color: var(--color-accent) !important;
@@ -2462,7 +4219,6 @@
         border-bottom: 1px solid var(--color-table-border) !important;
     }
 
-    /* Стилизация логинов и паролей для удобства копирования */
     #resources td:nth-child(2),
     #resources td:nth-child(3) {
         font-family: 'SF Mono', 'Cascadia Code', monospace !important;
@@ -2490,7 +4246,6 @@
         margin-bottom: 2.4rem !important;
     }
 
-    /* Убираем "подбородок" и двойные тени у таблиц ресурсов */
     .resource-block .wide-table-wrapper {
         margin-bottom: 0 !important;
         box-shadow: none !important;
@@ -2502,7 +4257,6 @@
         font-weight: bold !important;
     }
 
-    /* Индикация копирования */
     .copy-pass:hover {
         background-color: var(--color-accent-active) !important;
         transition: background 0.2s;
@@ -2523,12 +4277,10 @@
         width: 100% !important;
     }
 
-    /* Колонки: Ресурс (~60%), Логин (~20%), Пароль (~20%) */
     .resource-table td:nth-child(1) { width: 60% !important; text-align: left !important; }
     .resource-table td:nth-child(2) { width: 20% !important; text-align: center !important; }
     .resource-table td:nth-child(3) { width: 20% !important; text-align: right !important; }
 
-    /* Особый случай для длинных строк (BOOK.RU) */
     .resource-table td[colspan="2"] {
         text-align: right !important;
         width: 40% !important;
@@ -2633,12 +4385,10 @@
         line-height: 1.4 !important;
     }
 
-    /* Иконка PDF и Видео */
     .advice-card[href*=".pdf"] .material-icons::before { content: "picture_as_pdf"; }
     .advice-card[href*=".mp4"] .material-icons::before { content: "play_circle"; }
     .advice-card:not([href*=".pdf"]):not([href*=".mp4"]) .material-icons::before { content: "article"; }
 
-    /* Специальный блок для правил выдачи справок */
     .cert-alert-box {
         background: rgba(52, 199, 89, 0.1) !important;
         border: 1px solid var(--color-green) !important;
@@ -2650,7 +4400,6 @@
         margin-bottom: 3rem !important;
     }
 
-    /* Иконки для разных типов справок */
     .advice-card .icon-new::before { content: "add_circle_outline"; }
     .advice-card .icon-history::before { content: "assignment_turned_in"; }
 
@@ -2667,7 +4416,6 @@
         list-style: none !important;
     }
 
-    /* Шапка карточки опроса */
     .survey-card > li:first-child {
         background: var(--color-table-header) !important;
         padding: 1.8rem 5rem 1.8rem 2.4rem !important;
@@ -2681,7 +4429,6 @@
         background: var(--color-highlight) !important;
     }
 
-    /* Стрелочка только для опросов */
     .survey-card > li:first-child::after {
         content: 'arrow_drop_down' !important;
         font-family: 'Material Symbols Rounded' !important;
@@ -2699,14 +4446,12 @@
         color: var(--color-accent) !important;
     }
 
-    /* Содержимое опроса */
     .survey-card > li:nth-child(2) {
         padding: 2.4rem !important;
         background: var(--color-card) !important;
         display: block !important;
     }
 
-    /* Скрываем содержимое, если есть класс hide_elem (родной для ETIS) */
     .survey-card > li.hide_elem {
         display: none !important;
     }
@@ -2721,7 +4466,6 @@
         border: none !important;
     }
 
-    /* Внутренняя структура истории (Вопрос - Ответ) */
     .survey-result-item {
         margin-bottom: 2rem !important;
         padding-bottom: 1.5rem !important;
@@ -2745,7 +4489,6 @@
         border-left: 3px solid var(--color-accent) !important;
     }
 
-    /* Текст-заголовок секции */
     .survey-intro-text {
         margin: 4.5rem 0 1.5rem !important;
         padding: 0 1rem !important;
@@ -2756,7 +4499,6 @@
         text-align: left !important;
     }
 
-    /* Улучшение форм в карточках */
     form.form {
         background: var(--color-card) !important;
         border-radius: var(--radius-large) !important;
@@ -2764,7 +4506,6 @@
         box-shadow: var(--shadow-main) !important;
     }
 
-    /* Инпуты на этих страницах */
     form.form input[type="text"],
     form.form input[type="password"] {
         display: block !important;
@@ -2785,7 +4526,6 @@
         border-bottom: 2px solid var(--color-accent) !important;
     }
 
-    /* Оформление инфо-блока внизу (Email) */
     .electr-description {
         display: block !important;
         background: var(--color-highlight) !important;
@@ -2828,7 +4568,6 @@
         border-radius: 50% !important;
     }
 
-    /* Кнопка */
     .button_gray {
         width: 100% !important;
         margin-top: 1rem !important;
@@ -2902,7 +4641,7 @@
     table.question_table tr td, table.question_table tr th {
         background-color: transparent !important;
     }
-    /* Перенос зебры в CSS, чтобы не конфликтовала с границами */
+
     table.question_table tr.cgrldatarow:nth-child(even) {
         background-color: var(--color-highlight) !important;
     }
@@ -2933,7 +4672,6 @@
         opacity: 0.7 !important;
     }
 
-    /* Адаптация под мобильные */
     @media (max-width: 600px) {
         .review-item {
             flex-direction: column !important;
@@ -2974,7 +4712,6 @@
         margin-top: 0 !important;
     }
 
-    /* Красивый акцент для первого абзаца */
     .about-card p:first-of-type {
         font-size: 1.4rem !important;
         color: var(--color-text-secondary) !important;
@@ -2992,7 +4729,6 @@
 
     /* --- ПОРТФОЛИО --- */
 
-    /* Контейнер заголовка раздела */
     .portfolio-header {
         display: flex !important;
         align-items: center !important;
@@ -3026,7 +4762,6 @@
         display: block !important;
     }
 
-    /* Бейдж-счетчик */
     .portfolio-count {
         margin-left: auto !important;
         background: var(--color-accent-active) !important;
@@ -3044,7 +4779,6 @@
         margin-right: 0.5rem !important;
     }
 
-    /* Иконка стрелочки в конце */
     .portfolio-header::after {
         content: 'arrow_drop_down' !important;
         font-family: 'Material Symbols Rounded' !important;
@@ -3068,7 +4802,6 @@
         margin-bottom: 3rem !important;
     }
 
-    /* Стилизация таблицы внутри раскрытого блока */
     div[id] table.common {
         box-shadow: var(--shadow-main) !important;
         background: var(--color-card) !important;
@@ -3077,7 +4810,6 @@
         margin-top: 1rem !important;
     }
 
-    /* Иконка загрузки файла в таблице */
     .icon-load-doc-new {
         font-family: 'Material Symbols Rounded' !important;
         font-size: 2.2rem !important;
@@ -3095,9 +4827,8 @@
         display: none !important;
     }
 
-    /* --- UI DIALOG REBORN (MODAL WINDOW) --- */
+    /* --- UI DIALOG REBORN --- */
 
-    /* Контейнер самого окна */
     .ui-dialog {
         background: var(--color-body) !important;
         border: none !important;
@@ -3108,7 +4839,6 @@
         z-index: 1000002 !important;
     }
 
-    /* Шапка окна */
     .ui-widget-header {
         background: var(--color-table-header) !important;
         border: none !important;
@@ -3124,7 +4854,6 @@
         margin: 0 !important;
     }
 
-    /* Кнопка закрытия (крестик) */
     .ui-dialog .ui-dialog-titlebar-close {
         position: absolute !important;
         right: 12px !important;
@@ -3160,7 +4889,6 @@
         font-size: 20px !important;
         color: var(--color-text-secondary) !important;
 
-        /* СБРОС И ЦЕНТРИРОВАНИЕ */
         position: absolute !important;
         top: 50% !important;
         left: 50% !important;
@@ -3231,7 +4959,6 @@
         color: var(--color-accent) !important;
     }
 
-    /* Содержимое окна */
     .ui-dialog .ui-dialog-content {
         padding: 2.4rem !important;
         background: var(--color-card) !important;
@@ -3239,7 +4966,6 @@
         font-size: 1.3rem !important;
     }
 
-    /* Стилизация формы внутри окна */
     #dialog form {
         margin-top: 2rem !important;
         padding-top: 2rem !important;
@@ -3259,7 +4985,6 @@
         color: var(--color-text-primary) !important;
     }
 
-    /* Выбор файла (input type="file") */
     .fileselect {
         background: var(--color-input) !important;
         padding: 1rem !important;
@@ -3270,7 +4995,6 @@
         cursor: pointer !important;
     }
 
-    /* Кнопка "Загрузить" */
     #dialog .btn {
         background: var(--color-accent) !important;
         color: var(--color-text-primary-invert) !important;
@@ -3287,7 +5011,6 @@
         opacity: 0.9 !important;
     }
 
-    /* Затемнение фона (overlay) */
     .ui-widget-overlay {
         background: rgba(0, 0, 0, 0.5) !important;
         opacity: 1 !important;
@@ -3295,7 +5018,6 @@
         -webkit-backdrop-filter: blur(4px) !important;
     }
 
-    /* Таблица файлов внутри модалки (если есть) */
     #dialog table {
         width: 100% !important;
         box-shadow: none !important;
@@ -3311,7 +5033,6 @@
         margin-top: 2.5rem !important;
     }
 
-    /* Карточка инструкции внизу */
     .contract-card.instruction-footer {
         background: var(--color-card) !important;
         border: 1px solid var(--color-table-border) !important;
@@ -3328,7 +5049,6 @@
         margin-bottom: 1rem !important;
     }
 
-    /* Стиль для инструкции внизу страницы договоров */
     .contracts-container + .advice-card {
         margin-top: 4rem !important;
         background: var(--color-highlight) !important;
@@ -3356,7 +5076,6 @@
         background: var(--color-highlight) !important;
     }
 
-    /* Иконка документа */
     .contract-card .material-icons {
         font-size: 2.4rem !important;
         color: var(--color-accent) !important;
@@ -3382,7 +5101,6 @@
         color: var(--color-text-secondary) !important;
     }
 
-    /* Статусы */
     .contract-status {
         font-size: 1.1rem !important;
         font-weight: 800 !important;
@@ -3392,7 +5110,6 @@
         letter-spacing: 0.5px !important;
     }
 
-    /* Действующий договор */
     .contract-card.status-active {
         border-left: 4px solid var(--color-green) !important;
     }
@@ -3401,7 +5118,6 @@
         color: var(--color-green) !important;
     }
 
-    /* Расторгнутый договор */
     .contract-card.status-terminated {
         opacity: 0.7 !important;
     }
@@ -3410,7 +5126,6 @@
         color: var(--color-text-secondary) !important;
     }
 
-    /* Инструкция (PDF) сверху */
     .instruction-card-wrapper {
         margin-bottom: 3rem !important;
     }
@@ -3481,7 +5196,6 @@
         line-height: 1.4 !important;
     }
 
-    /* Стили для разных типов */
     .order-card[data-type="благодарность"] .order-icon-box { background: rgba(255, 204, 0, 0.15) !important; }
     .order-card[data-type="благодарность"] .order-icon-box .material-icons { color: #FF9500 !important; }
 
@@ -3537,7 +5251,6 @@
         margin-left: auto !important;
     }
 
-    /* Цвета по типам файлов */
     .type-word { background: rgba(43, 87, 154, 0.1) !important; color: #2b579a !important; }
     .type-excel { background: rgba(33, 115, 70, 0.1) !important; color: #217346 !important; }
     .type-pdf { background: rgba(244, 15, 2, 0.1) !important; color: #f40f02 !important; }
@@ -3552,7 +5265,6 @@
         border: 1px solid var(--color-table-border) !important;
     }
 
-    /* Стилизация заголовков секций (h3) */
     .span9 > h3 {
         margin-top: 3rem !important;
         font-size: 1.6rem !important;
@@ -3562,7 +5274,7 @@
 
     /* --- DETAILED TEACH PLAN --- */
 
-    /* Контейнер для карточек триместров */
+
     .calendar-grid {
         display: grid !important;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)) !important;
@@ -3607,7 +5319,6 @@
         font-size: 1.3rem !important;
     }
 
-    /* Обертка для очень широких таблиц */
     .wide-table-wrapper {
         width: 100% !important;
         overflow-x: auto !important;
@@ -3640,7 +5351,6 @@
         white-space: normal !important;
     }
 
-    /* Настройка шапки для таблицы статистики */
     .wide-table-wrapper table th[colspan],
     .wide-table-wrapper table th[rowspan] {
         font-size: 1rem !important;
@@ -3655,7 +5365,6 @@
         opacity: 0.3;
     }
 
-    /* Чтобы длинные названия дисциплин не растягивали ячейку бесконечно */
     .wide-table-wrapper td {
         min-width: 150px;
         max-width: 300px;
@@ -3720,13 +5429,11 @@
         letter-spacing: 0.5px !important;
     }
 
-    /* Цвета для разных типов занятий */
     .jour-badge-lek { background: rgba(0, 122, 255, 0.1) !important; color: var(--color-blue) !important; }
     .jour-badge-pract { background: rgba(52, 199, 89, 0.1) !important; color: var(--color-green) !important; }
     .jour-badge-lab { background: rgba(255, 149, 0, 0.1) !important; color: var(--color-warning) !important; }
     .jour-badge-default { background: var(--color-highlight) !important; color: var(--color-text-secondary) !important; }
 
-    /* Адаптация под темную тему */
     [theme="dark"] .jour-badge-lek { background: rgba(96, 165, 250, 0.15) !important; color: #60a5fa !important; }
     [theme="dark"] .jour-badge-pract { background: rgba(52, 211, 153, 0.15) !important; color: #34d399 !important; }
     [theme="dark"] .jour-badge-lab { background: rgba(251, 191, 36, 0.15) !important; color: #fbbf24 !important; }
@@ -3750,9 +5457,9 @@
 
         .login form, .form {
             width: 90% !important;
-            max-width: 360px !important;
+            max-width: 380px !important;
             margin: 0 auto !important;
-            padding: 3.2rem 2.4rem 2.4rem 2.4rem !important;
+            padding: 3.2rem 2.4rem 2.8rem 2.4rem !important;
             box-sizing: border-box !important;
         }
 
@@ -3765,21 +5472,24 @@
         }
 
         .psu-logo {
-            margin-bottom: 1.5rem !important;
+            align-items: flex-start !important;
+            margin-bottom: 2.4rem !important;
         }
         .psu-logo::before {
-            height: 9rem !important;
-            margin-bottom: 1rem !important;
+            height: 4.4rem !important;
+            width: 4.4rem !important;
+            margin-bottom: 1.2rem !important;
+            background-position: left center !important;
         }
-        .psu-logo::after {
+        .psu-logo-subtitle {
+            display: block !important;
             font-size: 2.4rem !important;
-            width: 80% !important;
+            text-align: left !important;
         }
     }
 
     /* --- ТАБЛИЦА ПОСЕЩЕНИЙ --- */
 
-    /* Карточка информации о предмете */
     .jour-info-card {
         background: var(--color-card) !important;
         border-radius: var(--radius-large) !important;
@@ -3840,14 +5550,12 @@
         margin-bottom: 0.4rem !important;
     }
 
-    /* Обертка для кнопки сохранения */
     .jour-save-wrapper {
         margin-top: 2rem !important;
         display: flex !important;
         justify-content: flex-end !important;
     }
 
-    /* Стилизация отключенной кнопки сохранения */
     .answer-btn-custom:disabled,
     .answer-btn-custom[disabled] {
         background: var(--color-highlight) !important;
@@ -3857,7 +5565,6 @@
         box-shadow: none !important;
     }
 
-    /* Улучшения для самой таблицы посещений */
     .wide-table-wrapper table th {
         white-space: nowrap !important;
     }
@@ -3953,7 +5660,6 @@
         width: 100% !important;
     }
 
-    /* Пагинация сообщений */
     .message-pages {
         display: flex !important;
         justify-content: center !important;
@@ -3963,7 +5669,6 @@
     }
     .message-pages li:first-child { display: none !important; }
 
-    /* Кнопка "Поделиться" в сообщениях */
     .share-msg-btn {
         color: var(--color-text-secondary);
         user-select: none;
@@ -3974,12 +5679,12 @@
         transform: scale(1.15);
     }
 
-    /* --- АНТИ-МОРГАНИЕ --- */
     .span9 > ul.nav.msg {
         display: none !important;
     }
 
     /* --- ПРИНУДИТЕЛЬНЫЙ РАЗМЕР ШРИФТА В СООБЩЕНИЯХ --- */
+
     .msg-body {
         font-size: 1.4rem !important;
         line-height: 1.6 !important;
@@ -4007,7 +5712,6 @@
         margin-top: 0 !important;
     }
 
-    /* Карточка каждого вопроса */
     form.que_form .question, form[name="estimate"] .question {
         background: var(--color-card) !important;
         border-radius: var(--radius-large) !important;
@@ -4017,7 +5721,6 @@
         border: none !important;
     }
 
-    /* Текст вопроса */
     form.que_form .question > .text, form[name="estimate"] .question > .text {
         font-size: 1.6rem !important;
         font-weight: 800 !important;
@@ -4026,7 +5729,6 @@
         line-height: 1.4 !important;
     }
 
-    /* Список вариантов ответа */
     form.que_form .question ul, form[name="estimate"] .question ul {
         display: flex !important;
         flex-direction: column !important;
@@ -4039,7 +5741,6 @@
         margin: 0 !important;
     }
 
-    /* Плашка варианта ответа */
     form.que_form .question label, form[name="estimate"] .question label {
         display: flex !important;
         align-items: center !important;
@@ -4060,13 +5761,11 @@
         transform: translateX(4px) !important;
     }
 
-    /* Чекбокс "Анонимно" (Одиночный вопрос) */
     form.que_form .question > label[for="anonim"], form[name="estimate"] .question > label[for="anonim"] {
         display: inline-flex !important;
         width: fit-content !important;
     }
 
-    /* Блок текстового комментария */
     form.que_form .comment, form[name="estimate"] .comment {
         background: var(--color-card) !important;
         border-radius: var(--radius-large) !important;
@@ -4104,7 +5803,6 @@
         box-shadow: 0 0 0 3px var(--color-accent-active) !important;
     }
 
-    /* Обертка и кнопка "Отправить" */
     form.que_form .button_gray, form[name="estimate"] .button_gray {
         margin-top: 1rem !important;
         width: 100% !important;
@@ -4158,6 +5856,7 @@
     }
 
     /* --- ТАБЛИЦА ОЦЕНКИ ЗАНЯТИЯ (ДЛЯ МОБИЛЬНЫХ) --- */
+
     .question-table-wrapper {
         width: 100% !important;
         overflow-x: auto !important;
@@ -4169,7 +5868,7 @@
     }
     table.question_table {
         width: 100% !important;
-        min-width: 850px !important; /* Форсируем ширину для свайпа */
+        min-width: 850px !important;
         margin: 0 !important;
         box-shadow: none !important;
         border-radius: 0 !important;
@@ -4211,6 +5910,7 @@
     }
 
     /* --- ОБРАТНАЯ СВЯЗЬ --- */
+
     .feedback-table {
         width: 100% !important;
         margin-top: 1.6rem !important;
@@ -4226,12 +5926,12 @@
     .feedback-table tr:last-child td {
         border-bottom: none !important;
     }
-    /* Первая колонка (вопрос) - посветлее */
+
     .feedback-table td:first-child {
         color: var(--color-text-secondary) !important;
         font-weight: 500 !important;
     }
-    /* Вторая колонка (ответ) - потемнее */
+
     .feedback-table td:last-child {
         color: var(--color-text-primary) !important;
         font-weight: 600 !important;
@@ -4239,6 +5939,7 @@
     }
 
     /* --- РЕЙТИНГ ПРЕПОДАВАТЕЛЕЙ --- */
+
     #rating {
         width: auto !important;
         min-width: 1500px !important;
@@ -4247,7 +5948,6 @@
         table-layout: auto !important;
     }
 
-    /* Строки факультетов (lvl1) */
     #rating tr.lvl1 td {
         background-color: var(--color-highlight) !important;
         font-weight: 800 !important;
@@ -4259,7 +5959,6 @@
         left: 0;
     }
 
-    /* Первая колонка (Названия кафедр) */
     #rating td:first-child, #rating th:first-child {
         text-align: left !important;
         min-width: 300px !important;
@@ -4271,14 +5970,12 @@
         border-right: 1px solid var(--color-table-border) !important;
     }
 
-    /* Отступ для кафедр */
     #rating tr.lvl2 td:first-child {
         padding-left: 3rem !important;
         color: var(--color-text-secondary) !important;
         font-weight: 500 !important;
     }
 
-    /* Ячейки с оценками */
     #rating td:not(:first-child) {
         text-align: center !important;
         padding: 1rem !important;
@@ -4287,7 +5984,6 @@
         white-space: nowrap !important;
     }
 
-    /* Красные оценки */
     #rating font[style*="color:#d00"],
     #rating font[color="#d00"] {
         color: var(--color-red) !important;
@@ -4303,6 +5999,7 @@
     }
 
     /* --- MOBILE LOADING STATE --- */
+
     .mobile-menu-btn.is-loading {
         width: 48px !important;
         height: 48px !important;
@@ -4312,12 +6009,10 @@
         transform: translateX(-50%) !important;
     }
 
-    /* Скрываем текст "Меню" в момент загрузки */
     .mobile-menu-btn.is-loading .menu-btn-content span:last-child {
         display: none !important;
     }
 
-    /* Гарантируем, что виден только гамбургер */
     .mobile-menu-btn.is-loading .menu-closed {
         opacity: 1 !important;
         transform: scale(1) !important;
@@ -4328,6 +6023,7 @@
     }
 
     /* --- ПРОПУЩЕННЫЕ ЗАНЯТИЯ --- */
+
     .absence-capsule {
         display: inline-block !important;
         padding: 0.4rem 1rem !important;
@@ -4438,6 +6134,7 @@
     }
 
     /* --- ОБЩИЕ СТИЛИ ТАБЛИЦ --- */
+
     .wide-table-wrapper table td,
     .wide-table-wrapper table th,
     .span9 table.common td,
@@ -4449,7 +6146,6 @@
 
     /* --- СТИЛИ ДЛЯ ПК --- */
     @media (min-width: 961px) {
-        /* Глобальный фикс древних оберток ЕТИСа */
         .span9 div[style*="inline-block"] {
             display: block !important;
             width: 100% !important;
@@ -4469,7 +6165,6 @@
             table-layout: auto !important;
         }
 
-        /* ШАПКА ТАБЛИЦЫ */
         .wide-table-wrapper table th,
         .span9 table.common th {
             white-space: normal !important;
@@ -4484,7 +6179,6 @@
             height: auto !important;
         }
 
-        /* ЯЧЕЙКИ ТЕЛА */
         .wide-table-wrapper table td,
         .span9 table.common td {
             padding: 14px 16px !important;
@@ -4496,7 +6190,6 @@
 
         /* === УМНЫЕ КОЛОНКИ === */
 
-        /* Общие отступы для всех таблиц .common */
         .span9 table.common td,
         .span9 table.common th {
             padding: 1.2rem 1.6rem !important;
@@ -4504,7 +6197,6 @@
             vertical-align: middle !important;
         }
 
-        /* ПРАВИЛА ТОЛЬКО ДЛЯ ТАБЛИЦ ОЦЕНОК (Session & Term) */
         .session-table-v6, .term-table-v6 {
             table-layout: auto !important;
         }
@@ -4517,7 +6209,6 @@
             text-align: center !important;
         }
 
-        /* Первая колонка в оценках (Предмет/Тема) */
         .session-table-v6 td:first-child,
         .term-table-v6 td:first-child {
             width: auto !important;
@@ -4535,21 +6226,18 @@
             word-wrap: break-word !important;
         }
 
-        /* Левая колонка (Время пары) */
         .timetable-grid td.pair_num {
             width: 95px !important;
             min-width: 95px !important;
             text-align: center !important;
         }
 
-        /* Средняя колонка (Предмет) */
         .timetable-grid td.pair_info {
             width: auto !important;
             text-align: left !important;
             padding-left: 1rem !important;
         }
 
-        /* Правая колонка (Преподаватель) */
         .timetable-grid td.pair_teacher {
             width: 160px !important;
             min-width: 140px !important;
@@ -4558,7 +6246,6 @@
         }
     }
 
-    /* Специальные стили для таблицы пропусков */
     .span9 table.common.absence-table {
         table-layout: auto !important;
         width: 100% !important;
@@ -4567,7 +6254,6 @@
     }
 
 
-    /* Перебиваем глобальные настройки умных колонок */
     .span9 table.common.absence-table tr > th,
     .span9 table.common.absence-table tr > td {
         white-space: normal !important;
@@ -4575,7 +6261,6 @@
         vertical-align: middle !important;
     }
 
-    /* Развешиваем ширину колонок */
     .span9 table.common.absence-table tr > th:nth-child(1),
     .span9 table.common.absence-table tr > td:nth-child(1) {
         width: 1% !important;
@@ -4609,7 +6294,6 @@
         text-align: right !important;
     }
 
-    /* Фикс для заголовков в Библиотеке */
     .span9 h3 {
         background: transparent !important;
         padding: 0 !important;
@@ -4617,7 +6301,6 @@
         border: none !important;
     }
 
-    /* Стилизация подзаголовков внутри таблицы (Обязательная / Дополнительная) */
     .resource-table .subheader {
         background: var(--color-table-header) !important;
         color: var(--color-text-secondary) !important;
@@ -4629,6 +6312,7 @@
     }
 
     /* --- LIBRARY CATALOG SEARCH --- */
+
     .search-flex-container {
         display: flex !important;
         gap: 1.2rem !important;
@@ -4636,7 +6320,6 @@
         width: 100% !important;
     }
 
-    /* Сброс кривых стилей ЕТИСа */
     .width_setter {
         position: static !important;
         margin: 0 !important;
@@ -4661,12 +6344,10 @@
         flex-shrink: 0 !important;
     }
 
-    /* Результаты поиска */
     #record_list {
         margin-top: 2.4rem !important;
     }
 
-    /* Фикс для индикатора загрузки */
     #record_list img {
         vertical-align: middle !important;
         margin-right: 10px !important;
@@ -4674,7 +6355,6 @@
 
     /* --- ТАБЛИЦА РАСПИСАНИЯ --- */
 
-    /* Усиливаем приоритет через html[theme], чтобы 100% перебить глобальные правила старой темы */
     html[theme] table.timetable-grid,
     html[theme] .span9 table.common.timetable-grid {
         table-layout: fixed !important;
@@ -4683,14 +6363,12 @@
         border-collapse: collapse !important;
     }
 
-    /* Настройка колонок расписания */
     html[theme] .timetable-grid td {
         padding: 1.2rem 0 !important;
         white-space: normal !important;
         word-wrap: break-word !important;
     }
 
-    /* 1. Колонка с временем (Левая) */
     html[theme] .timetable-grid td.pair_num {
         width: 90px !important;
         min-width: 90px !important;
@@ -4700,14 +6378,11 @@
         padding-right: 0 !important;
     }
 
-    /* 2. Колонка с предметом (Центральная) - забирает всё место */
     html[theme] .timetable-grid td.pair_info {
         overflow: visible !important;
         vertical-align: middle !important;
     }
 
-
-    /* 3. Колонка с преподавателем (Правая) */
     html[theme] .timetable-grid td.pair_teacher {
         width: 160px !important;
         min-width: 140px !important;
@@ -4724,7 +6399,6 @@
         display: none !important;
     }
 
-    /* Имя преподавателя: центрируется таблицей, при наведении плавно уезжает вверх */
     html[theme] .timetable-grid td.pair_teacher a:not(.eval) {
         display: inline-block !important;
         transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
@@ -4741,7 +6415,6 @@
         transform: translateY(-8px) !important;
     }
 
-    /* Кнопка "Оценить занятие": висит невидимо в центре ячейки */
     html[theme] .timetable-grid td.pair_teacher .eval {
         position: absolute !important;
         right: 2rem !important;
@@ -4769,7 +6442,6 @@
         transform: translateY(4px) scale(1) !important;
     }
 
-    /* При наведении кнопка появляется и отъезжает вниз, занимая место */
     html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
         opacity: 1 !important;
         visibility: visible !important;
@@ -4792,13 +6464,11 @@
         background: transparent !important;
     }
 
-    /* Фикс для строк с "Окнами" */
     html[theme] .timetable-grid tr.timetable-gap-row td {
         padding-top: 1rem !important;
         padding-bottom: 1rem !important;
     }
 
-    /* Метки типа пары (ЛЕК, ПРАКТ, ЛАБ) */
     .pair-type-badge {
         font-size: 1.05rem !important;
         font-weight: 800 !important;
@@ -4809,14 +6479,12 @@
         display: block !important;
     }
 
-    /* Цвета для разных типов занятий */
     .type-badge-lek { color: var(--color-blue) !important; }
     .type-badge-pract { color: var(--color-green) !important; }
     .type-badge-lab { color: var(--color-warning) !important; }
     .type-badge-exam { color: var(--color-red) !important; }
     .type-badge-holiday { color: #00BFA5 !important; }
 
-    /* --- АНИМАЦИИ ДЛЯ СТРОК РАСПИСАНИЯ --- */
     @keyframes cellScaleIn {
         0% { opacity: 0; transform: scale(0.95) translateY(10px); }
         100% { opacity: 1; transform: scale(1) translateY(0); }
@@ -4827,12 +6495,10 @@
         100% { opacity: 0; transform: scale(0.95) translateY(-10px); }
     }
 
-    /* Анимация для вновь появляющихся "Окон" */
     .timetable-gap-row td {
         animation: cellScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
 
-    /* Анимации, которые будет переключать JS */
     .row-animating-in td {
         animation: cellScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
     }
@@ -4898,7 +6564,6 @@
     /* --- УЧЕБНО-МЕТОДИЧЕСКИЙ КОМПЛЕКС (stu.tpr) --- */
     /* ========================================================= */
 
-    /* Список тем */
     .themes {
         display: flex !important;
         flex-direction: column !important;
@@ -4914,7 +6579,6 @@
         line-height: 1.5 !important;
     }
 
-    /* Заголовок семестра (верхний уровень) */
     .theme[style*="padding-left: 0px"] {
         margin-top: 1rem !important;
         margin-bottom: 0.5rem !important;
@@ -4925,7 +6589,6 @@
         color: var(--color-text-primary) !important;
     }
 
-    /* Обычные темы (с отступом) */
     .theme[style*="padding-left: 25px"] {
         padding-left: 2rem !important;
     }
@@ -4940,13 +6603,13 @@
         opacity: 0.8 !important;
     }
 
-    /* Часы */
     .theme .hour {
         font-size: 1.2rem !important;
         color: var(--color-text-secondary) !important;
     }
 
-    /* --- АКЦЕНТНЫЙ (СИНИЙ) БЕЙДЖ --- */
+    /* --- АКЦЕНТНЫЙ БЕЙДЖ --- */
+
     .badge.ctl {
         background: var(--color-accent-active) !important;
         color: var(--color-accent) !important;
@@ -4962,7 +6625,6 @@
         opacity: 0.9 !important;
     }
 
-    /* Ссылки на вопросы */
     .tpr_part > a {
         display: inline-flex !important;
         font-size: 1.4rem !important;
@@ -4972,7 +6634,6 @@
     }
     .tpr_part > a:hover { text-decoration: underline !important; }
 
-    /* Текстовые блоки показателей оценивания */
     .tpr_part > div:not([style]) {
         font-size: 1.3rem !important;
         line-height: 1.6 !important;
@@ -4980,7 +6641,8 @@
         margin-bottom: 0.6rem !important;
     }
 
-    /* --- ОБЕРТКА ТАБЛИЦЫ (СКРОЛЛ И ОТСТУПЫ) --- */
+    /* --- ОБЕРТКА ТАБЛИЦЫ --- */
+
     .wide-table-wrapper {
         width: 100% !important;
         overflow-x: auto !important;
@@ -4991,7 +6653,6 @@
         background: var(--color-card) !important;
     }
 
-    /* Сама таблица */
     .tpr_part table {
         width: 100% !important;
         min-width: 600px !important;
@@ -5013,12 +6674,10 @@
         word-wrap: break-word !important;
     }
 
-    /* Убираем линию у последней строки */
     .tpr_part table tr:last-child td {
         border-bottom: none !important;
     }
 
-    /* Первая колонка таблицы (Оценка) */
     .tpr_part table td:first-child {
         width: 25% !important;
         min-width: 140px !important;
@@ -5033,7 +6692,7 @@
     }
 
     /* --- ПОИСК ПРЕПОДАВАТЕЛЕЙ --- */
-    /* Контейнер поиска */
+
     .teacher-search-wrapper {
         margin: 0 0 2.4rem 0 !important;
         display: flex !important;
@@ -5041,7 +6700,6 @@
         width: 100% !important;
     }
 
-    /* Капсула */
     .search-capsule {
         display: flex !important;
         align-items: center !important;
@@ -5067,7 +6725,6 @@
         transition: background 0.2s ease !important;
     }
 
-    /* Специфика для ИНПУТА внутри капсулы */
     .search-capsule input {
         width: 100% !important;
         height: 100% !important;
@@ -5084,7 +6741,6 @@
         opacity: 1 !important;
     }
 
-    /* Общая иконка */
     .search-capsule .material-icons {
         position: absolute !important;
         left: 10px !important;
@@ -5095,13 +6751,11 @@
         pointer-events: none !important;
     }
 
-    /* Ховер для кнопки */
     button.search-capsule:hover {
         background: var(--color-highlight) !important;
         color: var(--color-text-primary) !important;
     }
 
-    /* Поле ввода внутри капсулы */
     .search-capsule .search-input {
         width: 100% !important;
         background: transparent !important;
@@ -5114,7 +6768,6 @@
         color: var(--color-text-primary) !important;
     }
 
-    /* Сдвигаем лупу чуть левее */
     .search-capsule .search-icon {
         position: absolute !important;
         left: 12px !important;
@@ -5129,7 +6782,6 @@
         border-bottom: none !important;
     }
 
-    /* Ссылка статистики внизу */
     .stats-link-bottom {
         display: flex !important;
         align-items: center !important;
@@ -5156,7 +6808,6 @@
         }
     }
 
-    /* Список преподов */
     .teachers-list {
         display: flex !important;
         flex-direction: column !important;
@@ -5170,13 +6821,11 @@
         font-size: 1.5rem !important;
     }
 
-    /* Фикс для таблиц библиотеки (чтобы текст не наезжал) */
     .resource-table td, .common td {
         white-space: normal !important;
         word-wrap: break-word !important;
     }
 
-    /* Поиск в библиотеке (фикс прозрачности и отступов) */
     .library-search-wrap {
         background: var(--color-card) !important;
         border: 1px solid var(--color-table-border) !important;
@@ -5213,7 +6862,6 @@
         box-shadow: 0 0 0 1px var(--color-accent);
     }
 
-    /* Фикс наслоения текста в библиотеке */
     .library-subject-block table,
     #record_list table {
         table-layout: auto !important;
@@ -5247,24 +6895,20 @@
         padding: 12px 10px !important;
     }
 
-    /* Колонки: РЕКОМЕНДУЕМАЯ ЛИТЕРАТУРА */
     .library-subject-block table td:nth-child(1) { width: 70% !important; text-align: left !important; }
     .library-subject-block table td:nth-child(2) { width: 10% !important; text-align: center !important; }
     .library-subject-block table td:nth-child(3) { width: 20% !important; text-align: left !important; }
 
-    /* Колонки: КАТАЛОГ */
     #record_list table td:nth-child(1) { width: 65% !important; text-align: left !important; }
     #record_list table td:nth-child(2) { width: 10% !important; text-align: center !important; }
     #record_list table td:nth-child(3) { width: 25% !important; text-align: left !important; }
 
-    /* Сбрасываем фиксированную сетку */
     .span9 .wide-table-wrapper table.library-history-table,
     .span9 .wide-table-wrapper table.resource-table {
         table-layout: auto !important;
         width: 100% !important;
     }
 
-    /* Принудительный перенос текста для первой колонки (Название книги) */
     .span9 .wide-table-wrapper table.library-history-table td:first-child,
     .span9 .wide-table-wrapper table.resource-table td:first-child,
     .span9 .wide-table-wrapper table.common td:first-child {
@@ -5276,14 +6920,12 @@
         min-width: 250px !important;
     }
 
-    /* Колонки с датами (Выданные книги)*/
     .span9 table.library-history-table td:not(:first-child) {
         white-space: nowrap !important;
         text-align: center !important;
         width: 120px !important;
     }
 
-    /* 1. Точка в сайдбаре (ПК и Мобайл меню) и в окне Настроек */
     .span3 > .nav.nav-tabs.nav-stacked > li > a .badge-point,
     #etis-settings-modal .settings-sidebar-btn .badge-point {
         display: block !important;
@@ -5301,7 +6943,6 @@
         box-shadow: 0 0 4px rgba(255, 59, 48, 0.4) !important;
     }
 
-    /* Фикс: чтобы во флекс-контейнере текст не выталкивал точку */
     .span3 > .nav.nav-tabs.nav-stacked > li > a {
         display: flex !important;
         flex-direction: row !important;
@@ -5318,41 +6959,12 @@
         text-overflow: ellipsis !important;
     }
 
-    /* 2. Точка на мобильной кнопке (Капсула) */
-    .mobile-notify-dot {
-        position: absolute !important;
-        top: 50% !important;
-        left: 42px !important;
-        transform: translateY(-160%) scale(0) !important;
-
-        width: 10px !important;
-        height: 10px !important;
-        background-color: #FF3B30 !important;
-        border-radius: 50% !important;
-        border: 2px solid var(--color-accent) !important;
-        z-index: 100 !important;
-        pointer-events: none !important;
-        opacity: 0 !important;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-    }
-
-    /* Показ точки при наличии обновлений */
-    .mobile-menu-btn.has-updates .mobile-notify-dot {
-        opacity: 1 !important;
-        transform: translateY(-160%) scale(1) !important;
-    }
-
-    /* Скрываем точку, когда меню открыто */
-    .mobile-menu-btn.open .mobile-notify-dot {
-        display: none !important;
-    }
-
-    /* Убираем подчеркивание в капсулах-кнопках */
     .answer-btn-custom, .answer-btn-custom:hover {
         text-decoration: none !important;
     }
 
     /* --- LIVE TIMETABLE INDICATORS --- */
+
     @keyframes pulse-live {
         0% { transform: scale(0.9); box-shadow: 0 0 0 0 var(--pulse-color); }
         70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(0, 0, 0, 0); }
@@ -5402,7 +7014,6 @@
     .live-dot.soon { --pulse-color: rgba(255, 204, 0, 0.4); background-color: var(--color-yellow) !important; animation: pulse-live 1.5s infinite; }
     .live-dot.ending { --pulse-color: rgba(255, 59, 48, 0.4); background-color: var(--color-red) !important; animation: pulse-live 1s infinite; }
 
-    /* Для заголовка дня подгоняем отступ */
     .day-name .live-dot {
         position: static !important;
         vertical-align: middle;
@@ -5411,6 +7022,7 @@
     }
 
     /* --- ANALYTICS MODAL --- */
+
     .analytics-modal {
         position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.95);
         background: var(--color-card); border-radius: var(--radius-large);
@@ -5427,26 +7039,45 @@
     .analytics-overlay.active { opacity: 1; visibility: visible; }
     .stat-box {
         background: var(--color-card) !important;
-        border: 1px solid var(--color-table-border) !important;
+        border: none !important;
+        box-shadow: var(--shadow-main) !important;
         padding: 1.4rem 1.6rem;
-        border-radius: var(--radius-medium); display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: 0.4rem;
-        width: 100%; box-sizing: border-box;
+        border-radius: var(--radius-medium); 
+        display: flex; 
+        flex-direction: column; 
+        align-items: flex-start; 
+        text-align: left; 
+        gap: 0.4rem;
+        width: 100%; 
+        box-sizing: border-box;
     }
+
     .stat-box-title { font-size: 1.1rem; color: var(--color-text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px; line-height: 1.2; width: 100%; }
     .stat-box-value { font-size: 1.5rem; color: var(--color-text-primary); font-weight: 800; line-height: 1.2; width: 100%; }
     .stat-box-value.good { color: var(--color-green); }
     .stat-box-value.bad { color: var(--color-red); }
     .analytics-btn:hover { transform: scale(1.02); opacity: 0.9; }
 
-    /* --- LEADERBOARD (ТОП ПРЕДМЕТОВ) --- */
+    /* --- LEADERBOARD --- */
+
     .leaderboard-list { display: flex; flex-direction: column; gap: 1rem; }
     .leaderboard-item {
-        display: flex; align-items: center; gap: 1.4rem;
+        display: flex; 
+        align-items: center; 
+        gap: 1.4rem;
         background: var(--color-card) !important;
-        border: 1px solid var(--color-table-border) !important;
+        border: none !important;
+        box-shadow: var(--shadow-main) !important;
         padding: 1.2rem 1.6rem;
-        border-radius: var(--radius-medium); transition: transform 0.2s;
+        border-radius: var(--radius-medium); 
+        transition: transform 0.2s;
     }
+
+    #accent-preview-box {
+        border: none !important;
+        box-shadow: var(--shadow-main) !important;
+    }
+
     .leaderboard-item:hover { transform: translateX(4px); }
     .leaderboard-rank {
         font-size: 1.6rem; font-weight: 800; width: 3.6rem; height: 3.6rem;
@@ -5465,7 +7096,8 @@
     }
     .leaderboard-meta { font-size: 1.2rem; color: var(--color-text-secondary); }
 
-    /* --- GRADE CALCULATOR (Прогноз оценок) --- */
+    /* --- GRADE CALCULATOR --- */
+
     .subject-score-capsule {
         position: relative;
         cursor: help;
@@ -5505,7 +7137,8 @@
         transform: translateY(0);
     }
 
-    /* --- ЗАМЕТКИ ДЛЯ ПРЕДМЕТОВ (To-Do) --- */
+    /* --- ЗАМЕТКИ ДЛЯ ПРЕДМЕТОВ --- */
+
     .subject-note-btn {
         display: inline-flex !important;
         align-items: center !important;
@@ -5533,7 +7166,6 @@
         margin: 0 !important;
     }
 
-    /* При наведении ИЛИ если есть заметка - плавно проявляем */
     .timetable-grid tr:hover .subject-note-btn,
     .subject-note-btn.has-note {
         opacity: 1 !important;
@@ -5542,12 +7174,10 @@
         pointer-events: auto !important;
     }
 
-    /* Цвет для заполненной заметки */
     .subject-note-btn.has-note {
         color: var(--color-warning) !important;
     }
 
-    /* Цвет пустой кнопки */
     .subject-note-btn:not(.has-note) {
         color: var(--color-text-secondary) !important;
     }
@@ -5558,7 +7188,6 @@
         background: var(--color-highlight) !important;
     }
 
-    /* Стили текстового поля в модалке */
     .note-modal-textarea {
         width: 100% !important;
         min-height: 140px !important;
@@ -5576,7 +7205,6 @@
         box-sizing: border-box !important;
     }
 
-    /* Убираем акцентную подсветку у ВСЕХ полей в модальном окне */
     .note-modal-textarea:focus,
     .custom-pair-input-group > input:focus,
     .custom-pair-input-group > select:focus {
@@ -5585,7 +7213,6 @@
         box-shadow: none !important;
     }
 
-    /* --- Одинаковая высота для капсул тулбара и кружков недель --- */
     .timetable-toolbar > *,
     .timetable-toolbar .toolbar-item,
     .timetable-toolbar label.toolbar-item,
@@ -5595,7 +7222,6 @@
         box-sizing: border-box !important;
     }
 
-    /* Перебиваем старые урезанные отступы на мобильных экранах */
     @media (max-width: 960px) {
         .timetable-toolbar > *,
         .timetable-toolbar .toolbar-item,
@@ -5606,7 +7232,9 @@
             border-radius: 50px !important;
         }
     }
-    /* --- АНИМАЦИЯ И ВЫРАВНИВАНИЕ ИКОНКИ ПОДЕЛИТЬСЯ --- */
+
+    /* --- АНИМАЦИЯ ИКОНКИ ПОДЕЛИТЬСЯ --- */
+
     .msg-date-wrapper {
         display: flex !important;
         align-items: flex-end !important;
@@ -5655,7 +7283,6 @@
         }
     }
 
-    /* Логика для смартфонов (иконка всегда видима, так как нет курсора) */
     @media (hover: none), (pointer: coarse) {
         .share-msg-wrap {
             max-width: 24px;
@@ -5666,6 +7293,7 @@
     }
 
     /* --- PSEUDO PUSH NOTIFICATIONS --- */
+
     .push-container {
         position: fixed;
         z-index: 2000000;
@@ -5712,7 +7340,6 @@
         cursor: pointer;
     }
 
-    /* Цвета фона для темной и светлой темы */
     [theme="light"] .push-toast { --push-bg-rgb: 255, 255, 255; border-color: rgba(0,0,0,0.05) !important; }
     [theme="dark"] .push-toast { --push-bg-rgb: 28, 30, 32; }
 
@@ -5731,7 +7358,6 @@
 
     .push-icon-wrap .material-icons { font-size: 2.4rem !important; }
 
-    /* Настройки цветов для типов уведомлений */
     .push-toast.info .push-icon-wrap { background: rgba(0, 122, 255, 0.25); color: #007AFF; }
     .push-toast.success .push-icon-wrap { background: rgba(52, 199, 89, 0.25); color: #34C759; }
     .push-toast.warning .push-icon-wrap { background: rgba(255, 149, 0, 0.25); color: #FF9500; }
@@ -5766,6 +7392,7 @@
     }
 
     /* --- ПОЛЬЗОВАТЕЛЬСКИЕ ПАРЫ --- */
+
     .add-custom-pair-btn {
         cursor: pointer;
         color: var(--color-text-secondary);
@@ -5785,7 +7412,6 @@
         height: 28px;
     }
 
-    /* Показываем при наведении на шапку дня */
     .span9 .day h3:hover .add-custom-pair-btn {
         opacity: 1;
         visibility: visible;
@@ -5797,13 +7423,11 @@
         background: var(--color-highlight);
     }
 
-    /* Строка пользовательской пары */
     .custom-pair-row .pair_info .dis a {
         color: var(--color-accent) !important;
         font-weight: 700 !important;
     }
 
-    /* Кнопка удаления (крестик справа от названия предмета) */
     .delete-custom-pair-btn {
         opacity: 0;
         visibility: hidden;
@@ -5823,7 +7447,6 @@
         vertical-align: middle;
     }
 
-    /* Показываем крестик при наведении на строку */
     .custom-pair-row:hover .delete-custom-pair-btn {
         opacity: 1;
         visibility: visible;
@@ -5832,13 +7455,41 @@
 
     .delete-custom-pair-btn:hover { background: rgba(255, 59, 48, 0.1); }
 
-    /* Инпуты в модалке */
-    .custom-pair-input-group { display: flex; gap: 1.2rem; margin-bottom: 1.2rem; }
-    .custom-pair-input-group > input, .custom-pair-input-group > select {
+    /* Обертки полей ввода с иконками слева */
+    .custom-pair-input-group { 
+        display: flex; 
+        gap: 1.2rem; 
+        margin-bottom: 1.2rem; 
+    }
+
+    .cp-input-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
         flex: 1;
+        min-width: 0;
+    }
+
+    .cp-input-wrap .material-icons {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--color-text-secondary);
+        font-size: 20px;
+        pointer-events: none;
+        z-index: 2;
+    }
+
+    .custom-pair-input-group input, 
+    .custom-pair-input-group select,
+    .cp-input-wrap input, 
+    .cp-input-wrap select {
+        flex: 1;
+        width: 100%;
         min-width: 0 !important;
         text-overflow: ellipsis !important;
-        padding: 1.2rem 1.6rem !important;
+        padding: 1.2rem 1.6rem 1.2rem 42px !important;
         border: 1px solid var(--color-table-border) !important;
         background: var(--color-card) !important;
         border-radius: var(--radius-medium) !important;
@@ -5848,8 +7499,11 @@
         margin: 0 !important;
         height: auto !important;
         line-height: 1.4 !important;
+        box-sizing: border-box !important;
     }
-    .custom-pair-input-group > select {
+
+    .custom-pair-input-group select,
+    .cp-input-wrap select {
         appearance: none !important;
         background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='var(--color-text-secondary)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
         background-repeat: no-repeat !important;
@@ -5859,7 +7513,6 @@
         cursor: pointer;
     }
 
-    /* Вкладки в модальном окне редактирования */
     .modal-tabs {
         display: flex;
         border-bottom: 1px solid var(--color-table-border);
@@ -5881,19 +7534,24 @@
         color: var(--color-accent);
         border-bottom-color: var(--color-accent);
     }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+    .tab-content { 
+        display: none; 
+        padding: 6px 4px; 
+        box-sizing: border-box; 
+    }
+    .tab-content.active { 
+        display: block; 
+    }
 
     /* --- SUBMENU (ПОДВКЛАДКИ) --- */
+
     .submenu {
-        /* Убираем боковые градиенты-тени */
         background-image: none !important;
     }
     [theme="dark"] .submenu {
         background: var(--color-card) !important;
     }
 
-    /* Стили неактивных кнопок (убираем фон) */
     .submenu a:not(.answer-btn-custom) {
         background: transparent !important;
         color: var(--color-text-secondary) !important;
@@ -5904,7 +7562,6 @@
         transform: none !important;
     }
 
-    /* Разделители между вкладками */
     .submenu > *:not(:last-child):not(.answer-btn-custom) {
         position: relative !important;
     }
@@ -5917,17 +7574,17 @@
         width: 1px !important;
         background-color: var(--color-table-border) !important;
         pointer-events: none !important;
+        z-index: 101 !important;
     }
-    /* Скрываем разделитель рядом с активной кнопкой для красоты */
     .submenu > *:has(+ b)::after,
     .submenu > b::after {
         display: none !important;
     }
 
 
-    /* --- WEEKS (НЕДЕЛИ) --- */
+    /* --- WEEKS --- */
+
     .weeks {
-        /* Убираем боковые градиенты-тени */
         background-image: none !important;
     }
     [theme="dark"] .weeks {
@@ -5954,7 +7611,6 @@
         color: var(--color-text-primary) !important;
     }
 
-    /* Разделители между неделями */
     .weeks .week:not(:last-child) {
         position: relative !important;
     }
@@ -5967,20 +7623,18 @@
         width: 1px !important;
         background-color: var(--color-table-border) !important;
         pointer-events: none !important;
+        z-index: 101 !important;
     }
-    /* Скрываем разделитель рядом с активной кнопкой */
     .weeks .week:has(+ .current)::after,
     .weeks .week.current::after {
         display: none !important;
     }
 
-    /* Убираем тень у кнопок внутри тулбара (Аналитика, Топ предметов и т.д.) */
     .timetable-toolbar button.toolbar-item,
     button.analytics-btn {
         box-shadow: none !important;
     }
 
-    /* Отключаем системную серую/синюю подсветку при тапе на мобильных */
     .mobile-menu-btn,
     .submenu a,
     .submenu b,
@@ -5989,14 +7643,12 @@
         -webkit-tap-highlight-color: transparent !important;
     }
 
-    /* Активное состояние для кнопок в тулбаре (Синхронизация) */
     .timetable-toolbar .toolbar-item.is-active {
         background: var(--color-accent) !important;
         color: var(--color-text-primary-invert) !important;
         font-weight: 600 !important;
     }
 
-    /* Затемнение активной кнопки при наведении */
     .timetable-toolbar .toolbar-item.is-active:hover {
         filter: brightness(0.85) !important;
     }
@@ -6013,7 +7665,6 @@
 
     @media (max-width: 960px) {
 
-        /* 1. скрытое состояние карандаша по умолчанию */
         .subject-note-btn {
             opacity: 0 !important;
             visibility: hidden !important;
@@ -6022,7 +7673,6 @@
             pointer-events: none !important;
         }
 
-        /* Показываем карандаш только при наведении на всю строку */
         .timetable-grid tr:hover .subject-note-btn {
             opacity: 1 !important;
             visibility: visible !important;
@@ -6030,7 +7680,6 @@
             pointer-events: auto !important;
         }
 
-        /* 2. Фикс "Онлайн в" (запрещаем перенос слов внутри текста) */
         .pair_info .aud {
             display: flex !important;
             flex-direction: row !important;
@@ -6040,12 +7689,10 @@
             max-width: none !important;
         }
 
-        /* Контейнер текста "Онлайн в" делаем неразрывным */
         .pair_info .aud div {
             white-space: nowrap !important;
         }
 
-        /* 3. Фикс колонки преподавателя и оценки */
         html[theme] .timetable-grid td.pair_teacher {
             width: 100px !important;
             min-width: 100px !important;
@@ -6054,12 +7701,10 @@
             position: relative !important;
         }
 
-        /* Оборачиваем содержимое ячейки препода в Flex-стек */
         html[theme] .timetable-grid td.pair_teacher {
             display: table-cell !important;
         }
 
-        /* Убираем абсолютное позиционирование у оценки, чтобы она не наезжала на Zoom */
         html[theme] .timetable-grid td.pair_teacher .eval {
             position: static !important;
             display: block !important;
@@ -6074,7 +7719,6 @@
             transition: all 0.2s ease !important;
         }
 
-        /* Состояние ХОВЕРА для препода и оценки */
         html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval) {
             transform: translateY(0) !important;
             display: block !important;
@@ -6086,14 +7730,12 @@
             height: auto !important;
             transform: translateY(0) !important;
         }
-        /* УДАЛЕНИЕ ВЕРХНИХ ГРАНИЦ У ТАБЛИЦ */
         .span9 table.common,
         .span9 table.teach_plan,
         .wide-table-wrapper table {
             border-top: none !important;
         }
 
-        /* Убираем границу у самих ячеек первой строки */
         .span9 table.common tr:first-child th,
         .span9 table.common tr:first-child td,
         .span9 table.teach_plan tr:first-child th,
@@ -6168,7 +7810,6 @@
         }
     }
 
-    /* Стили плавающего индикатора при свайпе */
     #swipe-action-bubble {
         position: fixed;
         width: 24px;
@@ -6197,10 +7838,10 @@
     #swipe-action-bubble.active-threshold.action-eval { color: var(--color-yellow); }
 
     /* БЛОКИРОВКА ХОВЕРОВ НА СМАРТФОНАХ */
+
     @media (hover: none), (pointer: coarse) {
         .timetable-grid tr, .day { touch-action: pan-y; }
 
-        /* Жестко убиваем все смещения текста преподавателей на мобилках */
         html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval),
         html[theme] .timetable-grid tr:has(td.pair_teacher .eval).tr-needs-space:hover td.pair_teacher a:not(.eval),
         html[theme] .timetable-grid tr:has(td.pair_teacher .eval):not(.tr-needs-space):hover td.pair_teacher a:not(.eval) {
@@ -6215,7 +7856,6 @@
             pointer-events: none !important;
         }
 
-        /* Отключаем системную вспышку на ссылках сайдбара в iOS */
         .span3 > .nav.nav-tabs.nav-stacked > li > a {
             -webkit-tap-highlight-color: transparent !important;
         }
@@ -6321,7 +7961,6 @@
         }
     }
 
-    /* Анимация при самом клике (сжатие) */
     .color-picker-random-btn:active,
     .color-picker-random-btn.clicked {
         transform: scale(0.9) !important;
@@ -6334,6 +7973,7 @@
     }
 
     /* --- THEME SELECTOR --- */
+
     .theme-selector-group {
         display: inline-flex;
         background: var(--color-card);
@@ -6364,7 +8004,6 @@
         font-size: 22px !important;
         margin: 0 !important;
     }
-    /* Ховер только для ПК */
     @media (hover: hover) and (pointer: fine) {
         .theme-btn:hover {
             color: var(--color-text-primary) !important;
@@ -6378,6 +8017,7 @@
     }
 
     /* --- СТИЛИ ДЛЯ УМНЫХ ДАТ --- */
+
     .msg-event-link {
         cursor: pointer;
         text-decoration: underline;
@@ -6397,15 +8037,13 @@
         background: var(--color-accent-active);
     }
 
-    /* Состояние "Уже добавлено" */
     .msg-event-link.added {
         color: var(--color-accent) !important;
         text-decoration: none !important;
         background: var(--color-accent-active);
-        pointer-events: auto; /* Разрешаем повторный клик */
+        pointer-events: auto;
     }
 
-    /* Ховер для добавленного события (Удаление) */
     .msg-event-link.added:hover {
         color: var(--color-red) !important;
         background: rgba(255, 59, 48, 0.15) !important;
@@ -6413,6 +8051,7 @@
     }
 
     /* --- ВКЛАДКИ СИНХРОНИЗАЦИИ --- */
+
     .sync-tabs {
         display: flex;
         background: var(--color-input) !important;
@@ -6452,15 +8091,12 @@
         animation: fadeIn 0.2s ease;
     }
 
-    /* Цвет бейджа для консультаций */
     .type-badge-cons { color: var(--color-text-secondary) !important; }
 
-    /* Затемнение активной кнопки Синхронизации при наведении */
     .timetable-toolbar .toolbar-item.is-active:hover {
         filter: brightness(0.85) !important;
     }
 
-    /* Кнопка удаления внешнего календаря */
     .delete-cal-btn {
         background: none;
         border: none;
@@ -6479,7 +8115,6 @@
         color: var(--color-red) !important;
     }
 
-    /* Фикс всплывающего окна в рейтинге */
     #tooltip {
         max-width: 500px !important;
         width: auto !important;
@@ -6514,12 +8149,12 @@
     }
 
     /* --- ВАЖНЫЕ ПАРЫ --- */
+
     .timetable-grid tr.is-important .pair-type-badge {
         background: transparent !important;
         color: var(--color-red) !important;
     }
 
-    /* Контейнер, который держит элементы по центру */
     .pair-badge-wrapper {
         display: flex !important;
         align-items: center !important;
@@ -6534,8 +8169,8 @@
     }
 
     .pair-important-btn {
-        position: relative !important; /* Возвращаем в общий поток */
-        width: 0 !important; /* Скрыто по умолчанию */
+        position: relative !important;
+        width: 0 !important;
         margin-right: 0 !important;
 
         cursor: pointer !important;
@@ -6551,16 +8186,14 @@
 
         opacity: 0 !important;
         visibility: hidden !important;
-        overflow: hidden !important; /* Чтобы иконка не торчала при сужении */
+        overflow: hidden !important;
         transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
     }
 
-    /* Уменьшаем саму иконку, чтобы она была вровень с текстом */
     .pair-important-btn .material-icons {
         font-size: 1.4rem !important;
     }
 
-    /* При наведении ширина увеличивается, плавно сдвигая текст вправо */
     .timetable-grid tr:hover .pair-important-btn,
     .pair-important-btn.is-active {
         opacity: 1 !important;
@@ -6588,7 +8221,6 @@
 
     #swipe-action-bubble.active-threshold.action-important { color: var(--color-red) !important; }
 
-    /* Фикс для смартфонов */
     @media (hover: none), (pointer: coarse) {
         .timetable-grid tr:hover .pair-important-btn:not(.is-active) {
             opacity: 0 !important; visibility: hidden !important; pointer-events: none !important; width: 0 !important; margin-right: 0 !important;
@@ -6599,6 +8231,7 @@
     }
 
     /* --- ШЕРИНГ ДНЯ И ЗАТЕМНЕНИЕ ПРОШЕДШИХ ПАР --- */
+
     .day-header-right {
         display: flex;
         align-items: center;
@@ -6616,7 +8249,7 @@
         overflow: hidden;
         transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-    /* Прошедшие пары */
+
     .timetable-grid tr.pair-passed td {
         opacity: 0.45;
         transition: opacity 0.3s ease;
@@ -6628,7 +8261,6 @@
         border-color: var(--color-highlight) !important;
     }
 
-    /* Ховеры только для ПК (мышь) */
     @media (hover: hover) and (pointer: fine) {
         .timetable-grid tr.pair-passed:hover td {
             opacity: 0.9 !important;
@@ -6644,6 +8276,7 @@
     #swipe-action-bubble.active-threshold.action-share { color: var(--color-blue) !important; }
 
     /* --- SETTINGS MODAL --- */
+
     .settings-menu-list { display: flex; flex-direction: column; gap: 8px; }
     .settings-menu-btn {
         display: flex; align-items: center; width: 100%; padding: 16px;
@@ -6659,6 +8292,7 @@
     /* ==========================================
     УНИВЕРСАЛЬНЫЕ МОДАЛЬНЫЕ ОКНА (ШТОРКИ НА МОБИЛЬНЫХ)
     ========================================== */
+
     #etis-settings-modal, .analytics-modal, #etis-reviews-modal {
         position: fixed !important;
         background: var(--color-body) !important;
@@ -6683,7 +8317,6 @@
         opacity: 1 !important; visibility: visible !important;
     }
 
-    /* Мобильные (Шторка снизу) */
     @media (max-width: 960px) {
         #etis-settings-modal, .analytics-modal, #etis-reviews-modal {
             top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
@@ -6701,7 +8334,6 @@
             transform: translateY(0) !important;
         }
 
-        /* Индикатор свайпа (полоска сверху) */
         #etis-settings-modal::before, .analytics-modal::before, #etis-reviews-modal::before {
             content: '';
             position: absolute;
@@ -6725,7 +8357,6 @@
         }
     }
 
-    /* Скролл внутри контента модалки */
     #etis-settings-modal .ui-dialog-content,
     .analytics-modal .ui-dialog-content,
     #etis-reviews-modal .ui-dialog-content {
@@ -6824,11 +8455,14 @@
         #etis-cons-modal .settings-content-scroll,
         #etis-profile-modal .settings-content-scroll,
         #etis-sync-modal .settings-content-scroll,
-        #etis-settings-modal .settings-content-scroll {
-            padding: 0 !important;
+        #etis-settings-modal .settings-content-scroll,
+        #etis-guide-modal .settings-content-scroll,
+        .settings-content-scroll {
+            padding: 0 1.6rem 4rem 1.6rem !important;
+            box-sizing: border-box !important;
         }
         .settings-content-area .ui-widget-header {
-            padding: 1.2rem 2.4rem 0 2.4rem !important;
+            padding: 1.2rem 1.6rem 0 1.6rem !important;
             background: transparent !important;
             border-bottom: none !important;
         }
@@ -6840,13 +8474,14 @@
         .sidebar-tabs-container {
             background: var(--color-card) !important;
             border-radius: var(--radius-large) !important;
-            border: 1px solid var(--color-table-border) !important;
+            border: none !important;
+            box-shadow: var(--shadow-main) !important;
             display: flex;
             flex-direction: column;
             margin-left: 0 !important;
             margin-right: 0 !important;
             margin-top: 1rem !important;
-            margin-bottom: 2.4rem;
+            margin-bottom: 2rem;
             overflow: hidden;
         }
 
@@ -6859,7 +8494,11 @@
             border: none !important;
             box-shadow: none !important;
             background: transparent !important;
-            padding: 1.6rem 2rem !important;
+            padding: 1.3rem 1.6rem !important;
+            display: flex !important;
+            align-items: center !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
         }
 
         html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn::after,
@@ -6868,8 +8507,8 @@
             content: '' !important;
             position: absolute !important;
             bottom: 0 !important;
-            left: 5.2rem !important; /* Отступ слева (начинается ровно под текстом, пропуская иконку) */
-            right: 1.6rem !important; /* Отступ справа */
+            left: 52px !important;
+            right: 16px !important;
             height: 1px !important;
             background-color: var(--color-table-border) !important;
             display: block !important;
@@ -6902,12 +8541,14 @@
     /* ========================================================= */
     /* --- ДЕСКТОПНЫЙ МАКЕТ ОКОН НА ПК --- */
     /* ========================================================= */
+
     @media (min-width: 961px) {
         #etis-settings-modal,
         #etis-profile-modal,
         #etis-cons-modal,
         #etis-sync-modal,
-        #etis-reviews-modal {
+        #etis-reviews-modal,
+        #etis-guide-modal {
             top: 50% !important; left: 50% !important;
             transform: translate(-50%, -50%) scale(0.95) !important;
             width: 90% !important;
@@ -6932,7 +8573,7 @@
             padding: 0 !important;
         }
 
-        .analytics-modal:not(#etis-settings-modal):not(#etis-cons-modal):not(#etis-profile-modal):not(#etis-sync-modal):not(#etis-reviews-modal) {
+        .analytics-modal:not(#etis-settings-modal):not(#etis-cons-modal):not(#etis-profile-modal):not(#etis-sync-modal):not(#etis-reviews-modal):not(#etis-guide-modal) {
             top: 50% !important; left: 50% !important;
             transform: translate(-50%, -50%) scale(0.95) !important;
             width: 90% !important;
@@ -6953,7 +8594,8 @@
         #etis-cons-modal.active,
         #etis-sync-modal.active,
         .analytics-modal.active,
-        #etis-reviews-modal.active {
+        #etis-reviews-modal.active,
+        #etis-guide-modal.active {
             opacity: 1 !important; visibility: visible !important;
             transform: translate(-50%, -50%) scale(1) !important;
         }
@@ -6965,12 +8607,19 @@
         }
 
         .settings-sidebar {
-            width: 250px !important; min-width: 250px !important; max-width: 250px !important;
-            background: var(--color-card) !important; border-radius: var(--radius-large) !important;
+            width: 250px !important; 
+            min-width: 250px !important; 
+            max-width: 250px !important;
+            background: var(--color-card) !important; 
+            border-radius: var(--radius-large) !important;
             box-shadow: var(--shadow-main) !important;
+            border: none !important;
             padding: 1.2rem !important;
             display: flex !important;
-            flex-direction: column !important; gap: 8px !important; overflow-y: auto !important; height: 100% !important;
+            flex-direction: column !important; 
+            gap: 8px !important; 
+            overflow-y: auto !important; 
+            height: 100% !important;
         }
 
         .settings-content-area {
@@ -6991,16 +8640,11 @@
         .back-modal-btn[data-back="main"] { display: none !important; }
 
         #bento-capture-area {
-            max-width: 100% !important; width: 100% !important; margin-bottom: 1.2rem !important;
-            padding: 12px !important; box-sizing: border-box !important;
+            max-width: 100% !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+            margin-bottom: 1.6rem !important;
         }
-
-        #bento-capture-area > div { aspect-ratio: auto !important; height: auto !important; gap: 10px !important; padding: 12px !important; }
-        #bento-capture-area div[style*="padding: 24px"] { padding: 16px !important; }
-        #bento-capture-area div[style*="width: 70px"] { width: 52px !important; height: 52px !important; font-size: 24px !important; margin-bottom: 6px !important; }
-        #bento-capture-area div[style*="font-size: 2.2rem"] { font-size: 1.8rem !important; }
-        #bento-capture-area div[style*="font-size: 4rem"] { font-size: 2.8rem !important; margin-bottom: 4px !important; }
-        #bento-capture-area div[style*="font-size: 3.2rem"] { font-size: 2.4rem !important; margin-bottom: 4px !important; }
 
         .close-modal-btn, .close-analytics, .ui-dialog-titlebar-close, .close-modal { display: none !important; }
         .settings-mobile-header, .mobile-main-title { display: none !important; }
@@ -7014,7 +8658,16 @@
 
     }
 
-    /* Макет окна настроек для мобильных */
+    .settings-sidebar-btn.active .chevron,
+        .analytics-modal .settings-sidebar-btn.active .chevron,
+        #etis-settings-modal .settings-sidebar-btn.active .chevron,
+        #etis-profile-modal .settings-sidebar-btn.active .chevron,
+        #etis-guide-modal .settings-sidebar-btn.active .chevron,
+        #etis-sync-modal .settings-sidebar-btn.active .chevron,
+        #etis-cons-modal .settings-sidebar-btn.active .chevron {
+            display: none !important;
+        }
+
     @media (max-width: 960px) {
         .settings-layout {
             display: flex;
@@ -7039,63 +8692,43 @@
             min-height: 0 !important;
         }
         .settings-content-scroll {
-            padding: 1.6rem !important;
+            padding: 0.8rem 1.6rem 4rem 1.6rem !important;
             overflow-y: auto !important;
             -webkit-overflow-scrolling: touch !important;
             flex: 1 1 auto !important;
             min-height: 0 !important;
+            box-sizing: border-box !important;
         }
         .hidden-on-mobile { display: none !important; }
         .desktop-main-title { display: none !important; }
 
-        .settings-content-scroll .ui-widget-header {
-            padding: 2.0rem 0 !important;
+        /* Единые отступы для шапок внутри всех окон со скроллом на мобильных */
+        html body #etis-settings-modal .settings-content-scroll .ui-widget-header,
+        html body #etis-profile-modal .settings-content-scroll .ui-widget-header,
+        html body #etis-guide-modal .settings-content-scroll .ui-widget-header,
+        html body #etis-sync-modal .settings-content-scroll .ui-widget-header,
+        html body #etis-cons-modal .settings-content-scroll .ui-widget-header,
+        html body .settings-content-scroll .ui-widget-header,
+        html body .settings-content-area .ui-widget-header {
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            padding-top: 1.2rem !important;
+            padding-bottom: 1.2rem !important;
             background: transparent !important;
             border-bottom: none !important;
             box-sizing: border-box !important;
         }
 
-        #etis-settings-modal .ui-widget-header,
-        .analytics-modal .ui-widget-header,
-        #etis-reviews-modal .ui-widget-header {
-            padding-top: 2.8rem !important;
-            padding-bottom: 1.6rem !important;
-            border-radius: 24px 24px 0 0 !important;
-        }
-
-        .analytics-modal .ui-widget-header,
-        #etis-reviews-modal .ui-widget-header {
-            padding-left: 2.4rem !important;
-            padding-right: 2.4rem !important;
-        }
-
-        .settings-content-scroll .ui-widget-header {
-            padding-left: 0 !important;
-            padding-right: 0 !important;
-        }
-
-        html body #etis-settings-modal .ui-widget-header,
-        html body .analytics-modal .ui-widget-header,
-        html body #etis-reviews-modal .ui-widget-header {
-            padding-top: 2.8rem !important;
-            padding-bottom: 1.6rem !important;
-            border-radius: 24px 24px 0 0 !important;
-        }
-
-        html body .analytics-modal .ui-widget-header,
-        html body #etis-reviews-modal .ui-widget-header {
-            padding-left: 2.4rem !important;
-            padding-right: 2.4rem !important;
-        }
-
-        html body .settings-content-scroll .ui-widget-header {
-            padding-left: 0 !important;
-            padding-right: 0 !important;
+        /* Отступы для простых диалоговых окон без бокового меню */
+        .analytics-modal:not(:has(.settings-layout)) .ui-widget-header {
+            padding: 2.4rem 2rem 1.6rem 2rem !important;
+            background: transparent !important;
+            border-bottom: none !important;
+            box-sizing: border-box !important;
         }
 
     }
 
-    /* Полностью очищаем фон, тень и рамку у кнопок закрытия во всех модальных окнах */
     button.close-analytics,
     button.close-modal,
     button.close-notes,
@@ -7123,7 +8756,6 @@
         background: none !important;
     }
 
-    /* Мягкая подсветка крестика акцентным цветом при наведении */
     button.close-analytics:hover .material-icons,
     button.close-modal:hover .material-icons,
     button.close-notes:hover .material-icons,
@@ -7131,7 +8763,6 @@
         color: var(--color-accent) !important;
     }
 
-    /* Кнопки сайдбара настроек */
     #etis-settings-modal .settings-sidebar-btn {
         display: flex !important;
         flex-direction: row !important;
@@ -7159,7 +8790,6 @@
         background: var(--color-table-highlight) !important;
     }
 
-    /* Защита внутренних спанов от глобальных стилей */
     #etis-settings-modal .settings-sidebar-btn span {
         display: block !important;
         border: none !important;
@@ -7202,6 +8832,8 @@
         display: none !important;
     }
 
+
+
     .appearance-section {
         display: flex;
         flex-direction: column;
@@ -7236,9 +8868,6 @@
         .appearance-section { align-items: flex-start !important; }
         .appearance-title { text-align: left !important; }
         .color-picker-controls-row { justify-content: flex-start !important; }
-        .ios-settings-row .chevron {
-            margin-right: -0.6rem !important;
-        }
     }
 
     #modal-back-btn {
@@ -7248,32 +8877,27 @@
         pointer-events: auto !important;
     }
 
-    /* 1. Блокировка фона на уровне HTML и BODY */
     html:has(body.modal-open-body),
     body.modal-open-body {
         overflow: hidden !important;
         overscroll-behavior: none !important;
     }
 
-    /* 2. Оверлеям (темному фону) полностью запрещаем свайпы, чтобы они не тянули страницу */
     #etis-settings-overlay, .analytics-overlay, #etis-reviews-overlay {
         touch-action: none !important;
         overscroll-behavior: none !important;
     }
 
-    /* 3. Модальным окнам жестко запрещаем передавать скролл фону */
     #etis-settings-modal, .analytics-modal, #etis-reviews-modal {
         overscroll-behavior: contain !important;
     }
 
-    /* 4. Шапкам окон тоже запрещаем скроллить фон при смахивании */
     #etis-settings-modal .ui-widget-header,
     .analytics-modal .ui-widget-header,
     #etis-reviews-modal .ui-widget-header {
         touch-action: none !important;
     }
 
-    /* 5. Разрешаем нормальный скролл ТОЛЬКО внутри контента модалок */
     #etis-settings-modal .ui-dialog-content,
     .analytics-modal .ui-dialog-content,
     #etis-reviews-modal .ui-dialog-content,
@@ -7288,6 +8912,7 @@
     /* ==========================================
         ФИКС АВТОМАТИЧЕСКОГО ЗУМА НА МОБИЛЬНЫХ
         ========================================== */
+
     @media (max-width: 960px) {
         input[type="text"],
         input[type="password"],
@@ -7309,31 +8934,26 @@
         }
     }
 
-    /* Заливка иконок активных вкладок в окнах настроек и консультаций */
     #etis-settings-modal .settings-sidebar-btn.active .material-icons,
     #etis-cons-modal .settings-sidebar-btn.active .material-icons {
         font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
     }
 
-    /* Плавное появление событий из внешних календарей */
     .external-event-row td {
         opacity: 0;
         animation: cellScaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         animation-delay: var(--ext-anim-delay, 0s);
     }
 
-    /* Специальная анимация для УЖЕ прошедших внешних событий */
     @keyframes cellScaleInDim {
         0% { opacity: 0; transform: scale(0.95) translateY(10px); }
         100% { opacity: 0.45; transform: scale(1) translateY(0); }
     }
 
-    /* Если пара уже прошла, подменяем анимацию на тусклую */
     .timetable-grid tr.pair-passed.external-event-row td {
         animation-name: cellScaleInDim;
     }
 
-    /* Системные предупреждения на странице входа */
     .login-alerts-wrapper {
         width: 100% !important;
         display: flex !important;
@@ -7384,13 +9004,11 @@
         flex-direction: column !important;
     }
 
-    /* Анимация последовательного появления элементов */
     @keyframes fadeSlideUpSequential {
         from { opacity: 0; transform: translateY(20px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Применяем ко всем основным карточкам и блокам*/
     .day, .teacher-card, .msg-card, .advice-card, .order-card, .jour-card, .review-item,
     .contract-card, .form-card, .calendar-card, .about-card, .survey-card, .jour-info-card,
     .wide-table-wrapper, .subject-header-flex, .question, .comment,
@@ -7399,7 +9017,6 @@
         animation: fadeSlideUpSequential 0.4s ease-out forwards;
     }
 
-    /* Умная анимация появления при скролле/загрузке */
     .anim-fade-up {
         opacity: 0;
         transform: translateY(20px);
@@ -7411,6 +9028,7 @@
     }
 
     /* --- СТРАНИЦА "ПОДРОБНОЕ РАСПИСАНИЕ" --- */
+
         table.distr {
         min-width: 900px !important;
     }
@@ -7496,18 +9114,17 @@
     }
 
     /* --- УМНАЯ АКТИВНАЯ ВКЛАДКА --- */
+
     .span3 > .nav.nav-tabs.nav-stacked {
         overflow: visible !important;
         position: relative !important;
     }
 
-    /* Отключение тени у кнопки отправки в окне добавления пар */
     button.save-cp-btn {
         box-shadow: none !important;
     }
 
     @media (min-width: 961px) {
-        /* Липкое позиционирование активно только при включенном Умном сайдбаре и только на ПК */
         html.smart-sidebar-enabled .span3 > .nav.nav-tabs.nav-stacked > li.active {
             position: sticky !important;
             z-index: 100 !important;
@@ -7518,7 +9135,6 @@
             bottom: 16px !important;
         }
 
-        /* Обычное прокручивание на ПК, если настройка выключена */
         html:not(.smart-sidebar-enabled) .span3 > .nav.nav-tabs.nav-stacked > li.active {
             position: relative !important;
             top: auto !important;
@@ -7528,14 +9144,12 @@
     }
 
     @media (max-width: 960px) {
-        /* На мобильных активная вкладка всегда прокручивается стандартно */
         .span3 > .nav.nav-tabs.nav-stacked > li.active {
             position: relative !important;
             top: auto !important;
             bottom: auto !important;
             z-index: 1 !important;
         }
-        /* Скрываем настройки, предназначенные только для ПК */
         .pc-only-setting {
             display: none !important;
         }
@@ -7548,7 +9162,6 @@
         transform: none !important;
     }
 
-    /* === ВЫРАВНИВАНИЕ ПО ПРАВОМУ КРАЮ === */
     html body table th:last-child,
     html body table td:last-child,
     html body .common th:last-child,
@@ -7570,88 +9183,846 @@
         }
     }
 
-
-    /* === ФИЗИКА КАПЛИ === */
-    .mobile-menu-btn,
-    .mobile-menu-btn * {
-        -webkit-touch-callout: none !important;
-        -webkit-user-select: none !important;
-        -moz-user-select: none !important;
-        -ms-user-select: none !important;
-        user-select: none !important;
-        -webkit-tap-highlight-color: transparent !important;
-    }
-
-    .mobile-menu-btn {
-        overflow: hidden !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 !important;
-        transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                    width 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                    height 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                    border-radius 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                    transform 0.3s cubic-bezier(0.2, 0, 0, 1),
-                    background-color 0.3s ease !important;
-        transform-origin: center center !important;
-        transform: translateX(-50%) scale(1) !important;
-    }
-
-    .mobile-menu-btn.open {
-        transform-origin: center center !important;
-        transform: translateX(-50%) scale(1) !important;
-    }
-
-    .mobile-menu-btn.is-pressed:not(.open) {
-        transform: translateX(-50%) scale(1.03, 0.93) !important;
-    }
-    .mobile-menu-btn.is-pressed.open {
-        transform: translateX(-50%) scale(0.92) !important;
-    }
-
-    .mobile-menu-btn .menu-btn-content {
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        margin: 0 !important;
-        z-index: 2 !important;
-    }
-
-    .mobile-menu-btn::after {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        width: 0;
-        height: 0;
-        background: radial-gradient(circle, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0) 70%);
-        transform: translate(-50%, -50%);
-        border-radius: 50%;
-        opacity: 0;
-        transition: opacity 0.4s ease, width 0s 0.4s, height 0s 0.4s;
-        pointer-events: none;
-        z-index: 1;
-    }
-
-    .mobile-menu-btn.is-pressed::after {
-        width: 140px;
-        height: 140px;
-        opacity: 1;
-        transition: width 0.4s cubic-bezier(0.2, 0, 0, 1),
-                    height 0.4s cubic-bezier(0.2, 0, 0, 1),
-                    opacity 0.2s ease-in;
-    }
-
     .sync-tabs {
         background: var(--color-card) !important;
         box-shadow: var(--shadow-main) !important;
         border: 1px solid var(--color-table-border) !important;
+    }
+
+    /* --- РАЗДЕЛИТЕЛИ МЕЖДУ НЕАКТИВНЫМИ ВКЛАДКАМИ --- */
+    .sync-tabs > button.sync-tab {
+        position: relative !important;
+    }
+
+    .sync-tabs > button.sync-tab:not(:last-child)::after {
+        content: '' !important;
+        position: absolute !important;
+        right: -2.5px !important;
+        top: 25% !important;
+        bottom: 25% !important;
+        width: 1px !important;
+        background-color: var(--color-table-border) !important;
+        pointer-events: none !important;
+    }
+
+    /* Скрываем разделитель около активной вкладки */
+    .sync-tabs > button.sync-tab:has(+ .active)::after,
+    .sync-tabs > button.sync-tab.active::after {
+        display: none !important;
+    }
+
+    /* --- ШЕРИНГ И ИИ-СВОДКА В ШАПКЕ СООБЩЕНИЙ --- */
+
+    .actions-msg-wrap {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        transition: max-width 0.3s ease, opacity 0.3s ease, margin-left 0.3s ease, transform 0.3s ease;
+        overflow: hidden;
+    }
+
+    .share-msg-btn, .ai-summary-btn {
+        color: var(--color-text-secondary) !important;
+        cursor: pointer;
+        display: block;
+        transition: color 0.2s ease, transform 0.2s ease;
+        margin-bottom: -1px;
+    }
+
+    .share-msg-btn:hover, .ai-summary-btn:hover {
+        color: var(--color-accent) !important;
+        transform: scale(1.15) translateY(-1px);
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .actions-msg-wrap {
+            max-width: 0;
+            opacity: 0;
+            margin-left: 0;
+            transform: translateX(10px);
+            pointer-events: none;
+        }
+        .msg-card:hover .actions-msg-wrap {
+            max-width: 60px;
+            opacity: 1;
+            margin-left: 8px;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+    }
+
+    @media (hover: none), (pointer: coarse) {
+        .actions-msg-wrap {
+            max-width: 60px;
+            opacity: 1;
+            margin-left: 8px;
+            transform: none;
+        }
+    }
+
+    html.mac-safari .share-day-btn,
+    html.mac-safari .share-all-btn,
+    html.mac-safari .share-week-btn,
+    html.mac-safari .share-msg-wrap,
+    html.mac-safari .share-msg-btn {
+        display: none !important;
+    }
+
+    .error_message {
+        position: fixed !important;
+        top: 2.5rem !important;
+        left: 50% !important;
+        transform: translateX(-50%) translateY(-100%) !important;
+        width: 90% !important;
+        max-width: 420px !important;
+        z-index: 2000002 !important;
+        
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-red) !important;
+        color: var(--color-text-primary) !important;
+        border-radius: var(--radius-medium) !important;
+        padding: 1.4rem 2rem !important;
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        box-shadow: var(--shadow-dialog) !important;
+        
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 10px !important;
+        box-sizing: border-box !important;
+        
+        opacity: 0 !important;
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease !important;
+    }
+
+    .error_message.show {
+        transform: translateX(-50%) translateY(0) !important;
+        opacity: 1 !important;
+    }
+
+    .error_message::before {
+        content: 'error' !important;
+        font-family: 'Material Symbols Rounded' !important;
+        font-size: 2.2rem !important;
+        color: var(--color-red) !important;
+        display: inline-block !important;
+        line-height: 1 !important;
+    }
+
+    /* ========================================================= */
+    /* --- БАЗОВЫЕ СТИЛИ САЙДБАРА --- */
+    /* ========================================================= */
+
+    .mobile-nav-dock {
+        display: none !important;
+    }
+
+    .span3 .nav.nav-tabs.nav-stacked {
+        border-radius: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .span3 li > a,
+    .span3 li > a *,
+    .span3 li > a .sidebar-link-text,
+    .span3 .sidebar-card-row,
+    .span3 .sidebar-card-row * {
+        color: var(--color-text-primary) !important;
+        font-weight: 500 !important;
+        font-size: 1.35rem !important;
+        text-decoration: none !important;
+        background: transparent !important;
+        border: none !important;
+    }
+
+    .span3 li > a .material-icons,
+    .span3 .sidebar-card-row .material-icons {
+        color: var(--color-text-primary) !important;
+        font-size: 22px !important;
+        margin-right: 12px !important;
+        width: 24px !important;
+        text-align: center !important;
+        flex-shrink: 0 !important;
+    }
+
+    .span3 li > a .badge-point {
+        display: block !important;
+        width: 8px !important;
+        height: 8px !important;
+        min-width: 8px !important;
+        min-height: 8px !important;
+        background-color: #FF3B30 !important;
+        border-radius: 50% !important;
+        margin-left: auto !important;
+        margin-right: 8px !important;
+        flex-shrink: 0 !important;
+        align-self: center !important;
+        box-shadow: 0 0 4px rgba(255, 59, 48, 0.4) !important;
+        font-size: 0 !important;
+        color: transparent !important;
+    }
+
+    .span3 .badge {
+        display: none !important;
+    }
+
+    /* ========================================================= */
+    /* --- ДЕСКТОПНЫЙ САЙДБАР (ПК) --- */
+    /* ========================================================= */
+
+    @media (min-width: 961px) {
+        .span3 {
+            position: fixed !important;
+            top: 2rem !important;
+            bottom: 2rem !important;
+            width: var(--width-aside) !important;
+            margin: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0.5rem !important;
+            overflow-x: hidden !important;
+            overflow-y: auto !important;
+            background: var(--color-card) !important;
+            border-radius: var(--radius-large) !important;
+            z-index: 100 !important;
+        }
+
+        .span3 .sidebar-nav-group:not(:last-child) {
+            position: relative;
+            margin-bottom: 1.2rem;
+            padding-bottom: 1.2rem;
+        }
+
+        .span3 .sidebar-nav-group:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 12px;
+            right: 12px;
+            height: 1px;
+            background: var(--color-table-border);
+        }
+
+        .span3 li > a {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            padding: 1rem 1.4rem !important;
+            margin: 2px 12px !important;
+            border-radius: var(--radius-small) !important;
+            gap: 12px !important;
+            text-align: left !important;
+        }
+
+        .span3 li > a .chevron {
+            display: none !important;
+        }
+
+        .span3 li:not(.active) > a:hover {
+            background: var(--color-highlight) !important;
+        }
+
+        .span3 li.active > a {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        }
+
+        .span3 li.active > a .material-icons {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+        }
+
+        .span3 .sidebar-bio-mobile,
+        .span3 .sidebar-footer-mobile {
+            display: none !important;
+        }
+
+        .span3 .sidebar-bio-desktop,
+        .span3 .sidebar-footer-desktop {
+            display: block !important;
+        }
+
+        .span3 .sidebar-user-info,
+        .span3 .sidebar-footer {
+            position: relative !important;
+            padding: 1.6rem 2.6rem !important;
+            font-size: 1.1rem !important;
+            line-height: 1.5 !important;
+            color: var(--color-text-secondary) !important;
+        }
+
+        .span3 .sidebar-user-info::before,
+        .span3 .sidebar-footer::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 12px !important;
+            right: 12px !important;
+            height: 1px !important;
+            background: var(--color-table-border) !important;
+        }
+
+        .span3 .sidebar-bio-desktop b {
+            color: var(--color-text-primary) !important;
+            display: block !important;
+            margin-bottom: 4px !important;
+            font-size: 1.2rem !important;
+        }
+
+        .span3 .sidebar-bio-desktop span {
+            display: block !important;
+            margin-left: 0 !important;
+        }
+
+        .span3 .sidebar-footer-desktop a {
+            color: var(--color-text-secondary) !important;
+            text-decoration: none !important;
+        }
+        .span3 .sidebar-footer-desktop a:hover {
+            color: var(--color-accent) !important;
+        }
+    }
+
+    /* ========================================================= */
+    /* --- МОБИЛЬНАЯ ШТОРКА И ДОК --- */
+    /* ========================================================= */
+
+    @media (max-width: 960px) {
+        .mobile-menu-btn {
+            display: none !important;
+        }
+
+        .span3 .sidebar-bio-desktop,
+        .span3 .sidebar-footer-desktop {
+            display: none !important;
+        }
+
+        .span3 .sidebar-bio-mobile,
+        .span3 .sidebar-footer-mobile {
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        .mobile-nav-dock {
+            display: flex !important;
+            position: fixed !important;
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 1000001 !important;
+            background: var(--color-card) !important;
+            border: 1px solid var(--color-table-border) !important;
+            border-radius: 50px !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+            padding: 4px 6px !important;
+            align-items: center !important;
+            gap: 4px !important;
+            backdrop-filter: blur(16px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease !important;
+        }
+
+        .mobile-nav-dock.dock-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateX(-50%) translateY(40px) !important;
+        }
+
+        html body .mobile-dock-item,
+        html body button.mobile-dock-item,
+        html body .mobile-dock-item:hover,
+        html body .mobile-dock-item:focus,
+        html body .mobile-dock-item:active,
+        html body .mobile-dock-item * {
+            text-decoration: none !important;
+            border-bottom: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+        }
+
+        html body .mobile-dock-item,
+        html body button.mobile-dock-item {
+            position: relative !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 52px !important;
+            height: 42px !important;
+            border-radius: 24px !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            cursor: pointer !important;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            -webkit-tap-highlight-color: transparent !important;
+        }
+
+        html body .mobile-dock-item .material-icons,
+        html body button.mobile-dock-item .material-icons {
+            font-size: 24px !important;
+            color: var(--color-text-secondary) !important;
+            margin: 0 !important;
+        }
+
+        html body .mobile-dock-item.active,
+        html body button.mobile-dock-item.active {
+            background: var(--color-highlight) !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: none !important;
+        }
+
+        html body .mobile-dock-item.active .material-icons,
+        html body button.mobile-dock-item.active .material-icons {
+            color: var(--color-accent) !important;
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+        }
+
+        .mobile-dock-item .mobile-notify-dot {
+            position: absolute !important;
+            top: 8px !important;
+            right: 14px !important;
+            left: auto !important;
+            transform: none !important;
+            width: 8px !important;
+            height: 8px !important;
+            background-color: #FF3B30 !important;
+            border-radius: 50% !important;
+            border: 2px solid var(--color-card) !important;
+            pointer-events: none !important;
+            opacity: 0;
+            display: block !important;
+            box-shadow: 0 0 6px rgba(255, 59, 48, 0.4) !important;
+            transition: opacity 0.25s ease !important;
+        }
+
+        .mobile-dock-item.has-updates .mobile-notify-dot {
+            opacity: 1 !important;
+        }
+
+        .span3 {
+            display: block !important;
+            position: fixed !important;
+            left: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            top: auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            height: auto !important;
+            max-height: 85vh !important;
+            max-height: 85dvh !important;
+            margin: 0 !important;
+            padding: 24px 16px calc(env(safe-area-inset-bottom, 20px) + 24px) 16px !important;
+            background: var(--color-body) !important;
+            z-index: 1000010 !important;
+            transform: translateY(105%) !important;
+            transition: none !important;
+            overflow-y: auto !important;
+            overscroll-behavior: contain !important;
+            border-radius: 28px 28px 0 0 !important;
+            box-sizing: border-box !important;
+            box-shadow: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        .span3::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 10px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: 40px !important;
+            height: 4px !important;
+            background: var(--color-scrollbar-thumb) !important;
+            border-radius: 4px !important;
+            z-index: 10 !important;
+        }
+
+        .span3.ready-to-animate {
+            transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease, visibility 0.35s ease !important;
+        }
+
+        .span3.mobile-active {
+            transform: translateY(0) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+            box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .span3 .sidebar-logo {
+            padding: 0.6rem 1.6rem 1.6rem 1.6rem !important;
+            margin: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 12px !important;
+            justify-content: flex-start !important;
+        }
+
+        .span3 .sidebar-logo img {
+            width: 24px !important;
+            height: 24px !important;
+            object-fit: contain !important;
+            margin: 0 !important;
+            flex-shrink: 0 !important;
+        }
+
+        .span3 .sidebar-logo .sidebar-logo-title {
+            font-size: 2.4rem !important;
+            font-weight: 800 !important;
+            color: var(--color-text-primary) !important;
+            line-height: 1 !important;
+        }
+
+        .span3 .sidebar-nav-group,
+        .span3 .sidebar-user-info,
+        .span3 .sidebar-footer {
+            background: var(--color-card) !important;
+            border: 1px solid var(--color-table-border) !important;
+            border-radius: var(--radius-large) !important;
+            margin-bottom: 1.6rem !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-shadow: var(--shadow-main) !important;
+            padding: 0 !important;
+        }
+
+        .span3 .sidebar-nav-group.group-timetable {
+            display: none !important;
+        }
+
+        .span3 .sidebar-nav-group > li {
+            margin: 0 !important;
+            border-radius: 0 !important;
+            list-style: none !important;
+        }
+
+        .span3 .sidebar-nav-group > li > a,
+        .span3 .sidebar-card-row {
+            margin: 0 !important;
+            border-radius: 0 !important;
+            padding: 1.3rem 1.6rem !important;
+            position: relative !important;
+            background: transparent !important;
+            display: flex !important;
+            align-items: center !important;
+            text-align: left !important;
+            text-decoration: none !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .span3 li > a .chevron,
+        .span3 .sidebar-card-row .chevron {
+            display: block !important;
+            margin-left: auto !important;
+            margin-right: -4px !important;
+            color: var(--color-text-secondary) !important;
+            font-size: 20px !important;
+            width: auto !important;
+            opacity: 0.5;
+            flex-shrink: 0 !important;
+        }
+
+        .span3 .sidebar-nav-group > li:not(:last-child) > a::after,
+        .span3 .sidebar-card-row:not(:last-child)::after {
+            content: '' !important;
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 52px !important;
+            right: 16px !important;
+            height: 1px !important;
+            background: var(--color-table-border) !important;
+            display: block !important;
+        }
+
+        .mobile-overlay {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important;
+            background: rgba(0, 0, 0, 0.6) !important;
+            z-index: 1000008 !important;
+            opacity: 0;
+            visibility: hidden;
+            backdrop-filter: blur(4px) !important;
+            -webkit-backdrop-filter: blur(4px) !important;
+        }
+
+        .mobile-overlay.ready-to-animate {
+            transition: opacity 0.3s ease, visibility 0.3s ease !important;
+        }
+
+        .mobile-overlay.active {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        /* Убираем верхние десктопные разделители у мобильных карточек */
+        .span3 .sidebar-user-info::before,
+        .span3 .sidebar-footer::before,
+        .sidebar-user-info::before,
+        .sidebar-footer::before {
+            display: none !important;
+        }
+    }
+
+    /* --- ДЕМО-РЕЖИМ: БЛОКИРОВКА НЕПОДДЕРЖИВАЕМЫХ ВКЛАДОК И ЭЛЕМЕНТОВ --- */
+    .demo-disabled-item,
+    .span3 li.demo-disabled-tab > a,
+    .weeks .week.demo-disabled-item,
+    .submenu a.demo-disabled-item {
+        position: relative !important;
+        cursor: not-allowed !important;
+    }
+
+    .span3 li.demo-disabled-tab > a {
+        overflow: hidden !important;
+    }
+
+    .demo-locked-overlay {
+        position: absolute !important;
+        inset: 0 !important;
+        background: rgba(22, 24, 26, 0.88) !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        color: #ffffff !important;
+        font-size: 1.2rem !important;
+        font-weight: 700 !important;
+        border-radius: inherit !important;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.2s ease, transform 0.2s ease !important;
+        z-index: 100 !important;
+        box-sizing: border-box !important;
+        white-space: nowrap !important;
+    }
+
+    .demo-locked-overlay .material-icons {
+        font-size: 18px !important;
+        margin: 0 !important;
+        color: #ffffff !important;
+        line-height: 1 !important;
+    }
+
+    .demo-locked-overlay span {
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        line-height: 1 !important;
+    }
+
+    /* Для компактных кнопок недель скрываем текст, оставляя только замок */
+    .weeks .week .demo-locked-overlay span:not(.material-icons) {
+        display: none !important;
+    }
+    .weeks .week .demo-locked-overlay .material-icons {
+        font-size: 16px !important;
+    }
+
+    /* Ховер на ПК */
+    @media (hover: hover) and (pointer: fine) {
+        .demo-disabled-item:hover .demo-locked-overlay,
+        .span3 li.demo-disabled-tab > a:hover .demo-locked-overlay {
+            opacity: 1 !important;
+        }
+    }
+
+    /* Тап / Клик на смартфонах и ПК */
+    .demo-disabled-item.demo-tab-locked .demo-locked-overlay,
+    .demo-disabled-item:active .demo-locked-overlay,
+    .span3 li.demo-disabled-tab > a.demo-tab-locked .demo-locked-overlay,
+    .span3 li.demo-disabled-tab > a:active .demo-locked-overlay {
+        opacity: 1 !important;
+    }
+
+    /* --- КРАСНАЯ КНОПКА ВЫХОДА ИЗ ДЕМО-РЕЖИМА --- */
+    .span3 li > a.demo-logout-link,
+    .span3 li > a.demo-logout-link *,
+    .span3 li > a.demo-logout-link .sidebar-link-text,
+    .span3 li > a.demo-logout-link .material-icons {
+        color: var(--color-red) !important;
+        font-weight: 700 !important;
+    }
+
+    .span3 li > a.demo-logout-link .chevron {
+        color: var(--color-red) !important;
+        opacity: 0.7 !important;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .span3 > .nav.nav-tabs.nav-stacked > li > a.demo-logout-link:hover {
+            background: rgba(255, 59, 48, 0.12) !important;
+        }
+    }
+
+    /* --- ШАПКА САЙДБАРА (ПК И МОБИЛЬНЫЕ) --- */
+    .sidebar-logo,
+    .span3 .sidebar-logo {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 2.2rem 2.2rem 0.5rem 2.2rem !important;
+        margin-bottom: 2.4rem !important;
+        position: relative !important;
+    }
+
+    .sidebar-logo-brand {
+        display: flex !important;
+        align-items: center !important;
+        gap: 16px !important;
+        cursor: pointer !important;
+    }
+
+    .sidebar-logo img {
+        height: 3.5rem !important;
+        width: auto !important;
+        flex-shrink: 0 !important;
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+
+    .sidebar-logo .sidebar-logo-title {
+        font-size: 3.2rem !important;
+        font-weight: 800 !important;
+        color: var(--color-text-primary) !important;
+        letter-spacing: 0.5px !important;
+        line-height: 1 !important;
+    }
+
+    /* Мобильная адаптация шапки */
+    @media (max-width: 960px) {
+        .sidebar-logo,
+        .span3 .sidebar-logo {
+            padding: 0.6rem 0 1.6rem 1.6rem !important;
+            margin: 0 !important;
+            margin-bottom: 0 !important;
+            justify-content: space-between !important;
+            gap: 0 !important;
+        }
+        .sidebar-logo-brand {
+            gap: 12px !important;
+        }
+        .sidebar-logo img {
+            height: 2.4rem !important;
+            width: 2.4rem !important;
+            margin-left: 2px !important;
+        }
+        .sidebar-logo .sidebar-logo-title {
+            font-size: 2.4rem !important;
+        }
+    }
+
+    /* --- КНОПКА-КОЛОКОЛЬЧИК И ИКОНКА --- */
+    .sidebar-bell-btn {
+        position: relative !important;
+        width: 36px !important;
+        height: 36px !important;
+        min-width: 36px !important;
+        min-height: 36px !important;
+        border-radius: 50% !important;
+        background: var(--color-card) !important;
+        border: none !important;
+        color: var(--color-text-secondary) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        box-shadow: var(--shadow-main) !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        margin-left: auto !important;
+        flex-shrink: 0 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .sidebar-bell-btn:hover {
+        background: var(--color-highlight) !important;
+        color: var(--color-accent) !important;
+        transform: scale(1.08) !important;
+    }
+
+    /* Принудительно тонкая и аккуратная иконка на всех устройствах */
+    .sidebar-bell-btn .bell-icon,
+    .sidebar-bell-btn .material-icons {
+        font-family: 'Material Symbols Rounded' !important;
+        font-size: 20px !important;
+        font-weight: normal !important; /* Убирает жирность */
+        font-style: normal !important;
+        line-height: 1 !important;
+        color: inherit !important;
+        margin: 0 !important;
+        display: inline-block !important;
+        font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+        -webkit-font-smoothing: antialiased !important;
+    }
+
+    .bell-counter-badge {
+        display: none;
+        position: absolute !important;
+        top: -3px !important;
+        right: -3px !important;
+        background: #FF3B30 !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        font-size: 1.1rem !important;
+        font-weight: 800 !important;
+        height: 18px !important;
+        min-width: 18px !important;
+        padding: 0 5px !important;
+        border-radius: 9px !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-shadow: 0 2px 6px rgba(255, 59, 48, 0.4) !important;
+        border: 2px solid var(--color-card) !important;
+        line-height: 1 !important;
+        box-sizing: border-box !important;
+        pointer-events: none !important;
+        z-index: 10 !important;
+        font-family: var(--font-family) !important;
+    }
+
+    .bell-counter-badge.has-unread {
+        display: flex !important;
+    }
+
+    .span3 > .nav.nav-tabs.nav-stacked > li > a .badge-point {
+        display: block !important;
+        width: 8px !important;
+        height: 8px !important;
+        min-width: 8px !important;
+        min-height: 8px !important;
+        background-color: #FF3B30 !important;
+        border-radius: 50% !important;
+        margin-left: auto !important;
+        margin-right: 8px !important;
+        flex-shrink: 0 !important;
+        align-self: center !important;
+        border: none !important;
+        box-shadow: 0 0 4px rgba(255, 59, 48, 0.4) !important;
+    }
+
+    .span3 li > a .chevron,
+    .span3 .sidebar-card-row .chevron {
+        margin-left: 0 !important;
+        margin-right: -4px !important;
+    }
+
+    .span3 li > a:not(:has(.badge-point)) .chevron,
+    .span3 .sidebar-card-row:not(:has(.badge-point)) .chevron {
+        margin-left: auto !important;
     }
 
         `;
@@ -7807,6 +10178,9 @@
         const GENERAL_CONFIG_KEY = 'etis_general_config';
         let savedConfig = JSON.parse(localStorage.getItem(GENERAL_CONFIG_KEY)) || {};
         const defaultCompactConfig = { showWorkType: true, showControlType: false, showPassScore: true, showRating: false, showDate: true, showTeacher: false };
+        
+        const defaultBetaConfig = { aiSummary: true };
+        
         let generalConfig = {
             dimPastPairs: true,
             shortAudFormat: false,
@@ -7820,9 +10194,19 @@
             generateQR: true,
             showGaps: true,
             showGapsCustom: true,
+            showBigBreak: true,
             smartSidebar: true,
             quickLoginEnabled: false,
+            betaFeaturesEnabled: false,
+            betaFeatures: defaultBetaConfig,
             ...savedConfig
+        };
+        generalConfig.betaFeatures = { ...defaultBetaConfig, ...(generalConfig.betaFeatures || {}) };
+
+        // Хелпер проверки активности конкретной бета-функции
+        const isBetaFeatureActive = (featureKey) => {
+            if (!generalConfig.betaFeaturesEnabled) return false;
+            return generalConfig.betaFeatures && generalConfig.betaFeatures[featureKey] === true;
         };
 
         // Применение режима умного сайдбара
@@ -7839,6 +10223,7 @@
         if (typeof generalConfig.gradeNotifications === 'undefined') generalConfig.gradeNotifications = true;
 
         generalConfig.compactGradesConfig = { ...defaultCompactConfig, ...(generalConfig.compactGradesConfig || {}) };
+        
         function applyAccentColor() {
             const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'], isGlass: false, isColoredGlass: true };
             const isGlass = config.isGlass === true;
@@ -7875,21 +10260,69 @@
 
             if (isGlass) {
                 glassCapsulesCss = `
+                    .mobile-nav-dock {
+                        background: var(--bg-glass-neutral) !important;
+                        backdrop-filter: blur(20px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+                        border: 1px solid var(--border-glass-neutral) !important;
+                    }
+
+                    .mobile-dock-item.active {
+                        background: ${isColoredGlass ? bgAccentGlass : 'var(--bg-glass-neutral-hover)'} !important;
+                        backdrop-filter: blur(14px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        outline: none !important;
+                    }
+
+                    .subject-score-capsule, .kt-score-capsule, .gpa-capsule,
                     .timetable-gap-capsule, .pair_info .aud a[href*="zoom"], .pair_info .aud a[href*="telemost"],
-                    .pair_info .aud a.btn-generic-online, .kt-score-capsule, .pair-type-badge,
-                    .subject-score-capsule, .absence-capsule, .jour-badge, .week-date-styled,
+                    .pair_info .aud a.btn-generic-online, .pair-type-badge,
+                    .absence-capsule, .jour-badge, .week-date-styled,
                     .etis-preview-glass-element {
-                        backdrop-filter: blur(12px) saturate(180%) !important;
-                        -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+                        backdrop-filter: blur(14px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+                    }
+
+                    .subject-score-capsule {
+                        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+                    }
+
+                    .subject-score-capsule[style*="var(--color-green)"],
+                    .subject-score-capsule[style*="#34C759"],
+                    .subject-score-capsule[style*="#5BB974"] {
+                        background: rgba(52, 199, 89, 0.7) !important;
+                    }
+                    .subject-score-capsule[style*="#8BC34A"] {
+                        background: rgba(139, 195, 74, 0.7) !important;
+                    }
+                    .subject-score-capsule[style*="var(--color-yellow)"],
+                    .subject-score-capsule[style*="#FFCC00"],
+                    .subject-score-capsule[style*="#E2B953"] {
+                        background: rgba(255, 204, 0, 0.7) !important;
+                    }
+                    .subject-score-capsule[style*="var(--color-red)"],
+                    .subject-score-capsule[style*="#FF3B30"],
+                    .subject-score-capsule[style*="#E06C65"] {
+                        background: rgba(255, 59, 48, 0.7) !important;
+                    }
+                    .subject-score-capsule[style*="var(--color-highlight)"] {
+                        background: var(--bg-glass-neutral) !important;
+                        box-shadow: inset 0 0 0 1px var(--border-glass-neutral) !important;
+                    }
+
+                    .kt-score-capsule {
+                        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
                     }
                 `;
+
                 if (isColoredGlass) {
                     targetStyles = `
                         background: ${bgAccentGlass} !important;
                         backdrop-filter: blur(16px) saturate(180%) !important;
                         -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
                         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-                        color: #ffffff !important;
                         border: none !important;
                     `;
                     targetHoverStyles = `
@@ -7899,15 +10332,15 @@
                         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 6px 16px rgba(0, 0, 0, 0.15) !important;
                         transform: translateY(-1px);
                     `;
-                    targetTextStyles = `color: #ffffff !important;`;
-                    targetIconStyles = `color: #ffffff !important; opacity: 1 !important;`;
+                    targetTextStyles = `color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;`;
+                    targetIconStyles = `color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important;`;
                 } else {
+                    // Бесцветное нейтральное стекло: текст и иконки берут контрастный основной цвет темы
                     targetStyles = `
                         background: var(--bg-glass-neutral) !important;
                         backdrop-filter: blur(16px) saturate(180%) !important;
                         -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
                         box-shadow: inset 0 0 0 1px var(--border-glass-neutral), 0 4px 12px rgba(0, 0, 0, 0.05) !important;
-                        color: var(--color-text-primary) !important;
                         border: none !important;
                     `;
                     targetHoverStyles = `
@@ -7917,22 +10350,21 @@
                         box-shadow: inset 0 0 0 1px var(--border-glass-neutral), 0 6px 16px rgba(0, 0, 0, 0.1) !important;
                         transform: translateY(-1px);
                     `;
-                    targetTextStyles = `color: var(--color-text-primary) !important;`;
-                    targetIconStyles = `color: var(--color-text-primary) !important; opacity: 1 !important;`;
+                    targetTextStyles = `color: var(--color-text-primary) !important; -webkit-text-fill-color: var(--color-text-primary) !important;`;
+                    targetIconStyles = `color: var(--color-text-primary) !important; -webkit-text-fill-color: var(--color-text-primary) !important; opacity: 1 !important;`;
                 }
             } else {
                 targetStyles = `
                     background: var(--bg-accent) !important;
                     border: none !important;
-                    color: #ffffff !important;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
                 `;
                 targetHoverStyles = `
                     filter: brightness(0.9) !important;
                     transform: translateY(-1px);
                 `;
-                targetTextStyles = `color: #ffffff !important;`;
-                targetIconStyles = `color: #ffffff !important; opacity: 1 !important;`;
+                targetTextStyles = `color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;`;
+                targetIconStyles = `color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important;`;
             }
 
             styleEl.innerHTML = `
@@ -7941,20 +10373,21 @@
                     --color-text-link: ${c1} !important;
                     --color-accent-active: ${hexToRgba(c1, 0.15)} !important;
                     --bg-accent: ${bgAccent} !important;
-                    --bg-glass-neutral: rgba(255, 255, 255, 0.6) !important;
-                    --bg-glass-neutral-hover: rgba(255, 255, 255, 0.8) !important;
-                    --border-glass-neutral: rgba(0, 0, 0, 0.1) !important;
+                    --bg-glass-neutral: rgba(255, 255, 255, 0.85) !important;
+                    --bg-glass-neutral-hover: rgba(255, 255, 255, 0.95) !important;
+                    --border-glass-neutral: rgba(0, 0, 0, 0.08) !important;
                 }
                 [theme="dark"] {
                     --color-accent: ${c1} !important;
                     --color-text-link: ${c1} !important;
                     --color-accent-active: ${hexToRgba(c1, 0.15)} !important;
                     --bg-accent: ${bgAccent} !important;
-                    --bg-glass-neutral: rgba(255, 255, 255, 0.12) !important;
-                    --bg-glass-neutral-hover: rgba(255, 255, 255, 0.18) !important;
+                    --bg-glass-neutral: rgba(33, 35, 37, 0.7) !important;
+                    --bg-glass-neutral-hover: rgba(45, 48, 51, 0.85) !important;
                     --border-glass-neutral: rgba(255, 255, 255, 0.1) !important;
                 }
 
+                .span3 li.active > a,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
                 .weeks .week.current, .submenu b,
                 .answer-btn-custom, #sbmt, .gpa-capsule, .mobile-menu-btn,
@@ -7965,16 +10398,37 @@
                     ${targetStyles}
                 }
 
+                .span3 li.active > a,
+                .span3 li.active > a *,
+                .span3 li.active > a .sidebar-link-text,
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a *,
-                .weeks .week.current *, .submenu b *,
-                .answer-btn-custom *, #sbmt *, .gpa-capsule *, .mobile-menu-btn *,
-                .timetable-toolbar .toolbar-item.is-active *,
-                form.que_form #send_btn *, .badge.ctl *, .jour-info-group *,
-                .settings-sidebar-btn.active *, button.sync-tab.active *,
-                .etis-preview-active-element * {
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a .sidebar-link-text,
+                .weeks .week.current, .weeks .week.current *, .weeks .week.current a,
+                .submenu b, .submenu b *,
+                .answer-btn-custom, .answer-btn-custom *,
+                #sbmt, #sbmt *, .gpa-capsule, .gpa-capsule *, .mobile-menu-btn, .mobile-menu-btn *,
+                .timetable-toolbar .toolbar-item.is-active, .timetable-toolbar .toolbar-item.is-active *,
+                form.que_form #send_btn, form.que_form #send_btn *, .badge.ctl, .badge.ctl *, .jour-info-group, .jour-info-group *,
+                .settings-sidebar-btn.active, .settings-sidebar-btn.active *,
+                .settings-sidebar-btn.active .sidebar-btn-text,
+                button.sync-tab.active, button.sync-tab.active *,
+                .etis-preview-active-element, .etis-preview-active-element * {
+                    font-weight: 700 !important;
                     ${targetTextStyles}
                 }
 
+                /* Жирный шрифт для активной вкладки сайдбара */
+                .span3 li.active > a,
+                .span3 li.active > a *,
+                .span3 li.active > a .sidebar-link-text,
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a *,
+                .span3 > .nav.nav-tabs.nav-stacked > li.active > a .sidebar-link-text {
+                    font-weight: 700 !important;
+                }
+
+                .span3 li.active > a .material-icons,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a .material-icons,
                 .answer-btn-custom .material-icons, #sbmt .material-icons,
                 .mobile-menu-btn .material-icons, .timetable-toolbar .toolbar-item.is-active .material-icons,
@@ -7983,6 +10437,7 @@
                     ${targetIconStyles}
                 }
 
+                .span3 li.active > a:hover,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover,
                 .weeks .week.current:hover, .submenu b:hover,
                 .answer-btn-custom:hover, #sbmt:hover, .mobile-menu-btn:hover,
@@ -8170,6 +10625,11 @@
                     subtitle = 'На данный момент у вас нет дистанционных занятий, требующих оценки.';
                     icon = 'fact_check';
                 }
+                else if (type === 'timetable') {
+                    title = 'Свободная неделя';
+                    subtitle = 'На этой неделе у вас нет запланированных занятий. Отличный повод немного отдохнуть!';
+                    icon = 'free_breakfast';
+                }
             } else {
                 subtitle = `По запросу <b>«${query}»</b> ничего не найдено. Проверьте раскладку клавиатуры или попробуйте изменить поисковый запрос.`;
             }
@@ -8250,8 +10710,300 @@
             meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
         }
 
+        // ==========================================
+        // МАППИНГ ИКОНОК НАПРАВЛЕНИЙ ПОДГОТОВКИ
+        // ==========================================
+        function getDirectionIcon(directionName) {
+            if (!directionName) return 'school';
+            const t = directionName.toLowerCase();
+
+            // 1. Компьютерные науки, IT и безопасность
+            if (t.includes('компьютерн') || t.includes('программн') || t.includes('информатик') || 
+                t.includes('информационн') || t.includes('кибер') || t.includes('искусственн') || 
+                t.includes('большие данные') || t.includes('связи') || t.includes('инфокоммуникац')) {
+                return 'terminal';
+            }
+
+            // 2. Физика, астрономия, механика, радиофизика, нанотехнологии
+            if (t.includes('физик') || t.includes('радиофизик') || t.includes('механик') || 
+                t.includes('фотоник') || t.includes('приборостроен') || t.includes('нанотехнолог') || 
+                t.includes('микросистем')) {
+                return 'blur_on';
+            }
+
+            // 3. Математика и статистика
+            if (t.includes('математик') || t.includes('статистик')) {
+                return 'functions';
+            }
+
+            // 4. Химия, фармация и материаловедение
+            if (t.includes('хим') || t.includes('фармац') || t.includes('полимер') || t.includes('материал')) {
+                return 'science';
+            }
+
+            // 5. Биология, экология, биотехнологии
+            if (t.includes('биолог') || t.includes('эколог') || t.includes('биоразнообраз') || 
+                t.includes('живые системы') || t.includes('генетик') || t.includes('зоолог') || 
+                t.includes('микробиолог') || t.includes('природопользован')) {
+                return 'eco';
+            }
+
+            // 6. Геология, геофизика, разведка и недра
+            if (t.includes('геолог') || t.includes('геофизик') || t.includes('ископаем') || 
+                t.includes('разведк') || t.includes('нефт') || t.includes('газ') || t.includes('гидрогеолог')) {
+                return 'landscape';
+            }
+
+            // 7. География, картография, метеорология, гидрология, туризм, сервис
+            if (t.includes('географ') || t.includes('картограф') || t.includes('геоинформатик') || 
+                t.includes('гидрометеоролог') || t.includes('гидролог') || t.includes('геодези') || 
+                t.includes('туризм') || t.includes('гостиничн') || t.includes('сервис') || t.includes('зондирован')) {
+                return 'explore';
+            }
+
+            // 8. Международные отношения и регионоведение
+            if (t.includes('международные отношения') || t.includes('регионоведен') || t.includes('мировой')) {
+                return 'public';
+            }
+
+            // 9. Политология и государственное управление
+            if (t.includes('политолог') || t.includes('государственное') || t.includes('муниципальное')) {
+                return 'account_balance';
+            }
+
+            // 10. История и археология
+            if (t.includes('истори') || t.includes('археолог') || t.includes('антрополог')) {
+                return 'museum';
+            }
+
+            // 11. Юриспруденция, право, судебная деятельность, конфликтология
+            if (t.includes('юриспруденц') || t.includes('прав') || t.includes('судебн') || 
+                t.includes('прокурорск') || t.includes('криминалистич') || t.includes('конфликтолог') || 
+                t.includes('социальная работа')) {
+                return 'gavel';
+            }
+
+            // 12. Филология, лингвистика, языки и перевод
+            if (t.includes('филолог') || t.includes('лингвистик') || t.includes('перевод') || 
+                t.includes('русский язык') || t.includes('иностранн') || t.includes('китайск') || 
+                t.includes('литератур') || t.includes('язык')) {
+                return 'translate';
+            }
+
+            // 13. Журналистика, медиа, реклама и PR
+            if (t.includes('журналистик') || t.includes('медиакоммуникац') || t.includes('реклам') || 
+                t.includes('связи с общественностью') || t.includes('контент')) {
+                return 'campaign';
+            }
+
+            // 14. Экономика, менеджмент, финансы, бизнес, таможня
+            if (t.includes('эконом') || t.includes('менеджмент') || t.includes('маркетинг') || 
+                t.includes('бизнес') || t.includes('финанс') || t.includes('таможенн') || t.includes('торгов')) {
+                return 'trending_up';
+            }
+
+            // 15. Психология
+            if (t.includes('психолог') || t.includes('психотерап')) {
+                return 'psychology';
+            }
+
+            // 16. Социология и работа с молодежью
+            if (t.includes('социолог') || t.includes('молодеж')) {
+                return 'groups';
+            }
+
+            // 17. Философия и культурология
+            if (t.includes('философ') || t.includes('культур') || t.includes('искусств')) {
+                return 'lightbulb';
+            }
+
+            // 18. Дизайн
+            if (t.includes('дизайн')) {
+                return 'palette';
+            }
+
+            // 19. Педагогическое образование и логопедия
+            if (t.includes('педагогическ') || t.includes('образование') || t.includes('логопед') || 
+                t.includes('дефектолог')) {
+                return 'cast_for_education';
+            }
+
+            // Заглушка по умолчанию для любых нестандартных программ
+            return 'school';
+        }
+
+        // --- ЦЕНТР УВЕДОМЛЕНИЙ ---
+
+        function addNotificationToHistory({ title, subject, body, type = 'info', icon = 'notifications', targetUrl = null }) {
+            let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+            const newNotif = {
+                id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                title,
+                subject,
+                body,
+                type,
+                icon,
+                timestamp: Date.now(),
+                read: false,
+                targetUrl
+            };
+            history.unshift(newNotif);
+            if (history.length > 40) history = history.slice(0, 40);
+            
+            // Используем безопасное сохранение с авто-выгрузкой
+            saveSyncData('etis_notifications_history_v1', JSON.stringify(history));
+            updateBellCounter();
+            return newNotif;
+        }
+
+        function updateBellCounter() {
+            let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+            history = history.filter(n => n.title !== 'Напоминание создано' && n.icon !== 'alarm_on');
+            
+            const unreadCount = history.filter(n => !n.read).length;
+
+            document.querySelectorAll('.bell-counter-badge').forEach(badge => {
+                if (unreadCount > 0) {
+                    badge.textContent = unreadCount > 99 ? '99+' : unreadCount.toString();
+                    badge.classList.add('has-unread');
+                } else {
+                    badge.textContent = '';
+                    badge.classList.remove('has-unread');
+                }
+            });
+        }
+
+        function openNotificationsModal() {
+            let overlay = document.getElementById('etis-notifs-overlay');
+            let modal = document.getElementById('etis-notifs-modal');
+
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'etis-notifs-overlay';
+                overlay.className = 'analytics-overlay';
+                document.body.appendChild(overlay);
+            }
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'etis-notifs-modal';
+                modal.className = 'analytics-modal';
+                document.body.appendChild(modal);
+            }
+
+            const closeAll = () => {
+                overlay.classList.remove('active');
+                modal.classList.remove('active');
+                document.body.classList.remove('modal-open-body');
+                document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
+            };
+            overlay.onclick = closeAll;
+
+            const renderList = () => {
+                let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+                history = history.filter(n => n.title !== 'Напоминание создано' && n.icon !== 'alarm_on');
+                const unreadCount = history.filter(n => !n.read).length;
+
+                modal.innerHTML = `
+                    <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; padding: 1.6rem 2.4rem !important; border-bottom: 1px solid var(--color-table-border) !important;">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">Уведомления</span>
+                            ${unreadCount > 0 ? `<span style="background:var(--color-accent); color:#fff; font-size:1.1rem; font-weight:800; padding:2px 8px; border-radius:12px;">${unreadCount}</span>` : ''}
+                        </div>
+                        <span class="material-icons close-notifs-btn" style="cursor:pointer; color:var(--color-text-secondary); font-size:24px;">close</span>
+                    </div>
+                    <div class="ui-dialog-content" style="padding: 1.6rem 2.4rem 3rem 2.4rem; max-height: 70vh; overflow-y: auto;">
+                        ${history.length === 0 ? `
+                            <div style="text-align:center; padding: 4rem 1rem; color:var(--color-text-secondary); display:flex; flex-direction:column; align-items:center; gap:12px;">
+                                <span class="material-icons" style="font-size: 48px; opacity: 0.35;">notifications_paused</span>
+                                <div style="font-size: 1.6rem; font-weight: 700; color: var(--color-text-primary);">Уведомлений пока нет</div>
+                                <div style="font-size: 1.3rem; max-width: 320px; line-height: 1.5;">Здесь будут сохраняться изменения ваших оценок, напоминания и оповещения.</div>
+                            </div>
+                        ` : `
+                            <div style="display:flex; flex-direction:column; gap:1rem;">
+                                ${history.map((n, idx) => {
+                                    const timeStr = new Date(n.timestamp).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                                    const isUnread = !n.read;
+                                    let iconColor = 'var(--color-accent)';
+                                    let iconBg = 'var(--color-accent-active)';
+                                    if (n.type === 'success') { iconColor = 'var(--color-green)'; iconBg = 'rgba(52, 199, 89, 0.15)'; }
+                                    else if (n.type === 'warning') { iconColor = 'var(--color-warning)'; iconBg = 'rgba(255, 149, 0, 0.15)'; }
+
+                                    const cardBorder = isUnread ? '1.5px solid var(--color-accent)' : '1px solid var(--color-table-border)';
+                                    const cardOpacity = isUnread ? '1' : '0.55';
+
+                                    return `
+                                        <div class="notif-history-item" data-idx="${idx}" style="background:var(--color-card); border:${cardBorder}; border-radius:var(--radius-large); padding:1.4rem 1.6rem; display:flex; gap:1.4rem; align-items:flex-start; cursor:${n.targetUrl ? 'pointer' : 'default'}; transition:all 0.2s; position:relative; box-shadow:var(--shadow-main); opacity:${cardOpacity};">
+                                            <div style="width:40px; height:40px; border-radius:12px; background:${iconBg}; color:${iconColor}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                                <span class="material-icons" style="font-size:22px;">${n.icon || 'notifications'}</span>
+                                            </div>
+                                            <div style="flex:1; min-width:0; text-align:left;">
+                                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px; gap:8px;">
+                                                    <span style="font-size:1.15rem; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; color:${iconColor};">${n.title}</span>
+                                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); white-space:nowrap;">${timeStr}</span>
+                                                </div>
+                                                ${n.subject ? `<div style="font-size:1.4rem; font-weight:700; color:var(--color-text-primary); margin-bottom:2px; line-height:1.3;">${n.subject}</div>` : ''}
+                                                <div style="font-size:1.25rem; color:var(--color-text-secondary); line-height:1.4;">${n.body}</div>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `}
+                    </div>
+                `;
+
+                modal.querySelector('.close-notifs-btn').onclick = closeAll;
+
+                modal.querySelectorAll('.notif-history-item').forEach(item => {
+                    item.onclick = () => {
+                        const idx = parseInt(item.getAttribute('data-idx'), 10);
+                        let hist = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+                        if (hist[idx]) {
+                            const targetUrl = hist[idx].targetUrl;
+                            closeAll();
+                            if (targetUrl === '#guide') {
+                                localStorage.setItem('etis_guide_viewed_v1', 'true');
+                                const guideLink = document.querySelector('a[href="#guide"]');
+                                if (guideLink) {
+                                    const dot = guideLink.querySelector('.badge-point');
+                                    if (dot) dot.remove();
+                                }
+                                if (!document.querySelector('.span3 .badge-point')) {
+                                    document.querySelector('.mobile-dock-drawer-btn, .mobile-menu-btn')?.classList.remove('has-updates');
+                                }
+                                if (typeof openGuideModal === 'function') {
+                                    openGuideModal(window.innerWidth <= 960 ? 'menu' : 'timetable_guide');
+                                }
+                            } else if (targetUrl) {
+                                if (window.location.href.includes(targetUrl)) {
+                                    window.location.reload();
+                                } else {
+                                    window.location.href = targetUrl;
+                                }
+                            }
+                        }
+                    };
+                });
+
+                // Все уведомления помечаются прочитанными сразу при открытии окна
+                if (unreadCount > 0) {
+                    history.forEach(n => n.read = true);
+                    saveSyncData('etis_notifications_history_v1', JSON.stringify(history));
+                    updateBellCounter();
+                }
+            };
+
+            renderList();
+            overlay.classList.add('active');
+            modal.classList.add('active');
+            document.body.classList.add('modal-open-body');
+            document.querySelector('.mobile-nav-dock')?.classList.add('dock-hidden');
+        }
+
         // Запускаем при загрузке документа
         function init() {
+            checkAndSwitchAccountProfile();
+            
             if (!localStorage.getItem('etis_reborn_install_date')) {
                 localStorage.setItem('etis_reborn_install_date', Date.now());
             }
@@ -8264,25 +11016,44 @@
                 }
             }, 10000);
 
+            // 1. Проверяем, просмотрено ли обучение. Если нет — добавляем уведомление в колокольчик
+            if (localStorage.getItem('etis_guide_viewed_v1') !== 'true') {
+                let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+                const hasGuideNotif = history.some(n => n.id === 'notif_guide_onboarding' || n.targetUrl === '#guide');
+                if (!hasGuideNotif) {
+                    history.unshift({
+                        id: 'notif_guide_onboarding',
+                        title: 'Новый раздел',
+                        subject: 'Вкладка «Обучение»',
+                        body: 'Познакомьтесь с подсказками, жестами и скрытыми возможностями ЕТИС Reborn',
+                        type: 'info',
+                        icon: 'auto_stories',
+                        timestamp: Date.now(),
+                        read: false,
+                        targetUrl: '#guide'
+                    });
+                    localStorage.setItem('etis_notifications_history_v1', JSON.stringify(history));
+                }
+            }
+
             addViewport();
             setIcon();
             stylePages();
+            
+            // 2. Обновляем счетчик на колокольчике сразу после загрузки страницы
+            updateBellCounter();
 
             requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                     if (document.body) {
-                        // Убираем жесткие инлайновые стили
                         document.body.style.removeProperty('opacity');
                         document.body.style.removeProperty('visibility');
                         document.body.style.removeProperty('background-color');
-
-                        // Запускаем плавную CSS-анимацию проявления
                         document.body.classList.add('etis-reborn-loaded');
                     }
                 });
             });
 
-            // Запуск через секунду, чтобы страница прогрузилась
             setTimeout(initAutoUpdateCheck, 1500);
             setTimeout(autoSyncOnLoad, 2000);
 
@@ -8297,113 +11068,14 @@
 
         // Установка иконки
         function setIcon() {
-            // Удаляем существующие иконки сайта, чтобы они не конфликтовали
             const existingIcons = document.querySelectorAll("link[rel*='icon']");
             existingIcons.forEach(el => el.remove());
 
             const icon = document.createElement('link');
             icon.rel = 'icon';
             icon.type = 'image/png';
-            icon.href = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/cf8b9cf9ab49c0eb14de7d2fdf32e5697004a13a/img/logo.png';
+            icon.href = LOGO_DATA_URI;
             safeAppend(icon);
-        }
-
-        // ==========================================
-        // ЛОГИКА ОБНОВЛЕНИЯ
-        // ==========================================
-
-        let updateState = {
-            status: 'idle',
-            hasUpdate: false,
-            remoteVer: '',
-            remoteDate: '',
-            remoteLog: '',
-            details: ''
-        };
-
-        function compareVersions(v1, v2) {
-            if (!v1 || !v2) return 0;
-            const p1 = v1.split('.');
-            const p2 = v2.split('.');
-
-            for (let i = 0; i < Math.max(p1.length, p2.length); i++) {
-                let s1 = p1[i] || "0";
-                let s2 = p2[i] || "0";
-
-                if (s1.length !== s2.length) {
-                    const maxLen = Math.max(s1.length, s2.length);
-                    s1 = s1.padEnd(maxLen, '0');
-                    s2 = s2.padEnd(maxLen, '0');
-                }
-
-                const n1 = parseInt(s1, 10);
-                const n2 = parseInt(s2, 10);
-
-                if (n1 > n2) return 1;
-                if (n1 < n2) return -1;
-            }
-            return 0;
-        }
-
-        // Безопасное получение заголовка
-        function getHeaderSafe(res, headerName) {
-            if (typeof res.getResponseHeader === 'function') {
-                try { return res.getResponseHeader(headerName); } catch(e) {}
-            }
-            if (res.responseHeaders) {
-                const regex = new RegExp(headerName + ':\\s*(.*)', 'i');
-                const match = res.responseHeaders.match(regex);
-                return match ? match[1] : null;
-            }
-            return null;
-        }
-
-        function initAutoUpdateCheck(isManual = false) {
-            if (updateState.status === 'loading' && !isManual) return;
-            updateState.status = 'loading';
-            if (isManual) refreshModalUI();
-
-            GM_xmlhttpRequest({
-                method: "GET",
-                url: UPDATE_URL + '?t=' + Date.now(),
-                timeout: 10000,
-                onload: function(res) {
-                    try {
-                        const text = res.responseText;
-                        const verMatch = text.match(/@version\s+([\d\.]+)/);
-                        if (!verMatch) throw new Error("Версия не найдена в файле");
-
-                        const remoteVer = verMatch[1];
-                        const currentVer = GM_info.script.version;
-
-                        // ПАРСИНГ ЛОГА ИЗ ТЕКСТА
-                        const logMatch = text.match(/@changelog\s+(.*)/);
-                        const remoteLog = logMatch ? logMatch[1].trim() : "";
-
-                        let dateStr = "н/д";
-                        const lastMod = getHeaderSafe(res, "Last-Modified") || getHeaderSafe(res, "Date");
-                        if (lastMod) {
-                            const d = new Date(lastMod);
-                            if (!isNaN(d.getTime())) {
-                                dateStr = `${d.getDate()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getFullYear()).slice(2)}`;
-                            }
-                        }
-
-                        updateState.remoteVer = remoteVer;
-                        updateState.remoteDate = dateStr;
-                        updateState.remoteLog = remoteLog; // Сохраняем лог
-                        updateState.hasUpdate = compareVersions(remoteVer, currentVer) > 0;
-                        updateState.status = 'success';
-
-                        if (updateState.hasUpdate) triggerUpdateIndicators();
-                    } catch (e) {
-                        updateState.status = 'error';
-                        updateState.details = e.message;
-                    }
-                    refreshModalUI();
-                },
-                onerror: () => { updateState.status = 'error'; updateState.details = "Сеть недоступна"; refreshModalUI(); }
-            });
         }
 
         function triggerUpdateIndicators() {
@@ -8416,7 +11088,7 @@
             }
 
             // 2. Точка на мобильной кнопке "Меню"
-            const mob = document.querySelector('.mobile-menu-btn');
+            const mob = document.querySelector('.mobile-dock-drawer-btn') || document.querySelector('.mobile-menu-btn');
             if (mob) mob.classList.add('has-updates');
 
             // 3. Точка внутри открытого окна настроек
@@ -8439,7 +11111,7 @@
             if (!container) return;
             container.innerHTML = '<div style="display:flex; align-items:center; gap:12px; padding: 1rem 0; color:var(--color-text-secondary); font-size:1.5rem; font-weight:600;"><span class="material-icons" style="animation:spin 1s linear infinite;">sync</span>Загрузка истории...</div>';
 
-            // Запрашиваем последние 10 коммитов для файла
+            // Последние 10 коммитов файла
             const apiUrl = 'https://api.github.com/repos/defl-orator/etis-reborn/commits?path=etis.user.js&per_page=10';
 
             GM_xmlhttpRequest({
@@ -8536,25 +11208,28 @@
             let mainHtml = '';
 
             if (updateState.hasUpdate) {
-                const testLabel = IS_TEST_MODE ? '<div style="color:var(--color-red); font-weight:800; font-size:1.1rem; margin-bottom:8px; text-transform:uppercase;">Test Mode</div>' : '';
+                const updateUrl = updateState.updateUrl || RELEASE_URL;
+                const betaBadge = updateState.isBeta 
+                    ? '<span style="background:rgba(255,149,0,0.15); color:#FF9500; padding:2px 8px; border-radius:6px; font-size:1rem; font-weight:800; text-transform:uppercase;">BETA</span>' 
+                    : '';
 
                 let actionButtons = '';
                 if (isIOS) {
-                    const encodedUrl = encodeURIComponent(UPDATE_URL);
+                    const encodedUrl = encodeURIComponent(updateUrl);
                     const stayDeepLink = `stay://x-callback-url/open-install?url=${encodedUrl}`;
                     actionButtons = `
                         <div style="display:flex; flex-direction:column; gap:10px;">
                             <a href="${stayDeepLink}" id="update-stay" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-accent)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
                                 <span class="material-icons">open_in_new</span> Обновить через Stay
                             </a>
-                            <a href="${UPDATE_URL}" target="_blank" id="update-browser" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
+                            <a href="${updateUrl}" target="_blank" id="update-browser" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
                                 <span class="material-icons">public</span> В браузере
                             </a>
                         </div>
                     `;
                 } else {
                     actionButtons = `
-                        <a href="${UPDATE_URL}" target="_blank" id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
+                        <a href="${updateUrl}" target="_blank" id="update-confirm" class="answer-btn-custom" style="width:100%;justify-content:center;background:var(--color-green)!important;color:#fff!important;font-weight:700; gap:8px; text-decoration:none; display:inline-flex; box-sizing:border-box;">
                             <span class="material-icons">system_update_alt</span> Обновить сейчас
                         </a>
                     `;
@@ -8562,13 +11237,15 @@
 
                 mainHtml = `
                     <div style="text-align:left;">
-                        ${testLabel}
                         <div style="display:flex; align-items:center; gap:16px; margin-bottom:2rem;">
                             <div style="background:rgba(52, 199, 89, 0.15); padding:12px; border-radius:50%; display:flex; align-items:center; justify-content:center;">
                                 <span class="material-icons" style="font-size:36px;color:var(--color-green);">system_update</span>
                             </div>
                             <div>
-                                <div style="font-size:2rem;font-weight:800;color:var(--color-text-primary);line-height:1.2;">Обновление!</div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:2rem;font-weight:800;color:var(--color-text-primary);line-height:1.2;">Обновление!</span>
+                                    ${betaBadge}
+                                </div>
                                 <div style="font-size:1.3rem;color:var(--color-text-secondary);font-weight:600;margin-top:4px;">Доступна новая версия</div>
                             </div>
                         </div>
@@ -8623,31 +11300,106 @@
             `;
         }
 
+        // Функция иконок
+        const getIconForHref = (href) => {
+            if (href === '#version-check') return 'system_update';
+            if (href === '#appearance') return 'palette';
+            if (href === '#report-bug') return 'bug_report';
+            if (href === '#settings') return 'settings';
+            if (href === '#profile') return 'account_circle';
+            if (href === '#guide') return 'auto_stories';
+            if (href.includes('teach_plan')) return 'school';
+            if (href.includes('timetable')) return 'calendar_month';
+            if (href.includes('signs')) return 'bar_chart_4_bars';
+            if (href.includes('absence')) return 'auto_stories_off';
+            if (href.includes('stu_phs.show_slots')) return 'steps';
+            if (href.includes('orders')) return 'assignment';
+            if (href.includes('library')) return 'book_2';
+            if (href.includes('teachers')) return 'people';
+            if (href.includes('est_pkg.show_list')) return 'forum';
+            if (href.includes('group_tt')) return 'playlist_add_check';
+            if (href.includes('announces')) return 'record_voice_over';
+            if (href.includes('teacher_notes')) return 'mail';
+            if (href.includes('ses')) return 'account_balance';
+            if (href.includes('advice')) return 'lightbulb';
+            if (href.includes('electr')) return 'public';
+            if (href.includes('cert_pkg')) return 'description';
+            if (href.includes('contract_list')) return 'receipt';
+            if (href.includes('blank_forms')) return 'insert_drive_file';
+            if (href.includes('portfolio')) return 'folder_shared';
+            if (href.includes('about')) return 'info';
+            if (href.includes('term_test')) return 'rate_review';
+            if (href.includes('special_est_list')) return 'poll';
+            if (href.includes('change_pass')) return 'vpn_key';
+            if (href.includes('change_email')) return 'alternate_email';
+            if (href.includes('change_pr_page')) return 'account_box';
+            if (href.includes('logout')) return 'exit_to_app';
+            return 'chevron_right';
+        };
+
         function initMobileMenu() {
-            if (document.querySelector('.mobile-menu-btn') || document.querySelector('.login')) return;
+            if (document.querySelector('.mobile-nav-dock') || document.querySelector('.login')) return;
 
             const sidebar = document.querySelector('.span3');
             if (!sidebar) return;
 
-            const menuBtn = document.createElement('div');
-            menuBtn.className = 'mobile-menu-btn';
-            menuBtn.innerHTML = `
-                <div class="menu-btn-content menu-closed">
-                    <span class="material-icons">menu</span>
+            const isDemoActive = sessionStorage.getItem('etis_demo_mode') === 'true';
+            const demoPage = sessionStorage.getItem('etis_demo_page') || 'timetable';
+
+            let currentPath = window.location.pathname.split('/').pop() || '';
+            let currentFullUrl = currentPath + window.location.search;
+
+            let isTimetable = false;
+            let isSigns = false;
+
+            if (isDemoActive) {
+                isTimetable = (demoPage === 'timetable');
+                isSigns = (demoPage === 'signs');
+
+                // Определяем виртуальный путь для демо-страниц
+                if (demoPage === 'signs') { currentPath = 'stu.signs'; currentFullUrl = 'stu.signs'; }
+                else if (demoPage === 'announces') { currentPath = 'stu_ann.announces'; currentFullUrl = 'stu_ann.announces'; }
+                else if (demoPage === 'notes') { currentPath = 'stu.teacher_notes'; currentFullUrl = 'stu.teacher_notes'; }
+                else if (demoPage === 'teach_plan_advanced') { currentPath = 'stu.teach_plan'; currentFullUrl = 'stu.teach_plan?p_mode=advanced'; }
+                else if (demoPage === 'teach_plan' || demoPage === 'teach_plan_short') { currentPath = 'stu.teach_plan'; currentFullUrl = 'stu.teach_plan?p_mode=short'; }
+                else { currentPath = 'stu.timetable'; currentFullUrl = 'stu.timetable'; }
+            } else {
+                isTimetable = currentPath.includes('stu.timetable') || currentPath.includes('schedule_detail');
+                isSigns = currentPath.includes('stu.signs');
+            }
+            const isOther = !isTimetable && !isSigns;
+
+            let dynamicOtherItemHtml = '';
+            if (isOther) {
+                const iconName = getIconForHref(currentFullUrl || currentPath);
+                dynamicOtherItemHtml = `
+                    <a href="${currentFullUrl || currentPath}" class="mobile-dock-item active" title="Текущий раздел">
+                        <span class="material-icons">${iconName}</span>
+                    </a>
+                `;
+            }
+
+            const dock = document.createElement('div');
+            dock.className = 'mobile-nav-dock';
+            dock.innerHTML = `
+                <a href="stu.timetable" class="mobile-dock-item ${isTimetable ? 'active' : ''}" title="Расписание">
+                    <span class="material-icons">calendar_month</span>
+                </a>
+                <a href="stu.signs" class="mobile-dock-item ${isSigns ? 'active' : ''}" title="Оценки">
+                    <span class="material-icons">bar_chart_4_bars</span>
+                </a>
+                ${dynamicOtherItemHtml}
+                <button class="mobile-dock-item mobile-dock-drawer-btn" title="Все разделы">
+                    <span class="material-icons">widgets</span>
                     <span class="mobile-notify-dot"></span>
-                    <span>Меню</span>
-                </div>
-                <div class="menu-btn-content menu-open">
-                    <span class="material-icons">arrow_forward</span>
-                </div>
+                </button>
             `;
-            document.body.appendChild(menuBtn);
+            document.body.appendChild(dock);
 
             const overlay = document.createElement('div');
             overlay.className = 'mobile-overlay';
             sidebar.parentNode.insertBefore(overlay, sidebar);
 
-            // Защита от "проезда" сайдбара при загрузке:
             requestAnimationFrame(() => {
                 setTimeout(() => {
                     sidebar.classList.add('ready-to-animate');
@@ -8655,97 +11407,38 @@
                 }, 50);
             });
 
+            const drawerBtn = dock.querySelector('.mobile-dock-drawer-btn');
+
             function toggleMenu(show) {
                 if (show) {
                     sidebar.classList.add('mobile-active');
                     overlay.classList.add('active');
-                    menuBtn.classList.add('open');
+                    dock.classList.add('dock-hidden');
+                    document.body.classList.add('modal-open-body');
                 } else {
                     sidebar.classList.remove('mobile-active');
                     overlay.classList.remove('active');
-                    menuBtn.classList.remove('open');
+                    dock.classList.remove('dock-hidden');
+                    document.body.classList.remove('modal-open-body');
                 }
             }
 
-            const toggleMenuHandler = (e) => {
+            drawerBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 const isOpen = sidebar.classList.contains('mobile-active');
                 toggleMenu(!isOpen);
-            };
-
-            // Функции для добавления/снятия класса нажатия
-            const addPressed = () => menuBtn.classList.add('is-pressed');
-            const removePressed = () => menuBtn.classList.remove('is-pressed');
-
-            // Обрабатываем удержание
-            menuBtn.addEventListener('touchstart', addPressed, { passive: true });
-            menuBtn.addEventListener('mousedown', addPressed);
-
-            // Обрабатываем отпускание
-            menuBtn.addEventListener('touchend', (e) => {
-                removePressed();
-                toggleMenuHandler(e);
-            });
-            menuBtn.addEventListener('mouseup', (e) => {
-                removePressed();
-                // На десктопах / с мышью
-                if (e.pointerType === 'mouse' || !e.pointerType) {
-                    toggleMenuHandler(e);
-                }
             });
 
-            // Если свайпнули за пределы кнопки
-            menuBtn.addEventListener('mouseleave', removePressed);
-            menuBtn.addEventListener('touchcancel', removePressed);
-
-            menuBtn.addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-            });
-
-            const closeMenuHandler = (e) => {
+            overlay.addEventListener('click', (e) => {
                 e.stopPropagation();
                 toggleMenu(false);
-            };
-
-            overlay.addEventListener('click', closeMenuHandler);
-
-            // --- ЗАЩИТА ОТ СЛУЧАЙНЫХ КЛИКОВ ПРИ СКРОЛЛЕ САЙДБАРА ---
-            let isSidebarScrolling = false;
-            let sidebarScrollTimer;
-
-            sidebar.addEventListener('scroll', () => {
-                isSidebarScrolling = true;
-                clearTimeout(sidebarScrollTimer);
-                sidebarScrollTimer = setTimeout(() => {
-                    isSidebarScrolling = false;
-                }, 150);
-            }, { passive: true });
-
-            // Логика при клике на ссылку
-            sidebar.querySelectorAll('a').forEach(link => {
-                link.addEventListener('click', (e) => {
-                    if (isSidebarScrolling) {
-                        e.preventDefault();
-                        return;
-                    }
-
-                    const href = link.getAttribute('href') || '';
-                    if (href.startsWith('#')) {
-                        // Не показываем бесконечную загрузку для открытия модальных окон
-                        return;
-                    }
-
-                    sidebar.classList.remove('mobile-active');
-                    overlay.classList.remove('active');
-                    menuBtn.classList.remove('open');
-                    menuBtn.classList.add('is-loading');
-                });
             });
 
-            // Сброс состояния кнопки при возврате "Назад"
-            window.addEventListener('pageshow', () => {
-                menuBtn.classList.remove('is-loading');
+            sidebar.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', () => {
+                    toggleMenu(false);
+                });
             });
         }
 
@@ -8793,7 +11486,7 @@
                         if (row.classList.contains('timetable-gap-row')) {
                             startTimeStr = row.getAttribute('data-gap-start');
                             const count = parseInt(row.getAttribute('data-gap-count') || "1");
-                            duration = (count * 90) + ((count - 1) * 10);
+                            duration = count === 0 ? 30 : ((count * 90) + ((count - 1) * 10));
                         } else {
                             const timeEl = row.querySelector('.eval');
                             if (timeEl) {
@@ -8927,7 +11620,6 @@
             });
         }
 
-        // --- ФУНКЦИЯ ОКНА "СООБЩИТЬ ОБ ОШИБКЕ" ---
         function openUserscriptBugModal() {
             window.open('https://etisreborn.ru/#bugreport', '_blank');
         }
@@ -8938,6 +11630,16 @@
                 const wrapper = modal.querySelector('#version-content-wrapper');
                 if (wrapper) {
                     wrapper.innerHTML = getUpdateHTML();
+
+                    const betaToggle = wrapper.querySelector('#setting-beta-updates');
+                    if (betaToggle) {
+                        betaToggle.onchange = (e) => {
+                            generalConfig.betaUpdates = e.target.checked;
+                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                            initAutoUpdateCheck(true); // Мгновенный перезапуск проверки
+                        };
+                    }
 
                     const historyBtn = wrapper.querySelector('#open-history-btn');
                     if (historyBtn) {
@@ -8984,7 +11686,7 @@
             }
         }
 
-        // --- ЛОГИКА КОНСУЛЬТАЦИЙ (DOCX) ---
+        // --- ЛОГИКА ФАЙЛОВ КОНСУЛЬТАЦИЙ ---
         const CONSULTATIONS_KEY = 'etis_consultation_files_v1';
         let consultationsFilesRaw = JSON.parse(localStorage.getItem(CONSULTATIONS_KEY) || '[]');
 
@@ -9307,6 +12009,7 @@
                 overlay.classList.remove('active');
                 modal.classList.remove('active');
                 document.body.classList.remove('modal-open-body');
+                document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
             };
             overlay.onclick = closeAll;
 
@@ -9381,7 +12084,7 @@
 
                             <div id="cons-drop-zone" style="border: 2px dashed var(--color-accent); border-radius: var(--radius-medium); padding: 4rem 2rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--color-card);">
                                 <span class="material-icons" style="font-size: 4rem; color: var(--color-accent); margin-bottom: 1rem;">cloud_upload</span>
-                                <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Нажмите или перетащите DOCX файл сюда</div>
+                                <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 0.5rem;">Нажмите или перетащите файл сюда</div>
                                 <div style="font-size: 1.2rem; color: var(--color-text-secondary);">Поддерживаются файлы .docx</div>
                                 <input type="file" id="upload-cons-docx" accept=".docx" style="display: none;">
                             </div>
@@ -9633,6 +12336,7 @@
         const FIREBASE_DB_URL = 'https://etisreborn-fab19-default-rtdb.europe-west1.firebasedatabase.app/';
 
         const getAutomaticSyncCode = async () => {
+            if (isDemoUser()) return null;
             if (typeof GM_getValue === 'undefined') return null;
 
             // 1. Проверяем, разрешил ли пользователь синхронизацию
@@ -9770,6 +12474,7 @@
 
         // Тихая выгрузка при изменении данных
         const triggerSilentCloudUpload = async () => {
+            if (isDemoUser()) return;
             const code = localStorage.getItem('etis_sync_code');
             if (!code) {
                 console.warn('[Sync] Попытка тихой выгрузки отменена: код синхронизации отсутствует в localStorage.');
@@ -9796,6 +12501,11 @@
 
         // Асинхронный тихий импорт при старте страницы
         const autoSyncOnLoad = async () => {
+            if (isDemoUser()) {
+                console.log('[Sync] Демо-режим активен. Облачная синхронизация отключена.');
+                return;
+            }
+
             console.log('[Sync] Инициализация авто-синхронизации при загрузке страницы...');
             const code = await getAutomaticSyncCode();
             if (!code) {
@@ -9817,6 +12527,8 @@
         };
 
         const downloadDataFromCloud = async (code) => {
+            if (isDemoUser()) return false;
+
             if (!FIREBASE_DB_URL) {
                 console.error('[Sync] Ошибка загрузки: FIREBASE_DB_URL не определен.');
                 return false;
@@ -9824,14 +12536,26 @@
 
             console.log(`[Sync] Начинаем фоновую загрузку данных для кода: ${code}`);
             try {
-                const response = await fetch(`${FIREBASE_DB_URL}sync/${code}.json`, {
-                    cache: 'no-store'
+                const response = await new Promise((resolve, reject) => {
+                    GM_xmlhttpRequest({
+                        method: 'GET',
+                        url: `${FIREBASE_DB_URL}sync/${code}.json?t=${Date.now()}`,
+                        onload: (res) => {
+                            if (res.status === 200) {
+                                resolve({
+                                    ok: true,
+                                    json: () => JSON.parse(res.responseText)
+                                });
+                            } else {
+                                resolve({ ok: false, status: res.status });
+                            }
+                        },
+                        onerror: (err) => reject(err)
+                    });
                 });
 
-                console.log(`[Sync] Ответ сервера (GET): статус ${response.status} (${response.statusText})`);
-
                 if (response.ok) {
-                    const rawData = await response.json();
+                    const rawData = response.json();
                     if (!rawData) {
                         console.log('[Sync] Облачная база данных пуста (rawData === null).');
                         return false;
@@ -9900,7 +12624,6 @@
                             return false;
                         }
                         
-                        // Защита от рассинхронизации: если локально пусто, а в облаке лежит непустой файл
                         if (hasCloudData) {
                             const localVal = localStorage.getItem(localKeyName);
                             const isLocalEmpty = !localVal || localVal === '[]' || localVal === '{}' || localVal === '{"grades":{}}';
@@ -9962,6 +12685,12 @@
                         isUpdated = true;
                     }
 
+                    if (toggles.general_config && data.ai_summaries && isCloudNewer('ai_summaries', 'etis_ai_summaries_v1')) {
+                        console.log('[Sync] Применяем облачные "ИИ-сводки" (ai_summaries)...');
+                        localStorage.setItem('etis_ai_summaries_v1', data.ai_summaries);
+                        isUpdated = true;
+                    }
+
                     if (toggles.grades_snapshot && data.grades_snapshot && isCloudNewer('grades_snapshot', 'etis_reborn_grades_snapshot_v3')) {
                         console.log('[Sync] Применяем облачную "Историю оценок" (grades_snapshot)...');
                         localStorage.setItem('etis_reborn_grades_snapshot_v3', data.grades_snapshot);
@@ -9978,6 +12707,55 @@
                         console.log('[Sync] Применяем облачную "Историю расписания" (weekly_pairs_history)...');
                         localStorage.setItem('etis_weekly_pairs_history_v1', data.weekly_pairs_history);
                         isUpdated = true;
+                    }
+
+                    // Синхронизация среднего балла диплома
+                    if (data.diploma_gpa && isCloudNewer('diploma_gpa', 'etis_diploma_gpa')) {
+                        console.log('[Sync] Применяем облачный "Средний балл диплома" (diploma_gpa)...');
+                        localStorage.setItem('etis_diploma_gpa', data.diploma_gpa);
+                        isUpdated = true;
+                    }
+
+                    // Умное слияние истории уведомлений и статусов прочтения
+                    if (data.notifications_history) {
+                        const cloudNotifs = safeParseJSON(data.notifications_history, []);
+                        const localNotifs = safeParseJSON(localStorage.getItem('etis_notifications_history_v1'), []);
+
+                        if (Array.isArray(cloudNotifs) && cloudNotifs.length > 0) {
+                            const notifMap = new Map();
+                            // 1. Загружаем локальные
+                            localNotifs.forEach(n => notifMap.set(n.id, { ...n }));
+                            
+                            // 2. Сливаем с облачными
+                            cloudNotifs.forEach(cn => {
+                                if (notifMap.has(cn.id)) {
+                                    const local = notifMap.get(cn.id);
+                                    // Если уведомление прочитано хотя бы на одном устройстве — помечаем прочитанным
+                                    local.read = local.read || cn.read;
+                                } else {
+                                    notifMap.set(cn.id, { ...cn });
+                                }
+                            });
+
+                            let mergedList = Array.from(notifMap.values());
+                            // Исключаем служебные (напоминания и ИИ)
+                            mergedList = mergedList.filter(n => 
+                                !n.title?.includes('Напоминание') && 
+                                !n.title?.includes('ИИ-') && 
+                                !n.title?.includes('Ошибка ИИ') && 
+                                n.icon !== 'alarm_on' && 
+                                n.icon !== 'psychology'
+                            );
+                            mergedList.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                            if (mergedList.length > 40) mergedList = mergedList.slice(0, 40);
+
+                            const mergedStr = JSON.stringify(mergedList);
+                            if (mergedStr !== JSON.stringify(localNotifs)) {
+                                console.log('[Sync] Применяем объединенную "Историю уведомлений" (notifications_history)...');
+                                localStorage.setItem('etis_notifications_history_v1', mergedStr);
+                                updateBellCounter();
+                            }
+                        }
                     }
 
                     if (data.install_date) {
@@ -9999,7 +12777,7 @@
 
                     // Слияние метаданных
                     const mergedMeta = {};
-                    const keys = ['accent_config', 'subject_notes', 'important_pairs', 'custom_pairs', 'general_config', 'grades_snapshot', 'consultation_files', 'external_cals', 'weekly_pairs_history'];
+                    const keys = ['accent_config', 'subject_notes', 'important_pairs', 'custom_pairs', 'general_config', 'grades_snapshot', 'consultation_files', 'external_cals', 'weekly_pairs_history', 'ai_summaries', 'diploma_gpa', 'notifications_history'];
 
                     const toggleMap = {
                         accent_config: 'accent_config',
@@ -10010,7 +12788,8 @@
                         grades_snapshot: 'grades_snapshot',
                         consultation_files: 'consultation_files',
                         external_cals: 'external_cals',
-                        weekly_pairs_history: 'weekly_pairs_history'
+                        weekly_pairs_history: 'weekly_pairs_history',
+                        ai_summaries: 'general_config'
                     };
 
                     keys.forEach(k => {
@@ -10036,7 +12815,8 @@
             return false;
         };
 
-        const uploadDataToCloud = async (code) => {
+        const uploadDataToCloud = async (code, skipPreDownload = false) => {
+            if (isDemoUser()) return false;
             if (!FIREBASE_DB_URL) {
                 console.error('[Sync] Ошибка выгрузки: FIREBASE_DB_URL не определен.');
                 return false;
@@ -10044,104 +12824,93 @@
 
             console.log(`[Sync] Инициализация выгрузки в облако для кода: ${code}`);
 
-            // Шаг 1. Сначала скачиваем актуальные данные во избежание затирания
-            console.log('[Sync] Вызов предварительного скачивания во избежание затирания...');
-            const isUpdated = await downloadDataFromCloud(code);
+            // Пропускаем предварительное скачивание при удалении/переименовании устройств
+            if (!skipPreDownload) {
+                console.log('[Sync] Вызов предварительного скачивания во избежание затирания...');
+                const isUpdated = await downloadDataFromCloud(code);
 
-            // Если в процессе скачивания мы получили более свежие данные из облака,
-            // перезагружаем страницу для их гарантированного и полного отображения.
-            if (isUpdated) {
-                console.log('[Sync] Во время выгрузки обнаружены и применены более свежие облачные данные. Перезагружаем страницу...');
-                window.location.reload();
-                return true; // Прерываем текущую выгрузку, так как страница перезапускается
-            }
-
-            // Шаг 2. Регистрируем текущее устройство
-            registerCurrentDevice();
-
-            const toggles = getSyncToggles();
-            console.log('[Sync] Конфигурация тумблеров для отправки:', toggles);
-
-            const payload = {};
-
-            if (toggles.custom_pairs) {
-                payload.custom_pairs = localStorage.getItem('etis_custom_pairs_v1') || '[]';
-                console.log(`[Sync] Пакет "Свои пары" подготовлен. Длина: ${payload.custom_pairs.length}`);
-            }
-            if (toggles.subject_notes) {
-                payload.subject_notes = localStorage.getItem('etis_subject_notes_v2') || '{}';
-                console.log(`[Sync] Пакет "Заметки" подготовлен. Длина: ${payload.subject_notes.length}`);
-            }
-
-            if (toggles.subject_notes || toggles.external_cals) {
-                const cloudImportant = toggles.subject_notes ? (localStorage.getItem('etis_important_pairs_v1') || '[]') : '[]';
-                const cloudCals = toggles.external_cals ? (localStorage.getItem('etis_external_cals_v2') || '[]') : '[]';
-                payload.important_pairs = JSON.stringify({
-                    important: safeParseJSON(cloudImportant, []),
-                    external_cals: safeParseJSON(cloudCals, [])
-                });
-                console.log(`[Sync] Пакет "Важные пары/Календари" подготовлен. Длина: ${payload.important_pairs.length}`);
-            }
-
-            if (toggles.accent_config) {
-                payload.accent_config = localStorage.getItem('etis_accent_config') || '{}';
-                console.log(`[Sync] Пакет "Цветовая тема" подготовлен. Длина: ${payload.accent_config.length}`);
-            }
-            if (toggles.general_config) {
-                payload.general_config = localStorage.getItem('etis_general_config') || '{}';
-                console.log(`[Sync] Пакет "Настройки интерфейса" подготовлен. Длина: ${payload.general_config.length}`);
-            }
-            if (toggles.grades_snapshot) {
-                payload.grades_snapshot = localStorage.getItem('etis_reborn_grades_snapshot_v3') || '{"grades":{}}';
-                console.log(`[Sync] Пакет "История оценок" подготовлен. Длина: ${payload.grades_snapshot.length}`);
-            }
-            if (toggles.consultation_files) {
-                payload.consultation_files = localStorage.getItem('etis_consultation_files_v1') || '[]';
-                console.log(`[Sync] Пакет "Файлы консультаций" подготовлен. Длина: ${payload.consultation_files.length}`);
-            }
-            if (toggles.weekly_pairs_history) {
-                payload.weekly_pairs_history = localStorage.getItem('etis_weekly_pairs_history_v1') || '{}';
-                console.log(`[Sync] Пакет "История расписания" подготовлен. Длина: ${payload.weekly_pairs_history.length}`);
-            }
-
-            const localInstall = localStorage.getItem('etis_reborn_install_date') || GM_getValue('etis_reborn_install_date') || '';
-            const localTimeSpent = localStorage.getItem('etis_reborn_time_spent') || '0';
-            payload.install_date = `${localInstall}|${localTimeSpent}`;
-            payload.sync_meta = localStorage.getItem('etis_sync_meta') || '{}';
-
-            console.log('[Sync] Полный payload метаданных для отправки:', payload.sync_meta);
-
-            // Шаг 3. Зашифровываем payload перед отправкой
-            console.log('[Sync] Шифрование пакета перед отправкой...');
-            const encryptedPayload = {};
-            for (const [key, value] of Object.entries(payload)) {
-                if (value !== undefined && value !== null) {
-                    try {
-                        encryptedPayload[key] = await encryptPayload(value, code);
-                    } catch (e) {
-                        console.error(`[Sync] Критическая ошибка шифрования ключа [${key}]:`, e);
-                        return false;
-                    }
+                if (isUpdated) {
+                    console.log('[Sync] Во время выгрузки обнаружены и применены более свежие облачные данные. Перезагружаем страницу...');
+                    window.location.reload();
+                    return true; 
                 }
             }
 
-            // Шаг 4. Отправляем в Firebase
+            registerCurrentDevice();
+
+            const payload = {};
+
+            const addKey = async (key, localKey) => {
+                const val = localStorage.getItem(localKey);
+                if (val) {
+                    try {
+                        payload[key] = await encryptPayload(val, code);
+                    } catch (e) {
+                        payload[key] = val;
+                    }
+                }
+            };
+
+            await addKey('custom_pairs', 'etis_custom_pairs_v1');
+            await addKey('subject_notes', 'etis_subject_notes_v2');
+            await addKey('accent_config', 'etis_accent_config');
+            await addKey('general_config', 'etis_general_config');
+            await addKey('grades_snapshot', 'etis_reborn_grades_snapshot_v3');
+            await addKey('consultation_files', 'etis_consultation_files_v1');
+            await addKey('weekly_pairs_history', 'etis_weekly_pairs_history_v1');
+            await addKey('ai_summaries', 'etis_ai_summaries_v1');
+            await addKey('diploma_gpa', 'etis_diploma_gpa');
+            await addKey('notifications_history', 'etis_notifications_history_v1');
+
+            // Объединяем важные пары и внешние календари в один объект
+            const imp = localStorage.getItem('etis_important_pairs_v1');
+            const cals = localStorage.getItem('etis_external_cals_v2');
+            if (imp || cals) {
+                const obj = {
+                    important: imp ? JSON.parse(imp) : [],
+                    external_cals: cals ? JSON.parse(cals) : []
+                };
+                try {
+                    payload['important_pairs'] = await encryptPayload(JSON.stringify(obj), code);
+                } catch (e) {
+                    payload['important_pairs'] = JSON.stringify(obj);
+                }
+            }
+
+            const meta = localStorage.getItem('etis_sync_meta');
+            if (meta) payload['sync_meta'] = meta;
+
+            // Время установки и наигранное время использования
+            let installDate = localStorage.getItem('etis_reborn_install_date') || GM_getValue('etis_reborn_install_date') || '';
+            let timeSpent = localStorage.getItem('etis_reborn_time_spent') || '0';
+            if (installDate) {
+                payload['install_date'] = installDate + '|' + timeSpent;
+            }
+
             console.log(`[Sync] Отправка PUT-запроса на адрес: ${FIREBASE_DB_URL}sync/${code}.json`);
             try {
-                const response = await fetch(`${FIREBASE_DB_URL}sync/${code}.json`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(encryptedPayload)
+                const response = await new Promise((resolve, reject) => {
+                    GM_xmlhttpRequest({
+                        method: 'PUT',
+                        url: `${FIREBASE_DB_URL}sync/${code}.json`,
+                        headers: { 'Content-Type': 'application/json' },
+                        data: JSON.stringify(payload),
+                        onload: (res) => {
+                            if (res.status >= 200 && res.status < 300) {
+                                resolve({ ok: true });
+                            } else {
+                                resolve({ ok: false, status: res.status });
+                            }
+                        },
+                        onerror: (err) => reject(err)
+                    });
                 });
                 
-                console.log(`[Sync] Ответ сервера (PUT): статус ${response.status} (${response.statusText})`);
-
                 if (response.ok) {
                     localStorage.setItem('etis_device_registered_in_cloud', 'true');
                     console.log('[Sync] Успешная выгрузка данных в облако завершена!');
                 } else {
-                    const errorText = await response.text();
-                    console.error('[Sync] Сервер отклонил выгрузку данных! Ответ:', errorText);
+                    console.error('[Sync] Сервер отклонил выгрузку данных! Статус:', response.status);
                 }
                 return response.ok;
             } catch (e) {
@@ -10153,23 +12922,16 @@
         function openProfileModal(view = 'main') {
             registerCurrentDevice();
 
-             // Безопасный хелпер получения логина
             const getSavedLoginId = () => {
                 if (typeof GM_getValue === 'undefined') return '';
-
-                // Проверяем наличие закешированных ФИО + Направления
                 let identity = GM_getValue('etis_secure_identity_cache', '');
                 if (!identity) {
-                    // Если кеша нет, пробуем прочесть со страницы прямо сейчас
                     const nameNode = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info b');
-                    if (nameNode) {
-                        identity = nameNode.childNodes[0].textContent.trim();
-                    }
+                    if (nameNode) identity = nameNode.childNodes[0].textContent.trim();
                 }
                 return identity;
             };
 
-            let isSyncExpanded = false;
             let overlay = document.getElementById('etis-profile-overlay');
             let modal = document.getElementById('etis-profile-modal');
 
@@ -10190,16 +12952,19 @@
                 overlay.classList.remove('active');
                 modal.classList.remove('active');
                 document.body.classList.remove('modal-open-body');
+                document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
             };
             overlay.onclick = closeAll;
 
             const renderView = (currentView) => {
                 let cpCount = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]').length;
-                let notesObj = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{}}');
-                let notesCount = Object.keys(notesObj.specific || {}).length;
+                let notesObj = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+                let notesCount = Object.keys(notesObj.specific || {}).length + Object.keys(notesObj.next_unbound || {}).length;
                 let gradesObj = JSON.parse(localStorage.getItem('etis_reborn_grades_snapshot_v3') || '{"grades":{}}');
                 let gradesCount = Object.keys(gradesObj.grades || {}).length;
                 let consCount = JSON.parse(localStorage.getItem('etis_consultation_files_v1') || '[]').length;
+                let aiSummariesObj = JSON.parse(localStorage.getItem('etis_ai_summaries_v1') || '{}');
+                let aiSummariesCount = Object.keys(aiSummariesObj).length;
 
                 let qlAccountsCount = 0;
                 try {
@@ -10210,10 +12975,6 @@
                 let weeklyPairsCount = Object.keys(weeklyPairs).length;
 
                 const syncCode = localStorage.getItem('etis_sync_code') || '';
-
-                // Предопределяем цель возврата (data по умолчанию для суб-панелей)
-                let backTarget = window.innerWidth <= 960 ? 'menu' : 'main';
-
                 const localAccent = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'], isGlass: false, isColoredGlass: true };
 
                 let rawName = 'Студент';
@@ -10242,17 +13003,14 @@
                 const declinedDir = declineDirection(studentDirection);
 
                 let diplomaGpaStr = localStorage.getItem('etis_diploma_gpa');
-                let gpa = diplomaGpaStr ? parseFloat(diplomaGpaStr) : 0;
+                let gpa = isDemoUser() ? 4.69 : (diplomaGpaStr ? parseFloat(diplomaGpaStr) : 0);
 
-                let badge = 'Новичок';
-                let badgeEmoji = '🌱';
+                let notifsCount = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]').length;
+                let diplomaGpaVal = localStorage.getItem('etis_diploma_gpa') || '—';
 
                 let installDateRaw = GM_getValue('etis_reborn_install_date') || localStorage.getItem('etis_reborn_install_date');
                 if (!installDateRaw) {
                     installDateRaw = Date.now().toString();
-                    GM_setValue('etis_reborn_install_date', installDateRaw);
-                    localStorage.setItem('etis_reborn_install_date', installDateRaw);
-                } else {
                     GM_setValue('etis_reborn_install_date', installDateRaw);
                     localStorage.setItem('etis_reborn_install_date', installDateRaw);
                 }
@@ -10263,56 +13021,97 @@
                 const totalSeconds = parseInt(localStorage.getItem('etis_reborn_time_spent') || '0', 10);
                 const minsPerDay = Math.max(1, Math.round((totalSeconds / 60) / daysPassed));
 
-                // Рассчитываем самый сложный статус
-                const badgeStatus = (() => {
-                    const statuses = [
-                        { level: 1, text: 'Новичок', emoji: '🌱', cond: () => true },
-                        { level: 2, text: 'Наблюдатель', emoji: '🕵️', cond: () => daysPassed >= 3 },
-                        { level: 3, text: 'Заметочник', emoji: '📝', cond: () => notesCount >= 1 },
-                        { level: 4, text: 'Конструктор', emoji: '✏️', cond: () => cpCount >= 1 },
-                        { level: 5, text: 'Отличник', emoji: '📚', cond: () => gpa >= 4.5 },
-                        { level: 6, text: 'Постоянный гость', emoji: '🚀', cond: () => totalSeconds >= 3600 },
-                        { level: 7, text: 'Писатель', emoji: '✍️', cond: () => notesCount >= 5 },
-                        { level: 8, text: 'Свой график', emoji: '📅', cond: () => cpCount >= 5 },
-                        { level: 9, text: 'Исследователь', emoji: '🤓', cond: () => gradesCount >= 50 },
-                        { level: 10, text: 'Организатор', emoji: '🧩', cond: () => consCount >= 1 },
-                        { level: 11, text: 'Пофигист', emoji: '🧘', cond: () => gpa > 0 && gpa < 3.5 },
-                        { level: 12, text: 'Хорошист', emoji: '😎', cond: () => gpa >= 4.0 && gpa < 4.5 },
-                        { level: 13, text: 'Старожил', emoji: '⏰', cond: () => daysPassed >= 14 },
-                        { level: 14, text: 'Зависимый', emoji: '🔥', cond: () => totalSeconds >= 18000 },
-                        { level: 15, text: 'Архивариус', emoji: '📖', cond: () => consCount >= 3 },
-                        { level: 16, text: 'Эстет', emoji: '🎨', cond: () => totalSeconds >= 3600 && localStorage.getItem('etis_accent_config') !== null },
-                        { level: 17, text: 'Аналитик', emoji: '📈', cond: () => gradesCount >= 100 && totalSeconds >= 7200 },
-                        { level: 18, text: 'Перфекционист', emoji: '🎓', cond: () => gpa >= 4.75 },
-                        { level: 19, text: 'Ветеран REBORN', emoji: '🛡️', cond: () => daysPassed >= 30 && totalSeconds >= 18000 },
-                        { level: 20, text: 'Легенда ЕТИСа', emoji: '👑', cond: () => totalSeconds >= 36000 && gpa >= 4.5 && notesCount >= 15 }
+                // --- ГЕНЕРАЦИЯ СПИСКА ДОСТИЖЕНИЙ ---
+                const getAchievementsList = () => {
+                    const baseStatuses = [
+                        { id: 'novice', level: 1, text: 'Новичок', emoji: '🌱', desc: 'Первый вход в личный кабинет ЕТИС', cond: () => true },
+                        { id: 'observer', level: 2, text: 'Наблюдатель', emoji: '🕵️', desc: 'Посещать ЕТИС более 3 дней', cond: () => daysPassed >= 3 },
+                        { id: 'notes_1', level: 3, text: 'Заметочник', emoji: '📝', desc: 'Создать хотя бы одну заметку или домашнее задание', cond: () => notesCount >= 1 },
+                        { id: 'constructor', level: 4, text: 'Конструктор', emoji: '✏️', desc: 'Добавить собственное занятие в расписание', cond: () => cpCount >= 1 },
+                        { id: 'otlichnik', level: 5, text: 'Отличник', emoji: '📚', desc: 'Достичь среднего балла в дипломе 4.5 или выше', cond: () => gpa >= 4.5 },
+                        { id: 'guest', level: 6, text: 'Постоянный гость', emoji: '🚀', desc: 'Провести более 1 часа на сайте', cond: () => totalSeconds >= 3600 },
+                        { id: 'writer', level: 7, text: 'Писатель', emoji: '✍️', desc: 'Написать 5 или более заметок или ДЗ для предметов', cond: () => notesCount >= 5 },
+                        { id: 'schedule', level: 8, text: 'Свой график', emoji: '📅', desc: 'Создать в расписании не менее 5 собственных занятий', cond: () => cpCount >= 5 },
+                        { id: 'explorer', level: 9, text: 'Исследователь', emoji: '🤓', desc: 'Накопить историю из 50 или более оценок в архиве', cond: () => gradesCount >= 50 },
+                        { id: 'organizer', level: 10, text: 'Организатор', emoji: '🧩', desc: 'Добавить расписание консультаций преподавателей', cond: () => consCount >= 1 },
+                        { id: 'pfg', level: 11, text: 'Пофигист', emoji: '🧘', desc: 'Иметь средний балл диплома ниже 3.5', cond: () => gpa > 0 && gpa < 3.5 },
+                        { id: 'hor', level: 12, text: 'Хорошист', emoji: '😎', desc: 'Иметь средний балл диплома от 4.0 до 4.5', cond: () => gpa >= 4.0 && gpa < 4.5 },
+                        { id: 'veteran_time', level: 13, text: 'Старожил', emoji: '⏰', desc: 'Посещать личный кабинет более 14 дней', cond: () => daysPassed >= 14 },
+                        { id: 'addicted', level: 14, text: 'Зависимый', emoji: '🔥', desc: 'Провести более 5 часов на сайте', cond: () => totalSeconds >= 18000 },
+                        { id: 'easter_egg', level: 15, text: 'Искатель тайн', emoji: '🐻', desc: 'Найти скрытую пасхалку', cond: () => localStorage.getItem('etis_easter_egg_found') === 'true' },
+                        { id: 'esthete', level: 16, text: 'Эстет', emoji: '🎨', desc: 'Настроить собственную цветовую тему', cond: () => localStorage.getItem('etis_accent_config') !== null },
+                        { id: 'analyst', level: 17, text: 'Аналитик', emoji: '📈', desc: 'Накопить 100+ оценок в архиве', cond: () => gradesCount >= 100 },
+                        { id: 'perfectionist', level: 18, text: 'Перфекционист', emoji: '🎓', desc: 'Достичь отличного среднего балла диплома (4.75 или выше)', cond: () => gpa >= 4.75 },
+                        { id: 'veteran', level: 19, text: 'Ветеран', emoji: '🛡️', desc: 'Посещать сайт более 30 дней и провести на нем 5+ часов', cond: () => daysPassed >= 30 && totalSeconds >= 18000 }
                     ];
 
+                    // Фильтрация неактуальных худших статусов
+                    const visibleStatuses = baseStatuses.filter(s => {
+                        if (s.id === 'pfg' && gpa >= 3.5) return false;
+                        if (s.id === 'hor' && gpa >= 4.5) return false;
+                        return true;
+                    });
+
+                    // Проверка: все ли остальные достижения разблокированы
+                    const allOtherUnlocked = visibleStatuses.every(s => s.cond());
+
+                    // Легенда ЕТИСа
+                    visibleStatuses.push({
+                        id: 'legend',
+                        level: 20,
+                        text: 'Легенда ЕТИСа',
+                        emoji: '👑',
+                        desc: 'Открыть все остальные доступные достижения',
+                        cond: () => allOtherUnlocked
+                    });
+
+                    return visibleStatuses;
+                };
+
+                // Получение открытых достижений с учетом пользовательского порядка
+                const allUnlocked = getAchievementsList().filter(s => s.cond());
+                const savedCustomOrder = JSON.parse(localStorage.getItem('etis_custom_achievements_order_v1') || '[]');
+
+                allUnlocked.sort((a, b) => {
+                    const idxA = savedCustomOrder.indexOf(a.id);
+                    const idxB = savedCustomOrder.indexOf(b.id);
+                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                    if (idxA !== -1) return -1;
+                    if (idxB !== -1) return 1;
+                    return b.level - a.level;
+                });
+
+                const topAchievements = allUnlocked.slice(0, 3);
+
+                // Формирование текста внутри карточек ("Я ...", "...", "и ...")
+                const getCardLabel = (item, idx, total) => {
+                    if (total === 1) return `Я ${item.text}`;
+                    if (idx === 0) return `Я ${item.text}`;
+                    if (idx === total - 1) return `и ${item.text}`;
+                    return item.text;
+                };
+
+                const badgeStatus = (() => {
+                    const statuses = getAchievementsList();
                     let unlockDates = JSON.parse(localStorage.getItem('etis_statuses_unlocked_dates_v1') || '{}');
                     let datesChanged = false;
-
                     let best = statuses[0];
+
                     for (const s of statuses) {
                         if (s.cond()) {
-                            // Автоматически фиксируем дату разблокировки, если её ещё нет в истории
                             if (!unlockDates[s.level]) {
                                 unlockDates[s.level] = new Date().toLocaleDateString('ru-RU');
                                 datesChanged = true;
                             }
-                            if (s.level > best.level) {
-                                best = s;
-                            }
+                            if (s.level > best.level) best = s;
                         }
                     }
-
-                    if (datesChanged) {
-                        localStorage.setItem('etis_statuses_unlocked_dates_v1', JSON.stringify(unlockDates));
-                    }
+                    if (datesChanged) localStorage.setItem('etis_statuses_unlocked_dates_v1', JSON.stringify(unlockDates));
                     return best;
                 })();
 
-                badge = badgeStatus.text;
-                badgeEmoji = badgeStatus.emoji;
+                const badge = badgeStatus.text;
+                const badgeEmoji = badgeStatus.emoji;
 
                 const getDaysWord = (n) => {
                     const absN = Math.abs(n) % 100; const lastDigit = absN % 10;
@@ -10327,135 +13126,164 @@
                     if (lastDigit === 1) return 'минуте'; return 'минут';
                 };
 
-                // Вспомогательная функция отрисовки выбранных цветов темы
                 const getColorsIndicator = (config) => {
                     if (!config || !config.colors || config.colors.length === 0) return '—';
-
                     let html = `<span style="display:inline-flex; align-items:center; gap:6px; vertical-align: middle;">`;
-
                     const isGrad = config.isGradient !== false && config.colors.length > 1;
                     const c1 = ACCENT_COLORS[config.colors[0]] || '#007AFF';
 
-                    // 1. Первый кружок акцента (всегда отображается)
                     html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c1}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет акцента 1"></span>`;
-
-                    // 2. Второй кружок акцента (если включен градиент)
                     if (isGrad && config.colors[1]) {
                         const c2 = ACCENT_COLORS[config.colors[1]] || c1;
                         html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c2}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет акцента 2"></span>`;
                     }
-
-                    // 3. Кружок текущей темы (Автоматическая, Темная или Светлая)
                     const activeTheme = localStorage.getItem('theme') || 'auto';
-                    let themeBg = '';
-                    let themeTitle = '';
-                    if (activeTheme === 'auto') {
-                        // Градиент наполовину: левая часть светлая, правая — темная
-                        themeBg = 'linear-gradient(90deg, #EAECEE 50%, #212325 50%)';
-                        themeTitle = 'Системная тема (авто)';
-                    } else if (activeTheme === 'dark') {
-                        themeBg = '#212325';
-                        themeTitle = 'Темная тема';
-                    } else {
-                        themeBg = '#EAECEE';
-                        themeTitle = 'Светлая тема';
-                    }
-                    html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${themeBg}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="${themeTitle}"></span>`;
-
-                    // 4. Полупрозрачный кружок эффекта стекла (если включен)
+                    let themeBg = activeTheme === 'dark' ? '#212325' : (activeTheme === 'light' ? '#EAECEE' : 'linear-gradient(90deg, #EAECEE 50%, #212325 50%)');
+                    html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${themeBg}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Тема"></span>`;
                     if (config.isGlass === true) {
-                        html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px dashed var(--color-text-secondary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);" title="Эффект стекла активен"></span>`;
+                        html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px dashed var(--color-text-secondary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);" title="Стекло"></span>`;
                     }
-
                     html += `</span>`;
                     return html;
                 };
 
-                let title = currentView === 'main' ? 'Мой профиль' : 'Мои данные';
-                if (currentView === 'menu') title = 'Профиль';
+                let title = 'Мой профиль';
                 let contentHTML = '';
+                let backTarget = (window.innerWidth <= 960) ? 'menu' : 'main';
 
                 if (currentView === 'main') {
+                    title = 'Мой профиль';
+                    backTarget = 'menu';
                     contentHTML = `
-                        <div id="bento-capture-area" style="background: var(--color-body); padding: 24px; border-radius: 32px; margin: 0 auto; width: calc(100% - 16px); box-sizing: border-box;">
-                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; aspect-ratio: auto; background: var(--color-card); border-radius: 28px; padding: 16px; box-shadow: none; box-sizing: border-box;">
-                                <div style="grid-column: span 2; background: var(--color-highlight); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 4px;">
-                                    <div style="width: 56px; height: 56px; background: var(--color-accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 800; margin-bottom: 4px; color: #fff !important; -webkit-text-fill-color: #fff !important;">
-                                        ${firstName.charAt(0)}
-                                    </div>
-                                    <div style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.2;">Я ${firstName}</div>
-                                    <div style="font-size: 1.2rem; color: var(--color-text-secondary); font-weight: 600;">Студент ПГНИУ</div>
+                        <!-- Единая карточка бенто-сетки -->
+                        <div id="bento-capture-area" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; background: var(--color-card); border-radius: var(--radius-large); padding: 16px; box-shadow: var(--shadow-main); border: 1px solid var(--color-table-border); margin-bottom: 1.6rem; width: 100%; box-sizing: border-box;">
+                            
+                            <!-- Карточка Аватара и Имени -->
+                            <div style="grid-column: span 2; background: var(--color-highlight); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 4px; box-sizing: border-box;">
+                                <div style="width: 54px; height: 54px; background: var(--color-accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 800; margin-bottom: 4px; color: #fff !important; -webkit-text-fill-color: #fff !important;">
+                                    ${firstName.charAt(0)}
                                 </div>
+                                <div style="font-size: 1.7rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.2;">Я ${firstName}</div>
+                                <div style="font-size: 1.2rem; color: var(--color-text-secondary); font-weight: 600;">Студент ПГНИУ</div>
+                            </div>
 
-                                <div style="grid-column: span 1; background: var(--color-highlight); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-                                    ${gpa > 0 ? `
-                                        <div style="font-size: 2.8rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1;">${gpa.toFixed(2)}</div>
-                                        <div style="font-size: 1.1rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.3;">Мой средний балл в <br>дипломе</div>
-                                    ` : `
-                                        <div style="font-size: 1.1rem; color: var(--color-text-secondary); font-weight: 600; line-height: 1.3; text-align: center;">Зайдите в <a href="https://student.psu.ru/pls/stu_cus_et/stu.signs?p_mode=diplom#open-profile" style="color: var(--color-accent) !important; font-weight: 800; text-decoration: underline !important;">«Оценки в диплом»</a></div>
-                                    `}
-                                </div>
+                            <!-- Карточка Среднего балла -->
+                            <div style="grid-column: span 1; background: var(--color-highlight); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box;">
+                                ${gpa > 0 ? `
+                                    <div style="font-size: 2.8rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1;">${gpa.toFixed(2)}</div>
+                                    <div style="font-size: 1.05rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.3;">Мой средний балл в <br>дипломе</div>
+                                ` : `
+                                    <div style="font-size: 1.1rem; color: var(--color-text-secondary); font-weight: 600; line-height: 1.3; text-align: center;">Зайдите в <a href="https://student.psu.ru/pls/stu_cus_et/stu.signs?p_mode=diplom#open-profile" style="color: var(--color-accent) !important; font-weight: 800; text-decoration: underline !important;">«Оценки в диплом»</a></div>
+                                `}
+                            </div>
 
-                                ${declinedDir ? `
-                                <div style="grid-column: span 3; background: var(--color-highlight); border-radius: 20px; padding: 12px 20px; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; flex-wrap: wrap;">
-                                    <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">school</span>
-                                    <span style="font-size: 1.25rem; color: var(--color-text-secondary); font-weight: 500; text-transform: lowercase;">изучаю</span>
-                                    <span style="font-size: 1.45rem; font-weight: 800; color: var(--color-accent);">${declinedDir}</span>
-                                </div>
-                                ` : ''}
+                            <!-- Направление обучения -->
+                            ${declinedDir ? `
+                            <div style="grid-column: span 3; background: var(--color-highlight); border-radius: 20px; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; flex-wrap: wrap;">
+                                <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">school</span>
+                                <span style="font-size: 1.25rem; color: var(--color-text-secondary); font-weight: 500; text-transform: lowercase;">изучаю</span>
+                                <span style="font-size: 1.45rem; font-weight: 800; color: var(--color-accent);">${declinedDir}</span>
+                            </div>
+                            ` : ''}
 
-                                <div id="status-bento-card" style="grid-column: span 1; background: var(--color-accent); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
-                                    <div style="font-size: 3.2rem; margin-bottom: 4px; line-height: 1; -webkit-text-fill-color: initial;">${badgeEmoji}</div>
-                                    <div style="font-size: 1.4rem; font-weight: 800; color: #fff !important; -webkit-text-fill-color: #fff !important; line-height: 1.2;">Я ${badge}</div>
-                                </div>
+                            <!-- Сетка блоков достижений -->
+                            <div id="status-bento-cards-container" style="grid-column: span 3; display: grid; grid-template-columns: repeat(${topAchievements.length}, 1fr); gap: 12px; box-sizing: border-box;">
+                                ${topAchievements.map((item, idx) => {
+                                    const cardLabel = getCardLabel(item, idx, topAchievements.length);
+                                    const isFirst = idx === 0;
+                                    return `
+                                        <div class="status-bento-subcard" draggable="true" data-id="${item.id}" data-idx="${idx}" style="background: ${isFirst ? 'var(--color-accent)' : 'var(--color-highlight)'}; border-radius: 20px; padding: 16px 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; cursor: grab; user-select: none; -webkit-user-select: none; touch-action: pan-y; transition: transform 0.2s, opacity 0.2s; box-sizing: border-box;" title="Потяните или смахните для смены порядка">
+                                            <div style="font-size: 2.8rem; margin-bottom: 6px; line-height: 1; pointer-events: none;">${item.emoji}</div>
+                                            <div style="font-size: 1.3rem; font-weight: 800; color: ${isFirst ? '#fff !important; -webkit-text-fill-color: #fff !important;' : 'var(--color-text-primary);'}; line-height: 1.2; pointer-events: none;">
+                                                ${cardLabel}
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
 
-                                <div style="grid-column: span 2; background: var(--color-highlight); border-radius: 20px; padding: 16px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; gap: 6px;">
-                                    <div style="font-size: 1.25rem; color: var(--color-text-primary); font-weight: 600; line-height: 1.4;">
-                                        Пользуюсь ЕТИС REBORN уже <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-accent);">${daysPassed} ${getDaysWord(daysPassed)}</span> по <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-accent);">${minsPerDay} ${getMinsWord(minsPerDay)}</span> в день
-                                    </div>
+                        </div>
+
+                        <!-- Кнопка перехода ко всем достижениям -->
+                        <div class="ios-settings-group" style="margin-bottom: 0 !important; width: 100%; box-sizing: border-box;">
+                            <div class="ios-settings-row" id="view-all-achievements-btn" style="cursor: pointer; padding: 1.4rem 1.6rem !important;">
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <span class="material-icons" style="color: var(--color-accent); font-size: 2.2rem;">emoji_events</span>
+                                    <span style="font-size: 1.4rem; font-weight: 600; color: var(--color-text-primary);">Все достижения</span>
                                 </div>
+                                <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
                             </div>
                         </div>
                     `;
                 } else if (currentView === 'data') {
-                    // Чтение кэша последних облачных значений для предотвращения мигания
-                    const lastCloudRaw = JSON.parse(localStorage.getItem('etis_last_cloud_counts_v1') || '{}');
+                    title = 'Мои данные';
+                    backTarget = 'menu';
+
+                    // Если это демо-аккаунт, принудительно ставим прочерки везде
+                    const isDemo = isDemoUser();
+                    const lastCloudRaw = isDemo ? {} : JSON.parse(localStorage.getItem('etis_last_cloud_counts_v1') || '{}');
+                    
                     const lastCloud = {
-                        cp: lastCloudRaw.cp !== undefined ? lastCloudRaw.cp : '—',
-                        notes: lastCloudRaw.notes !== undefined ? lastCloudRaw.notes : '—',
-                        grades: lastCloudRaw.grades !== undefined ? lastCloudRaw.grades : '—',
-                        cons: lastCloudRaw.cons !== undefined ? lastCloudRaw.cons : '—',
-                        weekly: lastCloudRaw.weekly !== undefined ? lastCloudRaw.weekly : '—',
-                        theme: lastCloudRaw.theme !== undefined ? lastCloudRaw.theme : '—',
-                        timeSpent: lastCloudRaw.timeSpent !== undefined ? lastCloudRaw.timeSpent : '—',
-                        cals: lastCloudRaw.cals !== undefined ? lastCloudRaw.cals : '—'
+                        cp: !isDemo && lastCloudRaw.cp !== undefined ? lastCloudRaw.cp : '—',
+                        notes: !isDemo && lastCloudRaw.notes !== undefined ? lastCloudRaw.notes : '—',
+                        grades: !isDemo && lastCloudRaw.grades !== undefined ? lastCloudRaw.grades : '—',
+                        cons: !isDemo && lastCloudRaw.cons !== undefined ? lastCloudRaw.cons : '—',
+                        weekly: !isDemo && lastCloudRaw.weekly !== undefined ? lastCloudRaw.weekly : '—',
+                        aiSummaries: !isDemo && lastCloudRaw.aiSummaries !== undefined ? lastCloudRaw.aiSummaries : '—',
+                        theme: !isDemo && lastCloudRaw.theme !== undefined ? lastCloudRaw.theme : '—',
+                        timeSpent: !isDemo && lastCloudRaw.timeSpent !== undefined ? lastCloudRaw.timeSpent : '—',
+                        cals: !isDemo && lastCloudRaw.cals !== undefined ? lastCloudRaw.cals : '—',
+                        gpa: !isDemo && lastCloudRaw.gpa !== undefined ? lastCloudRaw.gpa : '—',
+                        notifs: !isDemo && lastCloudRaw.notifs !== undefined ? lastCloudRaw.notifs : '—'
                     };
 
-                    // Хелпер строк данных
-                    const dataRow = (rowTitle, count, key, spanId = '', isSyncable = true, isHTML = false, cloudVal = '—') => {
+                    const dataRow = (rowTitle, count, key, spanId = '', isSyncable = true, isHTML = false, cloudVal = '—', hasDetails = false, detailsView = '') => {
                         const localSpanId = `local-val-${key.replace(/_/g, '-')}`;
+                        const displayCloudVal = isDemo ? '—' : cloudVal;
+
+                        // Проверка наличия данных (число > 0, не '0 мин', не пустота)
+                        let hasData = true;
+                        if (typeof count === 'number') {
+                            hasData = count > 0;
+                        } else if (typeof count === 'string') {
+                            const cleanText = count.replace(/<[^>]+>/g, '').trim();
+                            if (cleanText === '0' || cleanText === '0 мин' || cleanText === '0 мин.' || cleanText === '—' || cleanText === '') {
+                                hasData = false;
+                            } else if (key === 'etis_accent_config') {
+                                // Для темы проверяем, сохранена ли кастомная конфигурация
+                                hasData = localStorage.getItem('etis_accent_config') !== null;
+                            }
+                        }
+
                         return `
                             <div class="ios-settings-row" style="cursor: default !important; padding: 1.4rem 1.6rem !important;">
-                                <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; flex: 1;">
-                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">${rowTitle}</div>
+                                <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; flex: 1; min-width: 0; padding-right: 8px;">
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rowTitle}</div>
                                     <div style="display: flex; align-items: center; gap: 16px; margin-top: 4px;">
-                                        <!-- Локальные данные -->
                                         <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 1.25rem;" title="Сохранено на этом устройстве">
                                             <span class="material-icons" style="font-size: 1.6rem; color: var(--color-text-secondary);">download</span>
                                             <span id="${localSpanId}">${count}</span>
                                         </span>
-                                        <!-- Облачные данные (если применимо) -->
-                                        ${isSyncable ? `
+                                        ${(isSyncable && !isDemo) ? `
                                         <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 1.25rem;" title="Сохранено в облаке Firebase">
                                             <span class="material-icons" style="font-size: 1.6rem; color: var(--color-accent);">cloud</span>
-                                            <span ${spanId ? `id="${spanId}"` : ''} style="font-weight: 700;">${cloudVal}</span>
+                                            <span ${spanId ? `id="${spanId}"` : ''} style="font-weight: 700;">${displayCloudVal}</span>
                                         </span>
                                         ` : ''}
                                     </div>
                                 </div>
-                                <button class="answer-btn-custom clear-data-btn" data-key="${key}" style="background: rgba(255,59,48,0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important; padding: 6px 12px; font-size: 1.2rem; flex-shrink: 0; margin-left: 12px;">
-                                    Очистить
-                                </button>
+                                ${hasData ? `
+                                <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                                    ${hasDetails ? `
+                                    <button class="details-data-btn" data-target="${detailsView}" title="Просмотреть детализацию" style="width: 34px; height: 34px; border-radius: 50% !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: var(--color-highlight) !important; color: var(--color-text-primary) !important; border: 1px solid var(--color-table-border) !important; padding: 0 !important; margin: 0 !important; cursor: pointer; box-shadow: none !important; transition: all 0.2s;">
+                                        <span class="material-icons" style="font-size: 1.8rem !important; margin: 0 !important; line-height: 1 !important; color: var(--color-accent) !important;">keyboard_return</span>
+                                    </button>
+                                    ` : ''}
+                                    <button class="clear-data-btn" data-key="${key}" title="Очистить все данные этого раздела" style="width: 34px; height: 34px; border-radius: 50% !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: rgba(255,59,48,0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.2) !important; padding: 0 !important; margin: 0 !important; cursor: pointer; box-shadow: none !important; transition: all 0.2s;">
+                                        <span class="material-icons" style="font-size: 1.8rem !important; margin: 0 !important; line-height: 1 !important; color: var(--color-red) !important;">delete_outline</span>
+                                    </button>
+                                </div>
+                                ` : ''}
                             </div>
                         `;
                     };
@@ -10464,9 +13292,22 @@
                     const savedLogin = getSavedLoginId();
                     const isSyncEnabled = typeof GM_getValue !== 'undefined' && GM_getValue('etis_sync_enabled', true);
 
-                    if (savedLogin) {
+                    if (sessionStorage.getItem('etis_demo_mode') === 'true') {
+                        syncBlockHTML = `
+                            <div class="ios-settings-row" style="cursor: default !important;">
+                                <div>
+                                    <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Облачная синхронизация</div>
+                                    <div style="font-size: 1.3rem; color: var(--color-warning); font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+                                        <span class="material-icons" style="font-size: 1.6rem;">cloud_off</span> Отключена в демо-режиме
+                                    </div>
+                                    <div style="font-size: 1.15rem; color: var(--color-text-secondary); margin-top: 6px; line-height: 1.4;">
+                                        В демонстрационном режиме обмен данными с сервером заблокирован в целях безопасности.
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    } else if (savedLogin) {
                         if (isSyncEnabled) {
-                            // Состояние 1: Логин есть, синхронизация включена и активна
                             syncBlockHTML = `
                                 <div class="ios-settings-row" style="cursor: default !important;">
                                     <div>
@@ -10487,7 +13328,6 @@
                                 </div>
                             `;
                         } else {
-                            // Состояние 2: Логин сохранен, но синхронизация отключена (показываем кнопку включения)
                             syncBlockHTML = `
                                 <div class="ios-settings-row" style="cursor: default !important;">
                                     <div>
@@ -10504,7 +13344,6 @@
                             `;
                         }
                     } else {
-                        // Состояние 3: Логина нет совсем (первый запуск скрипта)
                         syncBlockHTML = `
                             <div class="ios-settings-row" style="cursor: default !important;">
                                 <div>
@@ -10538,23 +13377,227 @@
                                 <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px;" id="install-date-val">Скрипт установлен: ${joinDateStr}</div>
                             </div>
                         </div>
-                        ${dataRow('Свои пары', cpCount, 'etis_custom_pairs_v1', 'cloud-val-cp', true, false, lastCloud.cp)}
-                        ${dataRow('Заметки и ДЗ', notesCount, 'etis_subject_notes_v2', 'cloud-val-notes', true, false, lastCloud.notes)}
-                        ${dataRow('История оценок', gradesCount, 'etis_reborn_grades_snapshot_v3', 'cloud-val-grades', true, false, lastCloud.grades)}
-                        ${dataRow('Файлы консультаций', consCount, 'etis_consultation_files_v1', 'cloud-val-cons', true, false, lastCloud.cons)}
-                        ${dataRow('История расписания (для сводки)', weeklyPairsCount, 'etis_weekly_pairs_history_v1', 'cloud-val-weekly', true, false, lastCloud.weekly)}
-                        ${dataRow('Тема и цвета', getColorsIndicator(localAccent), 'etis_accent_config', 'cloud-val-theme', true, true, lastCloud.theme)}
-                        ${dataRow('Время использования', `${Math.round(totalSeconds / 60)} мин`, 'etis_reborn_time_spent', 'cloud-val-time-spent', true, false, lastCloud.timeSpent)}
-                        ${dataRow('Внешние календари', calsCount, 'etis_external_cals_v2', 'cloud-val-cals', true, false, lastCloud.cals)}
-                        ${dataRow('Данные быстрого входа', qlCount, 'etis_quick_login_creds', '', false)}
+                        ${dataRow('Свои пары', cpCount, 'etis_custom_pairs_v1', 'cloud-val-cp', true, false, lastCloud.cp, true, 'details_custom_pairs')}
+                        ${dataRow('Заметки и ДЗ', notesCount, 'etis_subject_notes_v2', 'cloud-val-notes', true, false, lastCloud.notes, true, 'details_subject_notes')}
+                        ${dataRow('История оценок', gradesCount, 'etis_reborn_grades_snapshot_v3', 'cloud-val-grades', true, false, lastCloud.grades, false)}
+                        ${dataRow('Средний балл диплома', diplomaGpaVal !== '—' ? `${parseFloat(diplomaGpaVal).toFixed(2)}` : '—', 'etis_diploma_gpa', 'cloud-val-gpa', true, false, lastCloud.gpa, false)}
+                        ${dataRow('Центр уведомлений', notifsCount, 'etis_notifications_history_v1', 'cloud-val-notifs', true, false, lastCloud.notifs, true, 'notifications_modal_redirect')}
+                        ${dataRow('Файлы консультаций', consCount, 'etis_consultation_files_v1', 'cloud-val-cons', true, false, lastCloud.cons, true, 'details_consultations')}
+                        ${dataRow('История расписания (для сводки)', weeklyPairsCount, 'etis_weekly_pairs_history_v1', 'cloud-val-weekly', true, false, lastCloud.weekly, false)}
+                        ${dataRow('ИИ-сводки объявлений', aiSummariesCount, 'etis_ai_summaries_v1', 'cloud-val-ai-summaries', true, false, lastCloud.aiSummaries, true, 'details_ai_summaries')}
+                        ${dataRow('Тема и цвета', getColorsIndicator(localAccent), 'etis_accent_config', 'cloud-val-theme', true, true, lastCloud.theme, false)}
+                        ${dataRow('Время использования', `${Math.round(totalSeconds / 60)} мин`, 'etis_reborn_time_spent', 'cloud-val-time-spent', true, false, lastCloud.timeSpent, false)}
+                        ${dataRow('Внешние календари', calsCount, 'etis_external_cals_v2', 'cloud-val-cals', true, false, lastCloud.cals, true, 'details_external_cals')}
+                        ${dataRow('Данные быстрого входа', qlCount, 'etis_quick_login_creds', '', false, false, '—', true, 'quick_login_redirect')}
                     </div>
+                    `;
+                } else if (currentView === 'details_custom_pairs') {
+                    title = 'Свои пары';
+                    backTarget = 'data';
+                    let pairs = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
+
+                    // Хелпер вычисления даты пары по дню недели и номеру недели
+                    const getPairDateFormatted = (p) => {
+                        const daysMap = { 'воскресенье': 0, 'понедельник': 1, 'вторник': 2, 'среда': 3, 'четверг': 4, 'пятница': 5, 'суббота': 6 };
+                        const monthsArr = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+                        
+                        const actualWeek = parseInt(localStorage.getItem('etis_actual_week') || '1', 10);
+                        const targetWeek = p.addedWeek || actualWeek;
+                        const weekDiff = targetWeek - actualWeek;
+                        
+                        const now = new Date();
+                        const currentDay = now.getDay();
+                        const targetDay = daysMap[(p.dayName || '').toLowerCase()] !== undefined ? daysMap[(p.dayName || '').toLowerCase()] : currentDay;
+                        
+                        const dayDiff = targetDay - (currentDay === 0 ? 7 : currentDay) + (targetDay === 0 ? 7 : 0);
+                        const dateObj = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (weekDiff * 7) + dayDiff);
+                        
+                        const recLabels = {
+                            'once': 'Только на этой неделе',
+                            'every': 'Каждую неделю',
+                            'biweekly': 'Раз в 2 недели'
+                        };
+                        const recText = recLabels[p.recurrence] || '';
+
+                        return {
+                            dateStr: `${dateObj.getDate()} ${monthsArr[dateObj.getMonth()]}`,
+                            recText: recText
+                        };
+                    };
+
+                    if (pairs.length === 0) {
+                        contentHTML = `<div style="text-align:center; padding: 4rem 1rem; color:var(--color-text-secondary); font-size:1.4rem;">У вас пока нет созданных вручную пар.</div>`;
+                    } else {
+                        contentHTML = `
+                            <div class="ios-settings-group">
+                                ${pairs.map((p) => {
+                                    const { dateStr, recText } = getPairDateFormatted(p);
+                                    return `
+                                        <div class="ios-settings-row" style="cursor:default !important; padding: 1.4rem 1.6rem !important;">
+                                            <div style="text-align:left; flex:1; min-width:0; padding-right:12px;">
+                                                <div style="font-size:1.4rem; font-weight:700; color:var(--color-text-primary); line-height:1.3; margin-bottom:4px;">${p.subject}</div>
+                                                <div style="font-size:1.2rem; color:var(--color-text-secondary); line-height:1.4;">
+                                                    <b style="color:var(--color-accent);">${dateStr}</b> • ${p.startTime || '00:00'} - ${p.endTime || '00:00'}
+                                                    ${p.type ? ` • <span style="text-transform:uppercase; font-weight:700;">${p.type}</span>` : ''}
+                                                    ${p.aud ? ` • ${p.aud}` : ''}
+                                                </div>
+                                                ${recText ? `<div style="font-size:1.15rem; color:var(--color-text-secondary); margin-top:2px;">${recText}</div>` : ''}
+                                                ${p.teacher ? `<div style="font-size:1.15rem; color:var(--color-text-secondary); margin-top:2px;">${p.teacher}</div>` : ''}
+                                            </div>
+                                            <button class="delete-single-cp-btn" data-id="${p.id}" title="Удалить пару" style="width:32px; height:32px; border-radius:50% !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; background:rgba(255,59,48,0.1) !important; color:var(--color-red) !important; border:1px solid rgba(255,59,48,0.2) !important; padding:0 !important; margin:0 !important; cursor:pointer; flex-shrink:0;">
+                                                <span class="material-icons" style="font-size:1.8rem !important; color:var(--color-red) !important;">delete_outline</span>
+                                            </button>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `;
+                    }
+                } else if (currentView === 'details_subject_notes') {
+                    title = 'Заметки и ДЗ';
+                    backTarget = 'data';
+                    let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+                    let spec = notesData.specific || {};
+                    let unbound = notesData.next_unbound || {};
+                    let totalNotes = Object.keys(spec).length + Object.keys(unbound).length;
+
+                    if (totalNotes === 0) {
+                        contentHTML = `<div style="text-align:center; padding: 4rem 1rem; color:var(--color-text-secondary); font-size:1.4rem;">У вас пока нет сохраненных заметок или ДЗ.</div>`;
+                    } else {
+                        let rowsHtml = '';
+                        for (const [id, text] of Object.entries(spec)) {
+                            let label = id.replace(/_/g, ' • ');
+                            rowsHtml += `
+                                <div class="ios-settings-row" style="cursor:default !important; padding: 1.4rem 1.6rem !important;">
+                                    <div style="text-align:left; flex:1; min-width:0; padding-right:12px;">
+                                        <div style="font-size:1.2rem; font-weight:700; color:var(--color-accent); margin-bottom:4px;">${label}</div>
+                                        <div style="font-size:1.35rem; color:var(--color-text-primary); line-height:1.4; white-space:pre-wrap;">${text}</div>
+                                    </div>
+                                    <button class="delete-single-note-btn" data-id="${id}" data-type="specific" title="Удалить заметку" style="width:32px; height:32px; border-radius:50% !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; background:rgba(255,59,48,0.1) !important; color:var(--color-red) !important; border:1px solid rgba(255,59,48,0.2) !important; padding:0 !important; margin:0 !important; cursor:pointer; flex-shrink:0;">
+                                        <span class="material-icons" style="font-size:1.8rem !important; color:var(--color-red) !important;">delete_outline</span>
+                                    </button>
+                                </div>
+                            `;
+                        }
+                        for (const [subj, data] of Object.entries(unbound)) {
+                            rowsHtml += `
+                                <div class="ios-settings-row" style="cursor:default !important; padding: 1.4rem 1.6rem !important;">
+                                    <div style="text-align:left; flex:1; min-width:0; padding-right:12px;">
+                                        <div style="font-size:1.2rem; font-weight:700; color:var(--color-warning); margin-bottom:4px;">На следующее занятие • ${subj}</div>
+                                        <div style="font-size:1.35rem; color:var(--color-text-primary); line-height:1.4; white-space:pre-wrap;">${data.text || data}</div>
+                                    </div>
+                                    <button class="delete-single-note-btn" data-id="${subj}" data-type="unbound" title="Удалить заметку" style="width:32px; height:32px; border-radius:50% !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; background:rgba(255,59,48,0.1) !important; color:var(--color-red) !important; border:1px solid rgba(255,59,48,0.2) !important; padding:0 !important; margin:0 !important; cursor:pointer; flex-shrink:0;">
+                                        <span class="material-icons" style="font-size:1.8rem !important; color:var(--color-red) !important;">delete_outline</span>
+                                    </button>
+                                </div>
+                            `;
+                        }
+                        contentHTML = `<div class="ios-settings-group">${rowsHtml}</div>`;
+                    }
+                } else if (currentView === 'details_consultations') {
+                    title = 'Файлы консультаций';
+                    backTarget = 'data';
+                    let files = JSON.parse(localStorage.getItem('etis_consultation_files_v1') || '[]');
+
+                    if (files.length === 0) {
+                        contentHTML = `<div style="text-align:center; padding: 4rem 1rem; color:var(--color-text-secondary); font-size:1.4rem;">У вас пока нет загруженных файлов консультаций.</div>`;
+                    } else {
+                        contentHTML = `
+                            <div class="ios-settings-group">
+                                ${files.map((f) => `
+                                    <div class="ios-settings-row" style="cursor:default !important; padding: 1.4rem 1.6rem !important;">
+                                        <div style="text-align:left; flex:1; min-width:0; padding-right:12px;">
+                                            <div style="font-size:1.4rem; font-weight:700; color:var(--color-text-primary); margin-bottom:4px;">${f.title}</div>
+                                            <div style="font-size:1.2rem; color:var(--color-text-secondary);">
+                                                Преподавателей: ${f.teachers ? f.teachers.length : 0} • Статус: ${f.isActive ? '<span style="color:var(--color-green); font-weight:700;">Активен</span>' : '<span style="color:var(--color-text-secondary);">Отключен</span>'}
+                                            </div>
+                                        </div>
+                                        <button class="delete-single-cons-btn" data-id="${f.id}" title="Удалить файл" style="width:32px; height:32px; border-radius:50% !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; background:rgba(255,59,48,0.1) !important; color:var(--color-red) !important; border:1px solid rgba(255,59,48,0.2) !important; padding:0 !important; margin:0 !important; cursor:pointer; flex-shrink:0;">
+                                            <span class="material-icons" style="font-size:1.8rem !important; color:var(--color-red) !important;">delete_outline</span>
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                } else if (currentView === 'details_external_cals') {
+                    title = 'Внешние календари';
+                    backTarget = 'data';
+                    let cals = typeof migrateExternalCals === 'function' ? migrateExternalCals() : [];
+
+                    if (cals.length === 0) {
+                        contentHTML = `<div style="text-align:center; padding: 4rem 1rem; color:var(--color-text-secondary); font-size:1.4rem;">У вас пока нет подключенных внешних календарей.</div>`;
+                    } else {
+                        contentHTML = `
+                            <div class="ios-settings-group">
+                                ${cals.map((c, idx) => `
+                                    <div class="ios-settings-row" style="cursor:default !important; padding: 1.4rem 1.6rem !important;">
+                                        <div style="display:flex; align-items:center; gap:12px; overflow:hidden; flex:1; min-width:0; padding-right:12px; text-align:left;">
+                                            <div style="width:14px; height:14px; border-radius:50%; background:${c.color || '#AF52DE'}; flex-shrink:0;"></div>
+                                            <div style="font-size:1.35rem; font-weight:600; color:var(--color-text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${c.url}">${c.url}</div>
+                                        </div>
+                                        <button class="delete-single-cal-btn" data-idx="${idx}" title="Удалить календарь" style="width:32px; height:32px; border-radius:50% !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; background:rgba(255,59,48,0.1) !important; color:var(--color-red) !important; border:1px solid rgba(255,59,48,0.2) !important; padding:0 !important; margin:0 !important; cursor:pointer; flex-shrink:0;">
+                                            <span class="material-icons" style="font-size:1.8rem !important; color:var(--color-red) !important;">delete_outline</span>
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `;
+                    }
+                } else if (currentView === 'details_ai_summaries') {
+                    title = 'ИИ-сводки объявлений';
+                    backTarget = 'data';
+                    let summaries = JSON.parse(localStorage.getItem('etis_ai_summaries_v1') || '{}');
+                    let keys = Object.keys(summaries);
+
+                    if (keys.length === 0) {
+                        contentHTML = `<div style="text-align:center; padding: 4rem 1rem; color:var(--color-text-secondary); font-size:1.4rem;">У вас пока нет сохраненных ИИ-сводок объявлений.</div>`;
+                    } else {
+                        contentHTML = `
+                            <div class="ios-settings-group">
+                                ${keys.map((msgId, idx) => {
+                                    let html = summaries[msgId];
+                                    let plainText = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+                                    let preview = plainText.length > 110 ? plainText.substring(0, 110) + '...' : plainText;
+
+                                    return `
+                                        <div class="ios-settings-row view-single-summary-row" data-id="${msgId}" style="cursor:pointer !important; padding: 1.4rem 1.6rem !important;">
+                                            <div style="text-align:left; flex:1; min-width:0; padding-right:12px;">
+                                                <div style="font-size:1.4rem; font-weight:700; color:var(--color-text-primary); margin-bottom:4px;">Сводка #${idx + 1}</div>
+                                                <div style="font-size:1.25rem; color:var(--color-text-secondary); line-height:1.4;">${preview}</div>
+                                            </div>
+                                            <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                                                <button class="delete-single-summary-btn" data-id="${msgId}" title="Удалить сводку" style="width:32px; height:32px; border-radius:50% !important; display:inline-flex !important; align-items:center !important; justify-content:center !important; background:rgba(255,59,48,0.1) !important; color:var(--color-red) !important; border:1px solid rgba(255,59,48,0.2) !important; padding:0 !important; margin:0 !important; cursor:pointer;">
+                                                    <span class="material-icons" style="font-size:1.8rem !important; color:var(--color-red) !important;">delete_outline</span>
+                                                </button>
+                                                <span class="material-icons chevron" style="color:var(--color-text-secondary); font-size:20px;">chevron_right</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `;
+                    }
+                } else if (currentView.startsWith('details_single_ai_summary_')) {
+                    const msgId = currentView.replace('details_single_ai_summary_', '');
+                    title = 'ИИ-Сводка';
+                    backTarget = 'details_ai_summaries';
+
+                    let summaries = JSON.parse(localStorage.getItem('etis_ai_summaries_v1') || '{}');
+                    let rawHtml = summaries[msgId] || 'Текст сводки не найден.';
+
+                    contentHTML = `
+                        <div class="ios-settings-group" style="padding: 2rem; background: var(--color-card) !important;">
+                            <div class="msg-body" style="text-align: left !important; font-size: 1.4rem; line-height: 1.6; color: var(--color-text-primary);">
+                                ${rawHtml}
+                            </div>
+                        </div>
                     `;
                 } else if (currentView === 'sync_options') {
                     title = 'Настройки синхронизации';
                     backTarget = 'data';
 
                     const toggles = getSyncToggles();
-
                     const makeToggle = (key, label, desc) => `
                         <label>
                             <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
@@ -10565,7 +13608,6 @@
                         </label>
                     `;
 
-                    // --- ИНТЕГРАЦИЯ УЛУЧШЕННОЙ ПАНЕЛИ УСТРОЙСТВ ---
                     let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
                     let devices = meta.devices || {};
                     let deviceId = localStorage.getItem('etis_device_id');
@@ -10573,31 +13615,21 @@
 
                     let devicesHtml = '';
                     if (devicesCount > 0) {
-                        devicesHtml = `
-                            <div class="ios-settings-group" style="margin-bottom: 2rem;">
-                        `;
+                        devicesHtml = `<div class="ios-settings-group" style="margin-bottom: 2rem;">`;
                         for (const [id, dev] of Object.entries(devices)) {
-                        const isCurrent = id === deviceId;
+                            const isCurrent = id === deviceId;
+                            const activeTime = dev.lastActive || dev.added;
+                            const dateStr = new Date(activeTime).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-                        // Берем время последней активности
-                        const activeTime = dev.lastActive || dev.added;
-                        const dateStr = new Date(activeTime).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-
-                            // Правая часть: либо зелёная точка для текущего устройства, либо кружок с минусом для остальных
-                            let rightActionHtml = '';
-                            if (isCurrent) {
-                                rightActionHtml = `
-                                    <div style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; margin-right: 2px;">
-                                        <div style="width: 10px; height: 10px; border-radius: 50%; background-color: var(--color-green) !important; box-shadow: 0 0 6px var(--color-green);" title="Текущее устройство"></div>
-                                    </div>
-                                `;
-                            } else {
-                                rightActionHtml = `
-                                    <button class="delete-device-btn" data-id="${id}" style="width: 32px; height: 32px; border-radius: 50% !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: rgba(255, 59, 48, 0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255, 59, 48, 0.2) !important; padding: 0 !important; margin: 0 !important; cursor: pointer; flex-shrink: 0; box-shadow: none !important; transition: background-color 0.2s;">
-                                        <span class="material-icons" style="font-size: 1.8rem !important; margin: 0 !important; padding: 0 !important; line-height: 1 !important; color: inherit !important;">remove</span>
-                                    </button>
-                                `;
-                            }
+                            let rightActionHtml = isCurrent ? `
+                                <div style="display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; flex-shrink: 0; margin-right: 2px;">
+                                    <div style="width: 10px; height: 10px; border-radius: 50%; background-color: var(--color-green) !important; box-shadow: 0 0 6px var(--color-green);" title="Текущее устройство"></div>
+                                </div>
+                            ` : `
+                                <button class="delete-device-btn" data-id="${id}" style="width: 32px; height: 32px; border-radius: 50% !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; background: rgba(255, 59, 48, 0.1) !important; color: var(--color-red) !important; border: 1px solid rgba(255, 59, 48, 0.2) !important; padding: 0 !important; margin: 0 !important; cursor: pointer; flex-shrink: 0; box-shadow: none !important;">
+                                    <span class="material-icons" style="font-size: 1.8rem !important; margin: 0 !important; padding: 0 !important; line-height: 1 !important; color: inherit !important;">remove</span>
+                                </button>
+                            `;
 
                             devicesHtml += `
                                 <div class="ios-settings-row" style="cursor: default !important; padding: 1.4rem 1.6rem !important;">
@@ -10607,7 +13639,6 @@
                                         </span>
                                         <div style="overflow:hidden; flex:1;">
                                             <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); display:flex; align-items:center; gap:6px; overflow:hidden;">
-                                                <!-- Принудительно заблокировали нижнее подчеркивание инпута от глобальных стилей ЕТИСа -->
                                                 <input type="text" class="device-rename-input" data-id="${id}" value="${dev.name}" style="background:transparent !important; border:none !important; box-shadow:none !important; color:inherit !important; font-size:inherit !important; font-weight:inherit !important; padding:0 !important; margin:0 !important; outline:none !important; text-overflow:ellipsis; width: 100%; max-width: 180px;" ${isCurrent ? '' : 'disabled'}>
                                             </div>
                                             <div style="font-size: 1.15rem; color: var(--color-text-secondary); margin-top: 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
@@ -10624,7 +13655,7 @@
 
                     contentHTML = `
                         ${devicesHtml}
-                        <div style="height: 12px; width: 100%;"></div> <!-- Невидимый разделитель вместо заголовка -->
+                        <div style="height: 12px; width: 100%;"></div>
                         <div class="ios-settings-group">
                             ${makeToggle('custom_pairs', 'Свои пары', 'Синхронизация созданных вручную занятий')}
                             ${makeToggle('subject_notes', 'Заметки и ДЗ', 'Синхронизация заметок, ДЗ и важных пар')}
@@ -10639,10 +13670,9 @@
                 } else if (currentView === 'achievements') {
                     title = 'Мои достижения';
                     backTarget = 'main';
-
                     const unlockDates = JSON.parse(localStorage.getItem('etis_statuses_unlocked_dates_v1') || '{}');
+                    const statusesList = getAchievementsList();
 
-                    // Вспомогательная функция для приведения даты к короткому формату "ДД.ММ.ГГ"
                     const formatShortDate = (dateStr) => {
                         if (!dateStr) return '';
                         const parts = dateStr.split('.');
@@ -10651,29 +13681,6 @@
                         }
                         return dateStr;
                     };
-
-                    const statusesList = [
-                        { level: 1, text: 'Новичок', emoji: '🌱', desc: 'Запуск расширения ЕТИС REBORN', cond: () => true },
-                        { level: 2, text: 'Наблюдатель', emoji: '🕵️', desc: 'Пользоваться скриптом более 3 дней', cond: () => daysPassed >= 3 },
-                        { level: 3, text: 'Заметочник', emoji: '📝', desc: 'Создать хотя бы одну заметку или домашнее задание', cond: () => notesCount >= 1 },
-                        { level: 4, text: 'Конструктор', emoji: '✏️', desc: 'Вручную добавить собственное занятие в расписание', cond: () => cpCount >= 1 },
-                        { level: 5, text: 'Отличник', emoji: '📚', desc: 'Достичь среднего балла в дипломе 4.5 или выше', cond: () => gpa >= 4.5 },
-                        { level: 6, text: 'Постоянный гость', emoji: '🚀', desc: 'Провести более 1 часа (60 минут) на страницах ЕТИСа', cond: () => totalSeconds >= 3600 },
-                        { level: 7, text: 'Писатель', emoji: '✍️', desc: 'Написать 5 или более заметок или ДЗ для предметов', cond: () => notesCount >= 5 },
-                        { level: 8, text: 'Свой график', emoji: '📅', desc: 'Создать в расписании не менее 5 собственных занятий', cond: () => cpCount >= 5 },
-                        { level: 9, text: 'Исследователь', emoji: '🤓', desc: 'Накопить историю из 50 или более оценок в архиве', cond: () => gradesCount >= 50 },
-                        { level: 10, text: 'Организатор', emoji: '🧩', desc: 'Импортировать хотя бы один файл консультаций', cond: () => consCount >= 1 },
-                        { level: 11, text: 'Пофигист', emoji: '🧘', desc: 'Иметь средний балл диплома ниже 3.5', cond: () => gpa > 0 && gpa < 3.5 },
-                        { level: 12, text: 'Хорошист', emoji: '😎', desc: 'Иметь средний балл диплома от 4.0 до 4.5', cond: () => gpa >= 4.0 && gpa < 4.5 },
-                        { level: 13, text: 'Старожил', emoji: '⏰', desc: 'Пользоваться расширением более 2 недель (14 дней)', cond: () => daysPassed >= 14 },
-                        { level: 14, text: 'Зависимый', emoji: '🔥', desc: 'Провести более 5 часов (300 минут) на страницах ЕТИСа', cond: () => totalSeconds >= 18000 },
-                        { level: 15, text: 'Архивариус', emoji: '📖', desc: 'Загрузить 3 или более файлов консультаций', cond: () => consCount >= 3 },
-                        { level: 16, text: 'Эстет', emoji: '🎨', desc: 'Провести в приложении более 1 часа и настроить тему', cond: () => totalSeconds >= 3600 && localStorage.getItem('etis_accent_config') !== null },
-                        { level: 17, text: 'Аналитик', emoji: '📈', desc: 'Накопить 100+ оценок и провести в приложении более 2 часов', cond: () => gradesCount >= 100 && totalSeconds >= 7200 },
-                        { level: 18, text: 'Перфекционист', emoji: '🎓', desc: 'Достичь отличного среднего балла диплома (4.75 или выше)', cond: () => gpa >= 4.75 },
-                        { level: 19, text: 'Ветеран REBORN', emoji: '🛡️', desc: 'Пользоваться скриптом более 30 дней и провести в нем 5+ часов', cond: () => daysPassed >= 30 && totalSeconds >= 18000 },
-                        { level: 20, text: 'Легенда ЕТИСа', emoji: '👑', desc: 'Провести в ЕТИСе 10+ часов, балл в диплом от 4.5 и 15+ заметок', cond: () => totalSeconds >= 36000 && gpa >= 4.5 && notesCount >= 15 }
-                    ];
 
                     let listHtml = '<div style="display:flex; flex-direction:column; gap:1.2rem;">';
                     statusesList.forEach(s => {
@@ -10704,19 +13711,13 @@
                         `;
                     });
                     listHtml += '</div>';
-
                     contentHTML = listHtml;
                 }
 
                 const isMainMobile = currentView === 'menu';
-                const showBackBtnOnPC = currentView !== 'menu' && currentView !== 'main';
+                const showBackBtnOnPC = currentView !== 'menu' && currentView !== 'main' && currentView !== 'data';
                 const backBtnClass = showBackBtnOnPC ? 'back-modal-btn' : 'back-modal-btn settings-mobile-header';
-
-                // Форсируем показ стрелки назад на ПК только во вкладке достижений
-                const backBtnStyle = (currentView === 'achievements') ? 'display: inline-block !important;' : '';
-
-                // Пересчитываем кнопку возврата на мобильных
-                backTarget = (currentView === 'sync_options') ? 'data' : ((currentView === 'achievements') ? 'main' : (window.innerWidth <= 960 ? 'menu' : 'main'));
+                const backBtnStyle = showBackBtnOnPC ? 'display: inline-block !important;' : '';
 
                 const shareBtnHtml = currentView === 'main' ? `
                     <button id="share-bento-btn" style="background:transparent!important; border:none!important; box-shadow:none!important; padding:0!important; margin:0!important; display:flex; align-items:center; justify-content:center; cursor:pointer;">
@@ -10737,7 +13738,7 @@
                                 <div class="settings-sidebar-btn ${currentView === 'main' || currentView === 'achievements' ? 'active' : ''}" data-target="main">
                                     <span class="material-icons">account_circle</span><span class="sidebar-btn-text">Мой профиль</span><span class="material-icons chevron">chevron_right</span>
                                 </div>
-                                <div class="settings-sidebar-btn ${currentView === 'data' || currentView === 'sync_options' ? 'active' : ''}" data-target="data">
+                                <div class="settings-sidebar-btn ${currentView === 'data' || currentView.startsWith('details_') || currentView === 'sync_options' ? 'active' : ''}" data-target="data">
                                     <span class="material-icons">storage</span><span class="sidebar-btn-text">Мои данные</span><span class="material-icons chevron">chevron_right</span>
                                 </div>
                             </div>
@@ -10755,7 +13756,8 @@
                                         <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
                                     </div>
                                 </div>
-                                <div style="padding: 0.8rem 0 4rem 0;">                                    ${contentHTML}
+                                <div style="padding: 0.8rem 0 4rem 0;">
+                                    ${contentHTML}
                                 </div>
                             </div>
                         </div>
@@ -10769,13 +13771,111 @@
                 });
 
                 if (currentView === 'main') {
-                    // Клик по блоку статуса открывает вкладку достижений
-                    const statusCard = modal.querySelector('#status-bento-card');
-                    if (statusCard) {
-                        statusCard.onclick = (e) => {
+                    // Кнопка открытия всех достижений
+                    const allAchBtn = modal.querySelector('#view-all-achievements-btn');
+                    if (allAchBtn) {
+                        allAchBtn.onclick = (e) => {
                             e.preventDefault();
                             renderView('achievements');
                         };
+                    }
+
+                    // --- ЛОГИКА ПЕРЕМЕЩЕНИЯ КАРТОЧЕК (СВАЙПЫ / DRAG & DROP) ---
+                    const swapAchievements = (fromIdx, toIdx) => {
+                        if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= topAchievements.length || toIdx >= topAchievements.length) return;
+
+                        const [moved] = topAchievements.splice(fromIdx, 1);
+                        topAchievements.splice(toIdx, 0, moved);
+
+                        // Формируем новый глобальный порядок
+                        const newOrderIds = topAchievements.map(a => a.id);
+                        allUnlocked.forEach(a => {
+                            if (!newOrderIds.includes(a.id)) newOrderIds.push(a.id);
+                        });
+
+                        saveSyncData('etis_custom_achievements_order_v1', JSON.stringify(newOrderIds));
+                        if (navigator.vibrate) navigator.vibrate(15);
+                        renderView('main');
+                    };
+
+                    const container = modal.querySelector('#status-bento-cards-container');
+                    if (container && topAchievements.length > 1) {
+                        let draggedIdx = null;
+
+                        // 1. Drag and Drop для ПК
+                        container.querySelectorAll('.status-bento-subcard').forEach(card => {
+                            card.addEventListener('dragstart', (e) => {
+                                draggedIdx = parseInt(card.getAttribute('data-idx'), 10);
+                                card.style.opacity = '0.4';
+                                e.dataTransfer.effectAllowed = 'move';
+                            });
+
+                            card.addEventListener('dragover', (e) => {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                            });
+
+                            card.addEventListener('dragenter', () => {
+                                card.style.transform = 'scale(1.05)';
+                            });
+
+                            card.addEventListener('dragleave', () => {
+                                card.style.transform = 'scale(1)';
+                            });
+
+                            card.addEventListener('drop', (e) => {
+                                e.preventDefault();
+                                card.style.transform = 'scale(1)';
+                                const targetIdx = parseInt(card.getAttribute('data-idx'), 10);
+                                if (draggedIdx !== null && targetIdx !== draggedIdx) {
+                                    swapAchievements(draggedIdx, targetIdx);
+                                }
+                            });
+
+                            card.addEventListener('dragend', () => {
+                                card.style.opacity = '1';
+                                card.style.transform = 'scale(1)';
+                                draggedIdx = null;
+                            });
+
+                            // 2. Свайпы для мобильных устройств
+                            let touchStartX = 0;
+                            let touchStartY = 0;
+                            let isHorizontalSwipe = false;
+
+                            card.addEventListener('touchstart', (e) => {
+                                touchStartX = e.touches[0].clientX;
+                                touchStartY = e.touches[0].clientY;
+                                isHorizontalSwipe = false;
+                            }, { passive: true });
+
+                            card.addEventListener('touchmove', (e) => {
+                                const diffX = e.touches[0].clientX - touchStartX;
+                                const diffY = e.touches[0].clientY - touchStartY;
+                                if (!isHorizontalSwipe && Math.abs(diffX) > 10 && Math.abs(diffX) > Math.abs(diffY)) {
+                                    isHorizontalSwipe = true;
+                                }
+                                if (isHorizontalSwipe) {
+                                    card.style.transform = `translateX(${diffX * 0.4}px)`;
+                                }
+                            }, { passive: true });
+
+                            card.addEventListener('touchend', (e) => {
+                                const diffX = e.changedTouches[0].clientX - touchStartX;
+                                card.style.transform = 'translateX(0)';
+                                const currentIdx = parseInt(card.getAttribute('data-idx'), 10);
+
+                                if (Math.abs(diffX) > 40) {
+                                    if (diffX < 0 && currentIdx < topAchievements.length - 1) {
+                                        // Свайп влево -> сдвиг вправо по списку
+                                        swapAchievements(currentIdx, currentIdx + 1);
+                                    } else if (diffX > 0 && currentIdx > 0) {
+                                        // Свайп вправо -> сдвиг влево по списку
+                                        swapAchievements(currentIdx, currentIdx - 1);
+                                    }
+                                }
+                            });
+                        });
                     }
 
                     const shareBtn = modal.querySelector('#share-bento-btn');
@@ -10795,9 +13895,19 @@
                                     setTimeout(() => { bIcon.textContent = origIcon; bIcon.style.color = 'var(--color-text-secondary)'; }, 2000);
                                     return;
                                 }
-                                targetEl.style.borderRadius = '0';
-                                h2c(targetEl, { scale: 3, useCORS: true, backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() }).then(canvas => {
-                                    targetEl.style.borderRadius = '32px';
+
+                                // Создаем чистый экспортный контейнер с отступами только для сохранения файла
+                                const exportWrapper = document.createElement('div');
+                                exportWrapper.style.cssText = `position: absolute; top: 0px; left: 0px; pointer-events: none; width: ${targetEl.offsetWidth || 500}px; padding: 24px; box-sizing: border-box; background: ${getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'}; z-index: -9999;`;
+                                
+                                const clone = targetEl.cloneNode(true);
+                                clone.style.margin = '0';
+                                clone.style.boxShadow = '0 10px 30px rgba(0,0,0,0.08)';
+                                exportWrapper.appendChild(clone);
+                                document.body.appendChild(exportWrapper);
+
+                                h2c(exportWrapper, { scale: 3, useCORS: true, backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() }).then(canvas => {
+                                    exportWrapper.remove();
                                     canvas.toBlob(blob => {
                                         const file = new File([blob], 'EtisProfile.png', { type: 'image/png' });
                                         if (window.innerWidth <= 960 && navigator.canShare && navigator.canShare({ files: [file] })) {
@@ -10810,6 +13920,10 @@
                                             setTimeout(() => { bIcon.textContent = origIcon; bIcon.style.color = 'var(--color-text-secondary)'; }, 2000);
                                         }
                                     }, 'image/png');
+                                }).catch(() => {
+                                    exportWrapper.remove();
+                                    bIcon.textContent = 'error'; bIcon.style.animation = 'none'; bIcon.style.color = 'var(--color-red)';
+                                    setTimeout(() => { bIcon.textContent = origIcon; bIcon.style.color = 'var(--color-text-secondary)'; }, 2000);
                                 });
                             };
 
@@ -10821,15 +13935,10 @@
                     }
                 }
 
-                // ==========================================
-                // БЛОК УПРАВЛЕНИЯ ДАННЫМИ И СИНХРОНИЗАЦИЕЙ
-                // ==========================================
                 if (currentView === 'data') {
-                    // 1. Автоматический фоновый запрос на слияние данных при открытии вкладки
                     if (syncCode) {
                         downloadDataFromCloud(syncCode).then(success => {
                             if (success) {
-                                // Если сзади открыто расписание, бесшумно перерисовываем его элементы на лету
                                 if (window.location.href.includes('timetable')) {
                                     document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
                                     if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
@@ -10839,12 +13948,13 @@
                                     if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                                 }
 
-                                // Обновляем локальные счетчики точечно без перерисовки всей вкладки (предотвращает сброс скролла)
                                 const newCpCount = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]').length;
-                                const newNotesCount = Object.keys(JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{}}').specific || {}).length;
+                                const newNotesObj = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+                                const newNotesCount = Object.keys(newNotesObj.specific || {}).length + Object.keys(newNotesObj.next_unbound || {}).length;
                                 const newGradesCount = Object.keys(JSON.parse(localStorage.getItem('etis_reborn_grades_snapshot_v3') || '{"grades":{}}').grades || {}).length;
                                 const newConsCount = JSON.parse(localStorage.getItem('etis_consultation_files_v1') || '[]').length;
                                 const newWeeklyCount = Object.keys(JSON.parse(localStorage.getItem('etis_weekly_pairs_history_v1') || '{}')).length;
+                                const newAiCount = Object.keys(JSON.parse(localStorage.getItem('etis_ai_summaries_v1') || '{}')).length;
                                 const newCalsCount = typeof migrateExternalCals === 'function' ? migrateExternalCals().length : 0;
                                 const newAccent = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'], isGlass: false, isColoredGlass: true };
 
@@ -10853,21 +13963,44 @@
                                 const gradesLocEl = modal.querySelector('#local-val-etis-reborn-grades-snapshot-v3');
                                 const consLocEl = modal.querySelector('#local-val-etis-consultation-files-v1');
                                 const weeklyLocEl = modal.querySelector('#local-val-etis-weekly-pairs-history-v1');
+                                const aiLocEl = modal.querySelector('#local-val-etis-ai-summaries-v1');
                                 const calsLocEl = modal.querySelector('#local-val-etis-external-cals-v2');
                                 const themeLocEl = modal.querySelector('#local-val-etis-accent-config');
-
+                                const newGpaVal = localStorage.getItem('etis_diploma_gpa') || '—';
+                                const newNotifsCount = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]').length;
+                                const gpaLocEl = modal.querySelector('#local-val-etis-diploma-gpa');
+                                const notifsLocEl = modal.querySelector('#local-val-etis-notifications-history-v1');
+                                
                                 if (cpLocEl) cpLocEl.textContent = newCpCount;
                                 if (notesLocEl) notesLocEl.textContent = newNotesCount;
                                 if (gradesLocEl) gradesLocEl.textContent = newGradesCount;
                                 if (consLocEl) consLocEl.textContent = newConsCount;
                                 if (weeklyLocEl) weeklyLocEl.textContent = newWeeklyCount;
+                                if (aiLocEl) aiLocEl.textContent = newAiCount;
                                 if (calsLocEl) calsLocEl.textContent = newCalsCount;
                                 if (themeLocEl) themeLocEl.innerHTML = getColorsIndicator(newAccent);
+                                if (gpaLocEl) gpaLocEl.textContent = newGpaVal !== '—' ? `${parseFloat(newGpaVal).toFixed(2)}` : '—';
+                                if (notifsLocEl) notifsLocEl.textContent = newNotifsCount;
                             }
                         });
                     }
 
-                    // 1.2 Очистка локального кэша
+                    modal.querySelectorAll('.details-data-btn').forEach(btn => {
+                        btn.onclick = (e) => {
+                            e.preventDefault();
+                            const target = btn.getAttribute('data-target');
+                            if (target === 'quick_login_redirect') {
+                                closeAll();
+                                openSettingsModal('quick_login_settings');
+                            } else if (target === 'notifications_modal_redirect') {
+                                closeAll();
+                                openNotificationsModal();
+                            } else {
+                                renderView(target);
+                            }
+                        };
+                    });
+
                     modal.querySelectorAll('.clear-data-btn').forEach(btn => {
                         btn.onclick = () => {
                             if (confirm('Очистить эти данные?')) {
@@ -10876,13 +14009,16 @@
                                     GM_setValue('ql_accounts_v2', '[]');
                                 } else {
                                     localStorage.removeItem(key);
+                                    if (key === 'etis_notifications_history_v1') updateBellCounter();
+                                    if (typeof saveSyncData === 'function') {
+                                        saveSyncData(key, key === 'etis_notifications_history_v1' ? '[]' : '');
+                                    }
                                 }
                                 renderView('data');
                             }
                         };
                     });
 
-                    // 2. Кнопка "Включить авто-синхронизацию"
                     const enableSyncBtn = modal.querySelector('#enable-sync-btn');
                     if (enableSyncBtn) {
                         enableSyncBtn.onclick = async (e) => {
@@ -10890,9 +14026,7 @@
                             enableSyncBtn.innerHTML = '<span class="material-icons" style="animation:spin 1s linear infinite;">sync</span> Подключение...';
                             enableSyncBtn.style.pointerEvents = 'none';
 
-                            if (typeof GM_setValue !== 'undefined') {
-                                GM_setValue('etis_sync_enabled', true); // Включаем флаг
-                            }
+                            if (typeof GM_setValue !== 'undefined') GM_setValue('etis_sync_enabled', true);
 
                             const code = await getAutomaticSyncCode();
                             if (code) {
@@ -10901,10 +14035,8 @@
 
                                 await downloadDataFromCloud(code);
                                 await uploadDataToCloud(code);
+                                renderView('data');
 
-                                renderView('data'); // Обновляем экран
-
-                                // Мгновенно перерисовываем расписание на лету
                                 if (window.location.href.includes('timetable')) {
                                     document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
                                     document.querySelectorAll('.docx-consultation-row').forEach(el => el.remove());
@@ -10919,7 +14051,6 @@
                         };
                     }
 
-                    // 3. Кнопка "Отключить синхронизацию"
                     const resetSyncBtn = modal.querySelector('#reset-sync-code-btn');
                     if (resetSyncBtn) {
                         resetSyncBtn.onclick = (e) => {
@@ -10928,17 +14059,12 @@
                                 localStorage.removeItem('etis_sync_code');
                                 localStorage.removeItem('etis_last_sync_time');
                                 localStorage.removeItem('etis_device_registered_in_cloud');
-
-                                // Отключаем флаг, но сохраняем логин в памяти для возможности быстрого переподключения
-                                if (typeof GM_setValue !== 'undefined') {
-                                    GM_setValue('etis_sync_enabled', false);
-                                }
+                                if (typeof GM_setValue !== 'undefined') GM_setValue('etis_sync_enabled', false);
                                 renderView('data');
                             }
                         };
                     }
 
-                    // 3.5. Кнопка перехода к настройкам синхронизации
                     const syncSettingsBtn = modal.querySelector('#sync-settings-btn');
                     if (syncSettingsBtn) {
                         syncSettingsBtn.onclick = (e) => {
@@ -10947,15 +14073,11 @@
                         };
                     }
 
-                    // 4. Тихий фоновый запрос к Firebase для плавного обновления цифр и записи их в кэш
-                    if (syncCode) {
-                        fetch(`${FIREBASE_DB_URL}sync/${syncCode}.json`, {
-                            cache: 'no-store'
-                        })
+                    if (syncCode && !isDemoUser()) {
+                        fetch(`${FIREBASE_DB_URL}sync/${syncCode}.json`, { cache: 'no-store' })
                             .then(res => res.json())
                             .then(async rawData => {
                                 if (rawData) {
-                                    // Расшифровываем каждое поле индивидуально
                                     const data = {};
                                     for (const [key, value] of Object.entries(rawData)) {
                                         if (value !== undefined && value !== null) {
@@ -10972,9 +14094,9 @@
                                     }
 
                                     const cloudWeekly = Object.keys(safeParseJSON(data.weekly_pairs_history, {})).length;
+                                    const cloudAiSummaries = Object.keys(safeParseJSON(data.ai_summaries, {})).length;
                                     const cloudAccentObj = safeParseJSON(data.accent_config, null);
 
-                                    // Извлекаем и подсчитываем упакованные внешние календари из поля important_pairs
                                     const parsedImp = safeParseJSON(data.important_pairs, null);
                                     let cloudCalsCount = 0;
                                     if (parsedImp && typeof parsedImp === 'object' && parsedImp.external_cals) {
@@ -10982,7 +14104,8 @@
                                     }
 
                                     const cloudCP = safeParseJSON(data.custom_pairs, []).length;
-                                    const cloudNotes = Object.keys(safeParseJSON(data.subject_notes, {specific:{}}).specific || {}).length;
+                                    const parsedNotes = safeParseJSON(data.subject_notes, {specific:{}, next_unbound:{}});
+                                    const cloudNotes = Object.keys(parsedNotes.specific || {}).length + Object.keys(parsedNotes.next_unbound || {}).length;
                                     const cloudGrades = Object.keys(safeParseJSON(data.grades_snapshot, {grades:{}}).grades || {}).length;
                                     const cloudCons = safeParseJSON(data.consultation_files, []).length;
                                     const parts = data.install_date ? data.install_date.toString().split('|') : [];
@@ -10993,110 +14116,176 @@
                                     const gradesValEl = modal.querySelector('#cloud-val-grades');
                                     const consValEl = modal.querySelector('#cloud-val-cons');
                                     const weeklyValEl = modal.querySelector('#cloud-val-weekly');
+                                    const aiValEl = modal.querySelector('#cloud-val-ai-summaries');
                                     const themeValEl = modal.querySelector('#cloud-val-theme');
                                     const timeSpentValEl = modal.querySelector('#cloud-val-time-spent');
                                     const calsValEl = modal.querySelector('#cloud-val-cals');
-
+                                    const cloudGPA = data.diploma_gpa ? (parseFloat(data.diploma_gpa).toFixed(2)) : '—';
+                                    const cloudNotifs = safeParseJSON(data.notifications_history, []).length;
+                                    const gpaValEl = modal.querySelector('#cloud-val-gpa');
+                                    const notifsValEl = modal.querySelector('#cloud-val-notifs');
+                                    
                                     if (cpValEl) cpValEl.textContent = cloudCP;
                                     if (notesValEl) notesValEl.textContent = cloudNotes;
                                     if (gradesValEl) gradesValEl.textContent = cloudGrades;
                                     if (consValEl) consValEl.textContent = cloudCons;
                                     if (weeklyValEl) weeklyValEl.textContent = cloudWeekly;
+                                    if (aiValEl) aiValEl.textContent = cloudAiSummaries;
                                     if (themeValEl) themeValEl.innerHTML = getColorsIndicator(cloudAccentObj);
                                     if (timeSpentValEl) timeSpentValEl.textContent = cloudTimeSpent;
                                     if (calsValEl) calsValEl.textContent = cloudCalsCount;
+                                    if (gpaValEl) gpaValEl.textContent = cloudGPA;
+                                    if (notifsValEl) notifsValEl.textContent = cloudNotifs;
 
-                                    // Записываем новые значения в локальный кэш
                                     const newCloud = {
                                         cp: cloudCP,
                                         notes: cloudNotes,
                                         grades: cloudGrades,
                                         cons: cloudCons,
                                         weekly: cloudWeekly,
+                                        aiSummaries: cloudAiSummaries,
                                         theme: getColorsIndicator(cloudAccentObj),
                                         timeSpent: cloudTimeSpent,
-                                        cals: cloudCalsCount
+                                        cals: cloudCalsCount,
+                                        gpa: cloudGPA,
+                                        notifs: cloudNotifs
                                     };
                                     localStorage.setItem('etis_last_cloud_counts_v1', JSON.stringify(newCloud));
-
-                                    // Умное слияние даты установки (если в облаке она оказалась раньше)
-                                    if (data.install_date) {
-                                        const cloudInstall = parseInt(data.install_date, 10);
-                                        let localInstall = parseInt(localStorage.getItem('etis_reborn_install_date') || GM_getValue('etis_reborn_install_date') || '0', 10);
-                                        if (cloudInstall > 0 && cloudInstall < localInstall) {
-                                            localStorage.setItem('etis_reborn_install_date', cloudInstall.toString());
-                                            GM_setValue('etis_reborn_install_date', cloudInstall.toString());
-
-                                            const dateEl = modal.querySelector('#install-date-val');
-                                            if (dateEl) {
-                                                const newJoinDateStr = new Date(cloudInstall).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
-                                                dateEl.textContent = `Скрипт установлен: ${newJoinDateStr}`;
-                                            }
-                                        }
-                                    }
                                 }
                             })
                             .catch(err => console.error('[Sync] Ошибка фонового обновления:', err));
                     }
                 }
 
-                // 5. Обработка переключателей на странице настроек синхронизации
-                if (currentView === 'sync_options') {
-                    modal.querySelectorAll('.sync-option-toggle').forEach(checkbox => {
-                        checkbox.onchange = (e) => {
-                            const key = e.target.getAttribute('data-key');
-                            const toggles = getSyncToggles(); // Используем хелпер
-                            toggles[key] = e.target.checked;
-                            localStorage.setItem('etis_sync_toggles', JSON.stringify(toggles));
-
-                            // Сразу сохраняем обновленные настройки и выгружаем данные на сервер
-                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                // Обработчики деталей: Свои пары
+                if (currentView === 'details_custom_pairs') {
+                    modal.querySelectorAll('.delete-single-cp-btn').forEach(btn => {
+                        btn.onclick = () => {
+                            const id = btn.getAttribute('data-id');
+                            let pairs = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
+                            pairs = pairs.filter(p => p.id !== id);
+                            saveSyncData('etis_custom_pairs_v1', JSON.stringify(pairs));
+                            renderView('details_custom_pairs');
                         };
                     });
                 }
 
-                // Обработчик удаления устройства владельцем
-                modal.querySelectorAll('.delete-device-btn').forEach(btn => {
-                    btn.onclick = async (e) => {
-                        e.preventDefault();
-                        const id = btn.getAttribute('data-id');
+                // Обработчики деталей: Заметки
+                if (currentView === 'details_subject_notes') {
+                    modal.querySelectorAll('.delete-single-note-btn').forEach(btn => {
+                        btn.onclick = () => {
+                            const id = btn.getAttribute('data-id');
+                            const type = btn.getAttribute('data-type');
+                            let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+                            if (type === 'specific') delete notesData.specific[id];
+                            else if (type === 'unbound') delete notesData.next_unbound[id];
+                            saveSyncData('etis_subject_notes_v2', JSON.stringify(notesData));
+                            renderView('details_subject_notes');
+                        };
+                    });
+                }
 
-                        if (confirm('Отключить это устройство от аккаунта? Авто-синхронизация у него выключится при следующем обновлении.')) {
+                // Обработчики деталей: Консультации
+                if (currentView === 'details_consultations') {
+                    modal.querySelectorAll('.delete-single-cons-btn').forEach(btn => {
+                        btn.onclick = () => {
+                            const id = btn.getAttribute('data-id');
+                            let files = JSON.parse(localStorage.getItem('etis_consultation_files_v1') || '[]');
+                            files = files.filter(f => f.id !== id);
+                            saveSyncData('etis_consultation_files_v1', JSON.stringify(files));
+                            renderView('details_consultations');
+                        };
+                    });
+                }
+
+                // Обработчики деталей: Внешние календари
+                if (currentView === 'details_external_cals') {
+                    modal.querySelectorAll('.delete-single-cal-btn').forEach(btn => {
+                        btn.onclick = () => {
+                            const idx = parseInt(btn.getAttribute('data-idx'), 10);
+                            let cals = typeof migrateExternalCals === 'function' ? migrateExternalCals() : [];
+                            cals.splice(idx, 1);
+                            saveSyncData('etis_external_cals_v2', JSON.stringify(cals));
+                            renderView('details_external_cals');
+                        };
+                    });
+                }
+
+                // Обработчики деталей: ИИ-сводки
+                if (currentView === 'details_ai_summaries') {
+                    // Клик по строке открывает подвкладку с полным текстом
+                    modal.querySelectorAll('.view-single-summary-row').forEach(row => {
+                        row.onclick = (e) => {
+                            if (e.target.closest('.delete-single-summary-btn')) return;
+                            const msgId = row.getAttribute('data-id');
+                            renderView('details_single_ai_summary_' + msgId);
+                        };
+                    });
+
+                    // Удаление отдельной сводки
+                    modal.querySelectorAll('.delete-single-summary-btn').forEach(btn => {
+                        btn.onclick = (e) => {
+                            e.stopPropagation();
+                            const msgId = btn.getAttribute('data-id');
+                            let summaries = JSON.parse(localStorage.getItem('etis_ai_summaries_v1') || '{}');
+                            delete summaries[msgId];
+                            saveSyncData('etis_ai_summaries_v1', JSON.stringify(summaries));
+                            renderView('details_ai_summaries');
+                        };
+                    });
+                }
+
+                if (currentView === 'sync_options') {
+                    modal.querySelectorAll('.sync-option-toggle').forEach(checkbox => {
+                        checkbox.onchange = (e) => {
+                            const key = e.target.getAttribute('data-key');
+                            const toggles = getSyncToggles();
+                            toggles[key] = e.target.checked;
+                            localStorage.setItem('etis_sync_toggles', JSON.stringify(toggles));
+                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                        };
+                    });
+
+                    // Обработчик удаления устройства
+                    modal.querySelectorAll('.delete-device-btn').forEach(btn => {
+                        btn.onclick = async (e) => {
+                            e.preventDefault();
+                            const id = btn.getAttribute('data-id');
+                            if (confirm('Отключить это устройство от аккаунта?')) {
+                                let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
+                                if (meta.devices) {
+                                    delete meta.devices[id];
+                                    localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
+                                    btn.innerHTML = '<span class="material-icons" style="animation:spin 1s linear infinite; font-size:1.8rem !important;">sync</span>';
+                                    btn.style.pointerEvents = 'none';
+                                    
+                                    // Передаем true (skipPreDownload), чтобы не стягивать старый список из облака
+                                    await uploadDataToCloud(syncCode, true);
+                                    renderView('sync_options');
+                                }
+                            }
+                        };
+                    });
+
+                    // Обработчик переименования устройства
+                    modal.querySelectorAll('.device-rename-input').forEach(input => {
+                        input.onchange = async () => {
+                            const id = input.getAttribute('data-id');
+                            const newName = input.value.trim();
+                            if (!newName) return;
                             let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
-                            if (meta.devices) {
-                                delete meta.devices[id];
+                            if (meta.devices && meta.devices[id]) {
+                                meta.devices[id].name = newName;
                                 localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
-
-                                // Превращаем иконку удаления в крутящийся спиннер во время работы
-                                btn.innerHTML = '<span class="material-icons" style="animation:spin 1s linear infinite; font-size:1.8rem !important; margin:0 !important; padding:0 !important; line-height:1 !important;">sync</span>';
-                                btn.style.pointerEvents = 'none';
-
-                                await uploadDataToCloud(syncCode);
+                                localStorage.setItem('etis_device_name', newName);
+                                
+                                // Передаем true (skipPreDownload)
+                                await uploadDataToCloud(syncCode, true);
                                 renderView('sync_options');
                             }
-                        }
-                    };
-                });
-
-                // Обработчик интерактивного переименования устройства
-                modal.querySelectorAll('.device-rename-input').forEach(input => {
-                    input.onchange = async () => {
-                        const id = input.getAttribute('data-id');
-                        const newName = input.value.trim();
-                        if (!newName) return;
-
-                        let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
-                        if (meta.devices && meta.devices[id]) {
-                            meta.devices[id].name = newName;
-                            localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
-                            localStorage.setItem('etis_device_name', newName);
-
-                            await uploadDataToCloud(syncCode);
-                            renderView('sync_options');
-                        }
-                    };
-                });
-
+                        };
+                    });
+                }
             };
 
             renderView(window.innerWidth <= 960 ? 'menu' : 'main');
@@ -11128,6 +14317,7 @@
                 overlay.classList.remove('active');
                 modal.classList.remove('active');
                 document.body.classList.remove('modal-open-body');
+                document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
                 if (requiresReloadOnClose) setTimeout(() => window.location.reload(), 300);
             };
             overlay.onclick = closeAll;
@@ -11145,13 +14335,14 @@
                     title = 'Общие';
                     contentHTML = `
                         <div class="ios-settings-group">
-                            <label class="pc-only-setting">
+                            <label class="pc-only-setting" style="display: ${window.innerWidth > 960 ? 'flex' : 'none'} !important;">
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Умный сайдбар</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Фиксация активной вкладки при выходе за пределы экрана</span>
                                 </div>
                                 <input type="checkbox" id="setting-smart-sidebar" class="tumbler-checkbox" ${generalConfig.smartSidebar !== false ? 'checked' : ''}>
                             </label>
+                            
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Генерация QR-кода</span>
@@ -11279,6 +14470,13 @@
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Писать дату рядом с днем недели, а не в правом углу</span>
                                 </div>
                                 <input type="checkbox" id="setting-dates-left" class="tumbler-checkbox" ${generalConfig.datesLeft ? 'checked' : ''}>
+                            </label>
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Большая перемена</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Отображать обеденный перерыв (13:00 – 13:30) между 3 и 4 парой</span>
+                                </div>
+                                <input type="checkbox" id="setting-show-big-break" class="tumbler-checkbox" ${generalConfig.showBigBreak !== false ? 'checked' : ''}>
                             </label>
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
@@ -11444,7 +14642,7 @@
                             <div class="etis-preview-active-element" style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; border-radius: var(--radius-small); font-weight: 700; transition: background 0.3s, color 0.3s;">
                                 <div style="display: flex; align-items: center; gap: 8px;">
                                     <span class="material-icons" style="font-size: 1.8rem; transition: color 0.3s;">account_circle</span>
-                                    <span style="font-size: 1.2rem;">Мой профиль</span>
+                                    <span style="font-size: 1.2rem;">Пример</span>
                                 </div>
                                 <span class="material-icons" style="font-size: 1.6rem; transition: color 0.3s;">chevron_right</span>
                             </div>
@@ -11459,6 +14657,32 @@
                                 </div>
                                 <span class="material-icons" style="color: var(--color-accent); font-size: 1.8rem; transition: color 0.2s;">done</span>
                             </div>
+                        </div>
+                    `;
+                
+                } else if (currentView === 'beta') {
+                    title = 'Бета функции';
+                    const isBetaOn = generalConfig.betaFeaturesEnabled;
+
+                    contentHTML = `
+                        <div class="ios-settings-group">
+                            <!-- Главный мастер-тумблер -->
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Экспериментальные функции</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Включить доступ к новым функциям, находящимся в разработке</span>
+                                </div>
+                                <input type="checkbox" id="setting-master-beta" class="tumbler-checkbox" ${isBetaOn ? 'checked' : ''}>
+                            </label>
+
+                            <!-- Частная функция: ИИ-сводка -->
+                            <label class="beta-subfeature-row" style="transition: opacity 0.2s ease; opacity: ${isBetaOn ? '1' : '0.4'}; pointer-events: ${isBetaOn ? 'auto' : 'none'};">
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">ИИ-сводка в объявлениях</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Краткий пересказ текстов и вложений (PDF/DOCX). Формат .DOC пока не поддерживается</span>
+                                </div>
+                                <input type="checkbox" id="setting-beta-ai" class="tumbler-checkbox" ${generalConfig.betaFeatures.aiSummary ? 'checked' : ''} ${isBetaOn ? '' : 'disabled'}>
+                            </label>
                         </div>
                     `;
 
@@ -11498,6 +14722,9 @@
                                 <div class="settings-sidebar-btn ${currentView === 'appearance' ? 'active' : ''}" data-target="appearance">
                                     <span class="material-icons">palette</span><span class="sidebar-btn-text">Внешний вид</span><span class="material-icons chevron">chevron_right</span>
                                 </div>
+                                <div class="settings-sidebar-btn ${currentView === 'beta' ? 'active' : ''}" data-target="beta">
+                                    <span class="material-icons">science</span><span class="sidebar-btn-text">Бета функции</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
                                 <div class="settings-sidebar-btn ${currentView === 'version' || currentView === 'history' ? 'active' : ''}" data-target="version">
                                     <span class="material-icons">system_update</span><span class="sidebar-btn-text">Обновление</span>${updateState.hasUpdate ? '<span class="badge-point"></span>' : ''}<span class="material-icons chevron">chevron_right</span>
                                 </div>
@@ -11505,7 +14732,7 @@
                         </div>
 
                         <div class="settings-content-area ${isMainMobile ? 'hidden-on-mobile' : ''}">
-                            <div class="settings-content-area-scroll settings-content-scroll">
+                            <div class="settings-content-scroll">
                                 <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
                                     <div style="display:flex; align-items:center; gap:12px;">
                                         <span class="material-icons ${backBtnClass}" data-back="${backTarget}" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
@@ -11513,7 +14740,8 @@
                                     </div>
                                     <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
                                 </div>
-                                <div style="padding: 0.8rem 0 4rem 0;">                                    ${contentHTML}
+                                <div style="padding: 0.8rem 0 4rem 0;">
+                                    ${contentHTML}
                                 </div>
                             </div>
                         </div>
@@ -11713,6 +14941,12 @@
                         if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
                     modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                         if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
+                    modal.querySelector('#setting-show-big-break').onchange = (e) => {
+                        generalConfig.showBigBreak = e.target.checked;
+                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                    };
                     modal.querySelector('#setting-show-sunday').onchange = (e) => { generalConfig.showSunday = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                         if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
                 } else if (currentView === 'grades') {
@@ -11846,10 +15080,46 @@
                     if (coloredGlassToggle) {
                         coloredGlassToggle.onchange = (e) => {
                             config.isColoredGlass = e.target.checked;
-                            saveSyncData('etis_accent_config', JSON.stringify(config)); // Используем безопасную запись
+                            saveSyncData('etis_accent_config', JSON.stringify(config));
                             applyAccentColor();
                         };
                     }
+
+                } else if (currentView === 'beta') {
+                    const masterToggle = modal.querySelector('#setting-master-beta');
+
+                    if (masterToggle) {
+                        masterToggle.onchange = (e) => {
+                            const isEnabled = e.target.checked;
+                            generalConfig.betaFeaturesEnabled = isEnabled;
+                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+
+                            // Плавно делаем частные функции тусклыми и блокируем нажатия
+                            const subRows = modal.querySelectorAll('.beta-subfeature-row');
+                            subRows.forEach(row => {
+                                row.style.opacity = isEnabled ? '1' : '0.4';
+                                row.style.pointerEvents = isEnabled ? 'auto' : 'none';
+                                const input = row.querySelector('input[type="checkbox"]');
+                                if (input) {
+                                    input.disabled = !isEnabled;
+                                }
+                            });
+
+                            requiresReloadOnClose = true;
+                        };
+                    }
+
+                    const aiToggle = modal.querySelector('#setting-beta-ai');
+                    if (aiToggle) {
+                        aiToggle.onchange = (e) => {
+                            generalConfig.betaFeatures.aiSummary = e.target.checked;
+                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                            requiresReloadOnClose = true;
+                        };
+                    }
+
                 } else if (currentView === 'version') {
                     refreshModalUI();
                     if (updateState.status === 'idle') initAutoUpdateCheck(true);
@@ -11887,6 +15157,7 @@
                 overlay.classList.remove('active');
                 modal.classList.remove('active');
                 document.body.classList.remove('modal-open-body');
+                document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
             };
             overlay.onclick = closeAll;
 
@@ -12115,8 +15386,218 @@
             });
         }
 
+        function openGuideModal(view = window.innerWidth <= 960 ? 'menu' : 'timetable_guide') {
+            let overlay = document.getElementById('etis-guide-overlay');
+            let modal = document.getElementById('etis-guide-modal');
+
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'etis-guide-overlay';
+                overlay.className = 'analytics-overlay';
+                document.body.appendChild(overlay);
+            }
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'etis-guide-modal';
+                modal.className = 'analytics-modal';
+                document.body.appendChild(modal);
+            }
+
+            const closeAll = () => {
+                overlay.classList.remove('active');
+                modal.classList.remove('active');
+                document.body.classList.remove('modal-open-body');
+                document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
+            };
+            overlay.onclick = closeAll;
+
+            const renderView = (currentView) => {
+                if (currentView === 'menu' && window.innerWidth > 960) currentView = 'timetable_guide';
+
+                let title = 'Обучение';
+                let contentHTML = '';
+                let backTarget = 'menu';
+
+                const guideCard = (icon, itemTitle, pcDesc, mobDesc = null, singleDesc = null) => `
+                    <div class="ios-settings-group" style="margin-bottom: 1.6rem;">
+                        <div style="padding: 1.8rem 2rem; text-align: left;">
+                            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 1.2rem;">
+                                <span class="material-icons" style="color: var(--color-accent); font-size: 2.2rem;">${icon}</span>
+                                <span style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.3;">${itemTitle}</span>
+                            </div>
+                            <div style="font-size: 1.35rem; line-height: 1.6; color: var(--color-text-secondary); display: flex; flex-direction: column; gap: 1rem;">
+                                ${singleDesc ? `<div>${singleDesc}</div>` : `
+                                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                        <span style="font-size: 1.5rem; line-height: 1.4;">🖥️</span>
+                                        <div><b style="color: var(--color-text-primary);">На ПК:</b> ${pcDesc}</div>
+                                    </div>
+                                    <div style="display: flex; align-items: flex-start; gap: 8px;">
+                                        <span style="font-size: 1.5rem; line-height: 1.4;">📱</span>
+                                        <div><b style="color: var(--color-text-primary);">На телефоне:</b> ${mobDesc}</div>
+                                    </div>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                if (currentView === 'timetable_guide') {
+                    title = 'Расписание';
+                    contentHTML = `
+                        ${guideCard(
+                            'edit_note',
+                            'Как добавить заметку',
+                            'Наведите курсор на строку пары — рядом с аудиторией появится значок карандаша ✎. Нажмите на него, введите задание во вкладке «Заметка» и сохраните. Тумблер «На следующую пару» автоматически перенесет заметку на следующее такое же занятие.',
+                            'Смахните (сделайте свайп) строку пары <b>влево</b> — откроется окно ввода заметки. Также можно нажать на карандаш внутри карточки пары.'
+                        )}
+                        ${guideCard(
+                            'notification_important',
+                            'Как пометить пару важной',
+                            'Наведите курсор на ячейку с номером пары слева — на бейдже типа занятия (ЛЕК / ПРАКТ) появится колокольчик. Нажмите на него: он загорится красным, а пара выделится как важная.',
+                            'Смахните строку пары <b>вправо</b> до появления колокольчика с вибрацией. Пара выделится красным цветом.'
+                        )}
+                        ${guideCard(
+                            'star_rate',
+                            'Как оценить пару',
+                            'Наведите курсор на имя преподавателя справа — появится кнопка «Оценить занятие» со ссылкой на официальную форму оценивания.',
+                            'Смахните уже прошедшую пару <b>вправо</b> — появится значок звезды для быстрого перехода к отзыву.'
+                        )}
+                        ${guideCard(
+                            'ios_share',
+                            'Как поделиться расписанием за день',
+                            'Наведите курсор на заголовок дня (например, «Понедельник») — в правом углу появится иконка экспорта ⎘ для скачивания аккуратной картинки расписания.',
+                            'Смахните заголовок дня <b>влево</b> (или нажмите иконку «Поделиться» в шапке дня) — откроется системное меню отправки картинки в Telegram, ВК или галерею.'
+                        )}
+                    `;
+                } else if (currentView === 'features_guide') {
+                    title = 'Удобные функции';
+                    contentHTML = `
+                        ${guideCard(
+                            'alarm_on',
+                            'Как создать напоминание о паре',
+                            null, null,
+                            'Нажмите на значок карандаша ✎ рядом с нужной парой (или смахните строку пары <b>влево</b> на смартфоне) → перейдите во вкладку <b>«Напоминание»</b> → выберите платформу и время напоминания (например, за 1 час) → нажмите <b>«Добавить»</b>. Пара временем, аудиторией и преподавателем сразу появится в вашем календаре.'
+                        )}
+                        ${guideCard(
+                            'cloud_sync',
+                            'Как включить синхронизацию',
+                            null, null,
+                            'Откройте раздел <b>«Профиль»</b> в меню → перейдите во вкладку <b>«Мои данные»</b> → нажмите <b>«Включить авто-синхронизацию»</b>. Ваши кастомные пары, заметки, файлы консультаций и цветовые темы будут автоматически синхронизироваться между всеми устройствами.'
+                        )}
+                        ${guideCard(
+                            'flash_on',
+                            'Как войти в ЕТИС без пароля',
+                            null, null,
+                            'Откройте <b>«Настройки»</b> → вкладка <b>«Общие»</b> → включите тумблер <b>«Быстрый вход»</b> → нажмите <b>«Настроить аккаунты»</b> и сохраните данные. При следующем входе появится кнопка быстрого входа в один клик.'
+                        )}
+                        ${guideCard(
+                            'science',
+                            'Как открыть бета функции',
+                            null, null,
+                            'Откройте <b>«Настройки»</b> → перейдите во вкладку <b>«Бета функции»</b> и включите мастер-тумблер <b>«Экспериментальные функции»</b>.'
+                        )}
+                    `;
+                } else if (currentView === 'feedback_guide') {
+                    title = 'Обратная связь';
+                    contentHTML = `
+                        ${guideCard(
+                            'bug_report',
+                            'Как сообщить об ошибке',
+                            null, null,
+                            'В самом низу бокового меню (или шторки на телефонах) нажмите на кнопку <b>«Нашли ошибку?»</b> (или перейдите по ссылке <a href="https://etisreborn.ru/#bugreport" target="_blank" style="color:var(--color-accent); font-weight:700;">etisreborn.ru/#bugreport</a>). Опишите проблему и приложите скриншот, чтобы автор мог оперативно выпустить исправление.'
+                        )}
+                        ${guideCard(
+                            'campaign',
+                            'Как предложить новые функции',
+                            null, null,
+                            'Перейдите в официальный Telegram-канал проекта <b><a href="https://t.me/etisreborn" target="_blank" style="color:var(--color-accent); font-weight:700;">Новости REBORN</a></b> (ссылка также есть внизу сайдбара). В комментариях к постам можно предлагать идеи, голосовать за обновления и обсуждать редизайн.'
+                        )}
+                    `;
+                }
+
+                const isMainMobile = currentView === 'menu';
+
+                modal.innerHTML = `
+                    <div class="settings-layout">
+                        <div class="settings-sidebar ${!isMainMobile ? 'hidden-on-mobile' : ''}">
+                            <div class="desktop-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary);">Обучение</div>
+                            <div class="mobile-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary); display:flex; justify-content:space-between; align-items:center;">
+                                Обучение
+                                <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
+                            </div>
+
+                            <div class="sidebar-tabs-container">
+                                <div class="settings-sidebar-btn ${currentView === 'timetable_guide' ? 'active' : ''}" data-target="timetable_guide">
+                                    <span class="material-icons">calendar_today</span><span class="sidebar-btn-text">Расписание</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                                <div class="settings-sidebar-btn ${currentView === 'features_guide' ? 'active' : ''}" data-target="features_guide">
+                                    <span class="material-icons">auto_awesome</span><span class="sidebar-btn-text">Удобные функции</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                                <div class="settings-sidebar-btn ${currentView === 'feedback_guide' ? 'active' : ''}" data-target="feedback_guide">
+                                    <span class="material-icons">support_agent</span><span class="sidebar-btn-text">Обратная связь</span><span class="material-icons chevron">chevron_right</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="settings-content-area ${isMainMobile ? 'hidden-on-mobile' : ''}">
+                            <div class="settings-content-scroll">
+                                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--color-table-border); background:var(--color-table-header);">
+                                    <div style="display:flex; align-items:center; gap:12px;">
+                                        <span class="material-icons back-modal-btn settings-mobile-header" data-back="${backTarget}" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                        <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">${title}</span>
+                                    </div>
+                                    <span class="material-icons close-modal-btn" style="cursor:pointer;color:var(--color-text-secondary); font-size: 2.4rem;">close</span>
+                                </div>
+                                <div style="padding: 0.8rem 0 4rem 0;">
+                                    ${contentHTML}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                modal.querySelectorAll('.close-modal-btn').forEach(btn => btn.onclick = closeAll);
+                modal.querySelectorAll('.back-modal-btn').forEach(btn => btn.onclick = () => renderView(btn.getAttribute('data-back')));
+                modal.querySelectorAll('.settings-sidebar-btn').forEach(btn => {
+                    btn.onclick = () => renderView(btn.getAttribute('data-target'));
+                });
+            };
+
+            renderView(view);
+            requestAnimationFrame(() => {
+                overlay.classList.add('active');
+                modal.classList.add('active');
+                document.body.classList.add('modal-open-body');
+            });
+        }
+
         // Модификация стилей страниц
         function stylePages() {
+            const isDemoActive = sessionStorage.getItem('etis_demo_mode') === 'true';
+            let demoPage = sessionStorage.getItem('etis_demo_page') || 'timetable';
+            
+            if (isDemoActive) {
+                if (demoPage === 'signs' || demoPage === 'signs_session') {
+                    document.body.innerHTML = DEMO_SIGNS_HTML;
+                } else if (demoPage === 'signs_current') {
+                    document.body.innerHTML = DEMO_SIGNS_CURRENT_HTML;
+                } else if (demoPage === 'signs_rating') {
+                    document.body.innerHTML = DEMO_SIGNS_RATING_HTML;
+                } else if (demoPage === 'signs_diplom') {
+                    document.body.innerHTML = DEMO_SIGNS_DIPLOM_HTML;
+                } else if (demoPage === 'announces') {
+                    document.body.innerHTML = DEMO_ANNOUNCES_HTML;
+                } else if (demoPage === 'notes') {
+                    document.body.innerHTML = DEMO_NOTES_HTML;
+                } else if (demoPage === 'teach_plan_advanced') {
+                    document.body.innerHTML = DEMO_TEACH_PLAN_ADVANCED_HTML;
+                } else if (demoPage === 'teach_plan' || demoPage === 'teach_plan_short') {
+                    document.body.innerHTML = DEMO_TEACH_PLAN_SHORT_HTML;
+                } else {
+                    document.body.innerHTML = DEMO_TIMETABLE_HTML;
+                }
+            }
+
             initMobileMenu();
 
             // --- ГЛОБАЛЬНАЯ СИСТЕМА УВЕДОМЛЕНИЙ ---
@@ -12128,7 +15609,11 @@
                 document.body.appendChild(pushContainer);
             }
 
-            const showPush = (title, subject, body, type = 'info', icon = 'notifications', onClick = null) => {
+            const showPush = (title, subject, body, type = 'info', icon = 'notifications', onClick = null, targetUrl = null, saveToHistory = true) => {
+                if (saveToHistory && title !== 'Напоминание создано' && icon !== 'alarm_on') {
+                    addNotificationToHistory({ title, subject, body, type, icon, targetUrl });
+                }
+
                 const toast = document.createElement('div');
                 toast.className = `push-toast ${type}`;
                 toast.innerHTML = `
@@ -12142,12 +15627,13 @@
                     </div>
                 `;
 
-                // Модифицированный обработчик клика по уведомлению
                 toast.onclick = (e) => {
                     toast.classList.remove('show');
                     setTimeout(() => toast.remove(), 400);
                     if (typeof onClick === 'function') {
                         onClick(e);
+                    } else if (targetUrl) {
+                        window.location.href = targetUrl;
                     }
                 };
 
@@ -12161,6 +15647,133 @@
                 }, 8000);
             };
             window.showEtisPush = showPush; // Делаем доступной отовсюду
+
+            // Умное склонение названия предмета в дательный падеж (после «по»)
+            function declineSubjectDative(subject) {
+                if (!subject) return '';
+                // 1. Очищаем от скобок с типами, подгруппами, номерами и кавычек
+                let clean = subject
+                    .replace(/\(.*?\)/g, '')
+                    .replace(/[«»"']/g, '')
+                    .replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ')
+                    .trim();
+                if (!clean) return '';
+
+                const stopPrepositions = /^(в|на|с|со|о|об|по|для|при|из|от|к|до)$/i;
+                const connectors = /^(и|или)$/i;
+                const isAbbrOrNum = /^[А-ЯЁA-Z0-9\/\-_]+$/; // Защита аббревиатур (БЖД, НИР, ЭВМ, IT)
+
+                const words = clean.split(' ');
+                let hasSeenNoun = false;
+                let allowDecline = true;
+
+                const declinedWords = words.map((w, idx) => {
+                    if (!allowDecline) return w;
+
+                    let lower = w.toLowerCase();
+                    let isCapital = w.length > 0 && w[0] === w[0].toUpperCase();
+
+                    // Пропуск предлогов и остановка склонения зависимой части («в сфере IT», «по выбору»)
+                    if (stopPrepositions.test(lower)) {
+                        allowDecline = false;
+                        return w;
+                    }
+
+                    // Союзы сбрасывают триггер для склонения парного слова («и структуры данных»)
+                    if (connectors.test(lower)) {
+                        hasSeenNoun = false;
+                        return w;
+                    }
+
+                    // Не трогаем аббревиатуры из заглавных букв и термины
+                    if (isAbbrOrNum.test(w) || /^(it|ai|ml|python|ios|android|devops|ci\/cd|sql|grpc|kafka|api|c\+\+|c\#)$/i.test(lower)) {
+                        return w;
+                    }
+
+                    if (lower === 'физ-ра' || lower === 'физра') {
+                        hasSeenNoun = true;
+                        return isCapital ? 'Физ-ре' : 'физ-ре';
+                    }
+
+                    let declined = lower;
+
+                    // 1. Прилагательные (мужской, женский, средний род, мн. число)
+                    if (lower.endsWith('ский') || lower.endsWith('ный') || lower.endsWith('тый') || lower.endsWith('вый') || lower.endsWith('мый') || lower.endsWith('дый') || lower.endsWith('рый')) {
+                        declined = lower.slice(0, -2) + 'ому';
+                    } else if (lower.endsWith('ий') || lower.endsWith('ый') || lower.endsWith('ой')) {
+                        declined = lower.slice(0, -2) + 'ому';
+                    } else if (lower.endsWith('ая')) {
+                        declined = lower.slice(0, -2) + 'ой';
+                    } else if (lower.endsWith('яя')) {
+                        declined = lower.slice(0, -2) + 'ей';
+                    } else if (lower.endsWith('ое')) {
+                        declined = lower.slice(0, -2) + 'ому';
+                    } else if (lower.endsWith('ее')) {
+                        declined = lower.slice(0, -2) + 'ему';
+                    } else if (lower.endsWith('ые')) {
+                        declined = lower.slice(0, -2) + 'ым';
+                    } else if (lower.endsWith('ие') && (idx === 0 || !hasSeenNoun)) {
+                        if (lower.endsWith('ские') || lower.endsWith('ные') || lower.endsWith('тые') || lower.endsWith('вые')) {
+                            declined = lower.slice(0, -2) + 'им';
+                        } else if (lower.endsWith('ение') || lower.endsWith('ание') || lower.endsWith('ование') || lower.endsWith('яние') || lower.endsWith('тие')) {
+                            declined = lower.slice(0, -1) + 'ю'; // проектирование -> проектированию
+                            hasSeenNoun = true;
+                        } else {
+                            declined = lower.slice(0, -2) + 'им';
+                        }
+                    }
+                    // 2. Существительные
+                    else if (lower.endsWith('ия')) {
+                        declined = lower.slice(0, -1) + 'и'; // инженерия -> инженерии, химия -> химии
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('а')) {
+                        declined = lower.slice(0, -1) + 'е'; // математика -> математике, физика -> физике
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('я')) {
+                        declined = lower.slice(0, -1) + 'е';
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('ие')) {
+                        declined = lower.slice(0, -1) + 'ю'; // программирование -> программированию
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('о')) {
+                        declined = lower.slice(0, -1) + 'у'; // право -> праву
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('ь')) {
+                        declined = lower.slice(0, -1) + 'и'; // безопасность -> безопасности, связь -> связи
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('ы')) {
+                        declined = lower.slice(0, -1) + 'ам'; // основы -> основам, алгоритмы -> алгоритмам
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('ии') || lower.endsWith('тии')) {
+                        declined = lower.slice(0, -2) + 'иям';
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('и') && !lower.endsWith('ки')) {
+                        declined = lower.slice(0, -1) + 'ям'; // сети -> сетям, технологии -> технологиям
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('ки') || lower.endsWith('ги') || lower.endsWith('хи')) {
+                        declined = lower.slice(0, -1) + 'ам'; // книги -> книгам
+                        hasSeenNoun = true;
+                    } else if (/[бвгджзклмнпрстфхцчшщ]$/.test(lower)) {
+                        // Мужской род: анализ -> анализу, язык -> языку, процесс -> процессу, менеджмент -> менеджменту
+                        declined = lower + 'у';
+                        hasSeenNoun = true;
+                    } else if (lower.endsWith('й')) {
+                        declined = lower.slice(0, -1) + 'ю';
+                        hasSeenNoun = true;
+                    }
+
+                    // После первого главного существительного зависимые слова не склоняем
+                    if (hasSeenNoun) {
+                        if (idx + 1 < words.length && !connectors.test(words[idx + 1].toLowerCase())) {
+                            allowDecline = false;
+                        }
+                    }
+
+                    return isCapital ? (declined.charAt(0).toUpperCase() + declined.slice(1)) : declined;
+                });
+
+                return declinedWords.join(' ');
+            }
 
             // Модальное окно создания/редактирования пары
             function openCustomPairModal(dayName, isFromToolbar = false, existingPair = null) {
@@ -12177,13 +15790,26 @@
                     document.body.appendChild(modal);
                 }
 
-                // Определяем, является ли пара событием из объявлений
+                // Склонение дня недели в винительный падеж ("Среда" -> "среду")
+                const getAccusativeDay = (d) => {
+                    if (!d) return '';
+                    const map = {
+                        'понедельник': 'понедельник',
+                        'вторник': 'вторник',
+                        'среда': 'среду',
+                        'четверг': 'четверг',
+                        'пятница': 'пятницу',
+                        'суббота': 'субботу',
+                        'воскресенье': 'воскресенье'
+                    };
+                    return map[d.trim().toLowerCase()] || d.toLowerCase();
+                };
+
                 const isAnnouncementEvent = !!(existingPair && existingPair.msgHash);
 
-                // Корректное название окна
                 const title = isAnnouncementEvent
                     ? `Редактировать событие`
-                    : (existingPair ? `Редактировать пару` : (isFromToolbar ? `Добавить пару` : `Добавить на ${dayName}`));
+                    : (existingPair ? `Редактировать пару` : (isFromToolbar ? `Добавить пару` : `Добавить на ${getAccusativeDay(dayName)}`));
 
                 const pairId = existingPair ? existingPair.id : ('cp_' + Date.now());
 
@@ -12193,100 +15819,144 @@
                 const daysArr = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
                 const todayNamePlaceholder = daysArr[new Date().getDay()];
 
-                let teachersList = [];
-                let audsList = [];
-
+                // Извлечение предметов из реального расписания на странице
+                const timetableSubjects = [];
                 document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
-                    const tLink = row.querySelector('.pair_teacher a:not(.eval)');
-                    if (tLink && tLink.textContent.trim()) {
-                        let name = tLink.textContent.trim();
-                        if (!teachersList.includes(name)) teachersList.push(name);
-                    }
-                    const audEl = row.querySelector('.pair_info .aud');
-                    if (audEl) {
-                        const clone = audEl.cloneNode(true);
-                        clone.querySelectorAll('.material-icons, .note-btn-wrapper').forEach(el => el.remove());
-                        let aText = clone.textContent.trim();
-
-                        if (aText.includes('ауд.')) {
-                            const m = aText.match(/ауд\.\s*([^,]+),\s*к\.\s*([^,]+)/i);
-                            if (m) aText = `${m[1].trim()}/${m[2].trim()}`;
+                    const disA = row.querySelector('.pair_info .dis a') || row.querySelector('.pair_info .dis');
+                    if (disA) {
+                        let s = disA.textContent.replace(/\(.*?\)/g, '').replace(/[«»"']/g, '').replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim();
+                        if (s && !timetableSubjects.includes(s) && !s.toLowerCase().includes('консультация') && !s.toLowerCase().includes('выходной') && s.length < 50) {
+                            timetableSubjects.push(s);
                         }
-                        if (aText && !/Онлайн|Zoom|Телемост/i.test(aText) && !audsList.includes(aText)) audsList.push(aText);
                     }
                 });
 
-                const placeholders = isFromToolbar ?
-                    [`Практика по математике в 13:30 в ${todayNamePlaceholder.toLowerCase()}...`, "Физ-ра в 9:45..."] :
-                    ["Практика по математике в 13:30...", "Физ-ра в 9:45..."];
+                const daysAccMap = {
+                    0: 'воскресенье', 1: 'понедельник', 2: 'вторник', 3: 'среду',
+                    4: 'четверг', 5: 'пятницу', 6: 'субботу'
+                };
+                const currentAccDay = daysAccMap[new Date().getDay()] || 'понедельник';
+
+                const raw1 = timetableSubjects[0] || 'Математический анализ';
+                const raw2 = timetableSubjects[1] || 'Программирование';
+                const raw3 = timetableSubjects[2] || 'Иностранный язык в сфере IT';
+                const raw4 = timetableSubjects[3] || 'Физика';
+
+                // Склоняем в дательный падеж для естественных фраз
+                const s1 = declineSubjectDative(raw1);
+                const s2 = declineSubjectDative(raw2);
+                const s3 = declineSubjectDative(raw3);
+                const s4 = declineSubjectDative(raw4);
+
+                const placeholders = isFromToolbar ? [
+                    `Лабораторная по ${s3} в 17:00 в ${currentAccDay}...`,
+                    `Практика по ${s1} в 13:30 в 413/8...`,
+                    `Физ-ра в 9:45...`,
+                    `Лекция по ${s2} завтра в 11:30...`,
+                    `Консультация по ${s4} в пятницу в 15:15...`
+                ] : [
+                    `Лабораторная по ${s3} в 17:00...`,
+                    `Практика по ${s1} в 13:30 в 413/8...`,
+                    `Физ-ра в 9:45...`,
+                    `Лекция по ${s2} в 11:30...`,
+                    `Консультация по ${s4} в 15:15...`
+                ];
 
                 let placeholderTimer = null;
 
-                // Вкладки и блок заметок рендерятся только для обычных пар (не для событий из объявлений)
                 modal.innerHTML = `
-                    <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; padding: 1.6rem 2rem !important; border-bottom: 1px solid var(--color-table-border) !important;">
                         <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${title}</span>
                         <button class="close-modal" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
                     </div>
-                    <div class="ui-dialog-content" style="padding: 2.4rem;">
+                    <div class="ui-dialog-content" style="padding: 1.6rem 2rem 3rem 2rem;">
                         ${(existingPair && !isAnnouncementEvent) ? `
                         <div class="sync-tabs">
                             <button class="sync-tab" data-tab="notes">Заметки / ДЗ</button>
                             <button class="sync-tab active" data-tab="edit">Настройки пары</button>
                         </div>
-                        <div class="tab-content" id="tab-notes">
+                        <div class="tab-content" id="tab-notes" style="padding: 6px 4px;">
                             <textarea class="note-modal-textarea" id="cp-notes-area" placeholder="Что нужно сделать?">${existingPair.notes || ''}</textarea>
                             <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
-                                <button class="answer-btn-custom clear-cp-note-btn" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important;">Удалить</button>
+                                ${existingPair.notes ? `<button class="answer-btn-custom clear-cp-note-btn" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important;">Удалить</button>` : ''}
                                 <button class="answer-btn-custom save-cp-note-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить заметку</button>
                             </div>
                         </div>
                         ` : ''}
 
-                        <div class="tab-content active" id="tab-edit">
+                        <div class="tab-content active" id="tab-edit" style="padding: 6px 4px;">
                             ${!existingPair ? `
-                            <div style="display: flex; align-items: center; position: relative; margin-bottom: 2rem;">
+                            <div style="display: flex; align-items: center; position: relative; margin-bottom: 1.6rem;">
                                 <span class="material-icons" style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--color-accent); font-size: 22px; pointer-events: none; z-index: 2;">auto_awesome</span>
                                 <input type="text" id="cp-smart-add" placeholder="${placeholders[0]}" style="width: 100%; padding: 1.2rem 1.6rem 1.2rem 44px !important; margin: 0 !important; box-sizing: border-box; background: var(--color-card) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-medium) !important; color: var(--color-text-primary) !important; font-size: 1.4rem !important; box-shadow: var(--shadow-main) !important;">
                             </div>
                             ` : ''}
 
+                            <!-- Название предмета -->
                             <div class="custom-pair-input-group">
-                                <input type="text" id="cp-subject" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}">
+                                <div class="cp-input-wrap">
+                                    <span class="material-icons">menu_book</span>
+                                    <input type="text" id="cp-subject" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}">
+                                </div>
                             </div>
 
+                            <!-- День недели / Время -->
                             <div class="custom-pair-input-group">
                                 ${isFromToolbar ? `
-                                    <input type="text" id="cp-date-input" placeholder="${todayNamePlaceholder}" value="${existingPair ? existingPair.dayName : ''}" style="flex: 0.8;">
+                                    <div class="cp-input-wrap" style="flex: 0.85;">
+                                        <span class="material-icons">calendar_today</span>
+                                        <input type="text" id="cp-date-input" placeholder="${todayNamePlaceholder}" value="${existingPair ? existingPair.dayName : ''}">
+                                    </div>
                                 ` : `
                                     <input type="hidden" id="cp-date-input" value="${dayName}">
                                 `}
-                                <input type="time" id="cp-start" value="${defStart}" required title="Время начала">
-                                <input type="time" id="cp-end" value="${defEnd}" required title="Время окончания">
+                                <div class="cp-input-wrap">
+                                    <span class="material-icons">schedule</span>
+                                    <input type="time" id="cp-start" value="${defStart}" required title="Время начала">
+                                </div>
+                                <div class="cp-input-wrap">
+                                    <span class="material-icons">flag</span>
+                                    <input type="time" id="cp-end" value="${defEnd}" required title="Время окончания">
+                                </div>
                             </div>
 
+                            <!-- Тип пары и повторение -->
                             <div class="custom-pair-input-group">
-                                <select id="cp-type" style="flex: 0.8;">
-                                    <option value="лек" ${existingPair?.type === 'лек' ? 'selected' : ''}>Лекция</option>
-                                    <option value="практ" ${existingPair?.type === 'практ' ? 'selected' : ''}>Практика</option>
-                                    <option value="лаб" ${existingPair?.type === 'лаб' ? 'selected' : ''}>Лабораторная</option>
-                                    <option value="экз" ${existingPair?.type === 'экз' ? 'selected' : ''}>Экзамен</option>
-                                    <option value="зач" ${existingPair?.type === 'зач' ? 'selected' : ''}>Зачет</option>
-                                    <option value="конс" ${existingPair?.type === 'конс' ? 'selected' : ''}>Консультация</option>
-                                    <option value="лич" ${existingPair?.type === 'лич' || !existingPair?.type ? 'selected' : ''}>Личное</option>
-                                </select>
-                                <select id="cp-recurrence">
-                                    <option value="once" ${existingPair?.recurrence === 'once' ? 'selected' : ''}>Только на этой неделе</option>
-                                    <option value="every" ${existingPair?.recurrence === 'every' ? 'selected' : ''}>Каждую неделю</option>
-                                    <option value="biweekly" ${existingPair?.recurrence === 'biweekly' ? 'selected' : ''}>Раз в 2 недели</option>
-                                </select>
+                                <div class="cp-input-wrap" style="flex: 0.85;">
+                                    <span class="material-icons">category</span>
+                                    <select id="cp-type">
+                                        <option value="лек" ${existingPair?.type === 'лек' ? 'selected' : ''}>Лекция</option>
+                                        <option value="практ" ${existingPair?.type === 'практ' ? 'selected' : ''}>Практика</option>
+                                        <option value="лаб" ${existingPair?.type === 'лаб' ? 'selected' : ''}>Лабораторная</option>
+                                        <option value="экз" ${existingPair?.type === 'экз' ? 'selected' : ''}>Экзамен</option>
+                                        <option value="зач" ${existingPair?.type === 'зач' ? 'selected' : ''}>Зачет</option>
+                                        <option value="конс" ${existingPair?.type === 'конс' ? 'selected' : ''}>Консультация</option>
+                                        <option value="лич" ${existingPair?.type === 'лич' || !existingPair?.type ? 'selected' : ''}>Личное</option>
+                                    </select>
+                                </div>
+                                <div class="cp-input-wrap">
+                                    <span class="material-icons">event_repeat</span>
+                                    <select id="cp-recurrence">
+                                        <option value="once" ${existingPair?.recurrence === 'once' ? 'selected' : ''}>Эта неделя</option>
+                                        <option value="every" ${existingPair?.recurrence === 'every' ? 'selected' : ''}>Каждую неделю</option>
+                                        <option value="biweekly" ${existingPair?.recurrence === 'biweekly' ? 'selected' : ''}>Раз в 2 недели</option>
+                                    </select>
+                                </div>
                             </div>
 
+                            <!-- Аудитория и преподаватель -->
                             <div class="custom-pair-input-group">
-                                <input type="text" id="cp-aud" placeholder="Аудитория / Ссылка" value="${existingPair ? existingPair.aud : ''}">
-                                <input type="text" id="cp-teacher" placeholder="Преподаватель" value="${existingPair ? existingPair.teacher : ''}">
+                                <div class="cp-input-wrap">
+                                    <span class="material-icons">place</span>
+                                    <input type="text" id="cp-aud" placeholder="Аудитория / Ссылка" value="${existingPair ? existingPair.aud : ''}">
+                                </div>
+                                <div class="cp-input-wrap">
+                                    <span class="material-icons">person</span>
+                                    <input type="text" id="cp-teacher" placeholder="Преподаватель" value="${existingPair ? existingPair.teacher : ''}">
+                                </div>
                             </div>
-                            <div style="display: flex; justify-content: flex-end; margin-top: 2.4rem;">
+
+                            <div style="display: flex; justify-content: flex-end; margin-top: 2rem;">
                                 <button class="answer-btn-custom save-cp-btn">${existingPair ? 'Сохранить' : 'Добавить'}</button>
                             </div>
                         </div>
@@ -12316,7 +15986,7 @@
                     placeholderTimer = setInterval(() => {
                         pIdx = (pIdx + 1) % placeholders.length;
                         smartInput.placeholder = placeholders[pIdx];
-                    }, 2000);
+                    }, 2500);
 
                     smartInput.addEventListener('input', (e) => {
                         let text = " " + e.target.value + " ";
@@ -12464,7 +16134,6 @@
 
                     closeModal();
 
-                    // Бесшумно и мгновенно перерисовываем расписание на экране на лету
                     if (window.location.href.includes('timetable')) {
                         document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
                         if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
@@ -12687,7 +16356,9 @@
                 });
             }
 
-            const page = window.location.pathname.split('/').pop();
+            const page = isDemoActive 
+                ? (demoPage.startsWith('signs') ? 'stu.signs' : (demoPage === 'announces' ? 'stu_ann.announces' : (demoPage === 'notes' ? 'stu.teacher_notes' : (demoPage.startsWith('teach_plan') ? 'stu.teach_plan' : 'stu.timetable')))) 
+                : window.location.pathname.split('/').pop();
 
             // --- ПЕРЕХВАТ СТРАНИЦЫ РАСПИСАНИЯ ПРЕПОДАВАТЕЛЯ ---
             const isPeoTT = document.querySelector('form#form1 input[name="P_PEO_ID"]') !== null;
@@ -12723,19 +16394,27 @@
                 document.body.style.backgroundColor = '';
             }
 
-            // Style Login Page
+            // Style Login Page, Password Recovery & Password Change
             const login = document.querySelector('body > div.login');
             if (login) {
-                document.body.innerHTML = '<div class ="login-container">' + document.body.innerHTML + '</div>';
+                // Перезаписываем DOM, создавая контейнер-обёртку
+                document.body.innerHTML = '<div class="login-container">' + document.body.innerHTML + '</div>';
+                
+                // Находим актуальные ссылки на элементы в пересозданном DOM
                 const loginContainer = document.querySelector('div.login-container');
                 const loginForm = document.getElementById('form');
+                const activeLoginDiv = loginContainer.querySelector('.login');
 
-                if (loginForm) {
+                // Определение типов страниц авторизации
+                const isRecoveryPage = page === 'stu_email_pkg.send_r_email' || window.location.href.includes('send_r_email');
+                const isChangePwdPage = page === 'stu_email_pkg.change_pwd' || window.location.href.includes('change_pwd') || !!loginForm?.querySelector('input[name="p_vkey"]');
+                const isAuthSubPage = isRecoveryPage || isChangePwdPage;
+
+                if (loginForm && !isAuthSubPage) {
                     loginForm.addEventListener('submit', () => {
                         const loginInput = loginForm.querySelector('input[name="p_login"]') || loginForm.querySelector('input[type="text"]');
                         if (loginInput && loginInput.value) {
                             const cleanLogin = loginInput.value.trim().toLowerCase();
-                            // Безопасно сохраняем логин в изолированное хранилище расширения
                             if (typeof GM_setValue !== 'undefined') {
                                 GM_setValue('etis_secure_login_id', cleanLogin);
                             }
@@ -12744,70 +16423,63 @@
                 }
 
                 let inputsWrapper = null;
-
-                // Ищем все блоки .items, так как ЕТИС теперь выводит предупреждения в таком же блоке
                 const allItemsBlocks = loginForm.querySelectorAll('div.items');
                 let loginItems = null;
-                let extraAlerts =[];
+                let extraAlerts = [];
 
                 allItemsBlocks.forEach(block => {
-                    // Если внутри есть класс .item (инпуты), значит это основной блок формы
                     if (block.querySelector('.item')) {
                         loginItems = block;
                     } else {
-                        // Иначе это системное сообщение (как про техработы)
                         extraAlerts.push(block);
                     }
                 });
 
-                // Фолбэк на случай непредвиденных изменений
                 if (!loginItems && allItemsBlocks.length > 0) loginItems = allItemsBlocks[0];
 
-                // 1. Логотип и очистка заголовков
-                if (page != 'stu_email_pkg.send_r_email') {
-                    const chooseDiv = document.querySelector('div.choose');
-                    if(chooseDiv) chooseDiv.remove();
+                // Логотип и динамический заголовок
+                const chooseDiv = document.querySelector('div.choose');
+                if (chooseDiv) chooseDiv.remove();
 
-                    const psuLogo = document.createElement('div');
-                    psuLogo.className = 'psu-logo';
+                const psuLogo = document.createElement('div');
+                psuLogo.className = 'psu-logo';
 
-                    const subtitle = document.createElement('div');
-                    subtitle.className = 'psu-logo-subtitle';
-                    subtitle.textContent = 'Войдите в аккаунт ЕТИС';
-                    psuLogo.appendChild(subtitle);
+                let subtitleText = 'Войдите в аккаунт<br>ЕТИС';
+                if (isChangePwdPage) subtitleText = 'Новый<br>пароль';
+                else if (isRecoveryPage) subtitleText = 'Восстановление<br>пароля';
 
-                    const oldTitle = loginForm.querySelector('.choose');
-                    if (oldTitle) oldTitle.remove();
+                const subtitle = document.createElement('div');
+                subtitle.className = 'psu-logo-subtitle';
+                subtitle.innerHTML = subtitleText;
+                psuLogo.appendChild(subtitle);
 
-                    inputsWrapper = document.createElement('div');
-                    inputsWrapper.className = 'login-inputs-wrapper';
+                const oldTitle = loginForm.querySelector('.choose');
+                if (oldTitle) oldTitle.remove();
 
-                    const allItems = loginItems.querySelectorAll('.item');
-                    allItems.forEach(item => inputsWrapper.appendChild(item));
+                inputsWrapper = document.createElement('div');
+                inputsWrapper.className = 'login-inputs-wrapper';
 
-                    loginItems.prepend(inputsWrapper);
-                    loginForm.prepend(psuLogo);
-                }
+                const allItems = loginItems.querySelectorAll('.item');
+                allItems.forEach(item => inputsWrapper.appendChild(item));
 
-                // 2. Сбор и скрытие "лишнего" текста
-                let helpTextContent = "";
+                loginItems.prepend(inputsWrapper);
+                loginForm.prepend(psuLogo);
 
-                // Текст из футера (про студентов 1 курса и телефон)
+                let helpTextContent = '';
+
                 const oldFooter = document.querySelector('div.header_message');
                 if (oldFooter) {
-                    // Сохраняем текст для тултипа
-                    helpTextContent += `<p>${oldFooter.innerHTML}</p>`;
-                    oldFooter.remove(); // Удаляем футер
+                    helpTextContent += `<p style="margin-bottom:8px;">${oldFooter.innerHTML}</p>`;
+                    oldFooter.remove();
                 }
 
-                // Текст внутри формы
                 const walker = document.createTreeWalker(loginItems, NodeFilter.SHOW_TEXT, null, false);
                 let node;
                 const nodesToRemove = [];
                 while(node = walker.nextNode()) {
                     if (node.textContent.includes('2396870') || node.textContent.includes('технической поддержки')) {
                         if (!helpTextContent.includes(node.textContent.trim())) {
-                            helpTextContent += `<p>${node.textContent.trim()}</p>`;
+                            helpTextContent += `<p style="margin-bottom:8px;">${node.textContent.trim()}</p>`;
                         }
                         nodesToRemove.push(node);
                     }
@@ -12815,76 +16487,85 @@
                 nodesToRemove.forEach(n => n.remove());
                 loginItems.querySelectorAll('br').forEach(br => br.remove());
 
-
-                // 3. Создание кнопки "Вопрос"
-                if (helpTextContent) {
-                    const helpContainer = document.createElement('div');
-                    helpContainer.className = 'login-help-container';
-
-                    const helpIcon = document.createElement('div');
-                    helpIcon.className = 'login-help-icon';
-                    helpIcon.textContent = '?';
-
-                    const helpDropdown = document.createElement('div');
-                    helpDropdown.className = 'login-help-dropdown';
-                    helpDropdown.innerHTML = helpTextContent;
-
-                    // Логика клика
-                    helpIcon.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        helpDropdown.classList.toggle('active');
-                    });
-
-                    // Закрытие при клике снаружи
-                    document.addEventListener('click', () => {
-                        helpDropdown.classList.remove('active');
-                    });
-                    helpDropdown.addEventListener('click', (e) => e.stopPropagation());
-
-                    helpContainer.appendChild(helpIcon);
-                    helpContainer.appendChild(helpDropdown);
-
-                    document.body.appendChild(helpContainer);
-                }
-
-
-                // 4. Стандартная стилизация полей и кнопок
                 const loginActions = document.createElement('div');
                 loginActions.className = 'login-actions';
                 loginItems.appendChild(loginActions);
 
-                if (page != 'stu_email_pkg.send_r_email') {
+                // Нижние действия: ссылка "Забыли пароль?" или "Назад ко входу"
+                if (!isAuthSubPage) {
                     let el = loginItems.querySelector('a');
                     if (el) {
                         el.className = 'forgot-password';
                         loginActions.appendChild(el);
                     }
+                } else {
+                    const backToLogin = document.createElement('a');
+                    backToLogin.href = 'stu.login';
+                    backToLogin.className = 'forgot-password';
+                    backToLogin.textContent = 'Назад ко входу';
+                    loginActions.appendChild(backToLogin);
                 }
 
-                let sbmt = document.getElementById('sbmt');
-                if(sbmt) loginActions.appendChild(sbmt);
+                let sbmt = document.getElementById('sbmt') || loginForm.querySelector('button[type="submit"]') || loginForm.querySelector('input[type="submit"]');
+                if (sbmt) {
+                    sbmt.id = 'sbmt';
+                    loginActions.appendChild(sbmt);
+                }
 
+                // Стилизация элементов формы и сообщений
                 const items = loginItems.querySelectorAll('div.item');
                 items.forEach(item => {
                     const errorMessage = item.querySelector('div.error_message');
                     if (errorMessage) {
-                        loginContainer.prepend(errorMessage);
+                        document.body.appendChild(errorMessage);
                         item.remove();
+
+                        requestAnimationFrame(() => {
+                            setTimeout(() => {
+                                errorMessage.classList.add('show');
+                            }, 100);
+                        });
+
+                        setTimeout(() => {
+                            errorMessage.classList.remove('show');
+                            setTimeout(() => {
+                                errorMessage.remove();
+                            }, 400);
+                        }, 5000);
+
+                        return;
                     }
 
+                    // Оформление информационных блоков с текстом (письмо отправлено / правила пароля)
+                    const paragraphs = item.querySelectorAll('p');
+                    if (paragraphs.length > 0) {
+                        item.style.cssText = 'background: var(--color-highlight); border: 1px solid var(--color-table-border); border-radius: var(--radius-medium); padding: 1.4rem 1.6rem; margin-bottom: 1.6rem; text-align: left;';
+                        paragraphs.forEach(p => {
+                            p.style.cssText = 'font-size: 1.3rem; line-height: 1.6; color: var(--color-text-primary); margin: 0 0 8px 0;';
+                            p.querySelectorAll('b').forEach(b => {
+                                b.style.cssText = 'color: var(--color-accent); font-weight: 700; display: inline-block; word-break: break-all;';
+                            });
+                        });
+                        const lastP = paragraphs[paragraphs.length - 1];
+                        if (lastP) lastP.style.marginBottom = '0';
+                    }
+
+                    // Оформление полей ввода и плейсхолдеров
                     let input = item.querySelector('input');
                     let label = item.querySelector('label');
-                    if (input && label) {
-                        let labelText = label.textContent.trim();
-                        // Меняем текст плейсхолдера
-                        if (labelText === 'Фамилия / email') labelText = 'Email';
-
-                        input.placeholder = labelText;
-                        label.remove();
+                    if (input) {
+                        if (label) {
+                            let labelText = label.textContent.trim();
+                            if (labelText === 'Фамилия / email' || labelText.includes('email')) labelText = 'Email';
+                            input.placeholder = labelText;
+                            label.remove();
+                        } else if (!input.placeholder) {
+                            if (input.name === 'p_password' || input.id === 'password') input.placeholder = 'Новый пароль';
+                            else if (input.name === 'p_password1' || input.id === 'password1') input.placeholder = 'Повторите новый пароль';
+                        }
                     }
                 });
 
-                // РЕНДЕР СИСТЕМНЫХ ПРЕДУПРЕЖДЕНИЙ ПОД ФОРМОЙ
                 if (extraAlerts.length > 0) {
                     const alertsContainer = document.createElement('div');
                     alertsContainer.className = 'login-alerts-wrapper';
@@ -12895,10 +16576,11 @@
                         alertCard.className = 'login-alert-box';
                         alertCard.innerHTML = alertBlock.innerHTML;
                         alertsContainer.appendChild(alertCard);
-                        alertBlock.remove(); // Удаляем оригинал из формы, чтобы не ломать верстку
+                        alertBlock.remove();
                     });
                 }
 
+                // БЫСТРЫЙ ВХОД (Показывается ТОЛЬКО на странице обычного входа)
                 const qlEnabled = generalConfig.quickLoginEnabled;
                 let qlAccounts = [];
                 try {
@@ -12914,29 +16596,26 @@
                     qlAccounts = [];
                 }
 
-                // Если быстрый вход включен и есть сохраненные аккаунты, перестраиваем интерфейс
-                if (qlEnabled && qlAccounts.length > 0) {
+                if (!isAuthSubPage && qlEnabled && qlAccounts.length > 0) {
                     if (inputsWrapper) inputsWrapper.style.setProperty('display', 'none', 'important');
                     if (loginActions) loginActions.style.setProperty('display', 'none', 'important');
 
                     const qlBlock = document.createElement('div');
                     qlBlock.id = 'quick-login-block';
-                    qlBlock.style.cssText = 'display: flex; flex-direction: column; gap: 1.6rem; width: 100%; align-items: center; margin-top: 1rem;';
-
+                    qlBlock.style.cssText = 'display: flex; flex-direction: column; gap: 1.6rem; width: 100%; align-items: center; margin: auto 0 !important;';
+                    
                     if (qlAccounts.length === 1) {
-                        // Один аккаунт: сразу показываем кнопку входа для него
                         const qlBtn = document.createElement('button');
                         qlBtn.className = 'answer-btn-custom ql-login-btn';
                         qlBtn.setAttribute('data-idx', '0');
-                        qlBtn.style.cssText = 'width: 100%; height: 48px; font-size: 1.5rem; font-weight: 700; border-radius: 24px; background: var(--color-accent) !important; color: #fff !important; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none; cursor: pointer;';
+                        qlBtn.style.cssText = 'width: 100%; height: 48px; font-size: 1.5rem; font-weight: 700; border-radius: 24px; justify-content: center; cursor: pointer;';
                         qlBtn.innerHTML = `<span class="material-symbols-rounded" style="margin-right: 8px; font-size: 20px;">flash_on</span> Войти как ${qlAccounts[0].name}`;
                         qlBlock.appendChild(qlBtn);
                     } else {
-                        // Несколько аккаунтов: показываем кнопку раскрытия меню
                         const expanderBtn = document.createElement('button');
                         expanderBtn.id = 'ql-expander-btn';
                         expanderBtn.className = 'answer-btn-custom';
-                        expanderBtn.style.cssText = 'width: 100%; height: 48px; font-size: 1.5rem; font-weight: 700; border-radius: 24px; background: var(--color-accent) !important; color: #fff !important; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none; cursor: pointer;';
+                        expanderBtn.style.cssText = 'width: 100%; height: 48px; font-size: 1.5rem; font-weight: 700; border-radius: 24px; justify-content: center; cursor: pointer;';
                         expanderBtn.innerHTML = '<span class="material-symbols-rounded" style="margin-right: 8px; font-size: 20px;">flash_on</span> Быстрый вход';
 
                         const accountsMenu = document.createElement('div');
@@ -12976,7 +16655,6 @@
                         const passwordInput = loginForm.querySelector('input[name="p_pass"]') || loginForm.querySelector('input[type="password"]');
                         if (emailInput && passwordInput) {
                             if (typeof GM_setValue !== 'undefined') { GM_setValue('etis_secure_login_id', email.trim().toLowerCase()); }
-
                             emailInput.value = email;
                             passwordInput.value = password;
                             loginForm.submit();
@@ -13001,7 +16679,67 @@
                         if (loginActions) loginActions.style.setProperty('display', 'flex', 'important');
                     };
                 }
+            
+                const loginFooter = document.createElement('div');
+                loginFooter.className = 'login-screen-footer';
 
+                const newsBtn = document.createElement('a');
+                newsBtn.className = 'login-news-btn';
+                newsBtn.href = 'https://t.me/etisreborn';
+                newsBtn.target = '_blank';
+                newsBtn.innerHTML = `
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink: 0;"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.832.942z"/></svg>
+                    <span>Новости REBORN</span>
+                `;
+                loginFooter.appendChild(newsBtn);
+
+                const helpWrap = document.createElement('div');
+                helpWrap.className = 'login-help-wrap';
+
+                const helpBtn = document.createElement('div');
+                helpBtn.className = 'login-help-btn';
+                helpBtn.textContent = '?';
+
+                const helpMenu = document.createElement('div');
+                helpMenu.className = 'login-help-menu';
+                helpMenu.innerHTML = helpTextContent || '';
+
+                const demoContainer = document.createElement('div');
+                demoContainer.style.cssText = helpTextContent 
+                    ? 'margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid var(--color-table-border);' 
+                    : '';
+                
+                const demoBtn = document.createElement('button');
+                demoBtn.className = 'answer-btn-custom';
+                demoBtn.style.cssText = 'width: 100% !important; justify-content: center !important; font-size: 1.25rem !important; font-weight: 700 !important; height: 36px !important; gap: 8px !important; box-shadow: none !important; margin: 0 !important; cursor: pointer !important;';
+                demoBtn.innerHTML = `
+                    <span class="material-icons" style="font-size: 18px;">play_circle</span>
+                    <span>Демо-режим</span>
+                `;
+                demoBtn.onclick = (e) => {
+                    e.preventDefault();
+                    sessionStorage.setItem('etis_demo_mode', 'true');
+                    sessionStorage.setItem('etis_demo_page', 'timetable');
+                    window.location.reload();
+                };
+                demoContainer.appendChild(demoBtn);
+                helpMenu.appendChild(demoContainer);
+
+                helpBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    helpMenu.classList.toggle('active');
+                });
+
+                document.addEventListener('click', () => {
+                    helpMenu.classList.remove('active');
+                });
+                helpMenu.addEventListener('click', (e) => e.stopPropagation());
+
+                helpWrap.appendChild(helpBtn);
+                helpWrap.appendChild(helpMenu);
+                loginFooter.appendChild(helpWrap);
+
+                document.body.appendChild(loginFooter);
             } else {
                 const submenus = document.querySelectorAll('.submenu');
                 submenus.forEach(menu => {
@@ -13095,10 +16833,32 @@
                         const logo = document.createElement('div');
                         logo.className = 'sidebar-logo';
                         logo.innerHTML = `
-                            <img src="https://raw.githubusercontent.com/defl-orator/etis-reborn/b3a41691ffab00a3d39ed9dc1ff9e8f5b1ba2662/img/logo_fill.png" alt="Logo">
-                            <span>ЕТИС</span>
+                            <div class="sidebar-logo-brand">
+                                <img src="${LOGO_DATA_URI}" alt="Logo">
+                                <span class="sidebar-logo-title">ЕТИС</span>
+                            </div>
+                            <button id="sidebar-notifications-btn" class="sidebar-bell-btn" title="Уведомления">
+                                <span class="material-icons bell-icon">notifications</span>
+                                <span class="bell-counter-badge"></span>
+                            </button>
                         `;
                         sidebar.prepend(logo);
+
+                        const bellBtn = logo.querySelector('#sidebar-notifications-btn');
+                        if (bellBtn) {
+                            bellBtn.onclick = (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const side = document.querySelector('.span3');
+                                if (side && side.classList.contains('mobile-active')) {
+                                    side.classList.remove('mobile-active');
+                                    document.querySelector('.mobile-overlay')?.classList.remove('active');
+                                    document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                                }
+                                openNotificationsModal();
+                            };
+                        }
+                        updateBellCounter();
                     }
 
                     // --- ЛОГИКА ПАСХАЛКИ ЛОГОТИПА ---
@@ -13194,6 +16954,7 @@
 
                             // 3. Проверка порогов (каждые 10 кликов)
                             if (clickCounter % 10 === 0 && clickCounter > 0) {
+                                localStorage.setItem('etis_easter_egg_found', 'true');
                                 const phraseIndex = (clickCounter / 10) - 1;
 
                                 if (phraseIndex < phrases.length) {
@@ -13217,13 +16978,33 @@
                         userInfoDiv.className = 'sidebar-user-info';
                         const nameText = originalInfo.childNodes[0].textContent.trim();
                         const subInfo = Array.from(originalInfo.querySelectorAll('span')).map(s => s.textContent.trim());
+
                         userInfoDiv.innerHTML = `
-                            <b>${nameText}</b>
-                            ${subInfo.map(info => `<span>${info}</span>`).join('')}
+                            <div class="sidebar-bio-desktop">
+                                <b>${nameText}</b>
+                                ${subInfo.map(info => `<span>${info}</span>`).join('')}
+                            </div>
+                            <div class="sidebar-bio-mobile">
+                                <div class="sidebar-card-row">
+                                    <span class="material-icons">person</span>
+                                    <span class="sidebar-card-text"><b>${nameText}</b></span>
+                                </div>
+                                ${subInfo.map((info, idx) => {
+                                    let iconName = idx === 0 ? getDirectionIcon(info) : 'school';
+                                    if (info.toLowerCase().includes('курс')) iconName = 'history_edu';
+                                    else if (/\d{4}/.test(info)) iconName = 'calendar_today';
+                                    else if (/очная|заочная/i.test(info)) iconName = 'schedule';
+
+                                    return `
+                                        <div class="sidebar-card-row">
+                                            <span class="material-icons">${iconName}</span>
+                                            <span class="sidebar-card-text">${info}</span>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
                         `;
-                        const sidebarFooter = sidebar.querySelector('.sidebar-footer');
-                        if (sidebarFooter) sidebar.insertBefore(userInfoDiv, sidebarFooter);
-                        else sidebar.appendChild(userInfoDiv);
+                        sidebar.appendChild(userInfoDiv);
                     }
 
                     // 4. ПОДГОТОВКА ВСЕХ ЭЛЕМЕНТОВ
@@ -13296,41 +17077,48 @@
                     profileLi.appendChild(profileLink);
                     allListItems.push(profileLi);
 
-                    // Функция иконок
-                    const getIconForHref = (href) => {
-                        if (href === '#version-check') return 'system_update';
-                        if (href === '#appearance') return 'palette';
-                        if (href === '#report-bug') return 'bug_report';
-                        if (href === '#settings') return 'settings';
-                        if (href === '#profile') return 'account_circle';
-                        if (href.includes('teach_plan')) return 'school';
-                        if (href.includes('timetable')) return 'calendar_month';
-                        if (href.includes('signs')) return 'workspace_premium';
-                        if (href.includes('absence')) return 'auto_stories_off';
-                        if (href.includes('stu_phs.show_slots')) return 'steps';
-                        if (href.includes('orders')) return 'assignment';
-                        if (href.includes('library')) return 'book_2';
-                        if (href.includes('teachers')) return 'people';
-                        if (href.includes('est_pkg.show_list')) return 'forum';
-                        if (href.includes('group_tt')) return 'playlist_add_check';
-                        if (href.includes('announces')) return 'record_voice_over';
-                        if (href.includes('teacher_notes')) return 'mail';
-                        if (href.includes('ses')) return 'account_balance';
-                        if (href.includes('advice')) return 'lightbulb';
-                        if (href.includes('electr')) return 'public';
-                        if (href.includes('cert_pkg')) return 'description';
-                        if (href.includes('contract_list')) return 'receipt';
-                        if (href.includes('blank_forms')) return 'insert_drive_file';
-                        if (href.includes('portfolio')) return 'folder_shared';
-                        if (href.includes('about')) return 'info';
-                        if (href.includes('term_test')) return 'rate_review';
-                        if (href.includes('special_est_list')) return 'poll';
-                        if (href.includes('change_pass')) return 'vpn_key';
-                        if (href.includes('change_email')) return 'alternate_email';
-                        if (href.includes('change_pr_page')) return 'account_box';
-                        if (href.includes('logout')) return 'exit_to_app';
-                        return 'chevron_right';
-                    };
+                    // Вкладка "Обучение"
+                    const guideLi = document.createElement("li");
+                    guideLi.className = 'theme-switcher-item';
+                    const guideLink = document.createElement("a");
+                    guideLink.style.cursor = 'pointer';
+                    guideLink.href = "#guide";
+                    guideLink.textContent = 'Обучение';
+
+                    guideLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+
+                        // 1. Помечаем обучение как просмотренное и убираем точку
+                        localStorage.setItem('etis_guide_viewed_v1', 'true');
+                        const dot = guideLink.querySelector('.badge-point');
+                        if (dot) dot.remove();
+
+                        // 2. Помечаем уведомление в колокольчике как прочитанное
+                        let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+                        history.forEach(n => {
+                            if (n.targetUrl === '#guide' || n.id === 'notif_guide_onboarding') {
+                                n.read = true;
+                            }
+                        });
+                        localStorage.setItem('etis_notifications_history_v1', JSON.stringify(history));
+                        updateBellCounter();
+
+                        // 3. Если других уведомлений нет — снимаем точку с мобильного меню/дока
+                        if (!document.querySelector('.span3 .badge-point')) {
+                            document.querySelector('.mobile-dock-drawer-btn, .mobile-menu-btn')?.classList.remove('has-updates');
+                        }
+
+                        const side = document.querySelector('.span3');
+                        if (side && side.classList.contains('mobile-active')) {
+                            side.classList.remove('mobile-active');
+                            document.querySelector('.mobile-overlay')?.classList.remove('active');
+                            document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                        }
+                        openGuideModal(window.innerWidth <= 960 ? 'menu' : 'timetable_guide');
+                    });
+
+                    guideLi.appendChild(guideLink);
+                    allListItems.push(guideLi);
 
                     const allowedDotHrefs = ['stu_ann.announces', 'stu.teacher_notes', 'est_pkg.show_list'];
 
@@ -13361,7 +17149,14 @@
                         }
 
                         const iconName = getIconForHref(href);
-                        const pureText = a.textContent.trim();
+                        let pureText = a.textContent.trim();
+
+                        // В демо-режиме меняем текст и вешаем красный стиль
+                        if (isDemoActive && href.includes('logout')) {
+                            pureText = 'Выход из демо-режима';
+                            a.classList.add('demo-logout-link');
+                        }
+
                         a.innerHTML = '';
 
                         const iconSpan = document.createElement('span');
@@ -13376,13 +17171,22 @@
                         textSpan.textContent = pureText;
                         a.appendChild(textSpan);
 
+                        // 1. Точка уведомления вставляется ПЕРЕД стрелочкой
                         const isAllowed = allowedDotHrefs.some(target => href.includes(target)) || href.includes('term_test');
-                        if (itemHasNotification && isAllowed) {
+                        const isGuideUnread = (href === '#guide' && localStorage.getItem('etis_guide_viewed_v1') !== 'true');
+
+                        if ((itemHasNotification && isAllowed) || isGuideUnread) {
                             globalHasNotifications = true;
                             const dot = document.createElement('span');
                             dot.className = 'badge-point';
                             a.appendChild(dot);
                         }
+
+                        // 2. Стрелочка всегда остается крайней справа
+                        const chevronSpan = document.createElement('span');
+                        chevronSpan.className = 'material-icons chevron';
+                        chevronSpan.textContent = 'chevron_right';
+                        a.appendChild(chevronSpan);
 
                         // --- БЕЗОПАСНОЕ ОБНОВЛЕНИЕ БЕЗ ПАРАМЕТРОВ ---
                         if (allowedDotHrefs.some(target => href.includes(target))) {
@@ -13396,7 +17200,7 @@
                     });
 
                     if (globalHasNotifications) {
-                        const mobileBtn = document.querySelector('.mobile-menu-btn');
+                        const mobileBtn = document.querySelector('.mobile-dock-drawer-btn') || document.querySelector('.mobile-menu-btn');
                         if (mobileBtn) mobileBtn.classList.add('has-updates');
                     }
 
@@ -13404,20 +17208,24 @@
                     mainNav.innerHTML = '';
 
                     const groupsOrder = [
-                        ['teach_plan'],
-                        ['timetable', 'signs'],
-                        ['announces', 'teacher_notes', 'teachers', 'est_pkg.show_list'],
-                        ['absence', 'group_tt', 'stu_phs.show_slots'],
-                        ['library', 'electr', 'advice', 'ses', 'about'],
-                        ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'портфолио'],
-                        ['term_test', 'special_est_list', 'оцените дистанционное'],
-                        ['#settings', 'profile', 'change_pass', 'change_email', 'change_pr_page', 'logout']
+                        { id: 'group-plan', items: ['teach_plan'] },
+                        { id: 'group-timetable', items: ['timetable', 'signs'] },
+                        { id: 'group-messages', items: ['announces', 'teacher_notes', 'teachers', 'est_pkg.show_list'] },
+                        { id: 'group-attendance', items: ['absence', 'group_tt', 'stu_phs.show_slots'] },
+                        { id: 'group-library', items: ['library', 'electr', 'advice', 'ses', 'about'] },
+                        { id: 'group-docs', items: ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'портфолио'] },
+                        { id: 'group-surveys', items: ['term_test', 'special_est_list', 'оцените дистанционное'] },
+                        { id: 'group-account', items: ['change_pass', 'change_email', 'change_pr_page', 'logout'] },
+                        { id: 'group-reborn', items: ['#settings', 'profile', '#guide'] }
                     ];
 
                     const usedItems = new Set();
 
-                    groupsOrder.forEach((groupPatterns, index) => {
-                        groupPatterns.forEach(pattern => {
+                    groupsOrder.forEach(group => {
+                        const groupContainer = document.createElement('div');
+                        groupContainer.className = `sidebar-nav-group ${group.id}`;
+
+                        group.items.forEach(pattern => {
                             const li = allListItems.find(item => {
                                 if (usedItems.has(item)) return false;
                                 const h = item.querySelector('a')?.getAttribute('href') || '';
@@ -13427,28 +17235,22 @@
                             });
 
                             if (li) {
-                                mainNav.appendChild(li);
+                                groupContainer.appendChild(li);
                                 usedItems.add(li);
                             }
                         });
 
-                        if (index < groupsOrder.length - 1) {
-                            const separator = document.createElement('div');
-                            separator.style.height = '1px';
-                            separator.style.background = 'var(--color-table-border)';
-                            separator.style.margin = '1rem 1.2rem 1.4rem 1.2rem';
-                            mainNav.appendChild(separator);
+                        if (groupContainer.children.length > 0) {
+                            mainNav.appendChild(groupContainer);
                         }
                     });
 
                     const remaining = allListItems.filter(li => !usedItems.has(li));
                     if (remaining.length > 0) {
-                        const separator = document.createElement('div');
-                        separator.style.height = '1px';
-                        separator.style.background = 'var(--color-table-border)';
-                        separator.style.margin = '1rem 1.2rem 1.4rem 1.2rem';
-                        mainNav.appendChild(separator);
-                        remaining.forEach(li => mainNav.appendChild(li));
+                        const remGroup = document.createElement('div');
+                        remGroup.className = 'sidebar-nav-group group-other';
+                        remaining.forEach(li => remGroup.appendChild(li));
+                        mainNav.appendChild(remGroup);
                     }
 
                     // 6. Активный класс и скролл
@@ -13460,7 +17262,20 @@
                         });
                     });
 
-                    const currentFullUrl = window.location.pathname.split('/').pop() + window.location.search;
+                    let demoFullUrl = 'stu.timetable';
+                        if (demoPage === 'signs' || demoPage === 'signs_session') demoFullUrl = 'stu.signs';
+                        else if (demoPage === 'signs_current') demoFullUrl = 'stu.signs?p_mode=current';
+                        else if (demoPage === 'signs_rating') demoFullUrl = 'stu.signs?p_mode=rating';
+                        else if (demoPage === 'signs_diplom') demoFullUrl = 'stu.signs?p_mode=diplom';
+                        else if (demoPage === 'announces') demoFullUrl = 'stu_ann.announces';
+                        else if (demoPage === 'notes') demoFullUrl = 'stu.teacher_notes';
+                        else if (demoPage === 'teach_plan_advanced') demoFullUrl = 'stu.teach_plan?p_mode=advanced';
+                        else if (demoPage === 'teach_plan' || demoPage === 'teach_plan_short') demoFullUrl = 'stu.teach_plan?p_mode=short';
+
+                        const currentFullUrl = isDemoActive 
+                            ? demoFullUrl 
+                            : (window.location.pathname.split('/').pop() + window.location.search);
+
                     let bestMatch = null;
                     let maxMatchLength = -1;
 
@@ -13498,39 +17313,51 @@
                         const footer = document.createElement('div');
                         footer.className = 'sidebar-footer';
 
-                        // flex-контейнер для ссылок, чтобы они красиво шли друг под другом
                         footer.innerHTML = `
-                            <div style="margin-bottom: 10px; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.5px;">
-                                <a href="https://etisreborn.ru" target="_blank" style="text-decoration: none; color: var(--color-text-primary); border-bottom: none;">
-                                    ЕТИС REBORN
-                                </a>
+                            <div class="sidebar-footer-desktop">
+                                <div style="margin-bottom: 8px; font-weight: 800; font-size: 1.2rem; letter-spacing: 0.5px;">
+                                    <a href="https://etisreborn.ru" target="_blank" style="text-decoration: none; color: var(--color-text-primary);">
+                                        ЕТИС REBORN
+                                    </a>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 6px;">
+                                    <a href="https://t.me/etisreborn" target="_blank" style="text-decoration: none; color: var(--color-text-secondary);">Новости REBORN</a>
+                                    <a href="#report-bug" class="footer-report-bug-btn" style="text-decoration: none; color: var(--color-text-secondary);">Нашли ошибку?</a>
+                                </div>
                             </div>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <a href="#report-bug" id="footer-report-bug" style="cursor: pointer; text-decoration: none; color: var(--color-text-secondary); transition: color 0.2s;">Нашли ошибку?</a>
+                            <div class="sidebar-footer-mobile">
+                                <a href="https://etisreborn.ru" target="_blank" class="sidebar-card-row">
+                                    <span class="material-icons">auto_awesome</span>
+                                    <span class="sidebar-card-text"><b>ЕТИС REBORN</b></span>
+                                    <span class="material-icons chevron">chevron_right</span>
+                                </a>
+                                <a href="https://t.me/etisreborn" target="_blank" class="sidebar-card-row">
+                                    <span class="material-icons">campaign</span>
+                                    <span class="sidebar-card-text">Новости REBORN</span>
+                                    <span class="material-icons chevron">chevron_right</span>
+                                </a>
+                                <a href="#report-bug" class="sidebar-card-row footer-report-bug-btn">
+                                    <span class="material-icons">bug_report</span>
+                                    <span class="sidebar-card-text">Нашли ошибку?</span>
+                                    <span class="material-icons chevron">chevron_right</span>
+                                </a>
                             </div>
                         `;
                         sidebar.appendChild(footer);
 
-                        // Функция для закрытия мобильного меню
                         const closeMobileMenu = () => {
-                            const side = document.querySelector('.span3');
-                            if (side && side.classList.contains('mobile-active')) {
-                                side.classList.remove('mobile-active');
-                                document.querySelector('.mobile-overlay')?.classList.remove('active');
-                                document.querySelector('.mobile-menu-btn')?.classList.remove('open');
-                            }
+                            sidebar.classList.remove('mobile-active');
+                            document.querySelector('.mobile-overlay')?.classList.remove('active');
+                            document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
                         };
 
-                        // Обработчик: Нашли ошибку?
-                        const bugLinkFooter = footer.querySelector('#footer-report-bug');
-                        if (bugLinkFooter) {
-                            bugLinkFooter.addEventListener('click', (e) => {
+                        footer.querySelectorAll('.footer-report-bug-btn').forEach(btn => {
+                            btn.addEventListener('click', (e) => {
                                 e.preventDefault();
                                 closeMobileMenu();
                                 openUserscriptBugModal();
                             });
-                        }
-                        sidebar.appendChild(footer);
+                        });
                     }
                 }
 
@@ -13538,7 +17365,20 @@
                 const span9 = document.querySelector('div.span9');
                 if (!span9 && !document.querySelector('.login') && page !== 'stu.schedule_detail') return;
                 const urlParams = new URLSearchParams(window.location.search);
-                const pageMode = urlParams.get('p_mode');
+                let pageMode = urlParams.get('p_mode');
+
+                // Корректно выставляем pageMode для демо-режима и реального ЕТИСа
+                if (isDemoActive) {
+                    if (demoPage === 'signs' || demoPage === 'signs_session') pageMode = 'session';
+                    else if (demoPage === 'signs_current') pageMode = 'current';
+                    else if (demoPage === 'signs_rating') pageMode = 'rating';
+                    else if (demoPage === 'signs_diplom') pageMode = 'diplom';
+                    else if (demoPage === 'teach_plan_advanced') pageMode = 'advanced';
+                    else if (demoPage === 'teach_plan' || demoPage === 'teach_plan_short') pageMode = 'short';
+                } else if (!pageMode && page === 'stu.signs') {
+                    // В реальном ЕТИСе по умолчанию открываются сессии
+                    pageMode = 'session';
+                }
 
                 const warning = document.querySelector('div.warning');
                 if (warning && span9) {
@@ -13547,9 +17387,9 @@
 
                 let el, btn, img;
 
-                // УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ДЛЯ КРАСИВОЙ ДАТЫ (macOS Style)
+                // УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ДЛЯ КРАСИВОЙ ДАТЫ
                 // Текущий год: "Пт, 6 марта 16:35"
-                // Прошлые годы: "6 марта 2024" (без времени)
+                // Прошлые годы: "6 марта 2024"
                 const formatEtisDate = (rawStr) => {
                     if (!rawStr) return '';
 
@@ -14781,6 +18621,503 @@
                         }
                         currentCard = null; isSwiping = false;
                     });
+                };
+
+                // Генерация уникального хэша для каждого сообщения
+                const getMessageUniqueId = (cardElement) => {
+                    const sender = cardElement.querySelector('.msg-sender')?.textContent.trim() || '';
+                    const date = cardElement.querySelector('.msg-date-text')?.textContent.trim() || '';
+                    const subject = cardElement.querySelector('.msg-subject')?.textContent.trim() || '';
+                    const str = `${sender}_${date}_${subject}`;
+                    let hash = 0;
+                    for (let i = 0; i < str.length; i++) {
+                        hash = (hash << 5) - hash + str.charCodeAt(i);
+                        hash |= 0;
+                    }
+                    return 'msg_' + Math.abs(hash);
+                };
+
+                // API-ключ
+                const OPENROUTER_API_KEY = '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';
+
+                // Встроенный декодер для извлечения текста из старого бинарного формата Word (.doc)
+                const extractTextFromLegacyDoc = (arrayBuffer) => {
+                    try {
+                        // Защита от нечетной длины буфера для Uint16Array
+                        const utf16Length = Math.floor(arrayBuffer.byteLength / 2);
+                        const uint16View = new Uint16Array(arrayBuffer, 0, utf16Length);
+                        let utf16Text = '';
+                        for (let i = 0; i < uint16View.length; i++) {
+                            const charCode = uint16View[i];
+                            if ((charCode >= 32 && charCode <= 126) || 
+                                (charCode >= 1024 && charCode <= 1105) || 
+                                charCode === 10 || charCode === 13) {
+                                utf16Text += String.fromCharCode(charCode);
+                            } else {
+                                utf16Text += ' ';
+                            }
+                        }
+
+                        const uint8View = new Uint8Array(arrayBuffer);
+                        let singleByteText = '';
+                        for (let i = 0; i < uint8View.length; i++) {
+                            const charCode = uint8View[i];
+                            if ((charCode >= 32 && charCode <= 126) || 
+                                (charCode >= 192 && charCode <= 255) || 
+                                charCode === 168 || charCode === 184 || 
+                                charCode === 10 || charCode === 13) {
+                                
+                                if (charCode >= 192 && charCode <= 255) {
+                                    singleByteText += String.fromCharCode(charCode + 848); // Сдвиг к кириллической таблице
+                                } else if (charCode === 168) {
+                                    singleByteText += 'Ё';
+                                } else if (charCode === 184) {
+                                    singleByteText += 'ё';
+                                } else {
+                                    singleByteText += String.fromCharCode(charCode);
+                                }
+                            } else {
+                                singleByteText += ' ';
+                            }
+                        }
+
+                        const clean = (txt) => txt.replace(/\s+/g, ' ').trim();
+                        const cleanUtf16 = clean(utf16Text);
+                        const cleanSingleByte = clean(singleByteText);
+
+                        const countCyrillic = (txt) => (txt.match(/[а-яА-ЯёЁ]/g) || []).length;
+
+                        const res = countCyrillic(cleanUtf16) >= countCyrillic(cleanSingleByte) ? cleanUtf16 : cleanSingleByte;
+                        return res.split(' ').filter(word => word.length >= 2 || /\d/.test(word)).join(' ');
+                    } catch (e) {
+                        console.error('[Doc Extractor Error]', e);
+                        return '';
+                    }
+                };
+
+                // Динамическая загрузка парсера PDF на лету при необходимости
+                const loadPdfJs = () => {
+                    return new Promise((resolve, reject) => {
+                        if (window.pdfjsLib) return resolve(window.pdfjsLib);
+                        const script = document.createElement('script');
+                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js';
+                        script.onload = () => {
+                            window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+                            resolve(window.pdfjsLib);
+                        };
+                        script.onerror = () => reject(new Error("Не удалось загрузить парсер PDF"));
+                        document.head.appendChild(script);
+                    });
+                };
+
+                // Извлечение текста из PDF
+                const extractTextFromPdf = async (arrayBuffer) => {
+                    const pdfjsLib = await loadPdfJs();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    let fullText = '';
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        fullText += pageText + '\n';
+                    }
+                    return fullText;
+                };
+
+                // Получение имени текущего студента
+                const getStudentNameForAi = () => {
+                    const nameNode = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info b');
+                    if (nameNode) {
+                        const clone = nameNode.cloneNode(true);
+                        clone.querySelectorAll('span').forEach(span => span.remove());
+                        const fullText = clone.textContent.replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim();
+                        
+                        // Разбиваем строку на слова и забираем только чистые кириллические слова (ФИО)
+                        const words = fullText.split(' ');
+                        const cleanWords = [];
+                        for (let word of words) {
+                            // Очищаем слово от знаков препинания по краям для проверки
+                            const cleanWord = word.replace(/^[.,;:!?"'()«»\-]+/g, '').replace(/[.,;:!?"'()«»\-]+$/g, '').trim();
+                            
+                            // Если слово состоит только из русских букв (Фамилия / Имя / Отчество)
+                            if (/^[а-яА-ЯёЁ]+$/.test(cleanWord)) {
+                                cleanWords.push(cleanWord);
+                            }
+                            
+                            // Прерываем цикл при первой встрече цифр (даты рождения), скобок или предупреждений
+                            if (/\d/.test(word) || word.includes('(') || word.includes('[') || word.includes(',')) {
+                                break;
+                            }
+                        }
+                        
+                        // Возвращаем только собранное ФИО
+                        if (cleanWords.length >= 1) {
+                            return cleanWords.slice(0, 3).join(' ');
+                        }
+                        return fullText;
+                    }
+                    return '';
+                };
+
+                // Определение необходимости показа кнопки сводки
+                const shouldShowAiButton = (bodyText, attachments) => {
+                    if (!isBetaFeatureActive('aiSummary')) return false;
+
+                    const hasBigText = bodyText && bodyText.length > 400;
+                    const hasTargetFiles = attachments && attachments.some(a => {
+                        const name = a.name.toLowerCase();
+                        return name.includes('.pdf') || name.includes('.docx');
+                    });
+                    return !!(hasBigText || hasTargetFiles);
+                };
+
+                // Разметка кнопки сводки (начальный вид)
+                const getAiBtnHtml = (bodyText, attachments) => {
+                    if (!shouldShowAiButton(bodyText, attachments)) return '';
+                    return `
+                        <span class="material-icons ai-summary-btn" title="ИИ-Сводка" style="font-size: 1.8rem; margin-bottom: -1px;">auto_awesome</span>
+                    `;
+                };
+
+                // Загрузка и переформатирование вложений в текст
+                const downloadAndProcessAttachments = async (attachments) => {
+                    const results = [];
+                    // Фильтруем только поддерживаемые форматы (.pdf и .docx)
+                    const targetFiles = attachments.filter(a => {
+                        const name = a.name.toLowerCase();
+                        return name.includes('.pdf') || name.includes('.docx');
+                    });
+
+                    for (const file of targetFiles) {
+                        let fileUrl = file.href;
+                        if (fileUrl.startsWith('/') || !fileUrl.startsWith('http')) {
+                            fileUrl = window.location.origin + (fileUrl.startsWith('/') ? '' : '/') + fileUrl;
+                        }
+
+                        const text = await new Promise((resolve) => {
+                            GM_xmlhttpRequest({
+                                method: 'GET',
+                                url: fileUrl,
+                                responseType: 'arraybuffer',
+                                onload: async function(response) {
+                                    if (response.status === 200) {
+                                        const buffer = response.response;
+                                        const filenameLower = file.name.toLowerCase();
+
+                                        if (filenameLower.includes('.docx')) {
+                                            try {
+                                                const mammothInstance = window.mammoth || mammoth;
+                                                const parsed = await mammothInstance.extractRawText({ arrayBuffer: buffer });
+                                                resolve(`\n\n[Текст прикрепленного файла "${file.name}"]:\n${parsed.value}`);
+                                            } catch (e) {
+                                                resolve(`\n\n[Ошибка чтения DOCX файла "${file.name}"]`);
+                                            }
+                                        } else if (filenameLower.includes('.pdf')) {
+                                            try {
+                                                const parsedText = await extractTextFromPdf(buffer);
+                                                resolve(`\n\n[Текст прикрепленного файла "${file.name}"]:\n${parsedText}`);
+                                            } catch (e) {
+                                                resolve(`\n\n[Ошибка чтения PDF файла "${file.name}"]`);
+                                            }
+                                        }
+                                    } else {
+                                        resolve('');
+                                    }
+                                },
+                                onerror: () => resolve('')
+                            });
+                        });
+                        if (text) results.push(text);
+                    }
+                    return results;
+                };
+
+                // Генерация сводки
+                const generateAiSummaryWithFiles = async (messageText, attachments, studentName) => {
+                    const processedTexts = await downloadAndProcessAttachments(attachments);
+
+                    let mainPrompt = `Сделай краткую, понятную и структурированную сводку этого объявления/сообщения для студента. Напиши суть дела обычным связным текстом (абзацами), а списки с точками используй ТОЛЬКО для перечисления конкретных важных дат, дедлайнов, требований или полезных ссылок, если они присутствуют. Избегай перегруженности списками, пиши кратко, емко, без лишней "воды", на русском языке.\n`;
+                    if (studentName) {
+                        mainPrompt += `Имя текущего студента: "${studentName}". Учти, что в тексте файлов или объявления студент может быть упомянут частично (например, только фамилия, фамилия с инициалами или в другом падеже: Иванов, Иванову И.И., И. Иванов). Если в тексте или файлах есть персональная информация, упоминания, задачи, индивидуальные дедлайны или расписание, касающееся этого студента, обязательно выдели это в самом начале сводки в отдельном блоке "Важно для меня:" (выдели этот заголовок жирным).\n`;
+                        mainPrompt += `ВНИМАНИЕ: Если в тексте объявления или файлов нет никакой персональной информации, упоминаний или требований, непосредственно касающихся этого студента (по фамилии, инициалам или имени), тебе КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО писать об этом, оправдываться или упоминать, что информации для него нет. В этом случае просто не создавай блок "Важно для меня:" и никак не комментируй отсутствие индивидуальной информации.\n`;
+                    }
+                    mainPrompt += `\nТекст сообщения:\n${messageText}`;
+
+                    processedTexts.forEach(t => {
+                        mainPrompt += t;
+                    });
+
+                    const url = 'https://openrouter.ai/api/v1/chat/completions';
+                    
+                    // Список моделей для последовательного каскадного опроса при 404/ошибках
+                    const models = [
+                        'google/gemma-2-9b-it:free',
+                        'meta-llama/llama-3-8b-instruct:free',
+                        'openrouter/free'
+                    ];
+
+                    let lastError = null;
+
+                    for (const modelName of models) {
+                        console.log(`[AI] Попытка отправки запроса через модель: ${modelName}`);
+                        const payload = JSON.stringify({
+                            model: modelName,
+                            messages: [{ role: 'user', content: mainPrompt }]
+                        });
+
+                        const delays = [1000, 2000, 4000];
+
+                        let success = false;
+                        let resultText = '';
+
+                        // Делаем до 3 попыток для каждой модели при сетевых сбоях
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            try {
+                                resultText = await new Promise((resolve, reject) => {
+                                    GM_xmlhttpRequest({
+                                        method: 'POST',
+                                        url: url,
+                                        headers: {
+                                            'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
+                                            'Content-Type': 'application/json',
+                                            'HTTP-Referer': 'https://student.psu.ru/',
+                                            'X-Title': 'ETIS Reborn'
+                                        },
+                                        data: payload,
+                                        onload: function(response) {
+                                            if (response.status === 200) {
+                                                try {
+                                                    const resData = JSON.parse(response.responseText);
+                                                    const outText = resData.choices?.[0]?.message?.content;
+                                                    if (outText) resolve(outText);
+                                                    else reject(new Error("Empty response content"));
+                                                } catch (e) { reject(e); }
+                                            } else {
+                                                reject(new Error(`API Error: ${response.status}`));
+                                            }
+                                        },
+                                        onerror: (err) => reject(err)
+                                    });
+                                });
+                                success = true;
+                                break;
+                            } catch (error) {
+                                lastError = error;
+                                await new Promise(r => setTimeout(r, delays[attempt] || 1000));
+                            }
+                        }
+
+                        if (success) {
+                            return resultText;
+                        }
+                    }
+
+                    throw lastError || new Error("Все доступные ИИ-модели вернули ошибку.");
+                };
+
+                const filterOutNegativePersonalBlock = (html) => {
+                    const pattern = /(?:<b>|<strong>)?Важно\s*для\s*меня:?(?:<\/b>|<\/strong>)?[\s\S]*?(?:нет|отсутствует|не\s+касается|не\s+упоминается|не\s+содержит|не\s+обнаружено|no\s+personal|not\s+mention)[\s\S]*?(?=<hr|<\/?b|<\/?strong>|<ul|$)/gi;
+                    
+                    const patternFused = /(?:<b>|<strong>)?Важно\s*для\s*меня:?(?:<\/b>|<\/strong>)?[\s\S]*?(?:нет|отсутствует|не\s+касается|не\s+упоминается|не\s+содержит|не\s+обнаружено|no\s+personal|not\s+mention)[\s\S]*?(?=<hr|<\/?b|<\/?strong>|<ul|$)/gi;
+                    
+                    let cleaned = html.replace(pattern, '');
+                    cleaned = cleaned.replace(patternFused, '');
+                    
+                    cleaned = cleaned.replace(/^(?:<br\s*\/?>\s*)+/gi, '');
+                    return cleaned.trim();
+                };
+
+                // Перевод Markdown в HTML
+                 const parseMarkdownToHtml = (md) => {
+                    // 1. разделители
+                    let html = md.replace(/^\s*[\-\*_]{3,}\s*$/gm, '<hr style="border: none !important; border-top: 1px solid var(--color-table-border) !important; margin: 1.6rem 0 !important;">');
+
+                    // 2. Оформление текста (жирный, курсив)
+                    html = html.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+                    html = html.replace(/\*(.*?)\*/g, '<i>$1</i>');
+
+                    // 3. Построчный разбор списков
+                    let lines = html.split('\n');
+                    let inList = false;
+                    for (let i = 0; i < lines.length; i++) {
+                        let line = lines[i].trim();
+                        const listMatch = line.match(/^[\*\-]\s+(.*)$/);
+                        if (listMatch) {
+                            let content = listMatch[1];
+                            if (!inList) {
+                                lines[i] = '<ul style="margin: 8px 0; padding: 0; list-style-type: disc !important;">\n<li style="margin-left: 1.5rem; margin-top: 4px;">' + content + '</li>';
+                                inList = true;
+                            } else {
+                                lines[i] = '<li style="margin-left: 1.5rem; margin-top: 4px;">' + content + '</li>';
+                            }
+                        } else {
+                            if (inList) {
+                                lines[i - 1] += '\n</ul>';
+                                inList = false;
+                            }
+                        }
+                    }
+                    if (inList) {
+                        lines[lines.length - 1] += '\n</ul>';
+                    }
+                    html = lines.join('\n').replace(/\n/g, '<br>');
+                    return html;
+                };
+
+                const getAttachmentsFromCard = (cardElement) => {
+                    const attachments = [];
+                    cardElement.querySelectorAll('a[href*="file_download"]').forEach(link => {
+                        attachments.push({ name: link.textContent.trim(), href: link.href });
+                    });
+                    return attachments;
+                };
+
+                // Открытие модального окна сводки
+                const openAiSummaryModal = (title, rawHtml) => {
+                    let overlay = document.querySelector('.analytics-overlay.ai-summary-overlay');
+                    let modal = document.querySelector('.analytics-modal.ai-summary-modal');
+
+                    if (!overlay) {
+                        overlay = document.createElement('div');
+                        overlay.className = 'analytics-overlay ai-summary-overlay';
+                        document.body.appendChild(overlay);
+                    }
+                    if (!modal) {
+                        modal = document.createElement('div');
+                        modal.className = 'analytics-modal ai-summary-modal';
+                        document.body.appendChild(modal);
+                    }
+
+                    modal.innerHTML = `
+                        <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; padding: 1.6rem 2.4rem !important; border-bottom: 1px solid var(--color-table-border) !important;">
+                            <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%; font-size: 1.6rem; font-weight: 700; color: var(--color-text-primary);">${title}</span>
+                            <button class="close-ai-summary" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                        </div>
+                        <div class="ui-dialog-content" style="padding: 2.4rem; max-height: 70vh; overflow-y: auto; text-align: left !important;">
+                            <div class="msg-body" style="text-align: left !important; font-size: 1.4rem; line-height: 1.6; color: var(--color-text-primary);">${rawHtml}</div>
+                        </div>
+                    `;
+
+                    const closeAll = () => {
+                        overlay.classList.remove('active');
+                        modal.classList.remove('active');
+                        document.body.classList.remove('modal-open-body');
+                        document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
+                    };
+                    overlay.onclick = closeAll;
+                    modal.querySelector('.close-ai-summary').onclick = closeAll;
+
+                    overlay.classList.add('active');
+                    modal.classList.add('active');
+                    document.body.classList.add('modal-open-body');
+
+                    // Запуск поиска дат для интеграции событий в один клик
+                    if (typeof initEventLinks === 'function') {
+                        initEventLinks();
+                    }
+                };
+
+                // Связывание событий с двухэтапным уведомлением (Старт / Финиш)
+                const bindAiSummaryEvents = (cardElement) => {
+                    const aiBtn = cardElement.querySelector('.ai-summary-btn');
+                    if (!aiBtn) return;
+
+                    const msgId = getMessageUniqueId(cardElement);
+                    const savedSummaries = JSON.parse(localStorage.getItem('etis_ai_summaries_v1') || '{}');
+                    const hasSaved = !!savedSummaries[msgId];
+
+                    if (hasSaved) {
+                        aiBtn.textContent = 'psychology';
+                        aiBtn.style.setProperty('color', 'var(--color-accent)', 'important');
+                        aiBtn.title = 'Открыть ИИ-Сводку';
+                    } else {
+                        aiBtn.textContent = 'auto_awesome';
+                        aiBtn.style.setProperty('color', 'var(--color-text-secondary)', 'important');
+                        aiBtn.title = 'Сгенерировать ИИ-Сводку';
+                    }
+
+                    aiBtn.onclick = async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+
+                        const currentSummaries = JSON.parse(localStorage.getItem('etis_ai_summaries_v1') || '{}');
+                        const isReady = !!currentSummaries[msgId];
+
+                        const subjectTitle = cardElement.querySelector('.msg-subject')?.textContent.trim() || 'Объявление';
+
+                        if (isReady) {
+                            let htmlContent = currentSummaries[msgId];
+                            if (typeof highlightDatesInHTML === 'function') {
+                                htmlContent = highlightDatesInHTML(htmlContent, subjectTitle);
+                            }
+                            openAiSummaryModal(subjectTitle, htmlContent);
+                            return;
+                        }
+
+                        if (window.showEtisPush) {
+                            window.showEtisPush(
+                                'ИИ-Анализ запущен',
+                                subjectTitle,
+                                'Считываем вложения и готовим краткую сводку. Пожалуйста, подождите немного...',
+                                'info',
+                                'psychology'
+                            );
+                        }
+
+                        const originalBtnHTML = aiBtn.innerHTML;
+                        aiBtn.innerHTML = 'sync';
+                        aiBtn.style.animation = 'spin 1s linear infinite';
+                        aiBtn.style.pointerEvents = 'none';
+
+                        const bodyEl = cardElement.querySelector('.msg-body');
+                        const textToAnalyze = bodyEl ? bodyEl.textContent.trim() : '';
+                        const attachments = getAttachmentsFromCard(cardElement);
+
+                        try {
+                            const studentName = getStudentNameForAi();
+                            const summaryMarkdown = await generateAiSummaryWithFiles(textToAnalyze, attachments, studentName);
+                            
+                            let htmlContent = parseMarkdownToHtml(summaryMarkdown);
+
+                            htmlContent = filterOutNegativePersonalBlock(htmlContent);
+
+                            // Сохраняем результат в локальный архив через атомарную функцию синхронизации
+                            const updatedSummaries = JSON.parse(localStorage.getItem('etis_ai_summaries_v1') || '{}');
+                            updatedSummaries[msgId] = htmlContent;
+                            saveSyncData('etis_ai_summaries_v1', JSON.stringify(updatedSummaries));
+
+                            aiBtn.textContent = 'psychology';
+                            aiBtn.style.setProperty('color', 'var(--color-accent)', 'important');
+                            aiBtn.title = 'Открыть ИИ-Сводку';
+                            aiBtn.style.animation = 'none';
+
+                            if (window.showEtisPush) {
+                                window.showEtisPush(
+                                    'ИИ-Сводка готова',
+                                    subjectTitle,
+                                    'Сводка успешно сгенерирована. Нажмите на иконку ИИ в заголовке, чтобы прочитать.',
+                                    'success',
+                                    'psychology',
+                                    () => {
+                                        if (typeof highlightDatesInHTML === 'function') {
+                                            htmlContent = highlightDatesInHTML(htmlContent, subjectTitle);
+                                        }
+                                        openAiSummaryModal(subjectTitle, htmlContent);
+                                    }
+                                );
+                            }
+
+                        } catch (err) {
+                            console.error('[AI Summary Error]', err);
+                            if (window.showEtisPush) {
+                                window.showEtisPush('Ошибка ИИ', 'Не удалось получить сводку', 'Попробуйте обновить страницу или повторить попытку позже.', 'warning', 'error');
+                            }
+                            aiBtn.innerHTML = originalBtnHTML;
+                            aiBtn.style.animation = 'none';
+                        } finally {
+                            aiBtn.style.pointerEvents = 'auto';
+                        }
+                    };
                 };
 
                 switch (page) {
@@ -17653,7 +21990,7 @@
                             // Перевставляем в правильном порядке
                             occupiedRows.forEach(r => tbody.appendChild(r));
 
-                            // --- ЛОГИКА РАСЧЕТА ОКОН ПО ВРЕМЕНИ ---
+                            // --- ЛОГИКА РАСЧЕТА ОКОН И БОЛЬШОЙ ПЕРЕМЕНЫ ПО ВРЕМЕНИ ---
                             if (generalConfig.showGaps) {
                                 for (let i = 1; i < occupiedRows.length; i++) {
                                     const prevRow = occupiedRows[i - 1];
@@ -17686,8 +22023,30 @@
                                     if (prevEndMins > 0 && currStartMins > 0) {
                                         const gapMins = currStartMins - prevEndMins;
 
-                                        // 80 минут = минимальное время для образования "окна"
-                                        if (gapMins >= 80) {
+                                        // 1. БОЛЬШАЯ ПЕРЕМЕНА (13:00 - 13:30 между 3 и 4 парой)
+                                        const isPrevAround3rd = (prevEndMins >= 765 && prevEndMins <= 795); // ~13:00
+                                        const isCurrAround4th = (currStartMins >= 800 && currStartMins <= 825); // ~13:30
+
+                                        if (generalConfig.showBigBreak !== false && isPrevAround3rd && isCurrAround4th) {
+                                            const breakRow = document.createElement('tr');
+                                            breakRow.className = 'timetable-gap-row timetable-break-row';
+                                            breakRow.setAttribute('data-gap-start', '13:00');
+                                            breakRow.setAttribute('data-gap-count', '0');
+
+                                            breakRow.innerHTML = `
+                                                <td class="pair_num"></td>
+                                                <td class="pair_info">
+                                                    <div class="timetable-gap-capsule timetable-break-capsule" style="background: var(--color-highlight) !important; color: var(--color-text-secondary) !important; border: 1px solid var(--color-table-border) !important;">
+                                                        <span class="material-icons" style="font-size: 14px; color: var(--color-accent) !important;">restaurant</span>
+                                                        Перемена 30 минут
+                                                    </div>
+                                                </td>
+                                                <td class="pair_teacher"></td>
+                                            `;
+                                            currRow.parentNode.insertBefore(breakRow, currRow);
+                                        }
+                                        // 2. ОБЫЧНЫЕ ОКНА (>= 80 минут)
+                                        else if (generalConfig.showGaps && gapMins >= 80) {
                                             const gapCount = Math.round(gapMins / 100);
 
                                             if (gapCount > 0) {
@@ -17695,7 +22054,7 @@
                                                 const isCurrCustom = currRow.classList.contains('custom-pair-row') || currRow.classList.contains('external-event-row') || currRow.classList.contains('docx-consultation-row');
 
                                                 if ((isPrevCustom || isCurrCustom) && !generalConfig.showGapsCustom) {
-                                                    continue; // Пропускаем окно, если отключено в настройках
+                                                    continue;
                                                 }
 
                                                 const gapRow = document.createElement('tr');
@@ -17797,13 +22156,16 @@
                         });
 
                         if (typeof window.applyHideDaysOff === 'function') window.applyHideDaysOff();
-                        if (typeof window.applyDimming === 'function') window.applyDimming(); // Сразу пересчитываем затемнение
-                        if (typeof updateLiveTimetable === 'function') updateLiveTimetable(); // Сразу восстанавливаем лайв-точки
+                        if (typeof window.applyDimming === 'function') window.applyDimming();
+                        if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
                     }
 
                     // Экспортируем функцию скрытия дней наружу
                     window.applyHideDaysOff = function() {
-                        document.querySelectorAll('.span9 .day').forEach(day => {
+                        const days = document.querySelectorAll('.span9 .day');
+                        let visibleDaysCount = 0;
+
+                        days.forEach(day => {
                             // Находим все видимые строки в дне
                             const visibleRows = Array.from(day.querySelectorAll('.timetable-grid tr')).filter(r => r.style.display !== 'none' && !r.classList.contains('hidden-by-filter'));
 
@@ -17814,8 +22176,15 @@
                                 day.style.display = 'none'; // Прячем весь день
                             } else {
                                 day.style.display = ''; // Возвращаем обратно
+                                visibleDaysCount++;
                             }
                         });
+
+                        // Если включен тумблер скрытия дней и все дни недели оказались пустыми
+                        const span9 = document.querySelector('.span9');
+                        if (span9) {
+                            updateEmptyState(span9, visibleDaysCount > 0, '', 'timetable');
+                        }
                     };
 
                     // --- УМНЫЕ ЗАМЕТКИ И РЕДАКТОР ПАР ---
@@ -18026,6 +22395,180 @@
                         });
                     }
 
+                    // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ICS И НАПОМИНАНИЙ ---
+
+                    // 1. Определение точной даты и времени пары
+                    function getPairDateTime(dayDateStr, timeStr) {
+                        const now = new Date();
+                        let year = now.getFullYear();
+                        let month = now.getMonth();
+                        let day = now.getDate();
+
+                        if (dayDateStr && dayDateStr !== 'UnknownDate') {
+                            const monthsMap = {
+                                'января': 0, 'февраля': 1, 'марта': 2, 'апреля': 3,
+                                'мая': 4, 'июня': 5, 'июля': 6, 'августа': 7,
+                                'сентября': 8, 'октября': 9, 'ноября': 10, 'декабря': 11
+                            };
+                            const textMatch = dayDateStr.match(/(\d{1,2})\s+([а-яА-Я]+)(?:\s+(\d{4}))?/i);
+                            const numMatch = dayDateStr.match(/(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?/);
+
+                            if (textMatch) {
+                                day = parseInt(textMatch[1], 10);
+                                if (monthsMap[textMatch[2].toLowerCase()] !== undefined) {
+                                    month = monthsMap[textMatch[2].toLowerCase()];
+                                }
+                                if (textMatch[3]) year = parseInt(textMatch[3], 10);
+                            } else if (numMatch) {
+                                day = parseInt(numMatch[1], 10);
+                                month = parseInt(numMatch[2], 10) - 1;
+                                if (numMatch[3]) {
+                                    year = numMatch[3].length === 2 ? 2000 + parseInt(numMatch[3], 10) : parseInt(numMatch[3], 10);
+                                }
+                            }
+                        }
+
+                        let startH = 8, startM = 0;
+                        if (timeStr) {
+                            const tMatch = timeStr.match(/(\d{1,2})[:.](\d{2})/);
+                            if (tMatch) {
+                                startH = parseInt(tMatch[1], 10);
+                                startM = parseInt(tMatch[2], 10);
+                            }
+                        }
+
+                        const startDate = new Date(year, month, day, startH, startM, 0);
+                        const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // Стандартная пара 1.5 часа
+
+                        return { startDate, endDate };
+                    }
+
+                    // 2. Форматирование даты в стандарт iCalendar
+                    function formatDateToICS(d) {
+                        const pad = (n) => String(n).padStart(2, '0');
+                        return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+                    }
+
+                    // Функция правильного экранирования текста для iCalendar (RFC 5545)
+                    function escapeICalText(str) {
+                        if (!str) return '';
+                        return str
+                            .replace(/\\/g, '\\\\')
+                            .replace(/;/g, '\\;')
+                            .replace(/,/g, '\\,')
+                            .replace(/\r?\n/g, '\\n');
+                    }
+
+                    // 3. Сборка тела ICS-файла
+                    function generatePairICS({ title, location, teacher, description, startDate, endDate, alarmMinutes }) {
+                        const dtStamp = formatDateToICS(new Date()) + 'Z';
+                        const dtStart = formatDateToICS(startDate);
+                        const dtEnd = formatDateToICS(endDate);
+                        const uid = `etis_pair_${Date.now()}_${Math.random().toString(36).substring(2, 9)}@student.psu.ru`;
+
+                        let alarmBlock = '';
+                        if (alarmMinutes !== null && alarmMinutes !== undefined) {
+                            const trigger = alarmMinutes === 0 ? 'PT0M' : `-PT${alarmMinutes}M`;
+                            alarmBlock = [
+                                'BEGIN:VALARM',
+                                `TRIGGER:${trigger}`,
+                                'ACTION:DISPLAY',
+                                `DESCRIPTION:Напоминание: ${escapeICalText(title)}`,
+                                'END:VALARM'
+                            ].join('\r\n') + '\r\n';
+                        }
+
+                        const cleanTitle = escapeICalText(title || 'Пара');
+                        const cleanLoc = escapeICalText(location || '');
+                        const cleanDesc = escapeICalText(description || '');
+                        const cleanTeacher = escapeICalText(teacher || '');
+
+                        // Отдельная строка контакта/преподавателя для Apple и других календарей
+                        let organizerLine = '';
+                        if (cleanTeacher) {
+                            organizerLine = `ORGANIZER;CN=${cleanTeacher}:mailto:noreply@psu.ru`;
+                        }
+
+                        return [
+                            'BEGIN:VCALENDAR',
+                            'VERSION:2.0',
+                            'PRODID:-//ETIS REBORN//Pair Reminder//RU',
+                            'CALSCALE:GREGORIAN',
+                            'METHOD:PUBLISH',
+                            'BEGIN:VEVENT',
+                            `UID:${uid}`,
+                            `DTSTAMP:${dtStamp}`,
+                            `DTSTART:${dtStart}`,
+                            `DTEND:${dtEnd}`,
+                            `SUMMARY:${cleanTitle}`,
+                            cleanLoc ? `LOCATION:${cleanLoc}` : '',
+                            organizerLine,
+                            cleanDesc ? `DESCRIPTION:${cleanDesc}` : '',
+                            alarmBlock ? alarmBlock.trim() : '',
+                            'END:VEVENT',
+                            'END:VCALENDAR'
+                        ].filter(Boolean).join('\r\n');
+                    }
+
+                    // 4. Скачивание / открытие файла пользователем
+                    function downloadICSFile(filename, content) {
+                        const safeFilename = (filename || 'Пара.ics').replace(/[\\/:*?"<>|]/g, '_');
+                        const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+                        const url = URL.createObjectURL(blob);
+
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = safeFilename;
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+
+                        // На iOS сразу откроется шторка «Добавить событие»
+                        setTimeout(() => URL.revokeObjectURL(url), 2000);
+                    }
+
+                    // 5. Прямое открытие в приложении «Календарь» (Apple / macOS / iOS) БЕЗ сохранения файла на диск
+                    function openDirectAppleCalendar(icsContent) {
+                        const dataUri = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsContent);
+                        const link = document.createElement('a');
+                        link.href = dataUri;
+                        // Убираем download, чтобы браузер сразу передал событие в Calendar.app
+                        link.target = '_self';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    }
+
+                    // 6. Открытие события в Google Календаре в 1 клик (без файлов)
+                    function openGoogleCalendarWeb({ title, location, description, startDate, endDate }) {
+                        const pad = (n) => String(n).padStart(2, '0');
+                        const formatGDate = (d) => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+                        
+                        const url = new URL('https://calendar.google.com/calendar/render');
+                        url.searchParams.set('action', 'TEMPLATE');
+                        url.searchParams.set('text', title);
+                        url.searchParams.set('dates', `${formatGDate(startDate)}/${formatGDate(endDate)}`);
+                        if (location) url.searchParams.set('location', location);
+                        if (description) url.searchParams.set('details', description);
+                        
+                        window.open(url.toString(), '_blank');
+                    }
+
+                    // 7. Открытие события в Яндекс Календаре (без файлов)
+                    function openYandexCalendarWeb({ title, location, description, startDate, endDate }) {
+                        const pad = (n) => String(n).padStart(2, '0');
+                        const formatYDate = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                        
+                        const url = new URL('https://calendar.yandex.ru/event');
+                        url.searchParams.set('name', title);
+                        url.searchParams.set('start_ts', formatYDate(startDate));
+                        url.searchParams.set('end_ts', formatYDate(endDate));
+                        if (location) url.searchParams.set('location', location);
+                        if (description) url.searchParams.set('description', description);
+                        
+                        window.open(url.toString(), '_blank');
+                    }
+
                     // Единое модальное окно для всех типов пар
                     function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr, rawPairNum, currentIndex, allRowsArray, currentNote, isExternal, isPureCustom) {
                         let overlay = document.querySelector('.analytics-overlay.notes-overlay');
@@ -18041,12 +22584,6 @@
                             document.body.appendChild(modal);
                         }
 
-                        // Сбор текущих данных для вкладки Настроек
-                        let currentLoc = "";
-                        let currentTeacher = "";
-                        let isSeries = false;
-
-                        // Умная функция для чистого извлечения аудитории
                         const extractCleanLocation = (r) => {
                             const audEl = r.querySelector('.pair_info .aud');
                             if (!audEl) return '';
@@ -18055,7 +22592,11 @@
                             return clone.textContent.trim();
                         };
 
+                        let currentLoc = "";
+                        let currentTeacher = "";
+                        let isSeries = false;
                         let currentType = '';
+
                         const badgeEl = row.querySelector('.pair-type-badge');
                         if (badgeEl) currentType = badgeEl.textContent.toLowerCase();
                         if (currentType === 'лич') currentType = 'лич';
@@ -18079,17 +22620,26 @@
                             if (overType !== null) currentType = overType;
                         }
 
+                        // Извлекаем время пары
+                        const timeEl = row.querySelector('.pair_num .eval');
+                        const pairTimeStr = timeEl ? timeEl.textContent.trim() : '08:00';
+                        const cleanTitle = dispSubject.replace(/edit$/i, '').trim();
+
+                        const selectArrowSvg = "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e";
+
                         modal.innerHTML = `
                             <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
-                                <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${dispSubject.replace(/edit$/i, '').trim()}</span>
+                                <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${cleanTitle}</span>
                                 <button class="close-notes" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
                             </div>
                             <div class="ui-dialog-content" style="padding: 2.4rem;">
                                 <div class="sync-tabs">
-                                    <button class="sync-tab active" data-tab="notes">Заметка / ДЗ</button>
+                                    <button class="sync-tab active" data-tab="notes">Заметка</button>
+                                    <button class="sync-tab" data-tab="reminder">Напоминание</button>
                                     <button class="sync-tab" data-tab="edit">Настройки</button>
                                 </div>
 
+                                <!-- ВКЛАДКА 1: Заметка -->
                                 <div class="tab-content active" id="tab-notes">
                                     <textarea class="note-modal-textarea" id="cp-notes-area" placeholder="Что нужно сделать?">${currentNote}</textarea>
                                     <div style="margin: 2rem 0;">
@@ -18102,32 +22652,96 @@
                                         </label>
                                     </div>
                                     <div style="display: flex; justify-content: flex-end; gap: 1rem;">
-                                        <button class="answer-btn-custom clear-note-btn" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important;">Удалить</button>
+                                        ${currentNote ? `<button class="answer-btn-custom clear-note-btn" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important;">Удалить</button>` : ''}
                                         <button class="answer-btn-custom save-note-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить</button>
                                     </div>
                                 </div>
 
-                                <div class="tab-content" id="tab-edit">
+                                <!-- ВКЛАДКА 2: НАПОМИНАНИЕ -->
+                                <div class="tab-content" id="tab-reminder">
+                                    <div style="font-size: 1.25rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 1.6rem; text-align: left; padding: 0 4px;">
+                                        Добавьте пару в календарь с точным временем, аудиторией и напоминанием.
+                                    </div>
+
+                                    <div class="ios-settings-group" style="margin-bottom: 2rem;">
+                                        <!-- Строка: Платформа -->
+                                        <div class="ios-settings-row" style="cursor: default !important; padding: 1.2rem 1.6rem !important;">
+                                            <span style="font-size: 1.4rem; font-weight: 600; color: var(--color-text-primary);">Платформа</span>
+                                            <select id="ics-platform" style="background: var(--color-input) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-small) !important; padding: 0.6rem 2.8rem 0.6rem 1.2rem !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; font-weight: 600; cursor: pointer; outline: none; appearance: none; background-image: url(&quot;${selectArrowSvg}&quot;) !important; background-repeat: no-repeat !important; background-position: right 1rem center !important; background-size: 1em !important;">
+                                                <option value="apple_ics" selected>Apple / Файл (.ics)</option>
+                                                <option value="google">Google Календарь</option>
+                                                <option value="yandex">Яндекс Календарь</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Строка: Выбор времени -->
+                                        <div class="ios-settings-row" style="cursor: default !important; padding: 1.2rem 1.6rem !important;">
+                                            <span style="font-size: 1.4rem; font-weight: 600; color: var(--color-text-primary);">Напомнить за</span>
+                                            <select id="ics-alarm-offset" style="background: var(--color-input) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-small) !important; padding: 0.6rem 2.8rem 0.6rem 1.2rem !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; font-weight: 600; cursor: pointer; outline: none; appearance: none; background-image: url(&quot;${selectArrowSvg}&quot;) !important; background-repeat: no-repeat !important; background-position: right 1rem center !important; background-size: 1em !important;">
+                                                <option value="15">15 минут</option>
+                                                <option value="30">30 минут</option>
+                                                <option value="60" selected>1 час</option>
+                                                <option value="120">2 часа</option>
+                                                <option value="1440">1 день</option>
+                                                <option value="0">В момент начала</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- Строка: Включить заметку (только если есть заметка) -->
+                                        ${currentNote ? `
+                                        <label style="cursor: pointer; padding: 1.2rem 1.6rem !important;">
+                                            <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
+                                                <span style="font-size: 1.4rem; font-weight: 600; color: var(--color-text-primary);">Включить заметку</span>
+                                                <span style="font-size: 1.1rem; color: var(--color-text-secondary);">Добавить текст ДЗ в описание события</span>
+                                            </div>
+                                            <input type="checkbox" id="ics-include-notes" class="tumbler-checkbox" checked>
+                                        </label>
+                                        ` : ''}
+                                    </div>
+
+                                    <!-- Единая кнопка Добавить -->
+                                    <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+                                        <button class="answer-btn-custom submit-reminder-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important; display: inline-flex; align-items: center; gap: 8px;">
+                                            <span class="material-icons" style="font-size: 1.8rem;">event</span>
+                                            Добавить
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- ВКЛАДКА 3: НАСТРОЙКИ -->
+                                <div class="tab-content" id="tab-edit" style="padding: 6px 4px;">
                                     ${(!isPureCustom) ? `<div style="margin-bottom: 1.5rem; color: var(--color-text-secondary); font-size: 1.2rem;">Оригинальное название: <b>${origSubject}</b></div>` : ''}
 
                                     <div class="custom-pair-input-group">
-                                        <input type="text" id="cp-subject-edit" placeholder="Название предмета *" value="${dispSubject}">
+                                        <div class="cp-input-wrap">
+                                            <span class="material-icons">menu_book</span>
+                                            <input type="text" id="cp-subject-edit" placeholder="Название предмета *" value="${dispSubject}">
+                                        </div>
                                     </div>
 
                                     <div class="custom-pair-input-group">
-                                        <select id="cp-type-edit" style="flex: 0.6;">
-                                            <option value="лек" ${currentType === 'лек' ? 'selected' : ''}>Лекция</option>
-                                            <option value="практ" ${currentType === 'практ' ? 'selected' : ''}>Практика</option>
-                                            <option value="лаб" ${currentType === 'лаб' ? 'selected' : ''}>Лабораторная</option>
-                                            <option value="экз" ${currentType === 'экз' ? 'selected' : ''}>Экзамен</option>
-                                            <option value="зач" ${currentType === 'зач' ? 'selected' : ''}>Зачет</option>
-                                            <option value="конс" ${currentType === 'конс' ? 'selected' : ''}>Консультация</option>
-                                            <option value="лич" ${currentType === 'лич' || !currentType ? 'selected' : ''}>Личное</option>
-                                        </select>
-                                        <input type="text" id="cp-teacher-edit" placeholder="Преподаватель" value="${currentTeacher}">
+                                        <div class="cp-input-wrap" style="flex: 0.85;">
+                                            <span class="material-icons">category</span>
+                                            <select id="cp-type-edit">
+                                                <option value="лек" ${currentType === 'лек' ? 'selected' : ''}>Лекция</option>
+                                                <option value="практ" ${currentType === 'практ' ? 'selected' : ''}>Практика</option>
+                                                <option value="лаб" ${currentType === 'лаб' ? 'selected' : ''}>Лабораторная</option>
+                                                <option value="экз" ${currentType === 'экз' ? 'selected' : ''}>Экзамен</option>
+                                                <option value="зач" ${currentType === 'зач' ? 'selected' : ''}>Зачет</option>
+                                                <option value="конс" ${currentType === 'конс' ? 'selected' : ''}>Консультация</option>
+                                                <option value="лич" ${currentType === 'лич' || !currentType ? 'selected' : ''}>Личное</option>
+                                            </select>
+                                        </div>
+                                        <div class="cp-input-wrap">
+                                            <span class="material-icons">person</span>
+                                            <input type="text" id="cp-teacher-edit" placeholder="Преподаватель" value="${currentTeacher}">
+                                        </div>
                                     </div>
                                     <div class="custom-pair-input-group">
-                                        <input type="text" id="cp-aud-edit" placeholder="Аудитория / Ссылка" value="${currentLoc}">
+                                        <div class="cp-input-wrap">
+                                            <span class="material-icons">place</span>
+                                            <input type="text" id="cp-aud-edit" placeholder="Аудитория / Ссылка" value="${currentLoc}">
+                                        </div>
                                     </div>
 
                                     ${!isPureCustom ? `
@@ -18143,12 +22757,9 @@
                                     ` : ''}
 
                                     <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
+                                        ${isPureCustom ? `<button class="answer-btn-custom delete-cp-btn-modal" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important; padding: 10px 20px;">Удалить пару</button>` : ''}
                                         ${!isPureCustom ? `<button class="answer-btn-custom reset-edit-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Сбросить</button>` : ''}
-                                        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
-                                            ${isPureCustom ? `<button class="answer-btn-custom delete-cp-btn-modal" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important; padding: 10px 20px;">Удалить пару</button>` : ''}
-                                            ${!isPureCustom ? `<button class="answer-btn-custom reset-edit-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Сбросить</button>` : ''}
-                                            <button class="answer-btn-custom save-edit-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить настройки</button>
-                                        </div>
+                                        <button class="answer-btn-custom save-edit-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить настройки</button>
                                     </div>
                                 </div>
                             </div>
@@ -18164,7 +22775,7 @@
                         overlay.onclick = closeModal;
                         modal.querySelector('.close-notes').onclick = closeModal;
 
-                        // Логика вкладок
+                        // Переключение вкладок
                         const tabs = modal.querySelectorAll('.sync-tab');
                         const contents = modal.querySelectorAll('.tab-content');
                         tabs.forEach(tab => {
@@ -18176,7 +22787,65 @@
                             });
                         });
 
-                        // --- ЛОГИКА ЗАМЕТКИ ---
+                        // Обработчик кнопки «Добавить» во вкладке Напоминания
+                        const submitReminderBtn = modal.querySelector('.submit-reminder-btn');
+                        if (submitReminderBtn) {
+                            submitReminderBtn.onclick = (e) => {
+                                e.preventDefault();
+                                const platform = modal.querySelector('#ics-platform').value;
+                                const alarmOffset = parseInt(modal.querySelector('#ics-alarm-offset').value, 10);
+                                const notesCheckbox = modal.querySelector('#ics-include-notes');
+                                const includeNotes = notesCheckbox ? notesCheckbox.checked : false;
+
+                                const { startDate, endDate } = getPairDateTime(dayDateStr, pairTimeStr);
+
+                                // Описание для веб-календарей (Google/Яндекс)
+                                let webDescParts = [];
+                                if (currentTeacher) webDescParts.push(`Преподаватель: ${currentTeacher}`);
+                                if (includeNotes && currentNote) webDescParts.push(`Заметка:\n${currentNote}`);
+                                webDescParts.push('Расписание ЕТИС');
+
+                                // Описание для .ics (преподаватель вынесен в отдельную строку ORGANIZER, поэтому в описании оставляем только заметку)
+                                let icsDescParts = [];
+                                if (includeNotes && currentNote) icsDescParts.push(`Заметка:\n${currentNote}`);
+                                icsDescParts.push('Расписание ЕТИС');
+
+                                const eventData = {
+                                    title: cleanTitle,
+                                    location: currentLoc,
+                                    teacher: currentTeacher,
+                                    startDate,
+                                    endDate,
+                                    alarmMinutes: alarmOffset
+                                };
+
+                                if (platform === 'google') {
+                                    openGoogleCalendarWeb({ ...eventData, description: webDescParts.join('\n\n') });
+                                } else if (platform === 'yandex') {
+                                    openYandexCalendarWeb({ ...eventData, description: webDescParts.join('\n\n') });
+                                } else {
+                                    const icsContent = generatePairICS({ ...eventData, description: icsDescParts.join('\n\n') });
+                                    downloadICSFile(`${cleanTitle}.ics`, icsContent);
+                                    
+                                    if (window.showEtisPush) {
+                                        window.showEtisPush(
+                                            'Напоминание создано',
+                                            cleanTitle,
+                                            `Файл .ics сформирован с напоминанием за ${alarmOffset >= 60 ? (alarmOffset / 60) + ' ч.' : (alarmOffset === 0 ? 'момент начала' : alarmOffset + ' мин.')}`,
+                                            'success',
+                                            'alarm_on',
+                                            null,
+                                            null,
+                                            false
+                                        );
+                                    }
+                                }
+
+                                closeModal();
+                            };
+                        }
+
+                        // Сохранение заметки
                         modal.querySelector('.save-note-btn').onclick = () => {
                             const val = modal.querySelector('#cp-notes-area').value.trim();
                             const isNext = modal.querySelector('#note-next-class-cb').checked;
@@ -18217,29 +22886,31 @@
                                 }
                             }
                             saveSyncData('etis_subject_notes_v2', JSON.stringify(notesData));
-                            closeModal(); renderNotes();
+                            closeModal(); 
+                            renderNotes();
                         };
 
-                        modal.querySelector('.clear-note-btn').onclick = (e) => {
-                            if (e) { e.preventDefault(); e.stopPropagation(); }
-                            modal.querySelector('#cp-notes-area').value = '';
-                            modal.querySelector('.save-note-btn').click();
-                        };
+                        // Очистка заметки
+                        const clearNoteBtn = modal.querySelector('.clear-note-btn');
+                        if (clearNoteBtn) {
+                            clearNoteBtn.onclick = (e) => {
+                                if (e) { e.preventDefault(); e.stopPropagation(); }
+                                modal.querySelector('#cp-notes-area').value = '';
+                                modal.querySelector('.save-note-btn').click();
+                            };
+                        }
 
-                        // Навешиваем обработчик удаления для кастомной пары
+                        // Удаление кастомной пары
                         const deleteCpBtn = modal.querySelector('.delete-cp-btn-modal');
                         if (deleteCpBtn) {
                             deleteCpBtn.onclick = () => {
-                                if (confirm(`Удалить кастомную пару "${dispSubject}"?`)) {
+                                if (confirm(`Удалить пару "${dispSubject}"?`)) {
                                     const cpId = row.getAttribute('data-custom-id');
-
                                     let cp = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
                                     cp = cp.filter(p => p.id !== cpId);
                                     saveSyncData('etis_custom_pairs_v1', JSON.stringify(cp));
-
                                     closeModal();
 
-                                    // Бесшумно перерисовываем на лету
                                     if (window.location.href.includes('timetable')) {
                                         document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
                                         if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
@@ -18251,7 +22922,7 @@
                             };
                         }
 
-                        // --- ЛОГИКА НАСТРОЕК (ПЕРЕОПРЕДЕЛЕНИЕ) ---
+                        // Сохранение настроек пары
                         const saveEditBtn = modal.querySelector('.save-edit-btn');
                         if (saveEditBtn) {
                             saveEditBtn.onclick = () => {
@@ -18271,15 +22942,10 @@
                                         customPairs[cpIndex].teacher = newTeacher;
                                         customPairs[cpIndex].type = newType;
                                         localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(customPairs));
-
-                                        // Запускаем тихую выгрузку в облако
-                                        if (typeof triggerSilentCloudUpload === 'function') {
-                                            triggerSilentCloudUpload();
-                                        }
+                                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
 
                                         closeModal();
 
-                                        // Бесшумно перерисовываем на лету!
                                         if (window.location.href.includes('timetable')) {
                                             document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
                                             if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
@@ -18289,8 +22955,7 @@
                                         }
                                     }
                                 } else {
-                                    // Логика обычных переопределений (оставляем без изменений)
-                                    const applyAll = document.getElementById('ext-apply-all').checked;
+                                    const applyAll = document.getElementById('ext-apply-all')?.checked;
                                     let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
 
                                     let timeKey = rawPairNum;
@@ -18317,8 +22982,10 @@
                             };
                         }
 
-                        if (!isPureCustom) {
-                            modal.querySelector('.reset-edit-btn').onclick = () => {
+                        // Сброс настроек пары
+                        const resetEditBtn = modal.querySelector('.reset-edit-btn');
+                        if (resetEditBtn) {
+                            resetEditBtn.onclick = () => {
                                 let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
                                 let timeKey = isExternal ? row.getAttribute('data-ext-time') : rawPairNum;
                                 let dateKey = isExternal ? row.getAttribute('data-ext-date') : dayDateStr;
@@ -18328,6 +22995,7 @@
                                 delete overrides[singleKey];
                                 delete overrides[seriesKey];
                                 localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
+                                closeModal();
                                 window.location.reload();
                             };
                         }
@@ -18335,7 +23003,7 @@
                         overlay.classList.add('active');
                         modal.classList.add('active');
                         document.body.classList.add('modal-open-body');
-                        setTimeout(() => modal.querySelector('#cp-notes-area').focus(), 100);
+                        setTimeout(() => modal.querySelector('#cp-notes-area')?.focus(), 100);
                     }
 
                     // --- МОБИЛЬНЫЕ СВАЙПЫ РАСПИСАНИЯ ---
@@ -19054,7 +23722,7 @@
                                     if (row.classList.contains('timetable-gap-row')) {
                                         const startStr = row.getAttribute('data-gap-start');
                                         const count = parseInt(row.getAttribute('data-gap-count') || "1");
-                                        const duration = (count * 90) + ((count - 1) * 10);
+                                        const duration = count === 0 ? 30 : ((count * 90) + ((count - 1) * 10));
                                         if (startStr && startStr !== "00:00") {
                                             const p = startStr.split(':');
                                             startMins = parseInt(p[0]) * 60 + parseInt(p[1]);
@@ -19244,8 +23912,27 @@
                         clone.querySelectorAll('*').forEach(el => el.style.boxSizing = 'border-box');
                     };
 
+                    // Запуск расчета индикаторов и затемнения сразу
+                    updateLiveTimetable();
                     dimPastPairs();
-                    setInterval(dimPastPairs, 60000);
+
+                    // Регулярный опрос в реальном времени каждые 15 секунд
+                    setInterval(() => {
+                        updateLiveTimetable();
+                        dimPastPairs();
+                    }, 15000);
+
+                    // Мгновенный пересчет при переключении/возвращении на вкладку
+                    document.addEventListener('visibilitychange', () => {
+                        if (document.visibilityState === 'visible') {
+                            updateLiveTimetable();
+                            dimPastPairs();
+                        }
+                    });
+                    window.addEventListener('focus', () => {
+                        updateLiveTimetable();
+                        dimPastPairs();
+                    });
 
                     break;
 
@@ -19415,6 +24102,8 @@
                             bodyHtml = highlightDatesInHTML(bodyHtml, titleStr || 'Объявление');
                             const highlightedTitle = titleStr ? highlightDatesInHTML(titleStr, titleStr) : '';
 
+                            const textForLength = cloneContent.textContent || '';
+
                             const card = document.createElement('div');
                             card.className = 'msg-card';
                             card.innerHTML = `
@@ -19425,7 +24114,10 @@
                                     </div>
                                     <div class="msg-date msg-date-wrapper">
                                         <span class="msg-date-text">${dateStr}</span>
-                                        <div class="share-msg-wrap">${softShareSVG}</div>
+                                        <div class="actions-msg-wrap">
+                                            ${getAiBtnHtml(textForLength, attachments)}
+                                            <div class="share-msg-wrap" style="display:inline-flex;">${softShareSVG}</div>
+                                        </div>
                                     </div>
                                 </div>
                                 ${highlightedTitle ? `<div class="msg-subject">${highlightedTitle}</div>` : ''}
@@ -19434,16 +24126,13 @@
                                     let isDocx = a.name.toLowerCase().includes('.docx');
                                     let isCons = a.name.toLowerCase().includes('консультац');
 
-                                    // Проверка, есть ли такой href в базе
                                     const isAlreadyAdded = consultationsFiles.some(f => f.sourceUrl === a.href);
 
                                     let btnHtml = '';
                                     if (isDocx && isCons) {
                                         if (isAlreadyAdded) {
-
                                             btnHtml = `<button class="answer-btn-custom import-cons-btn added" style="margin-left: 8px; background: var(--color-accent-active) !important; color: var(--color-accent) !important; padding: 4px 12px; font-size: 1.1rem; height: auto; border: 1px solid var(--color-accent) !important; box-shadow: none !important; cursor: default;"><span class="material-icons" style="font-size:1.4rem; margin-right:4px;">check</span>Добавлено</button>`;
                                         } else {
-                                            // Если файла еще нет
                                             btnHtml = `<button class="answer-btn-custom import-cons-btn" data-href="${a.href}" style="margin-left: 8px; background: var(--color-green) !important; color: #fff !important; padding: 4px 12px; font-size: 1.1rem; height: auto;"><span class="material-icons" style="font-size:1.4rem; margin-right:4px;">add_to_photos</span>В расписание</button>`;
                                         }
                                     }
@@ -19451,6 +24140,20 @@
                                 }).join('')}</div></div>` : ''}
                             `;
                             container.appendChild(card);
+                        });
+
+                        container.querySelectorAll('.msg-card').forEach(card => {
+                            const shareBtn = card.querySelector('.share-msg-btn');
+                            if (shareBtn) {
+                                shareBtn.style.cursor = 'pointer';
+                                shareBtn.onclick = (e) => {
+                                    e.stopPropagation();
+                                    shareMessageCard(card, 'Объявление.png');
+                                };
+                            }
+                            
+                            // Активируем ИИ-сводку
+                            bindAiSummaryEvents(card);
                         });
 
                         // Функция импорта консультаций из Объявлений
@@ -19621,6 +24324,9 @@
                             const highlightedBody = highlightDatesInHTML(cloneContent.innerHTML, subjects[0] || teacherName || 'Сообщение');
                             const highlightedSubjects = subjects.map(s => highlightDatesInHTML(s, s));
 
+                            const textForLength = cloneContent.textContent || '';
+                            const attachments = getAttachmentsFromCard(msg);
+
                             const card = document.createElement('div');
                             card.className = 'msg-card';
                             card.innerHTML = `
@@ -19631,14 +24337,30 @@
                                     </div>
                                     <div class="msg-date msg-date-wrapper">
                                         <span class="msg-date-text">${dateStr}</span>
-                                        <div class="share-msg-wrap">${softShareSVG}</div>
+                                        <div class="actions-msg-wrap">
+                                            ${getAiBtnHtml(textForLength, attachments)}
+                                            <div class="share-msg-wrap" style="display:inline-flex;">${softShareSVG}</div>
+                                        </div>
                                     </div>
                                 </div>
                                 ${highlightedSubjects.length ? `<div class="msg-subject">${highlightedSubjects.join('<br>')}</div>` : ''}
                                 <div class="msg-body">${highlightedBody}</div>
                             `;
-
                             container.appendChild(card);
+                        });
+
+                        container.querySelectorAll('.msg-card').forEach(card => {
+                            const shareBtn = card.querySelector('.share-msg-btn');
+                            if (shareBtn) {
+                                shareBtn.style.cursor = 'pointer';
+                                shareBtn.onclick = (e) => {
+                                    e.stopPropagation();
+                                    shareMessageCard(card, 'Сообщение.png');
+                                };
+                            }
+                            
+                            // Активируем ИИ-сводку
+                            bindAiSummaryEvents(card);
                         });
 
                         container.querySelectorAll('.msg-card').forEach(card => {
@@ -20039,7 +24761,7 @@
                         });
 
                         // ОБРАБОТКА "ОЦЕНКИ ЗА СЕССИИ"
-                        if (pageMode === 'session' || !pageMode) {
+                        if (pageMode === 'session') {
                             const submenu = span9.querySelector('.submenu');
 
                             // Тулбар поиска
@@ -20097,10 +24819,28 @@
                                         if (gradeCell) {
                                             let bg = 'rgba(142, 142, 147, 0.15)', color = 'var(--color-text-secondary)';
                                             const gt = gradeCell.textContent.trim().toLowerCase();
-                                            if (gt.includes('отлич') || gt === '5' || gt.includes('зач')) { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
-                                            else if (gt.includes('хор') || gt === '4') { bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)'; }
-                                            else if (gt.includes('удовл') || gt === '3') { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
-                                            else if (gt.includes('незач') || gt.includes('неуд') || gt === '2' || gt === 'н') { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
+
+                                            // 1. Проверяем долги, двойки и незачеты первыми
+                                            if (gt.includes('незач') || gt.includes('неуд') || gt === '2' || gt === 'н') {
+                                                bg = 'rgba(255, 59, 48, 0.15)';
+                                                color = 'var(--color-red)';
+                                            }
+                                            // 2. Обычные зачеты и пятерки
+                                            else if (gt.includes('отлич') || gt === '5' || (gt.includes('зач') && !gt.includes('незач'))) {
+                                                bg = 'rgba(52, 199, 89, 0.15)';
+                                                color = 'var(--color-green)';
+                                            }
+                                            // 3. Четверки
+                                            else if (gt.includes('хор') || gt === '4') {
+                                                bg = 'rgba(0, 122, 255, 0.15)';
+                                                color = 'var(--color-blue)';
+                                            }
+                                            // 4. Тройки
+                                            else if (gt.includes('удовл') || gt === '3') {
+                                                bg = 'rgba(255, 149, 0, 0.15)';
+                                                color = 'var(--color-warning)';
+                                            }
+
                                             gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center;">${gradeCell.textContent.trim()}</span>`;
                                         }
                                         if (dateCell) {
@@ -20429,14 +25169,16 @@
                                             if (bestCapsule) {
                                                 bestCapsule.style.display = 'inline-flex';
                                                 bestCapsule.textContent = maxAvg.toFixed(1);
-                                                bestCapsule.style.background = 'rgba(52, 199, 89, 0.15)';
-                                                bestCapsule.style.color = 'var(--color-green)';
+                                                bestCapsule.style.setProperty('background', 'var(--color-green)', 'important');
+                                                bestCapsule.style.setProperty('color', '#ffffff', 'important');
+                                                bestCapsule.style.setProperty('-webkit-text-fill-color', '#ffffff', 'important');
                                             }
                                             if (worstCapsule) {
                                                 worstCapsule.style.display = 'inline-flex';
                                                 worstCapsule.textContent = minAvg.toFixed(1);
-                                                worstCapsule.style.background = 'rgba(255, 59, 48, 0.15)';
-                                                worstCapsule.style.color = 'var(--color-red)';
+                                                worstCapsule.style.setProperty('background', 'var(--color-red)', 'important');
+                                                worstCapsule.style.setProperty('color', '#ffffff', 'important');
+                                                worstCapsule.style.setProperty('-webkit-text-fill-color', '#ffffff', 'important');
                                             }
 
                                             // Подсчет оценок (теперь "зачет" не смешивается с пятерками)
@@ -20741,7 +25483,7 @@
                         }
 
                         // ОБРАБОТКА "ОЦЕНКИ В ТРИМЕСТРЕ"
-                        if (pageMode === 'current' || (!pageMode && !span9.querySelector('.session-table-v6'))) {
+                        if (pageMode === 'current') {
 
                             const submenus = span9.querySelectorAll('.submenu');
                             const lastSubmenu = submenus[submenus.length - 1];
@@ -21366,7 +26108,7 @@
 
                         // ОБРАБОТКА "ОЦЕНКИ В ДИПЛОМ"
                         const activeSubmenu = span9.querySelector('.submenu b');
-                        const isDiplom = pageMode === 'diplom' || (activeSubmenu && activeSubmenu.textContent.toLowerCase().includes('диплом'));
+                        const isDiplom = pageMode === 'diplom';
 
                         if (isDiplom) {
                             const table = span9.querySelector('table.common');
@@ -21445,7 +26187,7 @@
                                     capsule.style.color = '#fff';
                                 } else if (count > 0) {
                                     const avg = Math.round((sum / count) * 100) / 100;
-                                    localStorage.setItem('etis_diploma_gpa', avg.toString()); // Сохраняем для профиля
+                                    saveSyncData('etis_diploma_gpa', avg.toString()); // Автоматически выгрузит балл в облако
                                     capsule.textContent = `${avg} / 5`;
                                     const p = (avg / 5) * 100;
                                     if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
@@ -21501,307 +26243,274 @@
                         }
 
                         // ОБРАБОТКА "ИТОГОВЫЙ РЕЙТИНГ"
-                        const allTables = span9.querySelectorAll('table.common');
-                        let ratingTable = null;
+                        if (pageMode === 'rating') {
+                            const allTables = span9.querySelectorAll('table.common');
+                            let ratingTable = null;
 
-                        // Ищем таблицу рейтинга по заголовку
-                        allTables.forEach(t => {
-                            if (t.textContent.includes('Совокупность студентов')) ratingTable = t;
-                        });
-
-                        if (ratingTable) {
-                            // Оборачиваем для скролла
-                            if (!ratingTable.parentNode.classList.contains('wide-table-wrapper')) {
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'wide-table-wrapper';
-                                ratingTable.parentNode.insertBefore(wrapper, ratingTable);
-                                wrapper.appendChild(ratingTable);
-                            }
-
-                            // Принудительно растягиваем таблицу и убираем артефакты display: block
-                            ratingTable.style.setProperty('display', 'table', 'important');
-                            ratingTable.style.setProperty('width', '100%', 'important');
-                            ratingTable.style.setProperty('min-width', '100%', 'important');
-
-                            // --- ОФОРМЛЕНИЕ ЧИСЕЛ В КАПСУЛЫ ---
-                            ratingTable.querySelectorAll('tr').forEach(row => {
-                                const cells = row.querySelectorAll('td');
-                                if (cells.length >= 2) {
-                                    const ratingCell = cells[cells.length - 1]; // Последняя ячейка
-                                    const text = ratingCell.textContent.trim();
-                                    const match = text.match(/(\d+)\s+из\s+(\d+)/);
-
-                                    if (match) {
-                                        const current = parseInt(match[1], 10);
-                                        const total = parseInt(match[2], 10);
-
-                                        let bg = 'rgba(142, 142, 147, 0.15)'; // Дефолтный серый
-                                        let color = 'var(--color-text-secondary)';
-
-                                        if (current > 0) {
-                                            // Чем ближе к 1 месту, тем "зеленее" процент
-                                            // 1 место из 22 => 100%. 22 место из 22 => 0%.
-                                            const p = total > 1 ? ((total - current) / (total - 1)) * 100 : 100;
-
-                                            if (p < 30) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
-                                            else if (p < 60) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
-                                            else if (p < 85) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; }
-                                            else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
-                                        }
-
-                                        // Оборачиваем текст. pointer-events: none нужен, чтобы ховер шел сквозь капсулу на саму ячейку
-                                        ratingCell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; pointer-events: none;">${text}</span>`;
-                                        ratingCell.style.textAlign = 'right';
-                                        ratingCell.style.cursor = 'help';
-                                    }
-                                }
+                            // Ищем таблицу рейтинга по заголовку
+                            allTables.forEach(t => {
+                                if (t.textContent.includes('Совокупность студентов')) ratingTable = t;
                             });
 
-                            // --- ОФОРМЛЕНИЕ ТЕКСТА СНИЗУ ---
-                            const footerP = span9.querySelector('p');
-                            if (footerP && footerP.textContent.includes('Показанные здесь оценки')) {
-                                const infoBox = document.createElement('div');
-                                infoBox.className = 'etis-official-notice';
-                                infoBox.style.cssText = `
-                                    background: var(--color-card);
-                                    border-radius: var(--radius-large) !important;
-                                    box-shadow: var(--shadow-main);
-                                    padding: 2.4rem !important;
-                                    margin-top: 3rem;
-                                    text-align: left !important;
-                                    color: var(--color-text-primary);
-                                    border: 1px solid var(--color-table-border);
-                                `;
-
-                                // Очистка текста от мусора ЕТИСа
-                                let rawHTML = footerP.innerHTML
-                                    .replace(/&nbsp;/g, '')
-                                    .trim();
-
-                                // Превращаем старые переносы в аккуратные абзацы
-                                let cleanHTML = rawHTML.split(/<br\s*\/?>/i)
-                                    .map(line => line.trim())
-                                    .filter(line => line.length > 0)
-                                    .map(line => `<p style="margin-bottom: 12px; line-height: 1.6; opacity: 0.9; font-size: 1.35rem;">${line}</p>`)
-                                    .join('');
-
-                                infoBox.innerHTML = `
-                                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;">
-                                        <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">info</span>
-                                        Порядок уточнения оценок
-                                    </div>
-                                    <div style="text-align: left !important;">
-                                        ${cleanHTML}
-                                    </div>
-                                `;
-
-                                footerP.replaceWith(infoBox);
-                            }
-                        }
-
-                        // --- ЛОГИКА УВЕДОМЛЕНИЙ ОБ ИЗМЕНЕНИИ ОЦЕНОК ---
-                        setTimeout(() => {
-                            // 0. Защита от ложных срабатываний при поиске
-                            const termSearch = document.querySelector('.term-local-input');
-                            const sessionSearch = document.querySelector('.signs-local-input');
-                            if ((termSearch && termSearch.value.trim() !== '') || (sessionSearch && sessionSearch.value.trim() !== '')) {
-                                console.log('ETIS Reborn: Активен поиск, сканирование оценок пропущено.');
-                                return;
-                            }
-
-                            // 1. Создаем контейнер для уведомлений
-                            let pushContainer = document.getElementById('etis-push-container');
-                            if (!pushContainer) {
-                                pushContainer = document.createElement('div');
-                                pushContainer.id = 'etis-push-container';
-                                pushContainer.className = 'push-container';
-                                document.body.appendChild(pushContainer);
-                            }
-
-                            const showPush = (title, subject, body, type = 'info', icon = 'notifications') => {
-                                const toast = document.createElement('div');
-                                toast.className = `push-toast ${type}`;
-                                toast.innerHTML = `
-                                    <div class="push-icon-wrap"><span class="material-icons">${icon}</span></div>
-                                    <div class="push-content">
-                                        <div class="push-toast-title">${title}</div>
-                                        <div class="push-subject">${subject}</div>
-                                        <div class="push-detail">${body}</div>
-                                    </div>
-                                `;
-                                toast.onclick = () => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); };
-                                pushContainer.appendChild(toast);
-                                requestAnimationFrame(() => setTimeout(() => toast.classList.add('show'), 50));
-                                setTimeout(() => { if(toast.parentNode) { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); } }, 8000);
-                            };
-
-                            // 2. Собираем текущее состояние оценок со страницы
-                            const currentSnapshot = {};
-                            const activeSubmenu = document.querySelector('.submenu b');
-                            const activeTerm = activeSubmenu ? activeSubmenu.textContent.replace(/\s+/g, ' ').trim() : 'Текущий период';
-
-                            const getTermNum = (str) => {
-                                const m = str.match(/(\d+)\s*(трим|сем)/i);
-                                return m ? parseInt(m[1], 10) : 0;
-                            };
-
-                            // А) Сбор баллов в триместре
-                            document.querySelectorAll('.term-subject-group').forEach(wrapper => {
-                                let name = wrapper.getAttribute('data-subject-name');
-                                if (!name) {
-                                    const h3 = wrapper.previousElementSibling;
-                                    if (h3 && (h3.tagName === 'H3' || h3.classList.contains('subject-header-flex'))) {
-                                        name = h3.textContent.replace(/\d+\s*\/\s*\d+/, '').trim();
-                                    }
+                            if (ratingTable) {
+                                // Оборачиваем для скролла
+                                if (!ratingTable.parentNode.classList.contains('wide-table-wrapper')) {
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'wide-table-wrapper';
+                                    ratingTable.parentNode.insertBefore(wrapper, ratingTable);
+                                    wrapper.appendChild(ratingTable);
                                 }
-                                if (!name) return;
-                                name = name.replace(/\[.*?\]/g, '').trim();
 
-                                const currentScore = parseFloat(wrapper.getAttribute('data-score-current')) || 0;
-                                const maxScore = parseFloat(wrapper.getAttribute('data-score-max')) || 0;
+                                // Принудительно растягиваем таблицу и убираем артефакты display: block
+                                ratingTable.style.setProperty('display', 'table', 'important');
+                                ratingTable.style.setProperty('width', '100%', 'important');
+                                ratingTable.style.setProperty('min-width', '100%', 'important');
 
-                                currentSnapshot[`${activeTerm} | ${name}`] = {
-                                    subject: name, term: activeTerm, score: currentScore, max: maxScore, mark: null, type: 'term'
-                                };
-                            });
-
-                            // Б) Сбор итоговых оценок
-                            document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
-                                let termName = wrapper.getAttribute('data-term-name');
-                                if (!termName) return;
-                                termName = termName.replace(/\s+/g, ' ').trim();
-
-                                wrapper.querySelectorAll('tbody tr').forEach(row => {
+                                // --- ОФОРМЛЕНИЕ ЧИСЕЛ В КАПСУЛЫ ---
+                                ratingTable.querySelectorAll('tr').forEach(row => {
                                     const cells = row.querySelectorAll('td');
                                     if (cells.length >= 2) {
-                                        let subjName = cells[0].textContent.replace(/\[.*?\]/g, '').trim();
-                                        const mark = cells[1].textContent.trim();
+                                        const ratingCell = cells[cells.length - 1]; // Последняя ячейка
+                                        const text = ratingCell.textContent.trim();
+                                        const match = text.match(/(\d+)\s+из\s+(\d+)/);
 
-                                        if (subjName && mark && mark !== 'н') {
-                                            currentSnapshot[`${termName} | ${subjName}`] = {
-                                                subject: subjName, term: termName, score: null, max: null, mark: mark, type: 'session'
-                                            };
+                                        if (match) {
+                                            const current = parseInt(match[1], 10);
+                                            const total = parseInt(match[2], 10);
+
+                                            let bg = 'rgba(142, 142, 147, 0.15)'; // Дефолтный серый
+                                            let color = 'var(--color-text-secondary)';
+
+                                            if (current > 0) {
+                                                const p = total > 1 ? ((total - current) / (total - 1)) * 100 : 100;
+
+                                                if (p < 30) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
+                                                else if (p < 60) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
+                                                else if (p < 85) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; }
+                                                else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
+                                            }
+
+                                            ratingCell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; pointer-events: none;">${text}</span>`;
+                                            ratingCell.style.textAlign = 'right';
+                                            ratingCell.style.cursor = 'help';
                                         }
                                     }
                                 });
-                            });
 
-                            // 3. Загружаем базу
+                                // --- ОФОРМЛЕНИЕ ТЕКСТА СНИЗУ ---
+                                const footerP = span9.querySelector('p');
+                                if (footerP && footerP.textContent.includes('Показанные здесь оценки')) {
+                                    const infoBox = document.createElement('div');
+                                    infoBox.className = 'etis-official-notice';
+                                    infoBox.style.cssText = `
+                                        background: var(--color-card);
+                                        border-radius: var(--radius-large) !important;
+                                        box-shadow: var(--shadow-main);
+                                        padding: 2.4rem !important;
+                                        margin-top: 3rem;
+                                        text-align: left !important;
+                                        color: var(--color-text-primary);
+                                        border: 1px solid var(--color-table-border);
+                                    `;
+
+                                    let rawHTML = footerP.innerHTML.replace(/&nbsp;/g, '').trim();
+                                    let cleanHTML = rawHTML.split(/<br\s*\/?>/i)
+                                        .map(line => line.trim())
+                                        .filter(line => line.length > 0)
+                                        .map(line => `<p style="margin-bottom: 12px; line-height: 1.6; opacity: 0.9; font-size: 1.35rem;">${line}</p>`)
+                                        .join('');
+
+                                    infoBox.innerHTML = `
+                                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; color:var(--color-text-primary); font-weight:800; font-size:1.6rem;">
+                                            <span class="material-icons" style="color:var(--color-accent); font-size: 24px;">info</span>
+                                            Порядок уточнения оценок
+                                        </div>
+                                        <div style="text-align: left !important;">
+                                            ${cleanHTML}
+                                        </div>
+                                    `;
+
+                                    footerP.replaceWith(infoBox);
+                                }
+                            }
+                        }
+
+                        // --- ЛОГИКА УВЕДОМЛЕНИЙ ОБ ИЗМЕНЕНИИ ОЦЕНОК (СЕССИИ + ТРИМЕСТРЫ) ---
+                        setTimeout(() => {
+                            // Защита от ложных срабатываний при активном поиске
+                            const termSearch = document.querySelector('.term-local-input');
+                            const sessionSearch = document.querySelector('.signs-local-input');
+                            if ((termSearch && termSearch.value.trim() !== '') || (sessionSearch && sessionSearch.value.trim() !== '')) {
+                                return;
+                            }
+
+                            const cleanTermName = (raw) => {
+                                if (!raw) return 'Текущий период';
+                                const m = raw.match(/(\d+)\s*(триместр|семестр)/i);
+                                return m ? `${m[1]} ${m[2].toLowerCase()}` : raw.trim();
+                            };
+
+                            const currentSnapshot = {};
+
+                            // 1. Сбор баллов в триместре (Контрольные точки)
+                            if (pageMode === 'current') {
+                                const activeSubmenu = document.querySelector('.submenu b');
+                                const activeTerm = activeSubmenu ? cleanTermName(activeSubmenu.textContent) : 'Текущий триместр';
+
+                                document.querySelectorAll('.term-subject-group').forEach(wrapper => {
+                                    let name = wrapper.getAttribute('data-subject-name');
+                                    if (!name) {
+                                        const h3 = wrapper.previousElementSibling;
+                                        if (h3 && (h3.tagName === 'H3' || h3.classList.contains('subject-header-flex'))) {
+                                            name = h3.textContent.replace(/\d+\s*\/\s*\d+/, '').trim();
+                                        }
+                                    }
+                                    if (!name) return;
+                                    name = name.replace(/\[.*?\]/g, '').replace(/\s+/g, ' ').trim();
+
+                                    const currentScore = parseFloat(wrapper.getAttribute('data-score-current')) || 0;
+                                    const maxScore = parseFloat(wrapper.getAttribute('data-score-max')) || 0;
+
+                                    currentSnapshot[`term_${activeTerm}_${name}`] = {
+                                        subject: name,
+                                        term: activeTerm,
+                                        score: currentScore,
+                                        max: maxScore,
+                                        mark: null,
+                                        type: 'term',
+                                        targetUrl: 'stu.signs?p_mode=current'
+                                    };
+                                });
+                            }
+
+                            // 2. Сбор итоговых оценок за сессии (Экзамены и зачеты за все периоды)
+                            if (pageMode === 'session') {
+                                document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
+                                    let rawTermName = wrapper.getAttribute('data-term-name') || '';
+                                    const termName = cleanTermName(rawTermName);
+
+                                    wrapper.querySelectorAll('tbody tr').forEach(row => {
+                                        const cells = row.querySelectorAll('td');
+                                        if (cells.length >= 2) {
+                                            let subjName = cells[0].textContent.replace(/\[.*?\]/g, '').replace(/\s+/g, ' ').trim();
+                                            let markText = cells[1].textContent.replace(/\s+/g, ' ').trim();
+
+                                            // Игнорируем пустые строки и неявки без оценки
+                                            if (subjName && markText && markText !== 'н' && !markText.toLowerCase().includes('нет оценки')) {
+                                                currentSnapshot[`session_${termName}_${subjName}`] = {
+                                                    subject: subjName,
+                                                    term: termName,
+                                                    score: null,
+                                                    max: null,
+                                                    mark: markText,
+                                                    type: 'session',
+                                                    targetUrl: 'stu.signs'
+                                                };
+                                            }
+                                        }
+                                    });
+                                });
+                            }
+
+                            // 3. Загрузка базы снимков оценок
                             const storageKey = 'etis_reborn_grades_snapshot_v3';
-                            let storedData = JSON.parse(localStorage.getItem(storageKey) || '{"grades":{}, "lastUpdated":null, "maxTermNum":0}');
+                            let storedData = JSON.parse(localStorage.getItem(storageKey) || '{"grades":{}, "isInitialized":false, "lastUpdated":null}');
                             let previousGrades = storedData.grades || {};
-                            let currentMaxTerm = storedData.maxTermNum || 0;
+                            const isFirstRun = !storedData.isInitialized;
 
                             const scoreUpdates = [];
-                            const markUpdates =[];
+                            const markUpdates = [];
 
-                            // 4. Сравниваем
+                            // 4. Сравнение изменений
                             for (const [key, currData] of Object.entries(currentSnapshot)) {
-                                const termNum = getTermNum(currData.term);
-                                if (termNum > currentMaxTerm) currentMaxTerm = termNum;
-
                                 const prevData = previousGrades[key];
 
-                                // Если предмета вообще не было в базе — просто тихо добавляем его (без спама)
                                 if (!prevData) {
+                                    // Добавляем новый предмет в базу
                                     previousGrades[key] = currData;
+                                    // Если база уже была инициализирована ранее, уведомляем о появлении новой оценки
+                                    if (!isFirstRun && currData.type === 'session' && currData.mark) {
+                                        markUpdates.push({ subj: currData.subject, term: currData.term, oldMark: '—', newMark: currData.mark, targetUrl: currData.targetUrl });
+                                    }
                                     continue;
                                 }
 
-                                // Проверяем, не смотрим ли мы старый триместр
-                                const isHistorical = (termNum > 0 && termNum < currentMaxTerm);
-
-                                if (!isHistorical) {
-                                    // Анализ баллов
+                                if (!isFirstRun) {
+                                    // А) Проверка изменения баллов в триместре
                                     if (currData.type === 'term') {
                                         if (prevData.score !== undefined && prevData.score !== null) {
                                             if (currData.score > prevData.score) {
                                                 const diff = Math.round((currData.score - prevData.score) * 100) / 100;
-                                                scoreUpdates.push({ subj: currData.subject, diff, newScore: currData.score, max: currData.max });
+                                                scoreUpdates.push({ subj: currData.subject, term: currData.term, diff, newScore: currData.score, max: currData.max, targetUrl: currData.targetUrl });
                                             }
                                         }
-                                        prevData.score = currData.score;
-                                        prevData.max = currData.max;
                                     }
 
-                                    // Анализ итоговых оценок
+                                    // Б) Проверка изменения итоговых оценок за сессию (экзамены, зачеты, пересдачи)
                                     if (currData.type === 'session') {
-                                        if (prevData.mark !== undefined && prevData.mark !== null) {
-                                            if (currData.mark && currData.mark !== prevData.mark) {
-                                                markUpdates.push({ subj: currData.subject, oldMark: prevData.mark, newMark: currData.mark });
-                                            }
+                                        if (prevData.mark && prevData.mark !== currData.mark) {
+                                            markUpdates.push({ subj: currData.subject, term: currData.term, oldMark: prevData.mark, newMark: currData.mark, targetUrl: currData.targetUrl });
                                         }
-                                        prevData.mark = currData.mark;
                                     }
-                                } else {
-                                    // Если это старый триместр — просто тихо обновляем цифры в базе на всякий случай
-                                    if (currData.type === 'term') { prevData.score = currData.score; prevData.max = currData.max; }
-                                    if (currData.type === 'session') { prevData.mark = currData.mark; }
                                 }
+
+                                // Обновляем данные в базе
+                                previousGrades[key] = currData;
                             }
 
-                            storedData.maxTermNum = currentMaxTerm;
                             storedData.grades = previousGrades;
+                            storedData.isInitialized = true;
 
-                            // 5. Вывод уведомлений (Группировка)
+                            // 5. Отправка уведомлений и запись в Центр уведомлений
                             const totalUpdates = scoreUpdates.length + markUpdates.length;
 
-                            if (totalUpdates > 0) {
+                            if (totalUpdates > 0 && !isFirstRun) {
                                 storedData.lastUpdated = Date.now();
 
-                                // Проверяем настройку: показываем пуш только если уведомления включены
                                 if (generalConfig.gradeNotifications !== false) {
                                     if (totalUpdates === 1) {
-                                        // Одиночное уведомление
+                                        // Одиночное уведомление о баллах
                                         if (scoreUpdates.length === 1) {
                                             const u = scoreUpdates[0];
-                                            showPush(`Новые баллы: +${u.diff}`, u.subj, `Теперь у вас ${u.newScore} из ${u.max}`, 'info', 'trending_up');
-                                        } else {
+                                            showPush(`Новые баллы: +${u.diff}`, u.subj, `Теперь у вас ${u.newScore} из ${u.max}`, 'info', 'trending_up', null, u.targetUrl);
+                                        } 
+                                        // Одиночное уведомление об оценке за экзамен/зачет
+                                        else {
                                             const u = markUpdates[0];
-                                            let statusTitle = 'Оценка изменена';
+                                            let statusTitle = 'Выставлена оценка';
                                             let pushType = 'info';
                                             let icon = 'assignment_turned_in';
 
                                             const markLow = u.newMark.toLowerCase();
-                                            if (markLow.includes('зачет') ||['5','4'].includes(u.newMark) || markLow.includes('отлично') || markLow.includes('хорошо')) {
-                                                statusTitle = 'Успех! 🎉'; pushType = 'success'; icon = 'emoji_events';
-                                            } else if (u.newMark === '2' || markLow.includes('незачет') || markLow.includes('неудовл')) {
-                                                statusTitle = 'Внимание'; pushType = 'warning'; icon = 'priority_high';
+                                            if (markLow.includes('зачет') || ['5', '4', 'отлично', 'хорошо'].some(m => markLow.includes(m))) {
+                                                statusTitle = 'Сессия: Оценка выставлена! 🎉';
+                                                pushType = 'success';
+                                                icon = 'emoji_events';
+                                            } else if (['2', 'незачет', 'неуд'].some(m => markLow.includes(m))) {
+                                                statusTitle = 'Сессия: Внимание';
+                                                pushType = 'warning';
+                                                icon = 'priority_high';
                                             }
-                                            showPush(statusTitle, u.subj, `Итог: ${u.newMark}`, pushType, icon);
+
+                                            const descText = u.oldMark && u.oldMark !== '—' 
+                                                ? `${u.term}: ${u.oldMark} ➔ ${u.newMark}` 
+                                                : `${u.term}: ${u.newMark}`;
+
+                                            showPush(statusTitle, u.subj, descText, pushType, icon, null, u.targetUrl);
                                         }
                                     } else {
-                                        // Массовое уведомление (слияние)
-                                        let subjList =[];
-                                        scoreUpdates.forEach(u => subjList.push(u.subj));
-                                        markUpdates.forEach(u => subjList.push(u.subj));
-                                        subjList =[...new Set(subjList)]; // Убираем дубликаты
-
+                                        // Массовое уведомление (если выставили сразу несколько оценок)
+                                        let subjList = [...new Set([...scoreUpdates.map(u => u.subj), ...markUpdates.map(u => u.subj)])];
                                         let bodyText = subjList.slice(0, 2).join(', ');
                                         if (subjList.length > 2) bodyText += ` и ещё ${subjList.length - 2}`;
 
-                                        showPush('Обновление успеваемости', `Изменения по ${totalUpdates} предметам`, bodyText, 'info', 'dynamic_feed');
+                                        showPush('Обновление успеваемости', `Изменения по ${totalUpdates} предметам`, bodyText, 'info', 'dynamic_feed', null, 'stu.signs');
                                     }
                                 }
                             }
 
                             saveSyncData(storageKey, JSON.stringify(storedData));
-
-                            // 6. Вывод аналитики в консоль
-                            console.log('--- ETIS Reborn: Отслеживание оценок ---');
-                            if (storedData.lastUpdated) {
-                                console.log(`🕒 Последнее изменение: ${new Date(storedData.lastUpdated).toLocaleString('ru-RU')}`);
-                                if (totalUpdates > 0) {
-                                    console.log(`📚 Обновлены (${totalUpdates}):`);
-                                    scoreUpdates.forEach(u => console.log(`  - [Баллы] ${u.subj}: +${u.diff} (стало ${u.newScore})`));
-                                    markUpdates.forEach(u => console.log(`  - [Оценка] ${u.subj}: ${u.oldMark} ➔ ${u.newMark}`));
-                                }
-                            } else {
-                                console.log('🕒 База синхронизирована. Ожидание новых оценок...');
-                            }
-                            console.log('-----------------------------------------');
-
-                        }, 1000);
+                        }, 600);
 
                         break;
                     }
@@ -23880,6 +28589,7 @@
                         else if (id === 'etis-profile-modal') overlay = document.getElementById('etis-profile-overlay');
                         else if (id === 'etis-sync-modal') overlay = document.getElementById('etis-sync-overlay');
                         else if (id === 'etis-cons-modal') overlay = document.getElementById('etis-cons-overlay');
+                        else if (id === 'etis-guide-modal') overlay = document.getElementById('etis-guide-overlay');
 
                         if (!overlay) overlay = document.querySelector('.analytics-overlay.active');
 
@@ -23890,5 +28600,164 @@
                 }
             });
 
+            // Переключение страниц и блокировка неподдерживаемых элементов в демо-режиме
+            if (isDemoActive) {
+                const supportedDemoHrefs = [
+                    'stu.timetable', 
+                    'stu.signs', 
+                    'stu_ann.announces', 
+                    'stu.teacher_notes', 
+                    'stu.teach_plan',
+                    'stu.logout', 
+                    '#settings', 
+                    '#profile', 
+                    '#guide', 
+                    '#report-bug'
+                ];
+
+                // 1. Блокировка неподдерживаемых вкладок сайдбара
+                document.querySelectorAll('.span3 li').forEach(li => {
+                    const a = li.querySelector('a');
+                    if (!a) return;
+                    const href = a.getAttribute('href') || '';
+                    const isSupported = supportedDemoHrefs.some(s => href.includes(s) || href.startsWith('#'));
+
+                    if (!isSupported && !href.includes('javascript:') && !href.startsWith('http')) {
+                        li.classList.add('demo-disabled-tab');
+                        a.classList.add('demo-disabled-item');
+
+                        if (!a.querySelector('.demo-locked-overlay')) {
+                            const lockOverlay = document.createElement('div');
+                            lockOverlay.className = 'demo-locked-overlay';
+                            lockOverlay.innerHTML = '<span class="material-icons">lock</span><span>Недоступно</span>';
+                            a.appendChild(lockOverlay);
+                        }
+
+                        const handleLockClick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            a.classList.add('demo-tab-locked');
+                            setTimeout(() => a.classList.remove('demo-tab-locked'), 1500);
+                            if (navigator.vibrate) navigator.vibrate(12);
+                        };
+
+                        a.addEventListener('click', handleLockClick, true);
+                        li.addEventListener('click', handleLockClick, true);
+                    }
+                });
+
+                // 2. Блокировка недель в расписании (кроме текущей 1-й)
+                document.querySelectorAll('.weeks .week:not(.current)').forEach(weekEl => {
+                    const a = weekEl.querySelector('a') || weekEl;
+                    weekEl.classList.add('demo-disabled-item');
+                    a.classList.add('demo-disabled-item');
+
+                    if (!weekEl.querySelector('.demo-locked-overlay')) {
+                        const lockOverlay = document.createElement('div');
+                        lockOverlay.className = 'demo-locked-overlay';
+                        lockOverlay.innerHTML = '<span class="material-icons">lock</span>';
+                        weekEl.appendChild(lockOverlay);
+                    }
+
+                    const handleLockClick = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.stopImmediatePropagation();
+                        weekEl.classList.add('demo-tab-locked');
+                        setTimeout(() => weekEl.classList.remove('demo-tab-locked'), 1500);
+                        if (navigator.vibrate) navigator.vibrate(12);
+                    };
+
+                    weekEl.addEventListener('click', handleLockClick, true);
+                    if (a !== weekEl) {
+                        a.addEventListener('click', handleLockClick, true);
+                    }
+                });
+
+                // 3. Блокировка неподдерживаемых подвкладок в учебном плане (Факультативы, ДВБ, Оценить)
+                if (page === 'stu.teach_plan') {
+                    const allowedPlanModes = ['p_mode=advanced', 'p_mode=short'];
+                    document.querySelectorAll('.submenu a, a.eval-plan-link, a[href*="cust.est_plan_form_stu"]').forEach(link => {
+                        const href = link.getAttribute('href') || '';
+                        const isAllowed = allowedPlanModes.some(mode => href.includes(mode)) && href.includes('stu.teach_plan');
+
+                        if (!isAllowed) {
+                            link.classList.add('demo-disabled-item');
+
+                            if (!link.querySelector('.demo-locked-overlay')) {
+                                const lockOverlay = document.createElement('div');
+                                lockOverlay.className = 'demo-locked-overlay';
+                                lockOverlay.innerHTML = '<span class="material-icons">lock</span><span>Недоступно</span>';
+                                link.appendChild(lockOverlay);
+                            }
+
+                            const handleLockClick = (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                e.stopImmediatePropagation();
+                                link.classList.add('demo-tab-locked');
+                                setTimeout(() => link.classList.remove('demo-tab-locked'), 1500);
+                                if (navigator.vibrate) navigator.vibrate(12);
+                            };
+
+                            link.addEventListener('click', handleLockClick, true);
+                        }
+                    });
+                }
+
+                // 4. Переключение поддерживаемых страниц
+                document.querySelectorAll('a[href*="stu.timetable"], a[href*="stu.signs"], a[href*="stu_ann.announces"], a[href*="stu.teacher_notes"], a[href*="stu.teach_plan"], a[href*="stu.logout"], .mobile-dock-item').forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        if (link.closest('.demo-disabled-item, .demo-disabled-tab') || link.classList.contains('demo-disabled-item')) {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            return;
+                        }
+
+                        const href = link.getAttribute('href') || '';
+                        if (href.includes('stu.timetable') || link.title === 'Расписание') {
+                            e.preventDefault();
+                            sessionStorage.setItem('etis_demo_page', 'timetable');
+                            window.location.reload();
+                        } else if (href.includes('stu.signs') || link.title === 'Оценки') {
+                            e.preventDefault();
+                            if (href.includes('p_mode=current')) {
+                                sessionStorage.setItem('etis_demo_page', 'signs_current');
+                            } else if (href.includes('p_mode=rating')) {
+                                sessionStorage.setItem('etis_demo_page', 'signs_rating');
+                            } else if (href.includes('p_mode=diplom')) {
+                                sessionStorage.setItem('etis_demo_page', 'signs_diplom');
+                            } else {
+                                sessionStorage.setItem('etis_demo_page', 'signs');
+                            }
+                            window.location.reload();
+                        } else if (href.includes('stu_ann.announces') || link.title === 'Объявления') {
+                            e.preventDefault();
+                            sessionStorage.setItem('etis_demo_page', 'announces');
+                            window.location.reload();
+                        } else if (href.includes('stu.teacher_notes') || link.title === 'Сообщения') {
+                            e.preventDefault();
+                            sessionStorage.setItem('etis_demo_page', 'notes');
+                            window.location.reload();
+                        } else if (href.includes('stu.teach_plan') || link.title === 'Учебный план') {
+                            e.preventDefault();
+                            if (href.includes('p_mode=advanced')) {
+                                sessionStorage.setItem('etis_demo_page', 'teach_plan_advanced');
+                            } else {
+                                sessionStorage.setItem('etis_demo_page', 'teach_plan_short');
+                            }
+                            window.location.reload();
+                        } else if (href.includes('stu.logout')) {
+                            // Выход из демо-режима
+                            e.preventDefault();
+                            sessionStorage.removeItem('etis_demo_mode');
+                            sessionStorage.removeItem('etis_demo_page');
+                            window.location.reload();
+                        }
+                    });
+                });
+            }
         }
     })();
