@@ -1,8 +1,8 @@
     // ==UserScript==
     // @name         ЕТИС REBORN
     // @namespace    http://tampermonkey.net/
-    // @version      2.8
-    // @changelog    Обновлённая навигация на телефонах. Напоминания. Центр уведомлений. Тестирование бета-функций. ИИ-сводка объявлений. Вкладка с обучением. Подробное управление данными. Демо режим без входа в аккаунт.
+    // @version      2.81
+    // @changelog    Оформление страницы обязательного опроса. Новый вид карточек в расписании. Визуальные правки. Расширенная кастомизация.
     // @description  Глобальное обновление ЕТИСа
     // @author       dya_dya
     // @icon         https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png
@@ -103,10 +103,23 @@
             const currentProfileId = 'profile_' + Math.abs(hash);
             const activeProfileId = localStorage.getItem('etis_active_profile_id');
 
-            if (activeProfileId !== currentProfileId) {
-                console.log(`%c[Data Profiles] Переключение профиля: ${activeProfileId || 'нет'} -> ${currentProfileId}`, 'color: #007AFF; font-weight: bold;');
+            // Авто-восстановление темы, если она оказалась в резервном хранилище
+            if (!localStorage.getItem('etis_accent_config')) {
+                for (let i = 0; i < localStorage.length; i++) {
+                    const k = localStorage.key(i);
+                    if (k && k.startsWith('etis_store_profile_')) {
+                        try {
+                            const store = JSON.parse(localStorage.getItem(k) || '{}');
+                            if (store.etis_accent_config) {
+                                localStorage.setItem('etis_accent_config', store.etis_accent_config);
+                                break;
+                            }
+                        } catch(e) {}
+                    }
+                }
+            }
 
-                // 1. Сохраняем текущие данные старого профиля в изолированное хранилище
+            if (activeProfileId !== currentProfileId) {
                 if (activeProfileId) {
                     const oldStore = {};
                     ACCOUNT_DATA_KEYS.forEach(key => {
@@ -116,10 +129,6 @@
                     localStorage.setItem(`etis_store_${activeProfileId}`, JSON.stringify(oldStore));
                 }
 
-                // 2. Очищаем активный localStorage
-                ACCOUNT_DATA_KEYS.forEach(key => localStorage.removeItem(key));
-
-                // 3. Загружаем данные нового профиля (если они уже были сохранены)
                 const newStoreRaw = localStorage.getItem(`etis_store_${currentProfileId}`);
                 if (newStoreRaw) {
                     try {
@@ -127,15 +136,10 @@
                         for (const [k, v] of Object.entries(newStore)) {
                             localStorage.setItem(k, v);
                         }
-                    } catch (e) {
-                        console.error('[Data Profiles] Ошибка чтения профиля:', e);
-                    }
+                    } catch (e) {}
                 }
 
-                // 4. Фиксируем активный профиль
                 localStorage.setItem('etis_active_profile_id', currentProfileId);
-
-                // 5. Переприменяем тему под новый профиль
                 if (typeof applyAccentColor === 'function') applyAccentColor();
             }
         }
@@ -2619,13 +2623,25 @@
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
-        gap: 6px !important;
-        margin-top: 4px !important;
-        flex-wrap: nowrap !important;
-        width: max-content !important;
+        gap: 12px !important;
+        margin-top: 6px !important;
+        flex-wrap: wrap !important;
+        width: 100% !important;
         position: relative !important;
         z-index: 0 !important;
     }
+
+    .pair-teacher-wrap a {
+        color: var(--color-text-secondary) !important;
+        text-decoration: none !important;
+        transition: color 0.2s ease !important;
+    }
+    
+    .pair-teacher-wrap a:hover {
+        color: var(--color-accent) !important;
+        text-decoration: underline !important;
+    }
+
     .pair_info .aud > a:before { margin-right: 0.6rem !important; font-family: 'Material Symbols Rounded' !important; content: 'videocam' !important; font-size: 1.8rem !important; }
     .pair_info .aud > a > img { display: none !important; }
 
@@ -2704,26 +2720,6 @@
         font-size: 1.5rem !important;
         line-height: 1.6 !important;
         color: var(--color-text-primary) !important;
-    }
-
-    a[href="stu.dis_stat"] {
-        display: inline-flex !important;
-        align-items: center !important;
-        background: var(--color-highlight) !important;
-        color: var(--color-text-primary) !important;
-        padding: 1.2rem 2rem !important;
-        border-radius: var(--radius-medium) !important;
-        text-decoration: none !important;
-        font-weight: 600 !important;
-        font-size: 1.3rem !important;
-        margin-bottom: 2.4rem !important;
-    }
-    a[href="stu.dis_stat"]:before {
-        content: 'insights';
-        font-family: 'Material Symbols Rounded';
-        font-size: 2rem;
-        margin-right: 1rem;
-        color: var(--color-accent);
     }
 
     @media (max-width: 600px) {
@@ -3472,7 +3468,6 @@
 
         .submenu a:not(.answer-btn-custom),
         .submenu b {
-            flex: 0 0 auto !important;
             padding: 0 14px !important;
         }
         .wide-table-wrapper {
@@ -6198,7 +6193,8 @@
         }
 
         .session-table-v6, .term-table-v6 {
-            table-layout: auto !important;
+            table-layout: fixed !important;
+            width: 100% !important;
         }
 
         .session-table-v6 td:not(:first-child):not(:last-child):not(.align-right-cell),
@@ -6214,6 +6210,12 @@
             width: auto !important;
             white-space: normal !important;
             font-weight: 600 !important;
+        }
+
+        .session-table-v6 th, .term-table-v6 th {
+            white-space: nowrap !important;
+            word-break: keep-all !important;
+            hyphens: none !important;
         }
 
         .timetable-grid {
@@ -6244,6 +6246,12 @@
             text-align: right !important;
             color: var(--color-text-secondary) !important;
         }
+
+        .session-table-v6 th:nth-child(1), .session-table-v6 td:nth-child(1) { width: 44% !important; text-align: left !important; }
+        .session-table-v6 th:nth-child(2), .session-table-v6 td:nth-child(2) { width: 18% !important; text-align: center !important; }
+        .session-table-v6 th:nth-child(3), .session-table-v6 td:nth-child(3) { width: 16% !important; text-align: center !important; }
+        .session-table-v6 th:nth-child(4), .session-table-v6 td:nth-child(4) { width: 22% !important; text-align: right !important; }
+        
     }
 
     .span9 table.common.absence-table {
@@ -6384,15 +6392,12 @@
     }
 
     html[theme] .timetable-grid td.pair_teacher {
-        width: 160px !important;
-        min-width: 140px !important;
+        width: 130px !important;
+        min-width: 110px !important;
         text-align: right !important;
         padding-right: 2rem !important;
-        color: var(--color-text-secondary) !important;
         position: relative !important;
         vertical-align: middle !important;
-        padding-top: 1rem !important;
-        padding-bottom: 1rem !important;
     }
 
     html[theme] .timetable-grid td.pair_teacher br {
@@ -6422,12 +6427,11 @@
         transform: translateY(-50%) scale(0.9) !important;
         opacity: 0 !important;
         visibility: hidden !important;
-        transition: all 0.3s ease !important;
-        font-size: 1.05rem !important;
-        display: block !important;
-        z-index: 10 !important;
+        transition: all 0.2s ease !important;
+        font-size: 1.15rem !important;
         color: var(--color-text-secondary) !important;
         text-decoration: underline !important;
+        white-space: nowrap !important;
     }
 
     html[theme] .timetable-grid tr:not(.tr-needs-space):hover td.pair_teacher .eval {
@@ -6445,7 +6449,7 @@
     html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
         opacity: 1 !important;
         visibility: visible !important;
-        transform: translateY(0) !important;
+        transform: translateY(-50%) scale(1) !important;
     }
 
     html[theme] .timetable-grid tr:not(:last-child) {
@@ -6785,7 +6789,7 @@
     .stats-link-bottom {
         display: flex !important;
         align-items: center !important;
-        padding: 1.6rem 2rem !important;
+        padding: 1.6rem 2.4rem !important;
         background: var(--color-card) !important;
         border-radius: var(--radius-large) !important;
         box-shadow: var(--shadow-main) !important;
@@ -6793,10 +6797,11 @@
         transition: all 0.2s ease !important;
         gap: 16px !important;
         border: 1px solid var(--color-table-border) !important;
-        margin: 0 0 1.6rem 0 !important;
+        margin: 2.4rem 0 1.6rem 0 !important;
         width: 100% !important;
         box-sizing: border-box !important;
     }
+
     .stats-link-bottom:before {
         content: none !important;
     }
@@ -6805,6 +6810,7 @@
         .stats-link-bottom:hover {
             background: var(--color-highlight) !important;
             transform: translateY(-2px) !important;
+            border-color: var(--color-accent-active) !important;
         }
     }
 
@@ -7694,11 +7700,9 @@
         }
 
         html[theme] .timetable-grid td.pair_teacher {
-            width: 100px !important;
-            min-width: 100px !important;
-            padding-right: 1.6rem !important;
-            vertical-align: middle !important;
-            position: relative !important;
+            width: 10px !important;
+            min-width: 10px !important;
+            padding-right: 1.2rem !important;
         }
 
         html[theme] .timetable-grid td.pair_teacher {
@@ -8274,6 +8278,7 @@
     }
 
     #swipe-action-bubble.active-threshold.action-share { color: var(--color-blue) !important; }
+    #swipe-action-bubble.active-threshold.action-ai { color: #AF52DE !important; }
 
     /* --- SETTINGS MODAL --- */
 
@@ -8437,8 +8442,10 @@
     }
 
     .analytics-modal .settings-sidebar-btn .chevron {
-        margin-right: 0 !important;
+        margin-right: -4px !important;
         margin-left: auto !important;
+        font-size: 20px !important;
+        width: auto !important;
     }
 
     .analytics-modal .settings-sidebar-btn.active {
@@ -8814,8 +8821,10 @@
 
     #etis-settings-modal .settings-sidebar-btn .chevron {
         flex-shrink: 0 !important;
-        margin-right: 0 !important;
+        margin-right: -4px !important;
         margin-left: auto !important;
+        font-size: 20px !important;
+        width: auto !important;
     }
 
     #etis-settings-modal .settings-sidebar-btn.active {
@@ -9023,8 +9032,9 @@
         transition: opacity 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
     }
     .anim-fade-up.is-visible {
-        opacity: 1;
-        transform: translateY(0);
+        opacity: 1 !important;
+        transform: none !important;
+        animation: none !important;
     }
 
     /* --- СТРАНИЦА "ПОДРОБНОЕ РАСПИСАНИЕ" --- */
@@ -9114,28 +9124,23 @@
     }
 
     /* --- УМНАЯ АКТИВНАЯ ВКЛАДКА --- */
-
-    .span3 > .nav.nav-tabs.nav-stacked {
+    .span3 .nav.nav-tabs.nav-stacked {
         overflow: visible !important;
         position: relative !important;
     }
 
-    button.save-cp-btn {
-        box-shadow: none !important;
-    }
-
     @media (min-width: 961px) {
-        html.smart-sidebar-enabled .span3 > .nav.nav-tabs.nav-stacked > li.active {
+        html.smart-sidebar-enabled .span3 li.active {
             position: sticky !important;
             z-index: 100 !important;
             background-color: transparent !important;
             padding: 0 !important;
             margin: 0 !important;
-            top: 16px !important;
-            bottom: 16px !important;
+            top: 8px !important;
+            bottom: 8px !important;
         }
 
-        html:not(.smart-sidebar-enabled) .span3 > .nav.nav-tabs.nav-stacked > li.active {
+        html:not(.smart-sidebar-enabled) .span3 li.active {
             position: relative !important;
             top: auto !important;
             bottom: auto !important;
@@ -9392,20 +9397,36 @@
             z-index: 100 !important;
         }
 
-        .span3 .sidebar-nav-group:not(:last-child) {
-            position: relative;
-            margin-bottom: 1.2rem;
-            padding-bottom: 1.2rem;
+        .span3 .sidebar-nav-group {
+            display: contents !important;
         }
 
-        .span3 .sidebar-nav-group:not(:last-child)::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 12px;
-            right: 12px;
-            height: 1px;
-            background: var(--color-table-border);
+        .span3 .sidebar-nav-group:not(:last-child) .sidebar-divider {
+            display: block !important;
+            height: 1px !important;
+            background-color: var(--color-table-border) !important;
+            margin: 0.8rem 12px !important;
+            padding: 0 !important;
+            list-style: none !important;
+            pointer-events: none !important;
+            border: none !important;
+        }
+
+        .span3 .sidebar-nav-group:last-child .sidebar-divider,
+        .span3 .sidebar-divider {
+            display: block !important;
+            height: 1px !important;
+            background-color: var(--color-table-border) !important;
+            margin: 0.8rem 12px !important;
+            padding: 0 !important;
+            list-style: none !important;
+            pointer-events: none !important;
+            border: none !important;
+        }
+
+        .span3 .sidebar-divider:last-child,
+        .span3 .sidebar-nav-group:last-child + .sidebar-divider {
+            display: none !important;
         }
 
         .span3 li > a {
@@ -9517,7 +9538,7 @@
             border: 1px solid var(--color-table-border) !important;
             border-radius: 50px !important;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-            padding: 4px 6px !important;
+            padding: 4px !important;
             align-items: center !important;
             gap: 4px !important;
             backdrop-filter: blur(16px) saturate(180%) !important;
@@ -9552,7 +9573,7 @@
             justify-content: center !important;
             width: 52px !important;
             height: 42px !important;
-            border-radius: 24px !important;
+            border-radius: 21px !important;
             background: transparent !important;
             box-shadow: none !important;
             border: none !important;
@@ -9578,9 +9599,18 @@
             box-shadow: none !important;
         }
 
+        html body .mobile-dock-item.active,
+        html body button.mobile-dock-item.active {
+            background: var(--bg-accent) !important;
+            border: none !important;
+            outline: none !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+
         html body .mobile-dock-item.active .material-icons,
         html body button.mobile-dock-item.active .material-icons {
-            color: var(--color-accent) !important;
+            color: var(--color-text-primary-invert) !important;
+            -webkit-text-fill-color: var(--color-text-primary-invert) !important;
             font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
         }
 
@@ -9734,6 +9764,10 @@
             flex-shrink: 0 !important;
         }
 
+        .span3 .sidebar-divider {
+            display: none !important;
+        }
+
         .span3 .sidebar-nav-group > li:not(:last-child) > a::after,
         .span3 .sidebar-card-row:not(:last-child)::after {
             content: '' !important;
@@ -9744,6 +9778,11 @@
             height: 1px !important;
             background: var(--color-table-border) !important;
             display: block !important;
+        }
+
+        .span3 .sidebar-nav-group > li:last-child > a::after,
+        .span3 .sidebar-nav-group > li:not(:has(~ li:not(.sidebar-divider))) > a::after {
+            display: none !important;
         }
 
         .mobile-overlay {
@@ -9766,13 +9805,69 @@
             visibility: visible !important;
         }
 
-        /* Убираем верхние десктопные разделители у мобильных карточек */
         .span3 .sidebar-user-info::before,
         .span3 .sidebar-footer::before,
         .sidebar-user-info::before,
         .sidebar-footer::before {
             display: none !important;
         }
+
+        .span3 .sidebar-nav-group > li.active > a {
+            margin: 5px 6px !important;
+            padding: 1.1rem 1.4rem !important;
+            border-radius: 18px !important;
+            width: auto !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .span3 .sidebar-nav-group > li.active > a .material-icons {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+        }
+
+        .span3 li.active > a .chevron,
+        .span3 .sidebar-nav-group > li.active > a .chevron {
+            display: none !important;
+        }
+
+        .span3 .sidebar-nav-group > li.active > a::after {
+            display: none !important;
+        }
+
+        .span3 .sidebar-nav-group > li:has(+ li.active) > a::after {
+            display: none !important;
+        }
+
+        html body .sidebar-tabs-container .settings-sidebar-btn.active,
+        html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn.active,
+        html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn.active {
+            margin: 5px 6px !important;
+            padding: 1.1rem 1.4rem !important;
+            border-radius: 18px !important;
+            width: auto !important;
+        }
+
+        html body .sidebar-tabs-container .settings-sidebar-btn.active .material-icons,
+        html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn.active .material-icons,
+        html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn.active .material-icons {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+        }
+
+        html body .sidebar-tabs-container .settings-sidebar-btn.active::after,
+        html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn.active::after,
+        html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn.active::after,
+        html body .sidebar-tabs-container .settings-sidebar-btn:has(+ .active)::after,
+        html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn:has(+ .active)::after,
+        html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn:has(+ .active)::after {
+            display: none !important;
+        }
+
+        .actions-msg-wrap,
+        .share-msg-wrap,
+        .ai-summary-btn {
+            display: none !important;
+        }
+
+
     }
 
     /* --- ДЕМО-РЕЖИМ: БЛОКИРОВКА НЕПОДДЕРЖИВАЕМЫХ ВКЛАДОК И ЭЛЕМЕНТОВ --- */
@@ -9923,6 +10018,26 @@
         .sidebar-logo .sidebar-logo-title {
             font-size: 2.4rem !important;
         }
+        .sidebar-logo img {
+            transform: translateZ(0) !important;
+            -webkit-transform: translateZ(0) !important;
+            backface-visibility: hidden !important;
+            -webkit-backface-visibility: hidden !important;
+        }
+
+        [theme="dark"] .sidebar-logo img {
+            filter: invert(1) brightness(2) !important;
+            -webkit-filter: invert(1) brightness(2) !important;
+            transform: translateZ(0) !important;
+            -webkit-transform: translateZ(0) !important;
+            will-change: filter, transform !important;
+        }
+    }
+
+    @media (min-width: 961px) {
+        .back-to-drawer-btn {
+            display: none !important;
+        }
     }
 
     /* --- КНОПКА-КОЛОКОЛЬЧИК И ИКОНКА --- */
@@ -10025,6 +10140,411 @@
         margin-left: auto !important;
     }
 
+    #theme-subtab-capsule {
+        position: relative !important;
+    }
+
+    #theme-subtab-capsule::after {
+        display: none !important;
+    }
+
+    .msg-card {
+        touch-action: pan-y !important;
+        position: relative !important;
+        -webkit-user-select: none !important;
+        user-select: none !important;
+    }
+
+    html.mac-safari .actions-msg-wrap:not(:has(.ai-summary-btn)) {
+        display: none !important;
+    }
+
+    html.mac-safari .msg-card:hover .actions-msg-wrap:has(.ai-summary-btn) {
+        max-width: 24px !important;
+        margin-left: 8px !important;
+    }
+
+    html.mac-safari .msg-card:hover .actions-msg-wrap:not(:has(.ai-summary-btn)) {
+        max-width: 0 !important;
+        margin-left: 0 !important;
+    }
+
+    /* Фикс свайпов на мобильных */
+    .msg-card-wrapper {
+        position: relative !important;
+        overflow: hidden !important;
+        border-radius: var(--radius-large) !important;
+        margin: 0 !important;
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        background: transparent !important;
+        touch-action: pan-y !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .msg-card-wrapper .msg-card,
+    .msg-card {
+        position: relative !important;
+        z-index: 2 !important;
+        margin: 0 !important;
+        margin-bottom: 0 !important;
+        margin-top: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: var(--color-card) !important;
+        transform: translate3d(0, 0, 0);
+        will-change: transform;
+    }
+
+    .msg-swipe-actions {
+        position: absolute !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        z-index: 1 !important;
+        overflow: hidden !important;
+        width: 0px;
+        box-sizing: border-box !important;
+        pointer-events: auto !important;
+    }
+
+    .msg-swipe-actions.right-actions {
+        right: 0 !important;
+        left: auto !important;
+    }
+
+    .msg-swipe-actions.left-actions {
+        left: 0 !important;
+        right: auto !important;
+    }
+
+    .msg-action-btn {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 10px !important;
+        margin: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        cursor: pointer !important;
+        width: auto !important;
+        height: 100% !important;
+        opacity: 0;
+        transform: scale(0.6);
+        transition: opacity 0.15s ease, transform 0.15s ease !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+
+    .msg-action-icon-circle {
+        width: 48px !important;
+        height: 48px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #ffffff !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+
+    .msg-action-btn:active .msg-action-icon-circle {
+        transform: scale(0.9) !important;
+    }
+
+    .msg-action-icon-circle .material-icons {
+        font-size: 22px !important;
+        color: #ffffff !important;
+        margin: 0 !important;
+    }
+
+    .msg-action-label {
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
+        color: var(--color-text-secondary) !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
+    }
+
+    @keyframes spin {
+        100% { transform: rotate(360deg); }
+    }
+
+    /* На мобильных устройствах шапка видна во всех модальных окнах */
+    @media (max-width: 960px) {
+        html body .analytics-modal:not(:has(.settings-layout)) .ui-widget-header {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 1.6rem 2.4rem !important;
+            background: var(--color-table-header) !important;
+            border-bottom: 1px solid var(--color-table-border) !important;
+            border-top-left-radius: inherit !important;
+            border-top-right-radius: inherit !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            box-sizing: border-box !important;
+        }
+
+        html body .analytics-modal:not(:has(.settings-layout)) .close-analytics,
+        html body .analytics-modal:not(:has(.settings-layout)) .close-modal,
+        html body .analytics-modal:not(:has(.settings-layout)) .close-notes {
+            display: flex !important;
+        }
+    }
+
+    @media (min-width: 961px) {
+        /* Скрываем шапку только у простых всплывающих окон без бокового меню (сводка, топ предметов, добавление пар, заметки) */
+        .analytics-modal:not(:has(.settings-layout)):not(#etis-analytics-modal):not(:has(#gradesChart)) .ui-widget-header {
+            display: none !important;
+        }
+
+        /* Всегда показываем шапку в контентной части больших окон с боковым меню (Профиль, Обучение, Консультации, Синхронизация, Настройки) */
+        .settings-layout .ui-widget-header,
+        .settings-content-area .ui-widget-header,
+        .settings-content-scroll .ui-widget-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            background: transparent !important;
+            border-bottom: none !important;
+            padding: 1.2rem 1.6rem 0 1.6rem !important;
+            box-sizing: border-box !important;
+        }
+
+        /* Шапка для отдельного окна Аналитики успеваемости */
+        #etis-analytics-modal .ui-widget-header,
+        .analytics-modal:has(#gradesChart) .ui-widget-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            padding: 1.6rem 2.4rem !important;
+            background: var(--color-table-header) !important;
+            border-bottom: 1px solid var(--color-table-border) !important;
+            border-top-left-radius: inherit !important;
+            border-top-right-radius: inherit !important;
+            box-sizing: border-box !important;
+        }
+
+        #etis-analytics-modal .close-analytics,
+        .analytics-modal:has(#gradesChart) .close-analytics {
+            display: flex !important;
+        }
+    }
+
+    /* На ПК для окон с боковым меню (Профиль, Настройки, Обучение, Консультации, Синхронизация) */
+    @media (min-width: 961px) {
+        .settings-layout .ui-widget-header,
+        .settings-content-area .ui-widget-header,
+        .settings-content-scroll .ui-widget-header {
+            background: transparent !important;
+            border-bottom: none !important;
+            padding: 1.2rem 1.6rem 0 1.6rem !important;
+            box-sizing: border-box !important;
+        }
+
+        .settings-layout .close-modal-btn,
+        .settings-layout .close-modal,
+        .settings-layout .settings-mobile-header {
+            display: none !important;
+        }
+    }
+
+    /* --- СТИЛИЗАЦИЯ АКТИВНОГО ОПРОСА / ГОЛОСОВАНИЯ --- */
+
+    .warning-banner-card {
+        background: rgba(255, 59, 48, 0.12) !important;
+        border: 1px solid rgba(255, 59, 48, 0.3) !important;
+        border-radius: var(--radius-large) !important;
+        padding: 1.6rem 2rem !important;
+        margin-bottom: 2.4rem !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 1.4rem !important;
+        color: var(--color-text-primary) !important;
+        box-shadow: var(--shadow-main) !important;
+        font-size: 1.35rem !important;
+        font-weight: 600 !important;
+        line-height: 1.5 !important;
+        box-sizing: border-box !important;
+    }
+
+    .warning-banner-card .material-icons {
+        font-size: 2.6rem !important;
+        color: var(--color-red) !important;
+        flex-shrink: 0 !important;
+    }
+
+    .survey-intro-card {
+        background: var(--color-card) !important;
+        border-radius: var(--radius-large) !important;
+        box-shadow: var(--shadow-main) !important;
+        border: 1px solid var(--color-table-border) !important;
+        padding: 2.4rem !important;
+        margin-bottom: 2.4rem !important;
+        color: var(--color-text-primary) !important;
+        font-size: 1.35rem !important;
+        line-height: 1.6 !important;
+        box-sizing: border-box !important;
+    }
+
+    .survey-intro-card h4 {
+        margin: 0 0 1rem 0 !important;
+        font-size: 1.6rem !important;
+        font-weight: 800 !important;
+        color: var(--color-text-primary) !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .survey-intro-card p {
+        margin: 0 0 1rem 0 !important;
+        color: var(--color-text-secondary) !important;
+    }
+    .survey-intro-card p:last-child {
+        margin-bottom: 0 !important;
+    }
+
+    /* Вопросы и варианты ответов */
+    .survey-card .review .form {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        width: 100% !important;
+    }
+
+    .survey-card .review form[name^="estimate_"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1.6rem !important;
+        margin-top: 0 !important;
+    }
+
+    .survey-card .review .question {
+        background: var(--color-highlight) !important;
+        border-radius: var(--radius-medium) !important;
+        padding: 2rem !important;
+        border: 1px solid var(--color-table-border) !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+    }
+
+    .survey-card .review .question > .text {
+        font-size: 1.45rem !important;
+        font-weight: 700 !important;
+        color: var(--color-text-primary) !important;
+        line-height: 1.4 !important;
+        margin-bottom: 1.4rem !important;
+    }
+
+    .survey-card .review .question ul {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.8rem !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        list-style: none !important;
+    }
+
+    .survey-card .review .question li {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .survey-card .review .question label {
+        display: flex !important;
+        align-items: center !important;
+        padding: 1.2rem 1.6rem !important;
+        background: var(--color-card) !important;
+        border-radius: var(--radius-small) !important;
+        border: 1px solid var(--color-table-border) !important;
+        color: var(--color-text-primary) !important;
+        font-size: 1.3rem !important;
+        font-weight: 500 !important;
+        cursor: pointer !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .survey-card .review .question label:hover {
+        border-color: var(--color-accent) !important;
+        background: var(--color-card) !important;
+        transform: translateX(3px) !important;
+    }
+
+    .survey-card .review .question label:has(input:checked) {
+        border-color: var(--color-accent) !important;
+        background: var(--color-accent-active) !important;
+        color: var(--color-text-primary) !important;
+        font-weight: 600 !important;
+    }
+
+    /* Кнопки действий (Отправить / Ответить позже) */
+    .survey-action-buttons {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 1.2rem !important;
+        margin-top: 2rem !important;
+    }
+
+    .survey-action-buttons .button_gray {
+        width: auto !important;
+        margin: 0 !important;
+    }
+
+    .survey-action-buttons button[id^="send_btn_"] {
+        background: var(--color-accent) !important;
+        color: #ffffff !important;
+        border-radius: 50px !important;
+        padding: 1.2rem 2.4rem !important;
+        font-size: 1.4rem !important;
+        font-weight: 700 !important;
+        border: none !important;
+        cursor: pointer !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        transition: all 0.2s ease !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .survey-action-buttons button[id^="send_btn_"]:disabled {
+        background: var(--color-highlight) !important;
+        color: var(--color-text-secondary) !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+        opacity: 0.7 !important;
+    }
+
+    .survey-action-buttons button[id^="reject_send_btn_"] {
+        background: var(--color-highlight) !important;
+        color: var(--color-text-secondary) !important;
+        border-radius: 50px !important;
+        padding: 1.2rem 2.2rem !important;
+        font-size: 1.4rem !important;
+        font-weight: 600 !important;
+        border: 1px solid var(--color-table-border) !important;
+        cursor: pointer !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+    }
+
+    .survey-action-buttons button[id^="reject_send_btn_"]:hover {
+        background: var(--color-highlight-light) !important;
+        color: var(--color-text-primary) !important;
+    }
+
         `;
 
         // Безопасное внедрение элементов
@@ -10079,18 +10599,38 @@
         }
 
         const ACCENT_COLORS = {
-            blue: '#007AFF', green: '#34C759', orange: '#FF9500', red: '#FF3B30', pink: '#FF2D55',
-            lightblue: '#5AC8FA', mint: '#00C7BE', yellow: '#FFCC00', lightpurple: '#E58FFF', rose: '#FF94A5',
-            indigo: '#5856D6', teal: '#30B0C7', lime: '#AEEA00', cyan: '#00BCD4', magenta: '#E91E63',
-            deeporange: '#FF5722', brown: '#A2845E', slate: '#708090', cobalt: '#3F51B5', crimson: '#DC143C',
-            darkblue: '#1A237E', darkgreen: '#1B5E20', chocolate: '#5D4037', darkred: '#800000', graphite: '#333333',
-            purple: '#9C27B0', deepviolet: '#673AB7', bluegrey: '#607D8B', black: '#212121', coral: '#FF6E40'
+            // Красные / Розовые / Малиновые
+            red: '#FF3B30', crimson: '#DC143C', ruby: '#C2185B', darkred: '#800000', berry: '#880E4F',
+            pink: '#FF2D55', fuchsia: '#FF007F', rose: '#FF94A5', magenta: '#E91E63', peach: '#FFAB91',
+            // Фиолетовые / Сиреневые / Лавандовые
+            purple: '#9C27B0', deepviolet: '#673AB7', plum: '#4A148C', violet: '#7C4DFF',
+            indigo: '#5856D6', lilac: '#CE93D8', lightpurple: '#E58FFF', lavender: '#B388FF',
+            // Синие / Голубые / Океанские
+            midnight: '#0D1B2A', darkblue: '#1A237E', cobalt: '#3F51B5', ultramarine: '#2979FF',
+            blue: '#007AFF', lightblue: '#5AC8FA', sky: '#80D8FF', electricblue: '#00E5FF', aqua: '#00B0FF',
+            // Бирюзовые / Мятные / Зеленые
+            ocean: '#006064', cyan: '#00BCD4', teal: '#30B0C7', turquoise: '#1DE9B6', mint: '#00C7BE',
+            emerald: '#00E676', pine: '#004D40', darkgreen: '#1B5E20', forest: '#2E7D32', green: '#34C759',
+            // Лаймовые / Оливковые / Желтые
+            chartreuse: '#76FF03', lime: '#AEEA00', pistachio: '#C6FF00', olive: '#827717',
+            yellow: '#FFCC00', gold: '#FFD700', amber: '#FFAB00',
+            // Оранжевые / Терракотовые / Коричневые
+            orange: '#FF9500', tangerine: '#FF6D00', deeporange: '#FF5722', coral: '#FF6E40',
+            terracotta: '#D84315', rust: '#BF360C', chocolate: '#5D4037', brown: '#A2845E',
+            caramel: '#8D6E63', sand: '#CDB380',
+            // Серые / Грифельные / Тёмные
+            bluegrey: '#607D8B', slate: '#708090', charcoal: '#37474F', silver: '#9E9E9E',
+            graphite: '#333333', black: '#212121'
         };
 
-        const COLOR_ORDER =[
-            'red', 'crimson', 'darkred', 'pink', 'rose', 'magenta', 'purple', 'deepviolet', 'indigo', 'lightpurple',
-            'darkblue', 'cobalt', 'blue', 'lightblue', 'cyan', 'teal', 'mint', 'darkgreen', 'green', 'lime',
-            'yellow', 'orange', 'deeporange', 'coral', 'brown', 'chocolate', 'bluegrey', 'slate', 'graphite', 'black'
+        const COLOR_ORDER = [
+            'red', 'crimson', 'ruby', 'darkred', 'berry', 'pink', 'fuchsia', 'rose', 'magenta', 'peach',
+            'purple', 'deepviolet', 'plum', 'violet', 'indigo', 'lilac', 'lightpurple', 'lavender',
+            'midnight', 'darkblue', 'cobalt', 'ultramarine', 'blue', 'lightblue', 'sky', 'electricblue', 'aqua',
+            'ocean', 'cyan', 'teal', 'turquoise', 'mint', 'emerald', 'pine', 'darkgreen', 'forest', 'green',
+            'chartreuse', 'lime', 'pistachio', 'olive', 'yellow', 'gold', 'amber',
+            'orange', 'tangerine', 'deeporange', 'coral', 'terracotta', 'rust', 'chocolate', 'brown', 'caramel', 'sand',
+            'bluegrey', 'slate', 'charcoal', 'silver', 'graphite', 'black'
         ];
 
         // Цвета для внешних календарей
@@ -10183,7 +10723,7 @@
         
         let generalConfig = {
             dimPastPairs: true,
-            shortAudFormat: false,
+            shortAudFormat: true,
             hideDaysOff: false,
             showSunday: false,
             absoluteScores: false,
@@ -10225,12 +10765,59 @@
         generalConfig.compactGradesConfig = { ...defaultCompactConfig, ...(generalConfig.compactGradesConfig || {}) };
         
         function applyAccentColor() {
-            const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'], isGlass: false, isColoredGlass: true };
+            const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, isThreeColors: false, colors: ['blue', 'lightblue'], isGlass: false };
             const isGlass = config.isGlass === true;
-            const isColoredGlass = config.isColoredGlass !== false;
 
-            let c1 = ACCENT_COLORS[config.colors[0]] || ACCENT_COLORS.blue;
-            let c2 = config.colors[1] ? ACCENT_COLORS[config.colors[1]] : c1;
+            // Хелпер извлечения настроек для конкретной темы
+            const getThemeConfig = (mode) => {
+                if (config.separateThemes && config[mode]) {
+                    return {
+                        isGradient: config[mode].isGradient !== false,
+                        isThreeColors: config[mode].isThreeColors === true,
+                        colors: config[mode].colors || config.colors || ['blue', 'lightblue']
+                    };
+                }
+                return {
+                    isGradient: config.isGradient !== false,
+                    isThreeColors: config.isThreeColors === true,
+                    colors: config.colors || ['blue', 'lightblue']
+                };
+            };
+
+            const hexToRgba = (hex, alpha) => {
+                let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            };
+
+            const buildThemeStyles = (cfg) => {
+                let c1 = ACCENT_COLORS[cfg.colors[0]] || ACCENT_COLORS.blue;
+                let c2 = cfg.colors[1] ? (ACCENT_COLORS[cfg.colors[1]] || c1) : c1;
+                let c3 = cfg.colors[2] ? (ACCENT_COLORS[cfg.colors[2]] || c2) : c2;
+
+                const isThree = cfg.isGradient && cfg.isThreeColors === true && cfg.colors.length >= 3;
+                const isTwo = cfg.isGradient && cfg.colors.length >= 2;
+
+                let bgAccent, bgAccentGlass, bgAccentGlassHover;
+
+                if (isThree) {
+                    bgAccent = `linear-gradient(135deg, ${c1}, ${c2}, ${c3})`;
+                    bgAccentGlass = `linear-gradient(135deg, ${hexToRgba(c1, 0.65)}, ${hexToRgba(c2, 0.65)}, ${hexToRgba(c3, 0.65)})`;
+                    bgAccentGlassHover = `linear-gradient(135deg, ${hexToRgba(c1, 0.75)}, ${hexToRgba(c2, 0.75)}, ${hexToRgba(c3, 0.75)})`;
+                } else if (isTwo) {
+                    bgAccent = `linear-gradient(135deg, ${c1}, ${c2})`;
+                    bgAccentGlass = `linear-gradient(135deg, ${hexToRgba(c1, 0.65)}, ${hexToRgba(c2, 0.65)})`;
+                    bgAccentGlassHover = `linear-gradient(135deg, ${hexToRgba(c1, 0.75)}, ${hexToRgba(c2, 0.75)})`;
+                } else {
+                    bgAccent = c1;
+                    bgAccentGlass = hexToRgba(c1, 0.65);
+                    bgAccentGlassHover = hexToRgba(c1, 0.75);
+                }
+
+                return { c1, c2, c3, bgAccent, bgAccentGlass, bgAccentGlassHover, isGradient: cfg.isGradient };
+            };
+
+            const lightRes = buildThemeStyles(getThemeConfig('light'));
+            const darkRes = buildThemeStyles(getThemeConfig('dark'));
 
             let styleEl = document.getElementById('etis-custom-accent');
             if (!styleEl) {
@@ -10242,15 +10829,6 @@
                     document.documentElement.appendChild(styleEl);
                 }
             }
-
-            const hexToRgba = (hex, alpha) => {
-                let r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-                return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-            };
-
-            const bgAccent = config.isGradient ? `linear-gradient(135deg, ${c1}, ${c2})` : c1;
-            const bgAccentGlass = config.isGradient ? `linear-gradient(135deg, ${hexToRgba(c1, 0.65)}, ${hexToRgba(c2, 0.65)})` : hexToRgba(c1, 0.65);
-            const bgAccentGlassHover = config.isGradient ? `linear-gradient(135deg, ${hexToRgba(c1, 0.75)}, ${hexToRgba(c2, 0.75)})` : hexToRgba(c1, 0.75);
 
             let targetStyles = '';
             let targetHoverStyles = '';
@@ -10267,13 +10845,15 @@
                         border: 1px solid var(--border-glass-neutral) !important;
                     }
 
-                    .mobile-dock-item.active {
-                        background: ${isColoredGlass ? bgAccentGlass : 'var(--bg-glass-neutral-hover)'} !important;
+                    [theme="light"] .mobile-dock-item.active {
+                        background: ${lightRes.bgAccentGlass} !important;
                         backdrop-filter: blur(14px) saturate(180%) !important;
                         -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
-                        box-shadow: none !important;
-                        border: none !important;
-                        outline: none !important;
+                    }
+                    [theme="dark"] .mobile-dock-item.active {
+                        background: ${darkRes.bgAccentGlass} !important;
+                        backdrop-filter: blur(14px) saturate(180%) !important;
+                        -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
                     }
 
                     .subject-score-capsule, .kt-score-capsule, .gpa-capsule,
@@ -10288,71 +10868,22 @@
                     .subject-score-capsule {
                         box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 2px 8px rgba(0, 0, 0, 0.08) !important;
                     }
-
-                    .subject-score-capsule[style*="var(--color-green)"],
-                    .subject-score-capsule[style*="#34C759"],
-                    .subject-score-capsule[style*="#5BB974"] {
-                        background: rgba(52, 199, 89, 0.7) !important;
-                    }
-                    .subject-score-capsule[style*="#8BC34A"] {
-                        background: rgba(139, 195, 74, 0.7) !important;
-                    }
-                    .subject-score-capsule[style*="var(--color-yellow)"],
-                    .subject-score-capsule[style*="#FFCC00"],
-                    .subject-score-capsule[style*="#E2B953"] {
-                        background: rgba(255, 204, 0, 0.7) !important;
-                    }
-                    .subject-score-capsule[style*="var(--color-red)"],
-                    .subject-score-capsule[style*="#FF3B30"],
-                    .subject-score-capsule[style*="#E06C65"] {
-                        background: rgba(255, 59, 48, 0.7) !important;
-                    }
-                    .subject-score-capsule[style*="var(--color-highlight)"] {
-                        background: var(--bg-glass-neutral) !important;
-                        box-shadow: inset 0 0 0 1px var(--border-glass-neutral) !important;
-                    }
-
-                    .kt-score-capsule {
-                        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
-                    }
                 `;
 
-                if (isColoredGlass) {
-                    targetStyles = `
-                        background: ${bgAccentGlass} !important;
-                        backdrop-filter: blur(16px) saturate(180%) !important;
-                        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-                        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
-                        border: none !important;
-                    `;
-                    targetHoverStyles = `
-                        background: ${bgAccentGlassHover} !important;
-                        backdrop-filter: blur(16px) saturate(180%) !important;
-                        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-                        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 6px 16px rgba(0, 0, 0, 0.15) !important;
-                        transform: translateY(-1px);
-                    `;
-                    targetTextStyles = `color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;`;
-                    targetIconStyles = `color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important;`;
-                } else {
-                    // Бесцветное нейтральное стекло: текст и иконки берут контрастный основной цвет темы
-                    targetStyles = `
-                        background: var(--bg-glass-neutral) !important;
-                        backdrop-filter: blur(16px) saturate(180%) !important;
-                        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-                        box-shadow: inset 0 0 0 1px var(--border-glass-neutral), 0 4px 12px rgba(0, 0, 0, 0.05) !important;
-                        border: none !important;
-                    `;
-                    targetHoverStyles = `
-                        background: var(--bg-glass-neutral-hover) !important;
-                        backdrop-filter: blur(16px) saturate(180%) !important;
-                        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-                        box-shadow: inset 0 0 0 1px var(--border-glass-neutral), 0 6px 16px rgba(0, 0, 0, 0.1) !important;
-                        transform: translateY(-1px);
-                    `;
-                    targetTextStyles = `color: var(--color-text-primary) !important; -webkit-text-fill-color: var(--color-text-primary) !important;`;
-                    targetIconStyles = `color: var(--color-text-primary) !important; -webkit-text-fill-color: var(--color-text-primary) !important; opacity: 1 !important;`;
-                }
+                targetStyles = `
+                    backdrop-filter: blur(16px) saturate(180%) !important;
+                    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+                    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+                    border: none !important;
+                `;
+                targetHoverStyles = `
+                    backdrop-filter: blur(16px) saturate(180%) !important;
+                    -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+                    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3), 0 6px 16px rgba(0, 0, 0, 0.15) !important;
+                    transform: translateY(-1px);
+                `;
+                targetTextStyles = `color: #ffffff !important; -webkit-text-fill-color: #ffffff !important;`;
+                targetIconStyles = `color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; opacity: 1 !important;`;
             } else {
                 targetStyles = `
                     background: var(--bg-accent) !important;
@@ -10369,29 +10900,76 @@
 
             styleEl.innerHTML = `
                 :root, [theme="light"] {
-                    --color-accent: ${c1} !important;
-                    --color-text-link: ${c1} !important;
-                    --color-accent-active: ${hexToRgba(c1, 0.15)} !important;
-                    --bg-accent: ${bgAccent} !important;
+                    --color-accent: ${lightRes.c1} !important;
+                    --color-text-link: ${lightRes.c1} !important;
+                    --color-accent-active: ${hexToRgba(lightRes.c1, 0.15)} !important;
+                    --bg-accent: ${lightRes.bgAccent} !important;
+                    --bg-accent-glass: ${lightRes.bgAccentGlass} !important;
+                    --bg-accent-glass-hover: ${lightRes.bgAccentGlassHover} !important;
                     --bg-glass-neutral: rgba(255, 255, 255, 0.85) !important;
                     --bg-glass-neutral-hover: rgba(255, 255, 255, 0.95) !important;
                     --border-glass-neutral: rgba(0, 0, 0, 0.08) !important;
                 }
                 [theme="dark"] {
-                    --color-accent: ${c1} !important;
-                    --color-text-link: ${c1} !important;
-                    --color-accent-active: ${hexToRgba(c1, 0.15)} !important;
-                    --bg-accent: ${bgAccent} !important;
+                    --color-accent: ${darkRes.c1} !important;
+                    --color-text-link: ${darkRes.c1} !important;
+                    --color-accent-active: ${hexToRgba(darkRes.c1, 0.15)} !important;
+                    --bg-accent: ${darkRes.bgAccent} !important;
+                    --bg-accent-glass: ${darkRes.bgAccentGlass} !important;
+                    --bg-accent-glass-hover: ${darkRes.bgAccentGlassHover} !important;
                     --bg-glass-neutral: rgba(33, 35, 37, 0.7) !important;
                     --bg-glass-neutral-hover: rgba(45, 48, 51, 0.85) !important;
                     --border-glass-neutral: rgba(255, 255, 255, 0.1) !important;
                 }
+
+                ${isGlass ? `
+                [theme="light"] .span3 li.active > a,
+                [theme="light"] .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
+                [theme="light"] .weeks .week.current, [theme="light"] .submenu b,
+                [theme="light"] .answer-btn-custom, [theme="light"] #sbmt, [theme="light"] .gpa-capsule, [theme="light"] .mobile-menu-btn,
+                [theme="light"] .timetable-toolbar .toolbar-item.is-active,
+                [theme="light"] form.que_form #send_btn, [theme="light"] .badge.ctl, [theme="light"] .jour-info-group,
+                [theme="light"] .settings-sidebar-btn.active, [theme="light"] button.sync-tab.active,
+                [theme="light"] .etis-preview-active-element {
+                    background: ${lightRes.bgAccentGlass} !important;
+                }
+
+                [theme="dark"] .span3 li.active > a,
+                [theme="dark"] .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
+                [theme="dark"] .weeks .week.current, [theme="dark"] .submenu b,
+                [theme="dark"] .answer-btn-custom, [theme="dark"] #sbmt, [theme="dark"] .gpa-capsule, [theme="dark"] .mobile-menu-btn,
+                [theme="dark"] .timetable-toolbar .toolbar-item.is-active,
+                [theme="dark"] form.que_form #send_btn, [theme="dark"] .badge.ctl, [theme="dark"] .jour-info-group,
+                [theme="dark"] .settings-sidebar-btn.active, [theme="dark"] button.sync-tab.active,
+                [theme="dark"] .etis-preview-active-element {
+                    background: ${darkRes.bgAccentGlass} !important;
+                }
+
+                [theme="light"] .span3 li.active > a:hover,
+                [theme="light"] .weeks .week.current:hover, [theme="light"] .submenu b:hover,
+                [theme="light"] .answer-btn-custom:hover, [theme="light"] #sbmt:hover, [theme="light"] .mobile-menu-btn:hover,
+                [theme="light"] .timetable-toolbar .toolbar-item.is-active:hover,
+                [theme="light"] form.que_form #send_btn:hover,
+                [theme="light"] .settings-sidebar-btn.active:hover, [theme="light"] button.sync-tab.active:hover {
+                    background: ${lightRes.bgAccentGlassHover} !important;
+                }
+
+                [theme="dark"] .span3 li.active > a:hover,
+                [theme="dark"] .weeks .week.current:hover, [theme="dark"] .submenu b:hover,
+                [theme="dark"] .answer-btn-custom:hover, [theme="dark"] #sbmt:hover, [theme="dark"] .mobile-menu-btn:hover,
+                [theme="dark"] .timetable-toolbar .toolbar-item.is-active:hover,
+                [theme="dark"] form.que_form #send_btn:hover,
+                [theme="dark"] .settings-sidebar-btn.active:hover, [theme="dark"] button.sync-tab.active:hover {
+                    background: ${darkRes.bgAccentGlassHover} !important;
+                }
+                ` : ''}
 
                 .span3 li.active > a,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
                 .weeks .week.current, .submenu b,
                 .answer-btn-custom, #sbmt, .gpa-capsule, .mobile-menu-btn,
                 .timetable-toolbar .toolbar-item.is-active,
+                .mobile-dock-item.active, button.mobile-dock-item.active,
                 form.que_form #send_btn, .badge.ctl, .jour-info-group,
                 .settings-sidebar-btn.active, button.sync-tab.active,
                 .etis-preview-active-element {
@@ -10418,18 +10996,10 @@
                     ${targetTextStyles}
                 }
 
-                /* Жирный шрифт для активной вкладки сайдбара */
-                .span3 li.active > a,
-                .span3 li.active > a *,
-                .span3 li.active > a .sidebar-link-text,
-                .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
-                .span3 > .nav.nav-tabs.nav-stacked > li.active > a *,
-                .span3 > .nav.nav-tabs.nav-stacked > li.active > a .sidebar-link-text {
-                    font-weight: 700 !important;
-                }
-
                 .span3 li.active > a .material-icons,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a .material-icons,
+                .mobile-dock-item.active .material-icons,
+                button.mobile-dock-item.active .material-icons,
                 .answer-btn-custom .material-icons, #sbmt .material-icons,
                 .mobile-menu-btn .material-icons, .timetable-toolbar .toolbar-item.is-active .material-icons,
                 .settings-sidebar-btn.active .material-icons, button.sync-tab.active .material-icons,
@@ -10468,20 +11038,24 @@
                     }
                 }
 
-                ${config.isGradient ? `
-                .msg-sender, .msg-sender .material-icons, .file-attachment-link .material-icons, .teacher-name-link,
-                .review-dis-link, .tpr_part > a, .theme a, .logo-say-hey, .accent-stat,
-                #swipe-action-bubble.active-threshold.action-note, #swipe-action-bubble.active-threshold.action-note .material-icons,
-                #swipe-action-bubble.active-threshold.action-add, #swipe-action-bubble.active-threshold.action-add .material-icons {
-                    background: var(--bg-accent) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; color: transparent !important; display: inline-block;
+                [theme="light"] .msg-sender, [theme="light"] .msg-sender .material-icons, [theme="light"] .file-attachment-link .material-icons, [theme="light"] .teacher-name-link,
+                [theme="light"] .review-dis-link, [theme="light"] .tpr_part > a, [theme="light"] .theme a, [theme="light"] .logo-say-hey, [theme="light"] .accent-stat,
+                [theme="light"] #swipe-action-bubble.active-threshold.action-note, [theme="light"] #swipe-action-bubble.active-threshold.action-note .material-icons,
+                [theme="light"] #swipe-action-bubble.active-threshold.action-add, [theme="light"] #swipe-action-bubble.active-threshold.action-add .material-icons {
+                    ${lightRes.isGradient ? `background: var(--bg-accent) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; color: transparent !important;` : `color: var(--color-accent) !important;`}
+                    display: inline-block;
                 }
+
+                [theme="dark"] .msg-sender, [theme="dark"] .msg-sender .material-icons, [theme="dark"] .file-attachment-link .material-icons, [theme="dark"] .teacher-name-link,
+                [theme="dark"] .review-dis-link, [theme="dark"] .tpr_part > a, [theme="dark"] .theme a, [theme="dark"] .logo-say-hey, [theme="dark"] .accent-stat,
+                [theme="dark"] #swipe-action-bubble.active-threshold.action-note, [theme="dark"] #swipe-action-bubble.active-threshold.action-note .material-icons,
+                [theme="dark"] #swipe-action-bubble.active-threshold.action-add, [theme="dark"] #swipe-action-bubble.active-threshold.action-add .material-icons {
+                    ${darkRes.isGradient ? `background: var(--bg-accent) !important; -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important; color: transparent !important;` : `color: var(--color-accent) !important;`}
+                    display: inline-block;
+                }
+
                 .weeks .week.actual-week:not(.current) > a, .stat-box-value, .msg-sender { display: inline-flex !important; }
-                ` : `
-                .msg-sender, .msg-sender .material-icons, .file-attachment-link .material-icons, .teacher-name-link,
-                .review-dis-link, .tpr_part > a, .theme a, .logo-say-hey, .accent-stat,
-                #swipe-action-bubble.active-threshold.action-note, #swipe-action-bubble.active-threshold.action-add,
-                #swipe-action-bubble.active-threshold.action-note .material-icons { color: var(--color-accent) !important; }
-                `}
+
                 ${glassCapsulesCss}
             `;
         }
@@ -10528,28 +11102,8 @@
             }
         }
 
-        function switchTheme(e) {
-            if (theme == 'auto') {
-                theme = 'light';
-                e.srcElement.innerHTML = e.srcElement.innerHTML.replace('Системная', 'Светлая');
-                document.documentElement.setAttribute('theme', theme);
-                removeSystemThemeDetection();
-            } else if (theme == 'light') {
-                theme = 'dark';
-                e.srcElement.innerHTML = e.srcElement.innerHTML.replace('Светлая', 'Темная');
-                document.documentElement.setAttribute('theme', theme);
-            } else if (theme == 'dark') {
-                theme = 'auto';
-                e.srcElement.innerHTML = e.srcElement.innerHTML.replace('Темная', 'Системная');
-                setSystemThemeDetection();
-            }
-
-            localStorage.setItem('theme', theme);
-        }
-
         detectTheme();
 
-        // --- ФИКС ЦВЕТА БРАУЗЕРНОЙ ПАНЕЛИ НАВИГАЦИИ И СТАТУС-БАРА ---
         function updateBrowserNavColor() {
             const isDark = document.documentElement.getAttribute('theme') === 'dark';
             const color = isDark ? '#16181A' : '#F2F2F6';
@@ -10562,8 +11116,11 @@
             metaTheme.content = color;
         }
 
-        // Следим за сменой темы и мгновенно обновляем цвет браузера
-        new MutationObserver(updateBrowserNavColor).observe(document.documentElement, { attributes: true, attributeFilter: ['theme'] });
+        // Следим за сменой темы: мгновенно обновляем цвет статус-бара браузера и перекрашиваем акценты
+        new MutationObserver(() => {
+            applyAccentColor();
+            updateBrowserNavColor();
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['theme'] });
         updateBrowserNavColor();
 
         function updateEmptyState(container, hasResults, query = '', type = 'default') {
@@ -10906,6 +11463,7 @@
                 modal.innerHTML = `
                     <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; padding: 1.6rem 2.4rem !important; border-bottom: 1px solid var(--color-table-border) !important;">
                         <div style="display:flex; align-items:center; gap:12px;">
+                            <span class="material-icons back-to-drawer-btn" style="cursor:pointer; color:var(--color-text-secondary); font-size:24px;">arrow_back</span>
                             <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">Уведомления</span>
                             ${unreadCount > 0 ? `<span style="background:var(--color-accent); color:#fff; font-size:1.1rem; font-weight:800; padding:2px 8px; border-radius:12px;">${unreadCount}</span>` : ''}
                         </div>
@@ -10984,6 +11542,11 @@
                         }
                     };
                 });
+
+                const backToDrawerBtn = modal.querySelector('.back-to-drawer-btn');
+                if (backToDrawerBtn) {
+                    backToDrawerBtn.onclick = () => returnToDrawer(modal, overlay);
+                }
 
                 // Все уведомления помечаются прочитанными сразу при открытии окна
                 if (unreadCount > 0) {
@@ -11411,6 +11974,7 @@
 
             function toggleMenu(show) {
                 if (show) {
+                    sidebar.scrollTop = 0;
                     sidebar.classList.add('mobile-active');
                     overlay.classList.add('active');
                     dock.classList.add('dock-hidden');
@@ -11693,8 +12257,12 @@
         let consultationsFiles = deduplicateConsultations(consultationsFilesRaw);
 
         function saveConsultationsState() {
-            localStorage.setItem(CONSULTATIONS_KEY, JSON.stringify(consultationsFiles));
-            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+            if (typeof saveSyncData === 'function') {
+                saveSyncData(CONSULTATIONS_KEY, JSON.stringify(consultationsFiles));
+            } else {
+                localStorage.setItem(CONSULTATIONS_KEY, JSON.stringify(consultationsFiles));
+                if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+            }
         }
 
         // Если локально были обнаружены и убраны дубликаты, сразу перезаписываем и синхронизируем чистую версию
@@ -12615,30 +13183,24 @@
                     const isCloudNewer = (key, localKeyName, customCloudData = null) => {
                         const hasCloudData = customCloudData !== null ? !!customCloudData : !!data[key];
                         const hasLocalData = !!localStorage.getItem(localKeyName);
+
                         if (hasCloudData && !hasLocalData) {
-                            console.log(`[Sync] [${key}] Оценка: Облако новее (локально пусто).`);
                             return true;
                         }
                         if (!hasCloudData) {
-                            console.log(`[Sync] [${key}] Оценка: Облако не новее (в облаке пусто).`);
                             return false;
-                        }
-                        
-                        if (hasCloudData) {
-                            const localVal = localStorage.getItem(localKeyName);
-                            const isLocalEmpty = !localVal || localVal === '[]' || localVal === '{}' || localVal === '{"grades":{}}';
-                            const cloudVal = customCloudData !== null ? JSON.stringify(customCloudData) : data[key];
-                            const isCloudEmpty = !cloudVal || cloudVal === '[]' || cloudVal === '{}' || cloudVal === '{"grades":{}}';
-                            if (isLocalEmpty && !isCloudEmpty) {
-                                console.log(`[Sync] [${key}] Оценка: Облако новее (принудительное восстановление пустоты).`);
-                                return true;
-                            }
                         }
                         
                         const cloudTime = parseInt(cloudMeta[key], 10) || 0;
                         const localTime = parseInt(localMeta[key], 10) || 0;
+
+                        // Если устройство новое (таймстампа локально еще нет), скачиваем из облака
+                        if (localTime === 0 && cloudTime > 0) {
+                            return true;
+                        }
+
+                        // Если локально действие (удаление/редактирование) совершено позже, чем в облаке — не перезаписываем
                         const newer = cloudTime > localTime;
-                        console.log(`[Sync] [${key}] Сравнение времени: Облако (${cloudTime}) > Локально (${localTime})? Результат: ${newer}`);
                         return newer;
                     };
 
@@ -13003,7 +13565,9 @@
                 const declinedDir = declineDirection(studentDirection);
 
                 let diplomaGpaStr = localStorage.getItem('etis_diploma_gpa');
-                let gpa = isDemoUser() ? 4.69 : (diplomaGpaStr ? parseFloat(diplomaGpaStr) : 0);
+                let gpa = isDemoUser() ? 4.69 : (diplomaGpaStr && !isNaN(parseFloat(diplomaGpaStr)) ? parseFloat(diplomaGpaStr) : 0);
+                const isDiplomaVisitedNoGrades = diplomaGpaStr === 'none' || diplomaGpaStr === '0';
+                const hasDiplomaDebts = diplomaGpaStr === 'debts';
 
                 let notifsCount = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]').length;
                 let diplomaGpaVal = localStorage.getItem('etis_diploma_gpa') || '—';
@@ -13132,10 +13696,14 @@
                     const isGrad = config.isGradient !== false && config.colors.length > 1;
                     const c1 = ACCENT_COLORS[config.colors[0]] || '#007AFF';
 
-                    html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c1}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет акцента 1"></span>`;
+                    html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c1}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет 1"></span>`;
                     if (isGrad && config.colors[1]) {
                         const c2 = ACCENT_COLORS[config.colors[1]] || c1;
-                        html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c2}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет акцента 2"></span>`;
+                        html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c2}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет 2"></span>`;
+                    }
+                    if (isGrad && config.isThreeColors && config.colors[2]) {
+                        const c3 = ACCENT_COLORS[config.colors[2]] || c1;
+                        html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c3}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет 3"></span>`;
                     }
                     const activeTheme = localStorage.getItem('theme') || 'auto';
                     let themeBg = activeTheme === 'dark' ? '#212325' : (activeTheme === 'light' ? '#EAECEE' : 'linear-gradient(90deg, #EAECEE 50%, #212325 50%)');
@@ -13172,6 +13740,12 @@
                                 ${gpa > 0 ? `
                                     <div style="font-size: 2.8rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 4px; line-height: 1;">${gpa.toFixed(2)}</div>
                                     <div style="font-size: 1.05rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.3;">Мой средний балл в <br>дипломе</div>
+                                ` : hasDiplomaDebts ? `
+                                    <div style="font-size: 1.8rem; font-weight: 800; color: var(--color-red); margin-bottom: 4px; line-height: 1.2;">ДОЛГИ</div>
+                                    <div style="font-size: 1.05rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.3;">Есть академические <br>задолженности</div>
+                                ` : isDiplomaVisitedNoGrades ? `
+                                    <span class="material-icons" style="font-size: 2.8rem; color: var(--color-accent); margin-bottom: 4px;">auto_stories</span>
+                                    <div style="font-size: 1.05rem; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 700; line-height: 1.3;">Лишь начинаю <br>учиться</div>
                                 ` : `
                                     <div style="font-size: 1.1rem; color: var(--color-text-secondary); font-weight: 600; line-height: 1.3; text-align: center;">Зайдите в <a href="https://student.psu.ru/pls/stu_cus_et/stu.signs?p_mode=diplom#open-profile" style="color: var(--color-accent) !important; font-weight: 800; text-decoration: underline !important;">«Оценки в диплом»</a></div>
                                 `}
@@ -13730,7 +14304,10 @@
                         <div class="settings-sidebar ${!isMainMobile ? 'hidden-on-mobile' : ''}">
                             <div class="desktop-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary);">Профиль</div>
                             <div class="mobile-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary); display:flex; justify-content:space-between; align-items:center;">
-                                Профиль
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons back-to-drawer-btn" style="cursor:pointer; color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                    <span>Профиль</span>
+                                </div>
                                 <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
                             </div>
 
@@ -13768,6 +14345,9 @@
                 modal.querySelectorAll('.back-modal-btn').forEach(btn => btn.onclick = () => renderView(btn.getAttribute('data-back')));
                 modal.querySelectorAll('.settings-sidebar-btn').forEach(btn => {
                     btn.onclick = () => renderView(btn.getAttribute('data-target'));
+                });
+                modal.querySelectorAll('.back-to-drawer-btn').forEach(btn => {
+                    btn.onclick = () => returnToDrawer(modal, overlay);
                 });
 
                 if (currentView === 'main') {
@@ -14192,7 +14772,8 @@
                             const id = btn.getAttribute('data-id');
                             let files = JSON.parse(localStorage.getItem('etis_consultation_files_v1') || '[]');
                             files = files.filter(f => f.id !== id);
-                            saveSyncData('etis_consultation_files_v1', JSON.stringify(files));
+                            consultationsFiles = files; // Обновляем массив в оперативной памяти
+                            saveConsultationsState();
                             renderView('details_consultations');
                         };
                     });
@@ -14297,10 +14878,26 @@
             });
         }
 
+        const returnToDrawer = (currentModal, currentOverlay) => {
+            if (currentModal) currentModal.classList.remove('active');
+            if (currentOverlay) currentOverlay.classList.remove('active');
+            
+            const sidebar = document.querySelector('.span3');
+            const mobileOverlay = document.querySelector('.mobile-overlay');
+            const dock = document.querySelector('.mobile-nav-dock');
+            if (sidebar) {
+                sidebar.classList.add('mobile-active');
+                if (mobileOverlay) mobileOverlay.classList.add('active');
+                if (dock) dock.classList.add('dock-hidden');
+                document.body.classList.add('modal-open-body');
+            }
+        };
+
         function openSettingsModal(view = 'main') {
             let overlay = document.getElementById('etis-settings-overlay');
             let modal = document.getElementById('etis-settings-modal');
             let requiresReloadOnClose = false;
+            let previousView = null;
 
             if (!overlay) {
                 overlay = document.createElement('div');
@@ -14314,6 +14911,7 @@
             }
 
             const closeAll = () => {
+                detectTheme();
                 overlay.classList.remove('active');
                 modal.classList.remove('active');
                 document.body.classList.remove('modal-open-body');
@@ -14323,6 +14921,11 @@
             overlay.onclick = closeAll;
 
             const renderView = (currentView) => {
+                if (previousView === 'appearance' && currentView !== 'appearance') {
+                    detectTheme();
+                }
+                previousView = currentView;
+
                 if (currentView === 'main' && window.innerWidth > 960) currentView = 'timetable';
 
                 // Сохраняем текущую позицию скролла перед обновлением HTML
@@ -14459,13 +15062,6 @@
                             </label>
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
-                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Компактные аудитории</span>
-                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">«107/5» вместо «ауд. 107, к. 5, э. 1»</span>
-                                </div>
-                                <input type="checkbox" id="setting-short-aud" class="tumbler-checkbox" ${generalConfig.shortAudFormat ? 'checked' : ''}>
-                            </label>
-                            <label>
-                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
                                     <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Даты слева</span>
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Писать дату рядом с днем недели, а не в правом углу</span>
                                 </div>
@@ -14568,7 +15164,34 @@
                     `;
                 } else if (currentView === 'appearance') {
                     title = 'Внешний вид';
-                    let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
+                    let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, isThreeColors: false, colors: ['blue', 'lightblue'], isGlass: false };
+
+                    // При первом открытии определяем активную вкладку по текущей теме страницы
+                    if (window._activeEditingTheme === undefined) {
+                        const curTheme = document.documentElement.getAttribute('theme') || 'light';
+                        window._activeEditingTheme = (curTheme === 'dark') ? 'dark' : 'light';
+                    }
+
+                    // Если раздельные цвета уже включены, сразу включаем предпросмотр выбранной темы
+                    if (config.separateThemes) {
+                        document.documentElement.setAttribute('theme', window._activeEditingTheme);
+                    }
+
+                    // Функция получения активного конфига (общего или конкретной темы)
+                    const getActiveSubConfig = () => {
+                        if (!config.separateThemes) return config;
+                        const mode = window._activeEditingTheme || 'light';
+                        if (!config[mode]) {
+                            config[mode] = {
+                                isGradient: config.isGradient !== false,
+                                isThreeColors: config.isThreeColors === true,
+                                colors: [...(config.colors || ['blue', 'lightblue'])]
+                            };
+                        }
+                        return config[mode];
+                    };
+
+                    let activeSubConfig = getActiveSubConfig();
 
                     let themeLabel = 'Системная';
                     if (theme === 'light') themeLabel = 'Светлая';
@@ -14591,10 +15214,24 @@
                         <div class="ios-settings-group" style="margin-bottom: 0.8rem;">
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:2px;">
-                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Градиент</span>
-                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Использовать два цвета</span>
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Раздельные цвета для тем</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Настроить разные акценты для светлой и тёмной темы</span>
                                 </div>
-                                <input type="checkbox" id="grad-toggle" class="tumbler-checkbox" ${config.isGradient ? 'checked' : ''}>
+                                <input type="checkbox" id="separate-themes-toggle" class="tumbler-checkbox" ${config.separateThemes ? 'checked' : ''}>
+                            </label>
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Градиент</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Использовать плавный перелив цветов</span>
+                                </div>
+                                <input type="checkbox" id="grad-toggle" class="tumbler-checkbox" ${activeSubConfig.isGradient ? 'checked' : ''}>
+                            </label>
+                            <label style="display: ${activeSubConfig.isGradient ? 'flex' : 'none'} !important;" id="three-colors-wrapper">
+                                <div style="display:flex; flex-direction:column; gap:2px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">3 цвета</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Создать градиент из трех оттенков</span>
+                                </div>
+                                <input type="checkbox" id="three-colors-toggle" class="tumbler-checkbox" ${activeSubConfig.isThreeColors ? 'checked' : ''}>
                             </label>
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:2px;">
@@ -14603,16 +15240,21 @@
                                 </div>
                                 <input type="checkbox" id="glass-toggle" class="tumbler-checkbox" ${config.isGlass ? 'checked' : ''}>
                             </label>
-                            <label style="display: ${config.isGlass ? 'flex' : 'none'} !important;" id="colored-glass-wrapper">
-                                <div style="display:flex; flex-direction:column; gap:2px;">
-                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Цветное стекло</span>
-                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Заливать капсулы выбранным цветом</span>
-                                </div>
-                                <input type="checkbox" id="colored-glass-toggle" class="tumbler-checkbox" ${config.isColoredGlass !== false ? 'checked' : ''}>
-                            </label>
                         </div>
 
                         <div class="ios-settings-group" style="margin-bottom: 0.8rem;">
+                            <!-- Капсула переключения Светлая/Тёмная над палитрой -->
+                            <div id="theme-subtab-capsule" style="display: ${config.separateThemes ? 'flex' : 'none'} !important; justify-content: center; padding: 1.4rem 1.6rem 0.4rem 1.6rem;">
+                                <div class="sync-tabs" style="width: 100%; max-width: 280px; margin: 0 !important; background: var(--color-input) !important;">
+                                    <button class="sync-tab ${window._activeEditingTheme === 'light' ? 'active' : ''}" id="edit-theme-light-btn" style="padding: 0.6rem 1.2rem !important; font-size: 1.25rem !important;">
+                                        <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">light_mode</span>Светлая
+                                    </button>
+                                    <button class="sync-tab ${window._activeEditingTheme === 'dark' ? 'active' : ''}" id="edit-theme-dark-btn" style="padding: 0.6rem 1.2rem !important; font-size: 1.25rem !important;">
+                                        <span class="material-icons" style="font-size: 1.6rem; margin-right: 6px;">dark_mode</span>Тёмная
+                                    </button>
+                                </div>
+                            </div>
+
                             <div class="ios-settings-row" style="padding: 1.6rem; cursor: default; justify-content: center;">
                                 <div class="color-picker-grid" id="color-grid" style="margin: 0; width: 100%;"></div>
                             </div>
@@ -14653,7 +15295,7 @@
                             <div style="display: flex; align-items: center; justify-content: space-between; background: var(--color-highlight); padding: 1.2rem; border-radius: var(--radius-medium);">
                                 <div style="display: flex; flex-direction: column; gap: 4px; text-align: left;">
                                     <span style="font-size: 1.2rem; font-weight: 700; color: var(--color-text-primary);">Интерфейс</span>
-                                    <span style="font-size: 1rem; color: var(--color-text-secondary);">Цветные акценты и градиенты</span>
+                                    <span style="font-size: 1rem; color: var(--color-text-secondary);">Описание блока</span>
                                 </div>
                                 <span class="material-icons" style="color: var(--color-accent); font-size: 1.8rem; transition: color 0.2s;">done</span>
                             </div>
@@ -14705,7 +15347,10 @@
                         <div class="settings-sidebar ${!isMainMobile ? 'hidden-on-mobile' : ''}">
                             <div class="desktop-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary);">Настройки</div>
                             <div class="mobile-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary); display:flex; justify-content:space-between; align-items:center;">
-                                Настройки
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons back-to-drawer-btn" style="cursor:pointer; color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                    <span>Настройки</span>
+                                </div>
                                 <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
                             </div>
 
@@ -14765,6 +15410,10 @@
                 });
                 modal.querySelectorAll('.ios-settings-row[data-target]').forEach(row => {
                     row.onclick = () => renderView(row.getAttribute('data-target'));
+                });
+
+                modal.querySelectorAll('.back-to-drawer-btn').forEach(btn => {
+                    btn.onclick = () => returnToDrawer(modal, overlay);
                 });
 
                 if (currentView === 'general') {
@@ -14937,8 +15586,6 @@
                         if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); if (window.applyHideDaysOff) window.applyHideDaysOff(); };
                     modal.querySelector('#setting-dim-pairs').onchange = (e) => { generalConfig.dimPastPairs = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                         if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); if (window.applyDimming) window.applyDimming(); };
-                    modal.querySelector('#setting-short-aud').onchange = (e) => { generalConfig.shortAudFormat = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
                     modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
                         if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
                     modal.querySelector('#setting-show-big-break').onchange = (e) => {
@@ -14987,26 +15634,65 @@
                         };
                     });
                 } else if (currentView === 'appearance') {
-                    let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
+                    let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, isThreeColors: false, colors: ['blue', 'lightblue'] };
                     if (window._etisTargetIndex === undefined) window._etisTargetIndex = 0;
+
+                    const getActiveSubConfig = () => {
+                        if (!config.separateThemes) return config;
+                        const mode = window._activeEditingTheme || 'light';
+                        if (!config[mode]) {
+                            config[mode] = {
+                                isGradient: config.isGradient !== false,
+                                isThreeColors: config.isThreeColors === true,
+                                colors: [...(config.colors || ['blue', 'lightblue'])]
+                            };
+                        }
+                        return config[mode];
+                    };
 
                     const grid = modal.querySelector('#color-grid');
 
-                    // Функция для локального обновления классов выбранных цветов в DOM
+                    // Функция обновления номеров на кружочках палитры (с поддержкой повторов 1,2 / 1,2,3)
                     const updateColorGridSelection = (gridEl, currentConfig) => {
+                        const activeSub = getActiveSubConfig();
+                        const maxColors = !activeSub.isGradient ? 1 : (activeSub.isThreeColors ? 3 : 2);
+                        const activeColors = (activeSub.colors || []).slice(0, maxColors);
+
                         gridEl.querySelectorAll('.color-picker-circle').forEach(circle => {
                             const colorKey = circle.getAttribute('data-color-key');
                             circle.classList.remove('selected');
                             circle.innerHTML = '';
 
-                            const selectedIndex = currentConfig.colors.indexOf(colorKey);
-                            if (selectedIndex !== -1) {
+                            const indices = [];
+                            activeColors.forEach((c, idx) => {
+                                if (c === colorKey) indices.push(idx + 1);
+                            });
+
+                            if (indices.length > 0) {
                                 circle.classList.add('selected');
-                                circle.innerHTML = currentConfig.isGradient
-                                    ? (selectedIndex + 1).toString()
-                                    : '<span class="material-icons" style="font-size: 20px;">check</span>';
+                                if (!activeSub.isGradient) {
+                                    circle.innerHTML = '<span class="material-icons" style="font-size: 20px;">check</span>';
+                                } else {
+                                    const label = indices.join(',');
+                                    let fontSize = '1.4rem';
+                                    if (label.length >= 5) fontSize = '1.05rem';
+                                    else if (label.length >= 3) fontSize = '1.2rem';
+                                    circle.innerHTML = `<span style="font-size: ${fontSize}; font-weight: 800; line-height: 1; letter-spacing: -0.3px;">${label}</span>`;
+                                }
                             }
                         });
+                    };
+
+                    // Синхронизация тумблеров градиента с выбранной темой
+                    const syncTogglesWithActiveTheme = () => {
+                        const activeSub = getActiveSubConfig();
+                        const gradToggle = modal.querySelector('#grad-toggle');
+                        const threeToggle = modal.querySelector('#three-colors-toggle');
+                        const threeWrapper = modal.querySelector('#three-colors-wrapper');
+
+                        if (gradToggle) gradToggle.checked = activeSub.isGradient;
+                        if (threeToggle) threeToggle.checked = activeSub.isThreeColors;
+                        if (threeWrapper) threeWrapper.style.setProperty('display', activeSub.isGradient ? 'flex' : 'none', 'important');
                     };
 
                     COLOR_ORDER.forEach(colorKey => {
@@ -15015,76 +15701,179 @@
                         circle.style.backgroundColor = ACCENT_COLORS[colorKey];
                         circle.setAttribute('data-color-key', colorKey);
 
-                        const selectedIndex = config.colors.indexOf(colorKey);
-                        if (selectedIndex !== -1) {
-                            circle.classList.add('selected');
-                            circle.innerHTML = config.isGradient ? (selectedIndex + 1).toString() : '<span class="material-icons" style="font-size: 20px;">check</span>';
-                        }
-
                         circle.onclick = () => {
-                            if (config.isGradient) {
-                                if (config.colors.includes(colorKey)) config.colors.reverse();
-                                else { if (config.colors.length < 2) { config.colors.push(colorKey); window._etisTargetIndex = 0; } else { config.colors[window._etisTargetIndex] = colorKey; window._etisTargetIndex = (window._etisTargetIndex === 0) ? 1 : 0; } }
-                            } else { config.colors = [colorKey]; window._etisTargetIndex = 0; }
-                            saveSyncData('etis_accent_config', JSON.stringify(config));
-                            applyAccentColor(); // 1. Выгрузка при клике на кружок цвета
+                            const activeSub = getActiveSubConfig();
+                            const maxColors = !activeSub.isGradient ? 1 : (activeSub.isThreeColors ? 3 : 2);
 
-                            // Локальное обновление
+                            if (!activeSub.isGradient) {
+                                activeSub.colors = [colorKey];
+                                window._etisTargetIndex = 0;
+                            } else {
+                                while (activeSub.colors.length < maxColors) {
+                                    activeSub.colors.push(colorKey);
+                                }
+                                activeSub.colors = activeSub.colors.slice(0, maxColors);
+
+                                if (window._etisTargetIndex === undefined || window._etisTargetIndex >= maxColors) {
+                                    window._etisTargetIndex = 0;
+                                }
+
+                                activeSub.colors[window._etisTargetIndex] = colorKey;
+                                window._etisTargetIndex = (window._etisTargetIndex + 1) % maxColors;
+                            }
+
+                            saveSyncData('etis_accent_config', JSON.stringify(config));
+                            applyAccentColor();
                             updateColorGridSelection(grid, config);
                         };
                         grid.appendChild(circle);
                     });
 
+                    updateColorGridSelection(grid, config);
+
+                    // Переключатели в капсуле "Светлая / Тёмная" с живым предпросмотром темы
+                    const lightBtn = modal.querySelector('#edit-theme-light-btn');
+                    const darkBtn = modal.querySelector('#edit-theme-dark-btn');
+
+                    if (lightBtn && darkBtn) {
+                        lightBtn.onclick = (e) => {
+                            e.preventDefault();
+                            window._activeEditingTheme = 'light';
+                            window._etisTargetIndex = 0;
+                            lightBtn.classList.add('active');
+                            darkBtn.classList.remove('active');
+                            
+                            // Включаем временный предпросмотр светлой темы
+                            document.documentElement.setAttribute('theme', 'light');
+                            
+                            syncTogglesWithActiveTheme();
+                            updateColorGridSelection(grid, config);
+                        };
+
+                        darkBtn.onclick = (e) => {
+                            e.preventDefault();
+                            window._activeEditingTheme = 'dark';
+                            window._etisTargetIndex = 0;
+                            darkBtn.classList.add('active');
+                            lightBtn.classList.remove('active');
+                            
+                            // Включаем временный предпросмотр тёмной темы
+                            document.documentElement.setAttribute('theme', 'dark');
+                            
+                            syncTogglesWithActiveTheme();
+                            updateColorGridSelection(grid, config);
+                        };
+                    }
+
+                    // Тумблер "Раздельные цвета для тем"
+                    const separateToggle = modal.querySelector('#separate-themes-toggle');
+                    if (separateToggle) {
+                        separateToggle.onchange = (e) => {
+                            config.separateThemes = e.target.checked;
+                            const capsule = modal.querySelector('#theme-subtab-capsule');
+                            if (capsule) {
+                                capsule.style.setProperty('display', config.separateThemes ? 'flex' : 'none', 'important');
+                            }
+
+                            if (config.separateThemes) {
+                                // Выбираем ту тему, которая сейчас активна на экране
+                                const curTheme = document.documentElement.getAttribute('theme') || 'light';
+                                window._activeEditingTheme = (curTheme === 'dark') ? 'dark' : 'light';
+
+                                if (!config.light) config.light = { isGradient: config.isGradient, isThreeColors: config.isThreeColors, colors: [...config.colors] };
+                                if (!config.dark) config.dark = { isGradient: config.isGradient, isThreeColors: config.isThreeColors, colors: [...config.colors] };
+
+                                // Включаем тему предпросмотра
+                                document.documentElement.setAttribute('theme', window._activeEditingTheme);
+                            } else {
+                                // При выключении тумблера сбрасываем тему обратно к сохранённой
+                                detectTheme();
+                            }
+
+                            window._etisTargetIndex = 0;
+                            syncTogglesWithActiveTheme();
+                            saveSyncData('etis_accent_config', JSON.stringify(config));
+                            applyAccentColor();
+                            updateColorGridSelection(grid, config);
+                        };
+                    }
+
                     // Кнопка рандомайзера
                     modal.querySelector('#random-color-row').onclick = (e) => {
                         e.preventDefault();
+                        const activeSub = getActiveSubConfig();
                         const r1 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
-                        let r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
-                        while (config.isGradient && r2 === r1) r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
-                        config.colors = config.isGradient ? [r1, r2] : [r1];
-                        saveSyncData('etis_accent_config', JSON.stringify(config)); // Используем безопасную запись
-                        applyAccentColor();
 
+                        if (!activeSub.isGradient) {
+                            activeSub.colors = [r1];
+                        } else if (!activeSub.isThreeColors) {
+                            const r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
+                            activeSub.colors = [r1, r2];
+                        } else {
+                            const r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
+                            const r3 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
+                            activeSub.colors = [r1, r2, r3];
+                        }
+
+                        window._etisTargetIndex = 0;
+                        saveSyncData('etis_accent_config', JSON.stringify(config));
+                        applyAccentColor();
                         updateColorGridSelection(grid, config);
                     };
 
-                    // Переключатель градиента
+                    // Тумблер Градиента
                     modal.querySelector('#grad-toggle').onchange = (e) => {
-                        config.isGradient = e.target.checked;
-                        if (!config.isGradient && config.colors.length > 1) config.colors = [config.colors[0]];
-                        if (config.isGradient && config.colors.length < 2) config.colors.push('lightblue');
-                        saveSyncData('etis_accent_config', JSON.stringify(config)); // Используем безопасную запись
-                        applyAccentColor();
+                        const activeSub = getActiveSubConfig();
+                        activeSub.isGradient = e.target.checked;
 
+                        const threeWrapper = modal.querySelector('#three-colors-wrapper');
+                        if (threeWrapper) {
+                            threeWrapper.style.setProperty('display', activeSub.isGradient ? 'flex' : 'none', 'important');
+                        }
+
+                        if (!activeSub.isGradient) {
+                            if (activeSub.colors.length > 1) activeSub.colors = [activeSub.colors[0]];
+                        } else {
+                            if (activeSub.colors.length < 2) activeSub.colors.push('lightblue');
+                            if (activeSub.isThreeColors && activeSub.colors.length < 3) activeSub.colors.push('pink');
+                        }
+
+                        window._etisTargetIndex = 0;
+                        saveSyncData('etis_accent_config', JSON.stringify(config));
+                        applyAccentColor();
                         updateColorGridSelection(grid, config);
                     };
 
-                    // Переключатель размытия стекла
+                    // Тумблер 3 цветов
+                    const threeColorsToggle = modal.querySelector('#three-colors-toggle');
+                    if (threeColorsToggle) {
+                        threeColorsToggle.onchange = (e) => {
+                            const activeSub = getActiveSubConfig();
+                            activeSub.isThreeColors = e.target.checked;
+
+                            if (activeSub.isThreeColors) {
+                                if (activeSub.colors.length === 1) activeSub.colors.push('lightblue');
+                                if (activeSub.colors.length === 2) activeSub.colors.push('pink');
+                            } else {
+                                if (activeSub.colors.length > 2) activeSub.colors = activeSub.colors.slice(0, 2);
+                            }
+
+                            window._etisTargetIndex = 0;
+                            saveSyncData('etis_accent_config', JSON.stringify(config));
+                            applyAccentColor();
+                            updateColorGridSelection(grid, config);
+                        };
+                    }
+
+                    // Тумблер эффекта стекла
                     const glassToggle = modal.querySelector('#glass-toggle');
                     if (glassToggle) {
                         glassToggle.onchange = (e) => {
                             config.isGlass = e.target.checked;
-                            saveSyncData('etis_accent_config', JSON.stringify(config)); // Используем безопасную запись
-                            applyAccentColor(); // 4. Выгрузка при переключении стекла
-
-                            // Локальное скрытие/отображение настроек цвета стекла
-                            const wrapper = modal.querySelector('#colored-glass-wrapper');
-                            if (wrapper) {
-                                wrapper.style.setProperty('display', config.isGlass ? 'flex' : 'none', 'important');
-                            }
-                        };
-                    }
-
-                    // Переключатель цветного стекла
-                    const coloredGlassToggle = modal.querySelector('#colored-glass-toggle');
-                    if (coloredGlassToggle) {
-                        coloredGlassToggle.onchange = (e) => {
-                            config.isColoredGlass = e.target.checked;
                             saveSyncData('etis_accent_config', JSON.stringify(config));
                             applyAccentColor();
                         };
                     }
-
                 } else if (currentView === 'beta') {
                     const masterToggle = modal.querySelector('#setting-master-beta');
 
@@ -15494,7 +16283,7 @@
                             'science',
                             'Как открыть бета функции',
                             null, null,
-                            'Откройте <b>«Настройки»</b> → перейдите во вкладку <b>«Бета функции»</b> и включите мастер-тумблер <b>«Экспериментальные функции»</b>.'
+                            'Откройте <b>«Настройки»</b> → перейдите во вкладку <b>«Бета функции»</b> и включите тумблер <b>«Экспериментальные функции»</b>. На данный момент доступно тестирование ИИ-сводки в объявлениях, но в будущем появятся больше функций'
                         )}
                     `;
                 } else if (currentView === 'feedback_guide') {
@@ -15510,7 +16299,7 @@
                             'campaign',
                             'Как предложить новые функции',
                             null, null,
-                            'Перейдите в официальный Telegram-канал проекта <b><a href="https://t.me/etisreborn" target="_blank" style="color:var(--color-accent); font-weight:700;">Новости REBORN</a></b> (ссылка также есть внизу сайдбара). В комментариях к постам можно предлагать идеи, голосовать за обновления и обсуждать редизайн.'
+                            'Перейдите в официальный Telegram-канал проекта <b><a href="https://t.me/etisreborn" target="_blank" style="color:var(--color-accent); font-weight:700;">Новости REBORN</a></b> (ссылка также есть внизу сайдбара). В комментариях к постам можно предлагать идеи, голосовать за будущие нововведения и обмениваться мнениями.'
                         )}
                     `;
                 }
@@ -15522,7 +16311,10 @@
                         <div class="settings-sidebar ${!isMainMobile ? 'hidden-on-mobile' : ''}">
                             <div class="desktop-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary);">Обучение</div>
                             <div class="mobile-main-title" style="font-size: 2.2rem; font-weight: 800; margin-bottom: 1.6rem; padding: 0 8px; color: var(--color-text-primary); display:flex; justify-content:space-between; align-items:center;">
-                                Обучение
+                                <div style="display:flex; align-items:center; gap:12px;">
+                                    <span class="material-icons back-to-drawer-btn" style="cursor:pointer; color:var(--color-text-secondary); font-size: 2.4rem;">arrow_back</span>
+                                    <span>Обучение</span>
+                                </div>
                                 <span class="material-icons close-modal-btn" style="color:var(--color-text-secondary); cursor:pointer;">close</span>
                             </div>
 
@@ -15560,6 +16352,9 @@
                 modal.querySelectorAll('.back-modal-btn').forEach(btn => btn.onclick = () => renderView(btn.getAttribute('data-back')));
                 modal.querySelectorAll('.settings-sidebar-btn').forEach(btn => {
                     btn.onclick = () => renderView(btn.getAttribute('data-target'));
+                });
+                modal.querySelectorAll('.back-to-drawer-btn').forEach(btn => {
+                    btn.onclick = () => returnToDrawer(modal, overlay);
                 });
             };
 
@@ -16279,26 +17074,20 @@
 
                         if (isAdded) {
                             // --- ЛОГИКА УДАЛЕНИЯ ---
-
-                            // Удаляем саму пару из расписания
                             cp = cp.filter(p => p.msgHash !== hash);
                             localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
 
-                            // Удаляем хэш из списка добавленных
                             addedMsgs = addedMsgs.filter(h => h !== hash);
                             localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
 
-                            // СИНХРОННО снимаем класс "added" со всех упоминаний этой даты на странице
                             document.querySelectorAll(`.msg-event-link[data-hash="${hash}"]`).forEach(link => {
                                 link.classList.remove('added');
                             });
 
-                            // Показываем уведомление
-                            if (window.showEtisPush) window.showEtisPush('Удалено', title, `Событие убрано из расписания`, 'info', 'event_busy');
+                            if (window.showEtisPush) window.showEtisPush('Удалено', title, `Событие убрано из расписания`, 'info', 'event_busy', null, null, false);
 
                         } else {
                             // --- ЛОГИКА ДОБАВЛЕНИЯ ---
-
                             const d = parseInt(el.dataset.d), m = parseInt(el.dataset.m), hr = el.dataset.hr.padStart(2,'0'), min = el.dataset.min.padStart(2,'0');
                             const aud = el.dataset.aud;
 
@@ -16310,33 +17099,40 @@
                             const targetWeek = parseInt(localStorage.getItem('etis_actual_week') || '1') + weekDiff;
 
                             let eM = parseInt(min) + 90, eH = parseInt(hr) + Math.floor(eM/60);
+
+                            // Определение типа события по ключевым словам
+                            let eventType = 'лич';
+                            const lowerTitle = title.toLowerCase();
+                            if (lowerTitle.includes('консультац')) eventType = 'конс';
+                            else if (lowerTitle.includes('лаб')) eventType = 'лаб';
+                            else if (lowerTitle.includes('практ') || lowerTitle.includes('семинар')) eventType = 'практ';
+                            else if (lowerTitle.includes('лекц')) eventType = 'лек';
+                            else if (lowerTitle.includes('экзамен') || lowerTitle.includes('пересдач') || lowerTitle.includes('зачет') || lowerTitle.includes('зачёт')) eventType = 'экз';
+
                             const pair = {
                                 id: 'cp_' + Date.now(),
                                 addedWeek: targetWeek,
-                                dayName:["Воскресенье","Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"][targetDate.getDay()],
+                                dayName: ["Воскресенье","Понедельник","Вторник","Среда","Четверг","Пятница","Суббота"][targetDate.getDay()],
                                 subject: title,
                                 startTime: `${hr}:${min}`,
                                 endTime: `${(eH%24).toString().padStart(2,'0')}:${(eM%60).toString().padStart(2,'0')}`,
-                                type: 'лаб',
+                                type: eventType,
                                 recurrence: 'once',
                                 aud: aud,
                                 teacher: '',
                                 msgHash: hash
                             };
 
-                            // Сохраняем в память
                             cp.push(pair);
                             localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(cp));
 
                             addedMsgs.push(hash);
                             localStorage.setItem('etis_added_msg_events', JSON.stringify(addedMsgs));
 
-                            // СИНХРОННО добавляем класс "added" на все упоминания этой даты на странице
                             document.querySelectorAll(`.msg-event-link[data-hash="${hash}"]`).forEach(link => {
                                 link.classList.add('added');
                             });
 
-                            // Показываем уведомление
                             if (window.showEtisPush) {
                                 window.showEtisPush(
                                     'Добавлено в расписание',
@@ -16348,7 +17144,9 @@
                                         if (typeof window.openCustomPairModal === 'function') {
                                             window.openCustomPairModal(pair.dayName, false, pair);
                                         }
-                                    }
+                                    },
+                                    null,
+                                    false
                                 );
                             }
                         }
@@ -17007,6 +17805,49 @@
                         sidebar.appendChild(userInfoDiv);
                     }
 
+                    // --- АНТИ-БЛОКИРОВКА ЕТИСА: ВОССТАНОВЛЕНИЕ ССЫЛОК МЕНЮ ---
+                    const textToHrefMap = {
+                        'мой учебный план': 'stu.teach_plan',
+                        'элективы': 'ebl_stu.ebl_choice',
+                        'дисциплины по выбору': 'stu.teach_plan?p_mode=choose_dis',
+                        'факультативы': 'stu.fcl_choice',
+                        'мое расписание': 'stu.timetable',
+                        'моё расписание': 'stu.timetable',
+                        'мои оценки': 'stu.signs',
+                        'пропущенные занятия': 'stu.absence',
+                        'приказы': 'stu.orders',
+                        'библиотека': 'stu.library',
+                        'преподаватели': 'stu.teachers',
+                        'обратная связь': 'est_pkg.show_list',
+                        'журнал посещений': 'stu_jour.group_tt',
+                        'объявления': 'stu_ann.announces',
+                        'сообщения от преподавателей': 'stu.teacher_notes',
+                        'образовательный стандарт': 'stu.ses',
+                        'рекомендации и советы обучающимся': 'stu_plus.advice',
+                        'электронные ресурсы': 'stu.electr',
+                        'заказ справок': 'cert_pkg.stu_certif',
+                        'договоры': 'stu_pay.contract_list',
+                        'бланки форм и документов': 'stu_plus.blank_forms',
+                        'портфолио': 'stu.sc_portfolio',
+                        'о ресурсе': 'stu.about',
+                        'анкетирование выпускников': 'stu.gra_test',
+                        'анкетирование по прошедшему семестру': 'stu.term_test',
+                        'пожалуйста, оцените дистанционное обучение!': 'stu.term_test',
+                        'опросы': 'stu.special_est_list',
+                        'смена пароля': 'stu.change_pass_form',
+                        'указать email': 'stu_email_pkg.change_email',
+                        'смена личной записи': 'stu.change_pr_page',
+                        'выход': 'stu.logout'
+                    };
+
+                    sidebar.querySelectorAll('ul.nav.nav-tabs.nav-stacked a').forEach(a => {
+                        const cleanText = a.textContent.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+                        if (textToHrefMap[cleanText]) {
+                            a.setAttribute('href', textToHrefMap[cleanText]);
+                            a.style.color = '';
+                        }
+                    });
+
                     // 4. ПОДГОТОВКА ВСЕХ ЭЛЕМЕНТОВ
                     const allNavs = sidebar.querySelectorAll('ul.nav.nav-tabs.nav-stacked');
                     const mainNav = allNavs[0];
@@ -17242,6 +18083,11 @@
 
                         if (groupContainer.children.length > 0) {
                             mainNav.appendChild(groupContainer);
+
+                            // Создаем разделитель между группами для десктопа в общем контейнере mainNav
+                            const divider = document.createElement('li');
+                            divider.className = 'sidebar-divider';
+                            mainNav.appendChild(divider);
                         }
                     });
 
@@ -18339,19 +19185,16 @@
                 `;
 
                 // --- ФУНКЦИЯ СКРИНШОТА СООБЩЕНИЯ/ОБЪЯВЛЕНИЯ ---
-                const shareMessageCard = (cardElement, defaultFileName) => {
+                const shareMessageCard = (cardElement, defaultFileName, onComplete = null) => {
                     const originalBtnContainer = cardElement.querySelector('.share-msg-wrap');
                     const originalSVG = originalBtnContainer ? originalBtnContainer.innerHTML : '';
 
                     if (originalBtnContainer) {
-                        originalBtnContainer.innerHTML = '<span class="material-icons" style="font-size: 17px; line-height: 1; color:var(--color-text-secondary);">hourglass_empty</span>';
+                        originalBtnContainer.innerHTML = '<span class="material-icons" style="font-size: 17px; line-height: 1; color:var(--color-text-secondary); animation:spin 1s linear infinite;">sync</span>';
                     }
 
                     const renderScreenshot = () => {
-                        let h2c = null;
-                        if (typeof html2canvas !== 'undefined') h2c = html2canvas;
-                        else if (typeof unsafeWindow !== 'undefined' && unsafeWindow.html2canvas) h2c = unsafeWindow.html2canvas;
-                        else if (typeof window !== 'undefined' && window.html2canvas) h2c = window.html2canvas;
+                        let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
 
                         if (!h2c) {
                             console.error('html2canvas не найден');
@@ -18362,8 +19205,9 @@
                         const isMobile = window.innerWidth <= 960;
                         const renderWidth = 540;
 
+                        // 1. Убрано opacity: 0 — теперь контейнер прячется под низ экрана через z-index: -9999
                         const exportContainer = document.createElement('div');
-                        exportContainer.style.cssText = `position: absolute; top: 0px; left: 0px; pointer-events: none; width: ${renderWidth}px; padding: ${isMobile ? '24px 24px 12px 24px' : '40px 40px 20px 40px'}; box-sizing: border-box; background: ${getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'}; font-family: ${getComputedStyle(document.body).fontFamily}; z-index: -9999;`;
+                        exportContainer.style.cssText = `position: absolute; top: 0px; left: 0px; pointer-events: none; width: ${renderWidth}px; padding: ${isMobile ? '24px 24px 16px 24px' : '40px 40px 20px 40px'}; box-sizing: border-box; background: ${getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'}; font-family: ${getComputedStyle(document.body).fontFamily}; z-index: -9999;`;
 
                         const span9Wrapper = document.createElement('div');
                         span9Wrapper.className = 'span9';
@@ -18371,75 +19215,72 @@
                         span9Wrapper.style.setProperty('padding', '0', 'important');
                         span9Wrapper.style.setProperty('width', '100%', 'important');
 
+                        // Стили принудительной 100% видимости элементов для холста
                         const exportStyles = document.createElement('style');
                         exportStyles.innerHTML = `
-                            * { transition: none !important; animation: none !important; opacity: 1 !important; }
+                            * { 
+                                transition: none !important; 
+                                animation: none !important; 
+                                opacity: 1 !important; 
+                                visibility: visible !important; 
+                                box-sizing: border-box !important;
+                            }
                             .msg-card {
                                 box-shadow: none !important;
                                 border: 1px solid var(--color-table-border) !important;
                                 border-radius: 24px !important;
+                                background: var(--color-card) !important;
                                 overflow: hidden !important;
+                                transform: none !important;
+                                margin: 0 !important;
+                                width: 100% !important;
                             }
                             .msg-header {
                                 border-top-left-radius: 23px !important;
                                 border-top-right-radius: 23px !important;
+                            }
+                            .share-msg-wrap, .actions-msg-wrap, .answer-wrapper, .send-reply-btn, div[id^="frm_"], .msg-footer button {
+                                display: none !important;
                             }
                         `;
                         span9Wrapper.appendChild(exportStyles);
 
                         // Клонируем карточку
                         const clone = cardElement.cloneNode(true);
-
-                        // Удаляем скрипты, чтобы избежать краша от расширений браузера
                         clone.querySelectorAll('script').forEach(s => s.remove());
                         clone.querySelectorAll('[loading="lazy"]').forEach(el => el.removeAttribute('loading'));
 
-                        // Получаем текущий цвет из конфига, чтобы скриншот был в цвет темы
-                        const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { colors: ['blue'] };
-                        const fallbackColor = '#007AFF'; // дефолтный синий
-                        const currentAccentHex = ACCENT_COLORS[accConfig.colors[0]] || fallbackColor;
+                        clone.classList.remove('anim-fade-up', 'is-visible');
+                        clone.style.setProperty('transform', 'none', 'important');
+                        clone.style.setProperty('opacity', '1', 'important');
+                        clone.style.setProperty('margin', '0', 'important');
 
-                        // Находим все элементы, которые могут иметь градиентный текст
+                        const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { colors: ['blue'] };
+                        const currentAccentHex = ACCENT_COLORS[accConfig.colors[0]] || '#007AFF';
+
+                        // Преобразуем градиентные тексты в сплошной цвет для стабильного рендера html2canvas
                         const gradientSelectors = '.msg-sender, .msg-sender *, .teacher-name-link, .review-dis-link, .accent-stat, .file-attachment-link .material-icons';
                         clone.querySelectorAll(gradientSelectors).forEach(el => {
-                            // Полностью вычищаем свойства градиента
                             el.style.setProperty('background', 'none', 'important');
                             el.style.setProperty('background-image', 'none', 'important');
                             el.style.setProperty('-webkit-background-clip', 'unset', 'important');
                             el.style.setProperty('background-clip', 'unset', 'important');
                             el.style.setProperty('-webkit-text-fill-color', currentAccentHex, 'important');
                             el.style.setProperty('color', currentAccentHex, 'important');
-
-                            // Возвращаем правильный display, чтобы иконка и текст не слипались
-                            if (el.classList.contains('msg-sender')) {
-                                el.style.setProperty('display', 'flex', 'important');
-                            } else {
-                                el.style.setProperty('display', 'inline-block', 'important');
-                            }
                         });
 
-                        // Принудительно убиваем отступы снаружи карточки у клона
-                        clone.style.setProperty('margin', '0', 'important');
-
-                        // Удаляем обертку кнопки из клона
-                        const cloneShareBtn = clone.querySelector('.share-msg-wrap');
-                        if (cloneShareBtn) cloneShareBtn.remove();
-
-                        clone.querySelectorAll('.answer-wrapper, .send-reply-btn, div[id^="frm_"], .msg-footer button').forEach(el => el.remove());
+                        clone.querySelectorAll('.share-msg-wrap, .actions-msg-wrap, .answer-wrapper, .send-reply-btn, div[id^="frm_"], .msg-footer button').forEach(el => el.remove());
 
                         const cloneFooter = clone.querySelector('.msg-footer');
                         if (cloneFooter && cloneFooter.innerHTML.trim() === '') cloneFooter.remove();
 
-                        // --- ГЕНЕРАЦИЯ УМНОГО ИМЕНИ ФАЙЛА ---
+                        // Формирование имени файла
                         let dynamicFileName = defaultFileName;
                         if (defaultFileName.includes('.png')) {
                             const base = defaultFileName.replace('.png', '').toLowerCase();
-
-                            // Достаем отправителя (очищаем от иконок и берем первое слово, например "Деканат")
                             const senderRaw = clone.querySelector('.msg-sender')?.textContent.replace(/campaign|person/g, '').trim() || '';
                             const sender = senderRaw.split('/')[0].trim().replace(/\s+/g, '-').toLowerCase();
 
-                            // Достаем дату и превращаем "25 марта 10:41" в "25.03"
                             const dateRaw = clone.querySelector('.msg-date-text')?.textContent.trim() || '';
                             let dateShort = '';
                             const dmMatch = dateRaw.match(/(\d{1,2})\s+([а-яА-Я]+)/);
@@ -18448,9 +19289,6 @@
                                 const m = mMap[dmMatch[2].toLowerCase()] || '01';
                                 const d = dmMatch[1].padStart(2, '0');
                                 dateShort = `${d}.${m}`;
-                            } else {
-                                const isoMatch = dateRaw.match(/(\d{2})\.(\d{2})/);
-                                if (isoMatch) dateShort = `${isoMatch[1]}.${isoMatch[2]}`;
                             }
 
                             const parts = [base];
@@ -18461,19 +19299,21 @@
 
                         span9Wrapper.appendChild(clone);
 
-                        // --- НЕЗАМЕТНАЯ ВОТЕРМАРКА ---
                         if (generalConfig.watermark) {
                             const watermark = document.createElement('div');
                             watermark.style.cssText = 'text-align: right; margin-top: 12px; width: 100%; box-sizing: border-box;';
                             watermark.innerHTML = `<span style="font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.3; letter-spacing: 0.5px;">etisreborn.ru</span>`;
                             span9Wrapper.appendChild(watermark);
                         }
+
                         exportContainer.appendChild(span9Wrapper);
                         document.body.appendChild(exportContainer);
 
+                        // Рендер через html2canvas
                         h2c(exportContainer, {
                             scale: 2,
                             useCORS: true,
+                            allowTaint: true,
                             scrollY: 0,
                             windowWidth: renderWidth,
                             backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6',
@@ -18483,19 +19323,31 @@
                                 if (!blob) throw new Error('Blob creation failed');
                                 const file = new File([blob], dynamicFileName, { type: 'image/png' });
 
-                                if (isMobile && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                const triggerDownloadFallback = () => {
+                                    const link = document.createElement('a');
+                                    link.download = dynamicFileName;
+                                    link.href = URL.createObjectURL(blob);
+                                    document.body.appendChild(link);
+                                    link.click();
+                                    document.body.removeChild(link);
+                                    setTimeout(() => URL.revokeObjectURL(link.href), 2000);
+                                };
+
+                                // Проверка доступности нативного окна "Поделиться"
+                                if (navigator.canShare && navigator.canShare({ files: [file] })) {
                                     navigator.share({
                                         files: [file],
                                         title: defaultFileName.replace('.png', '')
-                                    }).then(() => cleanup())
-                                    .catch(err => cleanup(true));
+                                    }).then(() => cleanup(false))
+                                    .catch(err => {
+                                        if (err.name !== 'AbortError') {
+                                            triggerDownloadFallback();
+                                        }
+                                        cleanup(false);
+                                    });
                                 } else {
-                                    const link = document.createElement('a');
-                                    link.download = defaultFileName;
-                                    link.href = URL.createObjectURL(blob);
-                                    link.click();
-                                    URL.revokeObjectURL(link.href);
-                                    cleanup();
+                                    triggerDownloadFallback();
+                                    cleanup(false);
                                 }
                             }, 'image/png');
                         }).catch(err => {
@@ -18509,35 +19361,25 @@
                                 originalBtnContainer.innerHTML = isError ? '<span class="material-icons" style="font-size:18px; color:var(--color-red);">error</span>' : '<span class="material-icons" style="font-size:18px; color:var(--color-green);">check</span>';
                                 setTimeout(() => { originalBtnContainer.innerHTML = originalSVG; }, 2000);
                             }
+                            if (typeof onComplete === 'function') onComplete(!isError);
                         }
                     };
 
+                    // Предварительная загрузка библиотеки без задержек
                     let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
-
                     if (!h2cObj) {
                         const script = document.createElement('script');
                         script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-
-                        script.onload = () => {
-                            renderScreenshot();
-                        };
-
-                        script.onerror = () => {
-                            if (originalBtnContainer) {
-                                originalBtnContainer.innerHTML = '<span class="material-icons" style="font-size:18px; color:var(--color-red);">error</span>';
-                                setTimeout(() => { originalBtnContainer.innerHTML = originalSVG; }, 2000);
-                            }
-                        };
+                        script.onload = () => renderScreenshot();
+                        script.onerror = () => cleanup(true);
                         safeAppend(script);
                     } else {
                         renderScreenshot();
                     }
                 };
 
-                // --- ФУНКЦИЯ СВАЙПОВ ДЛЯ СООБЩЕНИЙ/ОБЪЯВЛЕНИЙ (МОБИЛЬНЫЕ) ---
+                // --- ЕДИНЫЙ МЕХАНИЗМ СВАЙПОВ ДЛЯ СООБЩЕНИЙ И ОБЪЯВЛЕНИЙ ---
                 const initMessageSwipes = (container, defaultFileName) => {
-                    if (window.innerWidth > 960) return; // Только для мобилок
-
                     let bubble = document.getElementById('swipe-action-bubble');
                     if (!bubble) {
                         bubble = document.createElement('div');
@@ -18547,80 +19389,154 @@
                     }
                     const iconEl = bubble.querySelector('.material-icons');
 
-                    let startX = 0, startY = 0, currentCard = null, originalRect = null;
-                    let isSwiping = false, isScrollDetermined = false;
-                    const THRESHOLD = 80;
+                    let startX = 0, startY = 0;
+                    let currentCard = null;
+                    let originalRect = null;
+                    let isSwiping = false;
+                    let isScrollDetermined = false;
+                    let swipeDir = '';
+                    let hasAi = false;
+                    const THRESHOLD = 65;
 
-                    container.addEventListener('touchstart', (e) => {
+                    // Слушаем события на уровне span9 или контейнера
+                    const targetArea = document.querySelector('.span9') || container || document.body;
+
+                    targetArea.addEventListener('touchstart', (e) => {
+                        if (window.innerWidth > 960) return;
+                        
+                        // Игнорируем клики по кнопкам, полям ввода и ссылкам
+                        if (e.target.closest('button, input, textarea, select, a, .file-attachment-link, .import-cons-btn, .msg-event-link')) return;
+
+                        const card = e.target.closest('.msg-card');
+                        if (!card) return;
+
                         const touch = e.touches[0];
-                        startX = touch.clientX; startY = touch.clientY;
-                        isSwiping = false; isScrollDetermined = false;
-                        currentCard = e.target.closest('.msg-card');
+                        startX = touch.clientX;
+                        startY = touch.clientY;
+                        isSwiping = false;
+                        isScrollDetermined = false;
+                        swipeDir = '';
+                        currentCard = card;
+                        originalRect = currentCard.getBoundingClientRect();
+                        hasAi = !!currentCard.querySelector('.ai-summary-btn');
 
-                        if (currentCard) {
-                            originalRect = currentCard.getBoundingClientRect();
-                            currentCard.style.transition = 'none';
-                        }
+                        currentCard.style.setProperty('transition', 'none', 'important');
+                        currentCard.style.setProperty('animation', 'none', 'important');
                     }, { passive: true });
 
-                    container.addEventListener('touchmove', (e) => {
+                    targetArea.addEventListener('touchmove', (e) => {
                         if (!currentCard || !originalRect) return;
+
                         const touch = e.touches[0];
                         const diffX = touch.clientX - startX;
                         const diffY = touch.clientY - startY;
 
+                        // Определение направления: скролл страницы или свайп карточки
                         if (!isScrollDetermined) {
-                            if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) return;
+                            if (Math.abs(diffX) < 8 && Math.abs(diffY) < 8) return;
                             isScrollDetermined = true;
-                            // Разрешаем только свайп ВЛЕВО (diffX < 0). Скролл вниз игнорируем
-                            if (Math.abs(diffY) > Math.abs(diffX) || diffX > 0) {
-                                currentCard = null; return;
+                            if (Math.abs(diffY) >= Math.abs(diffX)) {
+                                currentCard = null;
+                                return;
                             }
                             isSwiping = true;
                             bubble.className = '';
-                            iconEl.textContent = 'ios_share';
                         }
 
-                        if (isSwiping && diffX < 0) {
+                        if (isSwiping) {
+                            // Блокируем нативный скролл страницы во время горизонтального свайпа
+                            if (e.cancelable) e.preventDefault();
+
+                            if (diffX < 0) {
+                                swipeDir = 'left';
+                                iconEl.textContent = 'ios_share';
+                            } else {
+                                swipeDir = 'right';
+                                if (hasAi) {
+                                    const aiBtn = currentCard.querySelector('.ai-summary-btn');
+                                    iconEl.textContent = (aiBtn && aiBtn.textContent.includes('psychology')) ? 'psychology' : 'auto_awesome';
+                                } else {
+                                    iconEl.textContent = 'content_copy';
+                                }
+                            }
+
                             let moveX = diffX;
-                            // Пружинистое сопротивление
-                            if (Math.abs(moveX) > THRESHOLD) moveX = -THRESHOLD - (Math.abs(moveX) - THRESHOLD) * 0.25;
+                            if (Math.abs(moveX) > THRESHOLD) {
+                                moveX = (moveX > 0 ? 1 : -1) * (THRESHOLD + (Math.abs(moveX) - THRESHOLD) * 0.25);
+                            }
 
-                            currentCard.style.transform = `translateX(${moveX}px)`;
+                            currentCard.style.setProperty('transform', `translateX(${moveX}px)`, 'important');
 
-                            bubble.style.top = `${originalRect.top + originalRect.height / 2 - 12}px`;
-                            bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
+                            // Динамический расчет высоты относительно экрана
+                            const currentRect = currentCard.getBoundingClientRect();
+                            bubble.style.top = `${currentRect.top + currentRect.height / 2 - 12}px`;
                             bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
 
+                            if (swipeDir === 'left') {
+                                bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
+                            } else {
+                                bubble.style.left = `${originalRect.left + (moveX / 2) - 12}px`;
+                            }
+
                             if (Math.abs(diffX) >= THRESHOLD) {
-                                bubble.classList.add('active-threshold', 'action-share');
+                                if (swipeDir === 'left') {
+                                    bubble.classList.add('active-threshold', 'action-share');
+                                } else {
+                                    bubble.classList.add('active-threshold', hasAi ? 'action-ai' : 'action-add');
+                                }
+
                                 if (!bubble.dataset.vibrated && navigator.vibrate) {
-                                    navigator.vibrate(15); bubble.dataset.vibrated = 'true';
+                                    navigator.vibrate(15);
+                                    bubble.dataset.vibrated = 'true';
                                 }
                             } else {
-                                bubble.classList.remove('active-threshold', 'action-share');
+                                bubble.classList.remove('active-threshold', 'action-share', 'action-ai', 'action-add');
                                 bubble.dataset.vibrated = '';
                             }
                         }
-                    }, { passive: true });
+                    }, { passive: false }); // Важно: passive = false, чтобы preventDefault мог заблокировать вертикальный скролл
 
-                    container.addEventListener('touchend', (e) => {
-                        if (!currentCard || !isSwiping) return;
-                        const diffX = e.changedTouches[0].clientX - startX;
-                        const cardToShare = currentCard;
+                    const resetCard = (e) => {
+                        if (!currentCard || !isSwiping) {
+                            currentCard = null;
+                            isSwiping = false;
+                            return;
+                        }
 
-                        currentCard.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                        currentCard.style.transform = 'translateX(0px)';
+                        const diffX = (e.changedTouches && e.changedTouches.length > 0) ? (e.changedTouches[0].clientX - startX) : 0;
+                        const target = currentCard;
+                        const dir = swipeDir;
+                        const cardHasAi = hasAi;
+
+                        target.style.setProperty('transition', 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', 'important');
+                        target.style.setProperty('transform', 'translateX(0px)', 'important');
 
                         bubble.style.opacity = '0';
-                        bubble.classList.remove('active-threshold', 'action-share');
+                        bubble.classList.remove('active-threshold', 'action-share', 'action-ai', 'action-add');
                         bubble.dataset.vibrated = '';
 
-                        if (diffX <= -THRESHOLD) {
-                            setTimeout(() => shareMessageCard(cardToShare, defaultFileName), 150);
+                        if (Math.abs(diffX) >= THRESHOLD) {
+                            if (dir === 'left') {
+                                shareMessageCard(target, defaultFileName);
+                            } else if (dir === 'right') {
+                                if (cardHasAi) {
+                                    target.querySelector('.ai-summary-btn')?.click();
+                                } else {
+                                    const bodyText = target.querySelector('.msg-body')?.innerText || target.innerText;
+                                    navigator.clipboard.writeText(bodyText.trim());
+                                    if (window.showEtisPush) {
+                                        window.showEtisPush('Скопировано', 'Текст скопирован', 'Сообщение сохранено в буфер обмена', 'success', 'content_copy', null, null, false);
+                                    }
+                                }
+                            }
                         }
-                        currentCard = null; isSwiping = false;
-                    });
+
+                        currentCard = null;
+                        isSwiping = false;
+                    };
+
+                    targetArea.addEventListener('touchend', resetCard, { passive: true });
+                    targetArea.addEventListener('touchcancel', resetCard, { passive: true });
                 };
 
                 // Генерация уникального хэша для каждого сообщения
@@ -19060,7 +19976,10 @@
                                 subjectTitle,
                                 'Считываем вложения и готовим краткую сводку. Пожалуйста, подождите немного...',
                                 'info',
-                                'psychology'
+                                'psychology',
+                                null,
+                                null,
+                                false
                             );
                         }
 
@@ -19110,7 +20029,7 @@
                         } catch (err) {
                             console.error('[AI Summary Error]', err);
                             if (window.showEtisPush) {
-                                window.showEtisPush('Ошибка ИИ', 'Не удалось получить сводку', 'Попробуйте обновить страницу или повторить попытку позже.', 'warning', 'error');
+                                window.showEtisPush('Ошибка ИИ', 'Не удалось получить сводку', 'Попробуйте обновить страницу или повторить попытку позже.', 'warning', 'error', null, null, false);
                             }
                             aiBtn.innerHTML = originalBtnHTML;
                             aiBtn.style.animation = 'none';
@@ -19192,6 +20111,128 @@
                             if (submenu) {
                                 submenu.appendChild(planEvalBtn);
                             }
+                        }
+
+                        if (page === 'stu.fcl_choice') {
+                            // 1. Ищем год и статус голосования
+                            const allH3 = Array.from(span9.querySelectorAll('h3'));
+                            let yearTitle = 'Факультативы';
+                            let statusText = '';
+
+                            allH3.forEach(h3 => {
+                                const t = h3.textContent.trim();
+                                if (t.toLowerCase().includes('факультатив')) {
+                                    yearTitle = t;
+                                    h3.remove();
+                                } else if (t.toLowerCase().includes('голосован')) {
+                                    statusText = t;
+                                    h3.remove();
+                                }
+                            });
+
+                            // 2. Ищем текст положения и выдержки
+                            const polozhLink = span9.querySelector('a[href*="polozh-fakultativ"]');
+                            const rulesUl = span9.querySelector('ul');
+                            const ruleItems = rulesUl ? Array.from(rulesUl.querySelectorAll('li')).map(li => li.textContent.trim()) : [];
+
+                            // Удаляем старые нестилизованные элементы положения
+                            span9.querySelectorAll('p, ul:not(.nav), br').forEach(el => {
+                                if (!el.closest('.submenu')) el.remove();
+                            });
+
+                            // 3. Создаем карточку правил и положения
+                            const rulesCard = document.createElement('div');
+                            rulesCard.style.cssText = `
+                                background: var(--color-card);
+                                border: 1px solid var(--color-table-border);
+                                border-radius: var(--radius-large);
+                                box-shadow: var(--shadow-main);
+                                padding: 2.4rem;
+                                margin-bottom: 2rem;
+                                color: var(--color-text-primary);
+                                box-sizing: border-box;
+                            `;
+
+                            let rulesListHtml = '';
+                            if (ruleItems.length > 0) {
+                                rulesListHtml = `
+                                    <div style="display: flex; flex-direction: column; gap: 1.2rem; margin-top: 1.6rem;">
+                                        ${ruleItems.map(item => {
+                                            // Выделяем номер пункта жирным
+                                            const match = item.match(/^(\d+\.\d+\.?)\s*(.*)/);
+                                            const num = match ? match[1] : '•';
+                                            const text = match ? match[2] : item;
+                                            return `
+                                                <div style="display: flex; align-items: flex-start; gap: 12px; font-size: 1.35rem; line-height: 1.5; color: var(--color-text-secondary);">
+                                                    <span style="font-weight: 800; color: var(--color-accent); flex-shrink: 0; min-width: 32px;">${num}</span>
+                                                    <div>${text}</div>
+                                                </div>
+                                            `;
+                                        }).join('')}
+                                    </div>
+                                `;
+                            }
+
+                            const pdfHref = polozhLink ? polozhLink.getAttribute('href') : '/polozh-fakultativ.pdf';
+
+                            rulesCard.innerHTML = `
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.4rem; border-bottom: 1px solid var(--color-table-border); padding-bottom: 1.6rem;">
+                                    <div>
+                                        <div style="font-size: 1.6rem; font-weight: 800; color: var(--color-text-primary);">${yearTitle}</div>
+                                        <div style="font-size: 1.25rem; color: var(--color-text-secondary); margin-top: 4px;">Порядок освоения факультативных дисциплин в ПГНИУ</div>
+                                    </div>
+                                    <a href="${pdfHref}" target="_blank" class="file-attachment-link" style="margin: 0 !important; font-weight: 600; text-decoration: none;">
+                                        <span class="material-icons" style="color: var(--color-red);">picture_as_pdf</span>
+                                        <span class="file-name">Текст Положения</span>
+                                    </a>
+                                </div>
+                                ${rulesListHtml}
+                            `;
+
+                            span9.appendChild(rulesCard);
+
+                            // 4. Оформляем плашку статуса голосования
+                            if (statusText) {
+                                const isClosed = statusText.toLowerCase().includes('закрыт');
+                                const statusCard = document.createElement('div');
+                                statusCard.style.cssText = `
+                                    background: ${isClosed ? 'var(--color-highlight)' : 'rgba(52, 199, 89, 0.12)'};
+                                    border: 1px solid ${isClosed ? 'var(--color-table-border)' : 'rgba(52, 199, 89, 0.25)'};
+                                    border-radius: var(--radius-large);
+                                    padding: 1.6rem 2rem;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 12px;
+                                    box-shadow: var(--shadow-main);
+                                    margin-bottom: 2rem;
+                                `;
+
+                                statusCard.innerHTML = `
+                                    <div style="width: 40px; height: 40px; border-radius: 50%; background: ${isClosed ? 'var(--color-card)' : 'rgba(52, 199, 89, 0.2)'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <span class="material-icons" style="font-size: 22px; color: ${isClosed ? 'var(--color-text-secondary)' : 'var(--color-green)'};">${isClosed ? 'lock' : 'how_to_vote'}</span>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="font-size: 1.45rem; font-weight: 800; color: var(--color-text-primary);">${statusText}</div>
+                                        <div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 2px;">
+                                            ${isClosed ? 'Сроки подачи заявок на выбор факультативов истекли.' : 'Вы можете выбрать интересующие вас дисциплины из списка.'}
+                                        </div>
+                                    </div>
+                                `;
+
+                                span9.appendChild(statusCard);
+                            }
+
+                            // 5. Оборачиваем возможные таблицы с факультативами
+                            span9.querySelectorAll('table.common').forEach(table => {
+                                if (!table.parentNode.classList.contains('wide-table-wrapper')) {
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'wide-table-wrapper';
+                                    table.parentNode.insertBefore(wrapper, table);
+                                    wrapper.appendChild(table);
+                                }
+                            });
+
+                            break;
                         }
 
                         // Очистка от лишних оберток ЕТИСа, которые могут создавать пустые места
@@ -19424,22 +20465,90 @@
                             }
                         }
 
-                        // 2. ЭЛЕКТИВЫ И ФАКУЛЬТАТИВЫ
-                        if (page === 'stu.ebl_choice' || page === 'stu.fcl_choice' || page === 'ebl_stu.ebl_choice') {
-                            span9.querySelectorAll('table.common').forEach(table => {
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'wide-table-wrapper';
-                                table.parentNode.insertBefore(wrapper, table);
-                                wrapper.appendChild(table);
+                        // =========================================================
+                        // --- СПЕЦИАЛЬНОЕ ОФОРМЛЕНИЕ ДЛЯ СТРАНИЦЫ ЭЛЕКТИВОВ ---
+                        // =========================================================
+                        if (page === 'stu.ebl_choice' || page === 'ebl_stu.ebl_choice') {
+                            // 1. Ищем текстовые предупреждения и сообщения
+                            let noticeText = '';
+                            const boldNotice = Array.from(span9.querySelectorAll('b')).find(b => 
+                                b.textContent.toLowerCase().includes('элективн') || 
+                                b.textContent.toLowerCase().includes('учебным планом')
+                            );
+
+                            if (boldNotice) {
+                                noticeText = boldNotice.textContent.trim();
+                                boldNotice.remove();
+                            }
+
+                            // 2. Чистим лишние переносы строк и пустые элементы
+                            span9.querySelectorAll('br, p:empty').forEach(el => {
+                                if (!el.closest('.submenu')) el.remove();
                             });
 
-                            span9.querySelectorAll('br').forEach((br, i) => { if(i < 3) br.remove(); });
+                            // 3. Если элективы не предусмотрены планом — выводим красивую карточку
+                            if (noticeText) {
+                                const noticeCard = document.createElement('div');
+                                noticeCard.style.cssText = `
+                                    background: var(--color-card);
+                                    border: 1px solid var(--color-table-border);
+                                    border-radius: var(--radius-large);
+                                    box-shadow: var(--shadow-main);
+                                    padding: 2.4rem;
+                                    margin-bottom: 2rem;
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 1.6rem;
+                                    box-sizing: border-box;
+                                `;
 
-                            const headers = span9.querySelectorAll('h3');
-                            headers.forEach(h => {
-                                h.style.marginTop = '2rem';
-                                h.style.marginBottom = '1.5rem';
+                                noticeCard.innerHTML = `
+                                    <div style="width: 48px; height: 48px; border-radius: 50%; background: var(--color-highlight); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                        <span class="material-icons" style="font-size: 24px; color: var(--color-text-secondary);">event_busy</span>
+                                    </div>
+                                    <div style="flex: 1; text-align: left;">
+                                        <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.4;">
+                                            ${noticeText}
+                                        </div>
+                                        <div style="font-size: 1.25rem; color: var(--color-text-secondary); margin-top: 4px; line-height: 1.5;">
+                                            Запись на элективные курсы для вашего курса и направления в данный момент не требуется.
+                                        </div>
+                                    </div>
+                                `;
+
+                                span9.appendChild(noticeCard);
+                            }
+
+                            // 4. Оборачиваем возможные таблицы с элективами (когда запись открыта)
+                            const tables = span9.querySelectorAll('table.common');
+                            tables.forEach(table => {
+                                if (!table.parentNode.classList.contains('wide-table-wrapper')) {
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'wide-table-wrapper';
+                                    table.parentNode.insertBefore(wrapper, table);
+                                    wrapper.appendChild(table);
+                                }
                             });
+
+                            // 5. Оформляем кнопки подтверждения выбора
+                            const submitBtns = span9.querySelectorAll('input[type="submit"], button[type="submit"]');
+                            submitBtns.forEach(btn => {
+                                btn.className = 'answer-btn-custom';
+                                btn.style.cssText = `
+                                    background: var(--color-accent) !important;
+                                    color: #fff !important;
+                                    padding: 1.2rem 2.4rem !important;
+                                    font-size: 1.4rem !important;
+                                    font-weight: 700 !important;
+                                    border: none !important;
+                                    border-radius: 50px !important;
+                                    cursor: pointer !important;
+                                    margin-top: 1.5rem !important;
+                                    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+                                `;
+                            });
+
+                            break;
                         }
 
                         break;
@@ -21226,21 +22335,37 @@
                         }
                     }
 
-                    // 6. Очистка старых баров и стилей пар
-                    const oldBar = span9.querySelector('.timetable-buttonbar');
-                    if(oldBar) oldBar.remove();
-
+                    // 6. Перенос преподавателя в строку с аудиторией
                     const pairs = span9.querySelectorAll("div.day > table > tbody > tr");
                     pairs.forEach(pair => {
                         const teacher = pair.querySelector('span.teacher');
+                        const aud = pair.querySelector('.aud');
+                        const pairJour = pair.querySelector('td.pair_jour');
+                        if (pairJour) pairJour.remove();
+
+                        let teacherHtml = '';
                         if (teacher) {
-                            const pairTeacher = document.createElement('td');
-                            pairTeacher.className = 'pair_teacher';
-                            pairTeacher.innerHTML = teacher.innerHTML;
-                            pair.appendChild(pairTeacher);
-                            const pairJour = pair.querySelector('td.pair_jour');
-                            if(pairJour) pairJour.remove();
+                            const teacherLink = teacher.querySelector('a') || teacher;
+                            const teacherName = teacherLink.textContent.trim();
+                            const href = teacherLink.getAttribute ? teacherLink.getAttribute('href') : '';
+
+                            if (href) {
+                                teacherHtml = `<div class="pair-teacher-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem; color: var(--color-text-secondary);">person</span><a href="${href}">${teacherName}</a></div>`;
+                            } else if (teacherName) {
+                                teacherHtml = `<div class="pair-teacher-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem; color: var(--color-text-secondary);">person</span><span>${teacherName}</span></div>`;
+                            }
                             teacher.remove();
+                        }
+
+                        let pairTeacher = pair.querySelector('td.pair_teacher');
+                        if (!pairTeacher) {
+                            pairTeacher = document.createElement('td');
+                            pairTeacher.className = 'pair_teacher';
+                            pair.appendChild(pairTeacher);
+                        }
+
+                        if (aud && teacherHtml) {
+                            aud.insertAdjacentHTML('beforeend', teacherHtml);
                         }
                     });
 
@@ -21458,6 +22583,8 @@
                                         }
                                     }
 
+                                    let teacherHtml = pair.teacher ? `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem;">person</span><span>${pair.teacher}</span></div>` : '';
+
                                     tr.innerHTML = `
                                         <td class="pair_num">
                                             <div class="pair-badge-wrapper">
@@ -21469,16 +22596,13 @@
                                             <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
                                                 <a href="#" style="pointer-events: none;">${pair.subject}</a>
                                             </div>
-                                            ${displayAud ? `
-                                            <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">
-                                                <div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);">
-                                                    <span class="material-icons" style="font-size: 1.5rem;">place</span>${displayAud}
-                                                </div>
+                                            ${(displayAud || teacherHtml) ? `
+                                            <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 6px;">
+                                                ${displayAud ? `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>${displayAud}</div>` : ''}
+                                                ${teacherHtml}
                                             </div>` : ''}
                                         </td>
-                                        <td class="pair_teacher">
-                                            ${pair.teacher ? `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${pair.teacher}</a>` : ''}
-                                        </td>
+                                        <td class="pair_teacher"></td>
                                     `;
 
                                     tbody.appendChild(tr);
@@ -21573,6 +22697,8 @@
                                             timeHtml += `<span style="font-size: 1.05rem; color: var(--color-text-secondary); display: block; margin-top: 2px;">${ev.endTime}</span>`;
                                         }
 
+                                        let teacherHtml = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem; color: var(--color-text-secondary);">person</span><span>${shortenName(teacher.name)}</span></div>`;
+
                                         tr.innerHTML = `
                                             <td class="pair_num">
                                                 <div class="pair-badge-wrapper" style="margin-bottom: 6px;">
@@ -21584,11 +22710,12 @@
                                                 <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
                                                     <span style="font-weight: normal; font-size: 1.4rem; color: var(--color-text-primary);">Консультация</span>
                                                 </div>
-                                                ${audHtml}
+                                                <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 6px;">
+                                                    ${audHtml}
+                                                    ${teacherHtml}
+                                                </div>
                                             </td>
-                                            <td class="pair_teacher">
-                                                <a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${shortenName(teacher.name)}</a>
-                                            </td>
+                                            <td class="pair_teacher"></td>
                                         `;
 
                                         tbody.appendChild(tr);
@@ -21804,65 +22931,60 @@
                         }
                     });
 
-                    // --- ПАРСИНГ И ИКОНКИ ДЛЯ АУДИТОРИЙ ---
+                    // --- ПАРСИНГ АУДИТОРИЙ И ОБЪЕДИНЕНИЕ С ПРЕПОДАВАТЕЛЕМ ---
                     span9.querySelectorAll('.pair_info .aud').forEach(aud => {
+                        // 1. Сначала извлекаем и временно удаляем блок преподавателя, чтобы он не попал в текст аудитории
+                        const teacherWrap = aud.querySelector('.pair-teacher-wrap');
+                        let teacherWrapHtml = teacherWrap ? teacherWrap.outerHTML : '';
+                        if (teacherWrap) teacherWrap.remove();
+
+                        // 2. Читаем чистый текст только самой аудитории
                         let text = aud.innerHTML;
-                        const linkEl = aud.querySelector('a');
+                        const linkEl = aud.querySelector('a[href*="zoom"], a[href*="telemost"], a.btn-generic-online, a[href*="http"]');
 
                         const isOnlineText = /Дистанционно|on-line/i.test(text);
                         const isZoom = linkEl && linkEl.href.includes('zoom');
                         const isTelemost = linkEl && linkEl.href.includes('telemost');
 
-                        // Если это онлайн пара (есть ссылка ИЛИ текст "дистанционно")
+                        let locHtml = '';
+
                         if (isOnlineText || linkEl) {
-
                             if (isZoom || isTelemost) {
-                                // 1. ZOOM или ТЕЛЕМОСТ (оставляем только капсулу)
                                 let platformName = isZoom ? "Zoom" : "Телемост";
-                                aud.innerHTML = `
-                                    <a href="${linkEl.href}" target="_blank">${platformName}</a>
-                                `;
+                                locHtml = `<a href="${linkEl.href}" target="_blank">${platformName}</a>`;
                             } else if (linkEl) {
-                                // 2. ДРУГАЯ ССЫЛКА (Фиолетовая капсула)
-                                aud.innerHTML = `
-                                    <a href="${linkEl.href}" target="_blank" class="btn-generic-online">Онлайн</a>
-                                `;
+                                locHtml = `<a href="${linkEl.href}" target="_blank" class="btn-generic-online">Онлайн</a>`;
                             } else {
-                                // 3. ССЫЛКИ НЕТ, просто написано "Дистанционно"
-                                aud.innerHTML = `
-                                    <span class="btn-generic-online" style="display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1.4rem 0.5rem 1.5rem; border-radius: 50px; font-weight: 700; font-size: 1.2rem; background: rgba(175, 82, 222, 0.12); color: #AF52DE; border: 1px solid rgba(175, 82, 222, 0.2);">
-                                        <span class="material-icons" style="font-size: 1.8rem;">public</span>Онлайн
-                                    </span>
-                                `;
+                                locHtml = `<span class="btn-generic-online" style="display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1.4rem 0.5rem 1.5rem; border-radius: 50px; font-weight: 700; font-size: 1.2rem; background: rgba(175, 82, 222, 0.12); color: #AF52DE; border: 1px solid rgba(175, 82, 222, 0.2);"><span class="material-icons" style="font-size: 1.8rem;">public</span>Онлайн</span>`;
                             }
-                        }
-                        // Иначе это обычная физическая аудитория
-                        else {
-                            const matchPhysical = text.match(/ауд\.\s*(.+)\s*\((.+?)\s*корпус,\s*(.*?)\s*этаж\)/i);
+                        } else {
+                            let roomNumber = '';
+                            let building = '';
+
+                            const matchPhysical = text.match(/ауд\.\s*(.+?)\s*\((.+?)\s*корпус,\s*(.*?)\s*этаж\)/i);
                             if (matchPhysical) {
-                                let roomNumber = matchPhysical[1].trim();
-                                const building = matchPhysical[2].trim();
-                                const floor = matchPhysical[3].trim();
-                                if (roomNumber.includes('/')) roomNumber = roomNumber.split('/')[0];
-
-                                let newFormat;
-                                if (generalConfig.shortAudFormat) {
-                                    newFormat = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>${roomNumber}/${building}</div>`;
+                                roomNumber = matchPhysical[1].trim();
+                                building = matchPhysical[2].trim();
+                                if (roomNumber.includes('/')) roomNumber = roomNumber.split('/')[0].trim();
+                            } else {
+                                const matchSlash = text.match(/(?:ауд\.?\s*)?(\d+[а-яa-z]*)\s*[\/\\]\s*(\d+[а-яa-z]*)/i);
+                                if (matchSlash) {
+                                    roomNumber = matchSlash[1].trim();
+                                    building = matchSlash[2].trim();
                                 } else {
-                                    newFormat = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>ауд. ${roomNumber}, к. ${building}, э. ${floor}</div>`;
+                                    const matchSingle = text.match(/ауд\.?\s*(\d+[а-яa-z]*)/i);
+                                    if (matchSingle) roomNumber = matchSingle[1].trim();
                                 }
+                            }
 
-                                aud.innerHTML = text.replace(matchPhysical[0], newFormat);
+                            if (roomNumber) {
+                                const audDisplay = building ? `${roomNumber}/${building}` : roomNumber;
+                                locHtml = `<div class="pair-aud-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem;">place</span>${audDisplay}</div>`;
                             }
                         }
 
-                        // Выстраиваем в одну линию (Текст + Капсула)
-                        aud.style.display = 'flex';
-                        aud.style.flexDirection = 'row';
-                        aud.style.flexWrap = 'wrap';
-                        aud.style.alignItems = 'center';
-                        aud.style.gap = '0.6rem';
-                        aud.style.marginTop = '0.6rem';
+                        // 3. Собираем обратно: Аудитория + Преподаватель отдельными блоками
+                        aud.innerHTML = locHtml + teacherWrapHtml;
                     });
 
                     // --- ПАРСИНГ ТИПА ПАРЫ (ЛЕК, ПРАКТ, ЛАБ, КОНС) ---
@@ -22584,12 +23706,26 @@
                             document.body.appendChild(modal);
                         }
 
+                        // Точное извлечение аудитории
                         const extractCleanLocation = (r) => {
                             const audEl = r.querySelector('.pair_info .aud');
                             if (!audEl) return '';
                             const clone = audEl.cloneNode(true);
-                            clone.querySelectorAll('.material-icons, .note-btn-wrapper').forEach(el => el.remove());
+                            clone.querySelectorAll('.pair-teacher-wrap, .note-btn-wrapper, .material-icons').forEach(el => el.remove());
                             return clone.textContent.trim();
+                        };
+
+                        // Точное извлечение преподавателя из строки аудитории
+                        const extractCleanTeacher = (r) => {
+                            const tWrap = r.querySelector('.pair-teacher-wrap');
+                            if (tWrap) {
+                                const clone = tWrap.cloneNode(true);
+                                clone.querySelectorAll('.material-icons').forEach(el => el.remove());
+                                return clone.textContent.trim();
+                            }
+                            const tEl = r.querySelector('.pair_teacher a:not(.eval)');
+                            if (tEl) return tEl.textContent.trim();
+                            return '';
                         };
 
                         let currentLoc = "";
@@ -22597,8 +23733,26 @@
                         let isSeries = false;
                         let currentType = '';
 
-                        const badgeEl = row.querySelector('.pair-type-badge');
-                        if (badgeEl) currentType = badgeEl.textContent.toLowerCase();
+                        // 1. Для кастомных пар и событий из объявлений считываем тип напрямую из памяти
+                        const cpId = row.getAttribute('data-custom-id');
+                        if (cpId) {
+                            const cpList = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
+                            const foundCp = cpList.find(p => p.id === cpId);
+                            if (foundCp && foundCp.type) {
+                                currentType = foundCp.type;
+                            }
+                        }
+
+                        // 2. Для остальных пар берем бейдж и очищаем от дочерних иконок/кнопок
+                        if (!currentType) {
+                            const badgeEl = row.querySelector('.pair-type-badge');
+                            if (badgeEl) {
+                                const bClone = badgeEl.cloneNode(true);
+                                bClone.querySelectorAll('.material-icons, button, .pair-important-btn').forEach(el => el.remove());
+                                currentType = bClone.textContent.trim().toLowerCase();
+                            }
+                        }
+
                         if (currentType === 'лич') currentType = 'лич';
 
                         if (isExternal) {
@@ -22609,12 +23763,10 @@
                             currentType = row.getAttribute('data-ext-disp-type') || 'лич';
                         } else if (isPureCustom) {
                             currentLoc = extractCleanLocation(row);
-                            const tEl = row.querySelector('.pair_teacher a:not(.eval)');
-                            currentTeacher = tEl ? tEl.textContent.trim() : '';
+                            currentTeacher = extractCleanTeacher(row);
                         } else {
                             currentLoc = extractCleanLocation(row);
-                            const tEl = row.querySelector('.pair_teacher a:not(.eval)');
-                            currentTeacher = tEl ? tEl.textContent.trim() : '';
+                            currentTeacher = extractCleanTeacher(row);
                             isSeries = row.getAttribute('data-ext-is-series') === 'true';
                             const overType = row.getAttribute('data-ext-disp-type');
                             if (overType !== null) currentType = overType;
@@ -23622,6 +24774,8 @@
                                 else if (displayType === 'конс') typeClass = 'type-badge-cons';
                                 else if (displayType === 'лич') { typeColor = `color: ${calColor};`; }
 
+                                let teacherHtml = displayTeacher ? `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem;">person</span><span>${displayTeacher}</span></div>` : '';
+
                                 tr.innerHTML = `
                                     <td class="pair_num">
                                         <div class="pair-badge-wrapper">
@@ -23633,14 +24787,13 @@
                                         <div class="dis" style="display: flex; align-items: center; flex-wrap: wrap;">
                                             <span style="font-weight:700; color:var(--color-text-primary); pointer-events:none;">${displayTitle}</span>
                                         </div>
-                                        ${audContent ? `
-                                        <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">
+                                        ${(audContent || teacherHtml) ? `
+                                        <div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 6px;">
                                             ${audContent}
+                                            ${teacherHtml}
                                         </div>` : ''}
                                     </td>
-                                    <td class="pair_teacher">
-                                        ${displayTeacher ? `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${displayTeacher}</a>` : ''}
-                                    </td>
+                                    <td class="pair_teacher"></td>
                                 `;
                                 tbody.appendChild(tr);
                             });
@@ -24067,7 +25220,7 @@
                             const firstLi = msg.querySelector('li:first-child');
                             if (!firstLi) return;
                             const cloneContent = firstLi.cloneNode(true);
-                            // --- АВТО-ПРОЧТЕНИЕ ---
+
                             if (firstLi.hasAttribute('onclick')) {
                                 const clickFunc = firstLi.getAttribute('onclick');
                                 if (clickFunc.includes('ann_read') || clickFunc.includes('msg_read')) {
@@ -24103,6 +25256,7 @@
                             const highlightedTitle = titleStr ? highlightDatesInHTML(titleStr, titleStr) : '';
 
                             const textForLength = cloneContent.textContent || '';
+                            const hasAiSummary = shouldShowAiButton(textForLength, attachments);
 
                             const card = document.createElement('div');
                             card.className = 'msg-card';
@@ -24125,7 +25279,6 @@
                                 ${attachments.length > 0 ? `<div class="msg-footer"><div class="msg-attachments">${attachments.map(a => {
                                     let isDocx = a.name.toLowerCase().includes('.docx');
                                     let isCons = a.name.toLowerCase().includes('консультац');
-
                                     const isAlreadyAdded = consultationsFiles.some(f => f.sourceUrl === a.href);
 
                                     let btnHtml = '';
@@ -24139,20 +25292,19 @@
                                     return `<div style="display:inline-flex; align-items:center; flex-wrap:wrap; gap:4px; margin-bottom:4px; max-width: 100%;"><a href="${a.href}" class="file-attachment-link" target="_blank"><span class="material-icons">attach_file</span><span class="file-name">${a.name}</span></a>${btnHtml}</div>`;
                                 }).join('')}</div></div>` : ''}
                             `;
-                            container.appendChild(card);
-                        });
 
-                        container.querySelectorAll('.msg-card').forEach(card => {
+                            // Добавляем карточку прямо в контейнер
+                            container.appendChild(card);
+
+                            // Кнопка шеринга на ПК
                             const shareBtn = card.querySelector('.share-msg-btn');
                             if (shareBtn) {
-                                shareBtn.style.cursor = 'pointer';
                                 shareBtn.onclick = (e) => {
                                     e.stopPropagation();
                                     shareMessageCard(card, 'Объявление.png');
                                 };
                             }
-                            
-                            // Активируем ИИ-сводку
+
                             bindAiSummaryEvents(card);
                         });
 
@@ -24219,9 +25371,6 @@
                             }
                         });
 
-                        // Инициализация свайпов для мобилок
-                        initMessageSwipes(container, 'Объявление.png');
-
                         // Автозаполнение поиска, если перешли по ссылке из Расписания
                         const urlParamsSearch = new URLSearchParams(window.location.search);
                         if (urlParamsSearch.has('search')) {
@@ -24251,6 +25400,8 @@
                         span9.innerHTML = '';
                         span9.appendChild(searchWrapper);
                         span9.appendChild(container);
+                         // Инициализация свайпов для мобилок
+                        initMessageSwipes(container, 'Объявление.png');
                         break;
                     }
 
@@ -24301,7 +25452,7 @@
                             const mainLi = msg.querySelector('li');
                             if (!mainLi) return;
                             const cloneContent = mainLi.cloneNode(true);
-                            // --- АВТО-ПРОЧТЕНИЕ ---
+
                             if (mainLi.hasAttribute('onclick')) {
                                 const clickFunc = mainLi.getAttribute('onclick');
                                 if (clickFunc.includes('read')) {
@@ -24320,12 +25471,12 @@
                             const subjects = [];
                             cloneContent.querySelectorAll('font').forEach(f => { subjects.push(f.textContent.trim()); f.remove(); });
 
-                            // ИЩЕМ ДАТЫ И В ТЕЛЕ, И В ТЕМАХ
                             const highlightedBody = highlightDatesInHTML(cloneContent.innerHTML, subjects[0] || teacherName || 'Сообщение');
                             const highlightedSubjects = subjects.map(s => highlightDatesInHTML(s, s));
 
                             const textForLength = cloneContent.textContent || '';
                             const attachments = getAttachmentsFromCard(msg);
+                            const hasAiSummary = shouldShowAiButton(textForLength, attachments);
 
                             const card = document.createElement('div');
                             card.className = 'msg-card';
@@ -24346,7 +25497,19 @@
                                 ${highlightedSubjects.length ? `<div class="msg-subject">${highlightedSubjects.join('<br>')}</div>` : ''}
                                 <div class="msg-body">${highlightedBody}</div>
                             `;
+
+                            // Добавляем карточку прямо в контейнер
                             container.appendChild(card);
+
+                            const shareBtn = card.querySelector('.share-msg-btn');
+                            if (shareBtn) {
+                                shareBtn.onclick = (e) => {
+                                    e.stopPropagation();
+                                    shareMessageCard(card, 'Сообщение.png');
+                                };
+                            }
+
+                            bindAiSummaryEvents(card);
                         });
 
                         container.querySelectorAll('.msg-card').forEach(card => {
@@ -24361,17 +25524,6 @@
                             
                             // Активируем ИИ-сводку
                             bindAiSummaryEvents(card);
-                        });
-
-                        container.querySelectorAll('.msg-card').forEach(card => {
-                            const shareBtn = card.querySelector('.share-msg-btn');
-                            if (shareBtn) {
-                                shareBtn.style.cursor = 'pointer';
-                                shareBtn.onclick = (e) => {
-                                    e.stopPropagation();
-                                    shareMessageCard(card, 'Сообщение.png');
-                                };
-                            }
                         });
 
                         // Инициализация свайпов для мобилок
@@ -24775,9 +25927,8 @@
                                         <span class="material-icons">search</span>
                                         <input type="text" class="signs-local-input" placeholder="Поиск">
                                     </div>
-                                    <button class="toolbar-item analytics-btn" style="flex: 0 0 auto !important;">
-                                        <span class="material-icons">insights</span>
-                                        Аналитика
+                                    <button class="toolbar-item analytics-btn" title="Аналитика успеваемости" style="flex: 0 0 auto !important; width: 38px !important; min-width: 38px !important; padding: 0 !important; justify-content: center !important; border-radius: 50% !important;">
+                                        <span class="material-icons" style="font-size: 2rem !important; margin: 0 !important;">insights</span>
                                     </button>
                                 `;
                                 if (submenu) submenu.after(searchContainer);
@@ -24819,13 +25970,14 @@
                                         if (gradeCell) {
                                             let bg = 'rgba(142, 142, 147, 0.15)', color = 'var(--color-text-secondary)';
                                             const gt = gradeCell.textContent.trim().toLowerCase();
+                                            let displayText = gradeCell.textContent.trim();
 
-                                            // 1. Проверяем долги, двойки и незачеты первыми
+                                            // 1. Проверяем долги, двойки и незачеты
                                             if (gt.includes('незач') || gt.includes('неуд') || gt === '2' || gt === 'н') {
                                                 bg = 'rgba(255, 59, 48, 0.15)';
                                                 color = 'var(--color-red)';
                                             }
-                                            // 2. Обычные зачеты и пятерки
+                                            // 2. Зачеты и пятерки
                                             else if (gt.includes('отлич') || gt === '5' || (gt.includes('зач') && !gt.includes('незач'))) {
                                                 bg = 'rgba(52, 199, 89, 0.15)';
                                                 color = 'var(--color-green)';
@@ -24840,8 +25992,14 @@
                                                 bg = 'rgba(255, 149, 0, 0.15)';
                                                 color = 'var(--color-warning)';
                                             }
+                                            // 5. ФОЛБЭК: Если оценка еще не выставлена / пустая ячейка / прочерк
+                                            else if (!gt || gt === '-' || gt === '—' || gt.includes('нет') || gt.includes('неизвестно')) {
+                                                displayText = 'Неизвестно';
+                                                bg = 'rgba(142, 142, 147, 0.15)';
+                                                color = 'var(--color-text-secondary)';
+                                            }
 
-                                            gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center;">${gradeCell.textContent.trim()}</span>`;
+                                            gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">${displayText}</span>`;
                                         }
                                         if (dateCell) {
                                             dateCell.textContent = dateCell.textContent.trim().replace(/\.20(\d{2})/, '.$1');
@@ -24875,16 +26033,45 @@
                                     if (hasAny) {
                                         const gpaCapsule = document.createElement('div');
                                         gpaCapsule.className = 'subject-score-capsule';
-                                        gpaCapsule.style.cssText = 'margin: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 80px; height: 32px; font-weight: 800; font-size: 1.4rem; color: #fff;';
+                                        gpaCapsule.style.cssText = 'margin: 0; display: inline-flex; align-items: center; justify-content: center; min-width: 80px; height: 32px; font-weight: 800; font-size: 1.4rem; color: #fff; position: relative; cursor: help;';
                                         gpaCapsule.textContent = hasFail ? 'ДОЛГИ' : `${avg} / 5`;
 
-                                        if (hasFail) { gpaCapsule.style.background = 'var(--color-red)'; }
-                                        else {
+                                        let tooltipText = '';
+                                        let currentMark = '';
+                                        let markColor = '';
+
+                                        if (hasFail) {
+                                            gpaCapsule.style.background = 'var(--color-red)';
+                                            currentMark = '2';
+                                            markColor = 'var(--color-red)';
+                                            tooltipText = 'Есть задолженности';
+                                        } else {
                                             const p = (avg / 5) * 100;
-                                            if (p < 61) { gpaCapsule.style.background = 'var(--color-yellow)'; gpaCapsule.style.color = '#000'; }
-                                            else if (p < 81) { gpaCapsule.style.background = '#8BC34A'; }
-                                            else { gpaCapsule.style.background = 'var(--color-green)'; }
+                                            if (p < 61) {
+                                                gpaCapsule.style.background = 'var(--color-yellow)';
+                                                gpaCapsule.style.color = '#000';
+                                                currentMark = '3';
+                                                markColor = 'var(--color-warning)';
+                                                tooltipText = 'Удовлетворительно';
+                                            } else if (p < 81) {
+                                                gpaCapsule.style.background = '#8BC34A';
+                                                currentMark = '4';
+                                                markColor = '#8BC34A';
+                                                tooltipText = 'Хорошая сессия';
+                                            } else {
+                                                gpaCapsule.style.background = 'var(--color-green)';
+                                                currentMark = '5';
+                                                markColor = 'var(--color-green)';
+                                                tooltipText = avg === 5 ? 'Отличная сессия! 😎' : 'Отлично';
+                                            }
                                         }
+
+                                        // Создание всплывающей подсказки при ховере/клике
+                                        const tooltip = document.createElement('div');
+                                        tooltip.className = 'score-tooltip';
+                                        tooltip.innerHTML = `<span style="color: ${markColor}; font-size: 1.4rem;">${currentMark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${tooltipText}`;
+                                        gpaCapsule.appendChild(tooltip);
+
                                         headerContainer.appendChild(gpaCapsule);
                                     }
 
@@ -24915,21 +26102,36 @@
                                         newTable.appendChild(thead);
                                     }
                                     const tbody = document.createElement('tbody');
-                                    block.rows.forEach(r => {
-                                        let lastVisibleTd = null;
-                                        r.querySelectorAll('td').forEach((td, idx) => {
-                                            if (generalConfig.compactGrades) {
-                                                const cfg = generalConfig.compactGradesConfig;
-                                                if (idx === 2 && !cfg.showDate) td.style.display = 'none';
-                                                if (idx === 3 && !cfg.showTeacher) td.style.display = 'none';
-                                                if (idx > 3) td.style.display = 'none';
-                                                if (idx === 1) { td.style.width = '1%'; td.style.whiteSpace = 'nowrap'; td.style.textAlign = 'center'; }
-                                            }
-                                            if (td.style.display !== 'none') lastVisibleTd = td;
+                                    
+                                    if (block.rows.length === 0) {
+                                        // Оформление для пустого семестра/триместра
+                                        const emptyTr = document.createElement('tr');
+                                        emptyTr.innerHTML = `
+                                            <td colspan="4" style="text-align: center !important; padding: 3.6rem 2rem !important; color: var(--color-text-secondary) !important; font-weight: 600 !important; font-size: 1.35rem !important; background: transparent !important; border: none !important;">
+                                                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                                                    <span class="material-icons" style="font-size: 2.8rem; color: var(--color-text-secondary); opacity: 0.4;">hourglass_empty</span>
+                                                    <span>Данных пока нет</span>
+                                                </div>
+                                            </td>
+                                        `;
+                                        tbody.appendChild(emptyTr);
+                                    } else {
+                                        block.rows.forEach(r => {
+                                            let lastVisibleTd = null;
+                                            r.querySelectorAll('td').forEach((td, idx) => {
+                                                if (generalConfig.compactGrades) {
+                                                    const cfg = generalConfig.compactGradesConfig;
+                                                    if (idx === 2 && !cfg.showDate) td.style.display = 'none';
+                                                    if (idx === 3 && !cfg.showTeacher) td.style.display = 'none';
+                                                    if (idx > 3) td.style.display = 'none';
+                                                    if (idx === 1) { td.style.width = '1%'; td.style.whiteSpace = 'nowrap'; td.style.textAlign = 'center'; }
+                                                }
+                                                if (td.style.display !== 'none') lastVisibleTd = td;
+                                            });
+                                            if (lastVisibleTd) lastVisibleTd.classList.add('align-right-cell');
+                                            tbody.appendChild(r);
                                         });
-                                        if (lastVisibleTd) lastVisibleTd.classList.add('align-right-cell');
-                                        tbody.appendChild(r);
-                                    });
+                                    }
                                     newTable.appendChild(tbody);
                                     wrapper.appendChild(newTable);
                                     table.parentNode.insertBefore(wrapper, table);
@@ -25022,45 +26224,67 @@
                             document.body.appendChild(overlay);
 
                             const modal = document.createElement('div');
+                            modal.id = 'etis-analytics-modal';
                             modal.className = 'analytics-modal';
                             modal.innerHTML = `
-                                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
-                                    <span class="ui-dialog-title">Ваша успеваемость</span>
-                                    <span class="close-analytics material-icons" style="color:var(--color-text-secondary); font-size:24px; cursor:pointer; user-select:none; transition: color 0.2s;">close</span>
+                                <div class="ui-widget-header" style="display:flex !important; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--color-table-border); background: var(--color-table-header); padding: 1.6rem 2.4rem !important;">
+                                    <span class="ui-dialog-title" style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);">Аналитика успеваемости</span>
+                                    <div style="display:flex; align-items:center; gap:14px;">
+                                        <button id="share-analytics-bento-btn" title="Поделиться" style="background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; margin:0 !important; display:flex !important; align-items:center; justify-content:center; cursor:pointer;">
+                                            <span class="material-icons" style="color:var(--color-text-secondary); font-size:24px; transition:color 0.2s;">ios_share</span>
+                                        </button>
+                                        <button class="close-analytics" title="Закрыть" style="background:transparent !important; border:none !important; box-shadow:none !important; padding:0 !important; margin:0 !important; display:flex !important; align-items:center; justify-content:center; cursor:pointer;">
+                                            <span class="material-icons" style="color:var(--color-text-secondary); font-size:24px; transition: color 0.2s;">close</span>
+                                        </button>
+                                    </div>
                                 </div>
-                                <div class="ui-dialog-content" style="padding: 2.4rem;">
-                                    <div id="analytics-empty" style="display:none; text-align:center; padding: 3rem; color:var(--color-text-secondary); font-size:1.4rem;">
-                                        Недостаточно данных с оценками (цифрами) для построения графиков.
+                                <div class="ui-dialog-content" style="padding: 1.6rem 2.4rem 2.4rem 2.4rem; max-height: 80vh; overflow-y: auto; box-sizing: border-box;">
+                                    <div id="analytics-empty" style="display:none; text-align:center; padding: 4rem 1rem; color:var(--color-text-secondary); font-size:1.4rem;">
+                                        Недостаточно данных с оценками для построения аналитики.
                                     </div>
                                     <div id="analytics-content">
-                                        <div style="height: 250px; width: 100%; margin-bottom: 2rem; position: relative;">
-                                            <canvas id="gradesChart"></canvas>
-                                        </div>
-                                        <div class="analytics-stats" style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:1.6rem;">
-                                            <div class="stat-box">
-                                                <span class="stat-box-title" id="title-best-term">Лучший период</span>
-                                                <div style="display: flex; align-items: center; gap: 6px;">
-                                                    <span class="stat-box-value good" id="stat-best-term">-</span>
-                                                    <span class="subject-score-capsule" id="capsule-best-term" style="display: none; margin: 0 !important; padding: 0 10px !important; height: 26px; font-size: 1.25rem; font-weight: 800; box-shadow: none !important; align-items: center; justify-content: center; line-height: 1;"></span>
+                                        <!-- Главная Бенто-карточка -->
+                                        <div id="analytics-bento-capture" style="background: var(--color-card); border-radius: var(--radius-large); padding: 14px; box-shadow: var(--shadow-main); border: 1px solid var(--color-table-border); display: flex; flex-direction: column; gap: 10px; width: 100%; box-sizing: border-box;">
+                                            
+                                            <!-- 1. Единый блок графика со скругленной зоной заполнения снизу -->
+                                            <div style="background: var(--color-highlight); border-radius: 14px; padding: 16px; box-sizing: border-box; width: 100%;">
+                                                <div style="font-size: 1.1rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; text-align: left;">
+                                                    Динамика среднего балла
+                                                </div>
+                                                <div style="height: 200px; width: 100%; position: relative; border-radius: 10px; overflow: hidden;">
+                                                    <canvas id="gradesChart"></canvas>
                                                 </div>
                                             </div>
-                                            <div class="stat-box">
-                                                <span class="stat-box-title" id="title-worst-term">Худший период</span>
-                                                <div style="display: flex; align-items: center; gap: 6px;">
-                                                    <span class="stat-box-value bad" id="stat-worst-term">-</span>
-                                                    <span class="subject-score-capsule" id="capsule-worst-term" style="display: none; margin: 0 !important; padding: 0 10px !important; height: 26px; font-size: 1.25rem; font-weight: 800; box-shadow: none !important; align-items: center; justify-content: center; line-height: 1;"></span>
+
+                                            <!-- 2. Сетка: Лучший и Худший периоды -->
+                                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; box-sizing: border-box;">
+                                                <div style="background: var(--color-highlight); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; text-align: left; box-sizing: border-box;">
+                                                    <span class="stat-box-title" id="title-best-term" style="font-size: 1.1rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Лучший период</span>
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 2px;">
+                                                        <span class="stat-box-value good" id="stat-best-term" style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);">-</span>
+                                                        <span class="subject-score-capsule" id="capsule-best-term" style="display: none; margin: 0 !important; padding: 0 10px !important; height: 26px; font-size: 1.25rem; font-weight: 800; box-shadow: none !important; align-items: center; justify-content: center; line-height: 1; border-radius: 50px;"></span>
+                                                    </div>
+                                                </div>
+                                                <div style="background: var(--color-highlight); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; text-align: left; box-sizing: border-box;">
+                                                    <span class="stat-box-title" id="title-worst-term" style="font-size: 1.1rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Худший период</span>
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 2px;">
+                                                        <span class="stat-box-value bad" id="stat-worst-term" style="font-size: 1.8rem; font-weight: 800; color: var(--color-text-primary);">-</span>
+                                                        <span class="subject-score-capsule" id="capsule-worst-term" style="display: none; margin: 0 !important; padding: 0 10px !important; height: 26px; font-size: 1.25rem; font-weight: 800; box-shadow: none !important; align-items: center; justify-content: center; line-height: 1; border-radius: 50px;"></span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                            <div class="stat-box" style="grid-column: 1 / -1;">
-                                                <span class="stat-box-title">Успеваемость по предметам</span>
-                                                <div id="dynamic-stats-container" style="width: 100%; font-size:1.4rem; margin-top:0.8rem; line-height:1.6; color: var(--color-text-primary);">
-                                                    <!-- Сюда вставятся динамические данные -->
-                                                </div>
+
+                                            <!-- 3. Блок успеваемости по предметам -->
+                                            <div style="background: var(--color-highlight); border-radius: 14px; padding: 14px 16px 16px 16px; text-align: left; box-sizing: border-box; width: 100%;">
+                                                <span class="stat-box-title" style="font-size: 1.1rem; font-weight: 800; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 6px;">Всего оценок</span>
+                                                <div id="dynamic-stats-container" style="width: 100%; box-sizing: border-box;"></div>
                                             </div>
+
                                         </div>
                                     </div>
                                 </div>
                             `;
+
                             document.body.appendChild(modal);
 
                             const closeAnalytics = () => {
@@ -25069,12 +26293,11 @@
                                 document.body.classList.remove('modal-open-body');
                             };
                             overlay.addEventListener('click', closeAnalytics);
-                            modal.querySelector('.close-analytics').addEventListener('click', closeAnalytics);
+                            modal.querySelectorAll('.close-analytics').forEach(btn => btn.addEventListener('click', closeAnalytics));
 
                             searchContainer.querySelector('.analytics-btn').addEventListener('click', function() {
                                 const btn = this;
 
-                                // Хелпер для поиска библиотеки в разных контекстах (песочница vs реальная страница)
                                 const getChartLib = () => {
                                     if (typeof Chart !== 'undefined') return Chart;
                                     if (typeof window.Chart !== 'undefined') return window.Chart;
@@ -25082,35 +26305,26 @@
                                     return null;
                                 };
 
-                                // Функция отрисовки
                                 const renderAnalytics = () => {
                                     try {
-                                        // Получаем библиотеку через хелпер
                                         const ChartConstructor = getChartLib();
-
-                                        if (!ChartConstructor) {
-                                            throw new Error('Chart.js не найден ни в window, ни в unsafeWindow');
-                                        }
+                                        if (!ChartConstructor) throw new Error('Chart.js не найден');
 
                                         const termsData = [];
-                                        const subjectsData =[];
-                                        let termTypeGlobal = 'период'; // По умолчанию
+                                        const subjectsData = [];
+                                        let termTypeGlobal = 'период';
 
-                                        // Сбор данных
                                         document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
                                             const rawTermName = wrapper.getAttribute('data-term-name');
-                                            const avgStr = wrapper.getAttribute('data-term-avg');
-                                            const avg = parseFloat(avgStr);
+                                            const avg = parseFloat(wrapper.getAttribute('data-term-avg'));
 
                                             if (rawTermName) {
-                                                // Определяем, триместр это или семестр
                                                 if (rawTermName.toLowerCase().includes('триместр')) termTypeGlobal = 'триместр';
                                                 if (rawTermName.toLowerCase().includes('семестр')) termTypeGlobal = 'семестр';
 
                                                 const numMatch = rawTermName.match(/(\d+)\s*(трим|сем)/i);
                                                 const termNum = numMatch ? parseInt(numMatch[1], 10) : 0;
 
-                                                // Сохраняем ТОЛЬКО номер для оси X графика
                                                 if (avg > 0) {
                                                     termsData.push({ name: termNum.toString(), avg: avg, num: termNum });
                                                 }
@@ -25145,24 +26359,20 @@
                                             document.getElementById('analytics-content').style.display = 'block';
                                             document.getElementById('analytics-empty').style.display = 'none';
 
-                                            // Ищем ВСЕ лучшие и худшие периоды
                                             const maxAvg = Math.max(...termsData.map(t => t.avg));
                                             const minAvg = Math.min(...termsData.map(t => t.avg));
 
                                             const bestTermsStr = termsData.filter(t => t.avg === maxAvg).map(t => t.num).join(', ');
                                             const worstTermsStr = termsData.filter(t => t.avg === minAvg).map(t => t.num).join(', ');
 
-                                            // Пишем только цифры в основной текст
                                             document.getElementById('stat-best-term').textContent = bestTermsStr;
                                             document.getElementById('stat-worst-term').textContent = worstTermsStr;
 
-                                            // Динамическое название периода
                                             const bestTitle = document.getElementById('title-best-term');
                                             const worstTitle = document.getElementById('title-worst-term');
                                             if (bestTitle) bestTitle.textContent = `Лучший ${termTypeGlobal}`;
                                             if (worstTitle) worstTitle.textContent = `Худший ${termTypeGlobal}`;
 
-                                            // Оформляем капсулы со средним баллом
                                             const bestCapsule = document.getElementById('capsule-best-term');
                                             const worstCapsule = document.getElementById('capsule-worst-term');
 
@@ -25171,96 +26381,66 @@
                                                 bestCapsule.textContent = maxAvg.toFixed(1);
                                                 bestCapsule.style.setProperty('background', 'var(--color-green)', 'important');
                                                 bestCapsule.style.setProperty('color', '#ffffff', 'important');
-                                                bestCapsule.style.setProperty('-webkit-text-fill-color', '#ffffff', 'important');
                                             }
                                             if (worstCapsule) {
                                                 worstCapsule.style.display = 'inline-flex';
                                                 worstCapsule.textContent = minAvg.toFixed(1);
                                                 worstCapsule.style.setProperty('background', 'var(--color-red)', 'important');
                                                 worstCapsule.style.setProperty('color', '#ffffff', 'important');
-                                                worstCapsule.style.setProperty('-webkit-text-fill-color', '#ffffff', 'important');
                                             }
 
-                                            // Подсчет оценок (теперь "зачет" не смешивается с пятерками)
                                             const count5 = subjectsData.filter(s => s.grade === 5 && !s.isZach).length;
                                             const countZach = subjectsData.filter(s => s.isZach).length;
                                             const count4 = subjectsData.filter(s => s.grade === 4).length;
                                             const count3 = subjectsData.filter(s => s.grade === 3).length;
                                             const count2 = subjectsData.filter(s => s.grade === 2 || s.isNezach).length;
 
-                                            let statsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 1rem; margin-top: 1rem;">';
+                                            let statsHtml = '<div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px;">';
+                                            const makeStatPill = (count, label, bg, border, color) => `
+                                                <div style="flex: 1; min-width: 75px; background: ${bg}; border: 1px solid ${border}; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
+                                                    <span style="font-size: 1.8rem; font-weight: 800; color: ${color}; line-height: 1; width: 100%;">${count}</span>
+                                                    <span style="font-size: 1rem; font-weight: 700; color: ${color}; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">${label}</span>
+                                                </div>`;
 
-                                            if (count5 > 0) {
-                                                statsHtml += `
-                                                    <div style="flex: 1; min-width: 80px; background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
-                                                        <span style="font-size: 2.2rem; font-weight: 800; color: var(--color-green); line-height: 1; width: 100%;">${count5}</span>
-                                                        <span style="font-size: 1.05rem; font-weight: 700; color: var(--color-green); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Отлично</span>
-                                                    </div>`;
-                                            }
-                                            if (countZach > 0) {
-                                                statsHtml += `
-                                                    <div style="flex: 1; min-width: 80px; background: rgba(0, 191, 165, 0.1); border: 1px solid rgba(0, 191, 165, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
-                                                        <span style="font-size: 2.2rem; font-weight: 800; color: #00BFA5; line-height: 1; width: 100%;">${countZach}</span>
-                                                        <span style="font-size: 1.05rem; font-weight: 700; color: #00BFA5; margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Зачет</span>
-                                                    </div>`;
-                                            }
-                                            if (count4 > 0) {
-                                                statsHtml += `
-                                                    <div style="flex: 1; min-width: 80px; background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
-                                                        <span style="font-size: 2.2rem; font-weight: 800; color: var(--color-blue); line-height: 1; width: 100%;">${count4}</span>
-                                                        <span style="font-size: 1.05rem; font-weight: 700; color: var(--color-blue); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Хорошо</span>
-                                                    </div>`;
-                                            }
-                                            if (count3 > 0) {
-                                                statsHtml += `
-                                                    <div style="flex: 1; min-width: 80px; background: rgba(255, 149, 0, 0.1); border: 1px solid rgba(255, 149, 0, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
-                                                        <span style="font-size: 2.2rem; font-weight: 800; color: var(--color-warning); line-height: 1; width: 100%;">${count3}</span>
-                                                        <span style="font-size: 1.05rem; font-weight: 700; color: var(--color-warning); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Удовл.</span>
-                                                    </div>`;
-                                            }
-                                            if (count2 > 0) {
-                                                statsHtml += `
-                                                    <div style="flex: 1; min-width: 80px; background: rgba(255, 59, 48, 0.1); border: 1px solid rgba(255, 59, 48, 0.3); border-radius: var(--radius-small); padding: 1.4rem 1.6rem; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; text-align: left; box-sizing: border-box;">
-                                                        <span style="font-size: 2.2rem; font-weight: 800; color: var(--color-red); line-height: 1; width: 100%;">${count2}</span>
-                                                        <span style="font-size: 1.05rem; font-weight: 700; color: var(--color-red); margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; width: 100%;">Долги</span>
-                                                    </div>`;
-                                            }
-
+                                            if (count5 > 0) statsHtml += makeStatPill(count5, 'Отлично', 'rgba(52, 199, 89, 0.1)', 'rgba(52, 199, 89, 0.25)', 'var(--color-green)');
+                                            if (countZach > 0) statsHtml += makeStatPill(countZach, 'Зачет', 'rgba(0, 191, 165, 0.1)', 'rgba(0, 191, 165, 0.25)', '#00BFA5');
+                                            if (count4 > 0) statsHtml += makeStatPill(count4, 'Хорошо', 'rgba(0, 122, 255, 0.1)', 'rgba(0, 122, 255, 0.25)', 'var(--color-blue)');
+                                            if (count3 > 0) statsHtml += makeStatPill(count3, 'Удовл.', 'rgba(255, 149, 0, 0.1)', 'rgba(255, 149, 0, 0.25)', 'var(--color-warning)');
+                                            if (count2 > 0) statsHtml += makeStatPill(count2, 'Долги', 'rgba(255, 59, 48, 0.1)', 'rgba(255, 59, 48, 0.25)', 'var(--color-red)');
                                             statsHtml += '</div>';
-
-                                            if (count5 === 0 && countZach === 0 && count4 === 0 && count3 === 0 && count2 === 0) {
-                                                statsHtml = '<div style="color: var(--color-text-secondary); margin-top: 1rem;">Нет данных об оценках</div>';
-                                            }
 
                                             document.getElementById('dynamic-stats-container').innerHTML = statsHtml;
 
                                             const ctx = document.getElementById('gradesChart').getContext('2d');
-                                            if(window.etisChartInstance) window.etisChartInstance.destroy();
+                                            if (window.etisChartInstance) window.etisChartInstance.destroy();
 
-                                            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-primary').trim() || '#000';
-                                            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--color-table-border').trim() || '#ddd';
-
-                                            // Получаем цвет напрямую из конфига
+                                            const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-secondary').trim() || '#8E8E93';
+                                            const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--color-table-border').trim() || 'rgba(0,0,0,0.06)';
                                             const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
                                             const chartAccentColor = ACCENT_COLORS[accConfig.colors[0]] || '#007AFF';
+
+                                            // Плавный градиент с затуханием к нижней скругленной границе
+                                            const gradientFill = ctx.createLinearGradient(0, 0, 0, 190);
+                                            gradientFill.addColorStop(0, chartAccentColor + '40');
+                                            gradientFill.addColorStop(1, chartAccentColor + '02');
 
                                             window.etisChartInstance = new ChartConstructor(ctx, {
                                                 type: 'line',
                                                 data: {
                                                     labels: termsData.map(t => t.name),
-                                                    datasets:[{
+                                                    datasets: [{
                                                         label: ' Средний балл',
                                                         data: termsData.map(t => t.avg),
                                                         borderColor: chartAccentColor,
-                                                        backgroundColor: chartAccentColor + '22',
+                                                        backgroundColor: gradientFill,
                                                         borderWidth: 3,
                                                         pointBackgroundColor: chartAccentColor,
-                                                        pointBorderColor: '#fff',
+                                                        pointBorderColor: '#ffffff',
                                                         pointBorderWidth: 2,
-                                                        pointRadius: 5,
-                                                        pointHoverRadius: 7,
+                                                        pointRadius: 4.5,
+                                                        pointHoverRadius: 6.5,
                                                         fill: true,
-                                                        tension: 0.4,
+                                                        tension: 0.38,
                                                         clip: false
                                                     }]
                                                 },
@@ -25268,19 +26448,20 @@
                                                     responsive: true,
                                                     maintainAspectRatio: false,
                                                     layout: {
-                                                        padding: { top: 15, right: 15, left: 5, bottom: 0 }
+                                                        padding: { top: 8, right: 10, left: 4, bottom: 2 }
                                                     },
                                                     plugins: {
                                                         legend: { display: false },
                                                         tooltip: {
                                                             displayColors: false,
+                                                            backgroundColor: 'rgba(24, 26, 28, 0.92)',
+                                                            padding: 8,
+                                                            cornerRadius: 8,
+                                                            titleFont: { size: 11, weight: '700' },
+                                                            bodyFont: { size: 12, weight: '600' },
                                                             callbacks: {
-                                                                title: function(context) {
-                                                                    return context[0].label + ' ' + termTypeGlobal;
-                                                                },
-                                                                label: function(context) {
-                                                                    return 'Ср. балл: ' + context.parsed.y;
-                                                                }
+                                                                title: (ctx) => ctx[0].label + '-й ' + termTypeGlobal,
+                                                                label: (ctx) => 'Ср. балл: ' + ctx.parsed.y.toFixed(2)
                                                             }
                                                         }
                                                     },
@@ -25290,30 +26471,140 @@
                                                             max: 5.0,
                                                             ticks: {
                                                                 color: textColor,
-                                                                font: {size: 13},
-                                                                stepSize: 1
+                                                                font: { size: 11, weight: '700' },
+                                                                stepSize: 1,
+                                                                padding: 8
                                                             },
-                                                            grid: { color: gridColor }
+                                                            grid: {
+                                                                color: gridColor,
+                                                                drawBorder: false
+                                                            }
                                                         },
                                                         x: {
-                                                            ticks: { color: textColor, font: {size: 13} },
-                                                            grid: { display: false }
+                                                            ticks: {
+                                                                color: textColor,
+                                                                font: { size: 11, weight: '700' },
+                                                                padding: 6
+                                                            },
+                                                            grid: {
+                                                                display: false,
+                                                                drawBorder: false
+                                                            }
                                                         }
                                                     }
                                                 }
                                             });
+
+                                            // ==========================================
+                                            // ЭКСПОРТ СКРИНШОТА С КАНВАСОМ
+                                            // ==========================================
+                                            const shareBtn = modal.querySelector('#share-analytics-bento-btn');
+                                            if (shareBtn) {
+                                                shareBtn.onclick = (e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+
+                                                    const bIcon = shareBtn.querySelector('.material-icons');
+                                                    const origIcon = bIcon.textContent;
+                                                    bIcon.textContent = 'sync';
+                                                    bIcon.style.animation = 'spin 1s linear infinite';
+                                                    bIcon.style.color = 'var(--color-accent)';
+
+                                                    const targetEl = document.getElementById('analytics-bento-capture');
+
+                                                    const executeShare = () => {
+                                                        let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
+                                                        if (!h2c) {
+                                                            bIcon.textContent = 'error';
+                                                            bIcon.style.animation = 'none';
+                                                            bIcon.style.color = 'var(--color-red)';
+                                                            setTimeout(() => { bIcon.textContent = origIcon; bIcon.style.color = 'var(--color-text-secondary)'; }, 2000);
+                                                            return;
+                                                        }
+
+                                                        const exportWrapper = document.createElement('div');
+                                                        exportWrapper.style.cssText = `position: absolute; top: 0px; left: 0px; pointer-events: none; width: ${targetEl.offsetWidth || 520}px; padding: 24px; box-sizing: border-box; background: ${getComputedStyle(document.body).getPropertyValue('--color-body').trim() || '#F2F2F6'}; z-index: -9999;`;
+
+                                                        const clone = targetEl.cloneNode(true);
+                                                        clone.style.margin = '0';
+                                                        clone.style.boxShadow = '0 10px 30px rgba(0,0,0,0.08)';
+
+                                                        // ВАЖНО: Заменяем пустой склонированный canvas на снимок оригинального канваса в виде <img>
+                                                        const origCanvas = document.getElementById('gradesChart');
+                                                        if (origCanvas) {
+                                                            const chartImg = document.createElement('img');
+                                                            chartImg.src = origCanvas.toDataURL('image/png');
+                                                            chartImg.style.cssText = 'width: 100%; height: 100%; display: block; object-fit: contain;';
+                                                            const clonedCanvas = clone.querySelector('#gradesChart');
+                                                            if (clonedCanvas) clonedCanvas.replaceWith(chartImg);
+                                                        }
+
+                                                        exportWrapper.appendChild(clone);
+
+                                                        if (generalConfig.watermark) {
+                                                            const watermark = document.createElement('div');
+                                                            watermark.style.cssText = 'text-align: right; margin-top: 12px; width: 100%; box-sizing: border-box; font-size: 1.1rem; font-weight: 700; color: var(--color-text-secondary); opacity: 0.3; letter-spacing: 0.5px;';
+                                                            watermark.textContent = 'etisreborn.ru';
+                                                            exportWrapper.appendChild(watermark);
+                                                        }
+
+                                                        document.body.appendChild(exportWrapper);
+
+                                                        h2c(exportWrapper, {
+                                                            scale: 2.5,
+                                                            useCORS: true,
+                                                            backgroundColor: getComputedStyle(document.body).getPropertyValue('--color-body').trim()
+                                                        }).then(canvas => {
+                                                            exportWrapper.remove();
+                                                            canvas.toBlob(blob => {
+                                                                const file = new File([blob], 'EtisAnalytics.png', { type: 'image/png' });
+                                                                if (window.innerWidth <= 960 && navigator.canShare && navigator.canShare({ files: [file] })) {
+                                                                    navigator.share({ files: [file], title: 'Аналитика успеваемости' }).catch(() => {});
+                                                                    bIcon.textContent = origIcon;
+                                                                    bIcon.style.animation = 'none';
+                                                                    bIcon.style.color = 'var(--color-text-secondary)';
+                                                                } else {
+                                                                    const link = document.createElement('a');
+                                                                    link.download = 'EtisAnalytics.png';
+                                                                    link.href = URL.createObjectURL(blob);
+                                                                    link.click();
+                                                                    URL.revokeObjectURL(link.href);
+
+                                                                    bIcon.textContent = 'check';
+                                                                    bIcon.style.animation = 'none';
+                                                                    bIcon.style.color = 'var(--color-green)';
+                                                                    setTimeout(() => { bIcon.textContent = origIcon; bIcon.style.color = 'var(--color-text-secondary)'; }, 2000);
+                                                                }
+                                                            }, 'image/png');
+                                                        }).catch(() => {
+                                                            exportWrapper.remove();
+                                                            bIcon.textContent = 'error';
+                                                            bIcon.style.animation = 'none';
+                                                            bIcon.style.color = 'var(--color-red)';
+                                                            setTimeout(() => { bIcon.textContent = origIcon; bIcon.style.color = 'var(--color-text-secondary)'; }, 2000);
+                                                        });
+                                                    };
+
+                                                    if (typeof html2canvas === 'undefined' && !window.html2canvas) {
+                                                        const script = document.createElement('script');
+                                                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                                                        script.onload = () => executeShare();
+                                                        document.head.appendChild(script);
+                                                    } else {
+                                                        executeShare();
+                                                    }
+                                                };
+                                            }
                                         }
 
                                         overlay.classList.add('active');
                                         modal.classList.add('active');
                                         document.body.classList.add('modal-open-body');
                                     } catch (e) {
-                                        alert('Ошибка в renderAnalytics:\n' + e.message);
-                                        console.error(e);
+                                        console.error('Analytics error:', e);
                                     }
                                 };
 
-                                // ЛОГИКА ЗАГРУЗКИ С ALERT-АМИ И ПРОВЕРКОЙ UNSAFEWINDOW
                                 if (getChartLib()) {
                                     renderAnalytics();
                                 } else {
@@ -25323,20 +26614,16 @@
 
                                     const script = document.createElement('script');
                                     script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
-
                                     script.onload = () => {
                                         btn.innerHTML = origHtml;
                                         btn.style.pointerEvents = 'auto';
                                         renderAnalytics();
                                     };
-
-                                    script.onerror = (e) => {
+                                    script.onerror = () => {
                                         btn.innerHTML = origHtml;
                                         btn.style.pointerEvents = 'auto';
-                                        alert('ОШИБКА ЗАГРУЗКИ СКРИПТА!\nНе удалось скачать Chart.js.');
-                                        console.error('Chart.js loading error:', e);
+                                        alert('Не удалось загрузить Chart.js.');
                                     };
-
                                     document.head.appendChild(script);
                                 }
                             });
@@ -25408,38 +26695,52 @@
                                         wrapper.style.setProperty('display', 'block', 'important');
                                         highlightSearchTerm(header, val);
 
-                                        // --- ОБНОВЛЕНИЕ КАПСУЛЫ ---
                                         const capsules = header.querySelectorAll('.subject-score-capsule');
-                                        // Берем последнюю капсулу (чтобы не перезаписывать левую капсулу с курсом/триместром)
                                         const capsule = capsules[capsules.length - 1];
 
                                         if (capsule && capsules.length > 0) {
                                             const avg = count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
-                                            wrapper.setAttribute('data-term-avg', avg); // Записываем для обновления графиков
+                                            wrapper.setAttribute('data-term-avg', avg);
+
+                                            let currentMark = '', markColor = '', tooltipText = '';
 
                                             if (!hasAny) {
                                                 capsule.textContent = 'Нет оценок';
                                                 capsule.style.background = 'var(--color-highlight)';
                                                 capsule.style.color = 'var(--color-text-secondary)';
-                                            }
-                                            else if (hasFail) {
-                                                capsule.textContent = 'НЕЗАЧЕТ';
+                                            } else if (hasFail) {
+                                                capsule.textContent = 'ДОЛГИ';
                                                 capsule.style.background = 'var(--color-red)';
                                                 capsule.style.color = '#fff';
-                                            }
-                                            else if (count > 0) {
+                                                currentMark = '2'; markColor = 'var(--color-red)'; tooltipText = 'Есть задолженности';
+                                            } else if (count > 0) {
                                                 capsule.textContent = `${avg} / 5`;
                                                 const p = (avg / 5) * 100;
-                                                if (p < 41) capsule.style.background = 'var(--color-red)';
-                                                else if (p < 61) capsule.style.background = 'var(--color-yellow)';
-                                                else if (p < 81) capsule.style.background = '#8BC34A';
-                                                else capsule.style.background = 'var(--color-green)';
-                                                capsule.style.color = (p >= 41 && p < 61) ? '#000' : '#fff';
-                                            }
-                                            else if (hasPass) {
+                                                if (p < 61) {
+                                                    capsule.style.background = 'var(--color-yellow)';
+                                                    capsule.style.color = '#000';
+                                                    currentMark = '3'; markColor = 'var(--color-warning)'; tooltipText = 'Удовлетворительно';
+                                                } else if (p < 81) {
+                                                    capsule.style.background = '#8BC34A';
+                                                    capsule.style.color = '#fff';
+                                                    currentMark = '4'; markColor = '#8BC34A'; tooltipText = 'Хорошая сессия';
+                                                } else {
+                                                    capsule.style.background = 'var(--color-green)';
+                                                    capsule.style.color = '#fff';
+                                                    currentMark = '5'; markColor = 'var(--color-green)'; tooltipText = avg === 5 ? 'Отличная сессия! 😎' : 'Отлично';
+                                                }
+                                            } else if (hasPass) {
                                                 capsule.textContent = 'ЗАЧЕТ';
                                                 capsule.style.background = 'var(--color-green)';
                                                 capsule.style.color = '#fff';
+                                                currentMark = 'ЗАЧЕТ'; markColor = 'var(--color-green)'; tooltipText = 'Все зачеты сданы';
+                                            }
+
+                                            if (currentMark) {
+                                                const tooltip = document.createElement('div');
+                                                tooltip.className = 'score-tooltip';
+                                                tooltip.innerHTML = `<span style="color: ${markColor}; font-size: 1.4rem;">${currentMark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${tooltipText}`;
+                                                capsule.appendChild(tooltip);
                                             }
                                         }
                                     }
@@ -25488,10 +26789,9 @@
                             const submenus = span9.querySelectorAll('.submenu');
                             const lastSubmenu = submenus[submenus.length - 1];
 
-                            // --- ДОБАВЛЕНИЕ ПОИСКА И КНОПКИ "РЕЙТИНГ" (КАПСУЛА) ---
+                            // --- ДОБАВЛЕНИЕ ПОИСКА И ЛИДЕРБОРДА ---
                             const searchContainer = document.createElement('div');
                             searchContainer.className = 'timetable-toolbar term-search-wrapper';
-
                             searchContainer.style.cssText = 'margin-top: -0.8rem !important; margin-bottom: 2.4rem !important;';
 
                             searchContainer.innerHTML = `
@@ -25499,9 +26799,8 @@
                                     <span class="material-icons">search</span>
                                     <input type="text" class="term-local-input" placeholder="Поиск">
                                 </div>
-                                <button class="toolbar-item analytics-btn" style="flex: 0 0 auto !important;">
-                                    <span class="material-icons">emoji_events</span>
-                                    Топ предметов
+                                <button class="toolbar-item analytics-btn" title="Топ предметов" style="flex: 0 0 auto !important; width: 38px !important; min-width: 38px !important; padding: 0 !important; justify-content: center !important; border-radius: 50% !important;">
+                                    <span class="material-icons" style="font-size: 2rem !important; margin: 0 !important;">emoji_events</span>
                                 </button>
                             `;
                             if (lastSubmenu) lastSubmenu.after(searchContainer);
@@ -25638,15 +26937,15 @@
 
                                     // 3. Расчет баллов (Оценка / Макс. рейтинг) и отрисовка капсул
                                     if (cells.length >= 7) {
-                                        const gradeStr = cells[3].textContent.trim(); // Колонка "Оценка"
-                                        const maxStr = cells[6].textContent.trim();   // Колонка "Макс. балл в рейтинг"
+                                        const gradeStr = cells[3].textContent.trim();
+                                        const maxStr = cells[6].textContent.trim();
 
                                         r.setAttribute('data-raw-grade', gradeStr);
                                         r.setAttribute('data-raw-max', maxStr);
 
                                         const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
 
-                                        if (gradeStr !== '') {
+                                        if (gradeStr !== '' && gradeStr !== '-' && gradeStr !== '—') {
                                             hasAnyGrades = true;
 
                                             if (maxVal > 0) {
@@ -25657,7 +26956,6 @@
                                             }
 
                                             if (gradeStr !== 'н') {
-                                                // Оформляем колонку "Оценка" в цветную капсулу
                                                 if (!cells[3].querySelector('.kt-score-capsule')) {
                                                     let bg, color, mark = '';
                                                     const gradeVal = parseFloat(gradeStr.replace(',', '.')) || 0;
@@ -25669,29 +26967,29 @@
                                                         else if (p < 81) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; mark = '4'; }
                                                         else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; mark = '5'; }
                                                     } else {
-                                                        // Если макс. балл 0, делаем капсулу серой
                                                         bg = 'rgba(142, 142, 147, 0.15)'; color = 'var(--color-text-secondary)';
                                                     }
 
-                                                    // Генерируем всплывающую подсказку (если есть макс. балл)
                                                     let tooltipHtml = '';
                                                     if (maxVal > 0) {
                                                         tooltipHtml = `<div class="score-tooltip grade-cell-tooltip"><span style="color: ${color}; font-size: 1.4rem;">${mark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${gradeVal} из ${maxVal}</div>`;
                                                     }
 
-                                                    // Оборачиваем содержимое в капсулу и добавляем тултип внутрь
                                                     const originalContent = cells[3].innerHTML;
                                                     cells[3].innerHTML = `<span class="kt-score-capsule" style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; min-width: 24px;">${originalContent}${tooltipHtml}</span>`;
 
-                                                    // Убираем подчеркивание у внутреннего спана ЕТИСа, чтобы не двоилось
                                                     const innerSpan = cells[3].querySelector('span span');
                                                     if (innerSpan) innerSpan.style.borderBottom = 'none';
                                                 }
                                             } else {
-                                                // Красная капсула неявки
                                                 if (!cells[3].querySelector('.kt-score-capsule')) {
                                                     cells[3].innerHTML = `<span class="kt-score-capsule" style="background: rgba(255, 59, 48, 0.15); color: var(--color-red); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-block; text-align: center; min-width: 24px;">н</span>`;
                                                 }
+                                            }
+                                        } else {
+                                            // ФОЛБЭК: Если КМ еще не сдано или оценка не выставлена
+                                            if (!cells[3].querySelector('.kt-score-capsule')) {
+                                                cells[3].innerHTML = `<span class="kt-score-capsule" style="background: rgba(142, 142, 147, 0.15); color: var(--color-text-secondary); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.15rem; display: inline-block; text-align: center; min-width: 24px; white-space: nowrap;">Неизвестно</span>`;
                                             }
                                         }
                                     }
@@ -25831,18 +27129,26 @@
                                             // --- ПЕРЕСЧЕТ БАЛЛОВ НА ЛЕТУ ---
                                             const cells = row.querySelectorAll('td');
                                             if (cells.length >= 7) {
-                                                const gradeStr = row.getAttribute('data-raw-grade') || cells[3].textContent.trim();
-                                                const maxStr = row.getAttribute('data-raw-max') || cells[6].textContent.trim();
+                                                const rawGrade = (row.getAttribute('data-raw-grade') !== null 
+                                                    ? row.getAttribute('data-raw-grade') 
+                                                    : cells[3].textContent).trim();
+                                                const rawMax = (row.getAttribute('data-raw-max') !== null 
+                                                    ? row.getAttribute('data-raw-max') 
+                                                    : cells[6].textContent).trim();
 
-                                                if (gradeStr !== '') {
+                                                const gt = rawGrade.toLowerCase();
+                                                // Проверяем, что оценка действительно выставлена (не пустая, не прочерк и не заглушка)
+                                                const isGradeEmpty = !gt || gt === '-' || gt === '—' || gt.includes('неизвестно') || gt.includes('нет');
+
+                                                if (!isGradeEmpty) {
                                                     hasAnyGrades = true;
-                                                    const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
+                                                    const maxVal = parseFloat(rawMax.replace(',', '.')) || 0;
 
                                                     if (maxVal > 0) {
                                                         calculatedMax += maxVal;
 
-                                                        if (gradeStr !== 'н') {
-                                                            calculatedCurrent += parseFloat(gradeStr.replace(',', '.')) || 0;
+                                                        if (gt !== 'н') {
+                                                            calculatedCurrent += parseFloat(rawGrade.replace(',', '.')) || 0;
                                                         }
                                                     }
                                                 }
@@ -25866,14 +27172,18 @@
                                             wrapper.setAttribute('data-score-current', calculatedCurrent);
                                             wrapper.setAttribute('data-score-max', calculatedMax);
 
-                                            // Применяем логику "Из 100"
-                                            const finalMaxFiltered = generalConfig.absoluteScores ? 100 : calculatedMax;
+                                            // Применяем логику "Из 100" только если по предмету реально есть баллы
+                                            const finalMaxFiltered = generalConfig.absoluteScores 
+                                                ? (hasAnyGrades && calculatedMax > 0 ? 100 : 0) 
+                                                : calculatedMax;
 
                                             capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? finalMaxFiltered : 0}`;
 
                                             if (!hasAnyGrades || finalMaxFiltered === 0) {
                                                 capsule.style.background = 'var(--color-highlight)';
                                                 capsule.style.color = 'var(--color-text-secondary)';
+                                                const oldTooltip = capsule.querySelector('.score-tooltip');
+                                                if (oldTooltip) oldTooltip.remove();
                                             } else {
                                                 const p = (calculatedCurrent / finalMaxFiltered) * 100;
                                                 if (p < 41) capsule.style.background = 'var(--color-red)';
@@ -26047,6 +27357,7 @@
 
                                 overlay.classList.add('active');
                                 modal.classList.add('active');
+
                                 document.body.classList.add('modal-open-body');
                             });
 
@@ -26113,7 +27424,6 @@
                         if (isDiplom) {
                             const table = span9.querySelector('table.common');
                             if (table) {
-                                // Скрываем старый текст среднего балла
                                 const oldAvg = Array.from(span9.querySelectorAll('div')).find(d => d.textContent.includes('Средний балл') && !d.classList.contains('subject-score-capsule'));
                                 if (oldAvg) oldAvg.style.display = 'none';
 
@@ -26124,54 +27434,56 @@
 
                                 let sum = 0, count = 0, hasFail = false;
                                 const rows = table.querySelectorAll('tr');
+                                const dataRows = Array.from(table.querySelectorAll('tbody tr:not(:has(th)), tr:has(td)'));
 
-                                rows.forEach(row => {
-                                    const cells = row.querySelectorAll('td');
-                                    if (cells.length >= 2) {
-                                        const gradeCell = cells[1];
-                                        const text = gradeCell.textContent.toLowerCase().trim();
+                                // Если в таблице диплома нет строк с предметами
+                                if (dataRows.length === 0) {
+                                    const tbody = table.querySelector('tbody') || table;
+                                    
+                                    // Динамически определяем количество колонок в шапке (2 или 3)
+                                    const colCount = table.querySelectorAll('th').length || 3;
+                                    
+                                    const emptyTr = document.createElement('tr');
+                                    emptyTr.innerHTML = `
+                                        <td colspan="${colCount}" style="text-align: center !important; padding: 4.5rem 2rem !important; color: var(--color-text-secondary) !important; font-weight: 600 !important; font-size: 1.35rem !important; background: transparent !important; border: none !important;">
+                                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: 100%;">
+                                                <span class="material-icons" style="font-size: 3.2rem; color: var(--color-text-secondary); opacity: 0.45; line-height: 1;">hourglass_empty</span>
+                                                <span style="color: var(--color-text-secondary);">Данных пока нет</span>
+                                            </div>
+                                        </td>
+                                    `;
+                                    tbody.appendChild(emptyTr);
+                                } else {
+                                    rows.forEach(row => {
+                                        const cells = row.querySelectorAll('td');
+                                        if (cells.length >= 2) {
+                                            const gradeCell = cells[1];
+                                            const text = gradeCell.textContent.toLowerCase().trim();
 
-                                        // Парсим оценки для среднего балла
-                                        if (text.includes('отлично')) { sum += 5; count++; }
-                                        else if (text.includes('хорошо')) { sum += 4; count++; }
-                                        else if (text.includes('удовлетворительно') || text.includes('удовл.')) { sum += 3; count++; }
-                                        else if (text.includes('неудовлетворительно') || text.includes('незачет') || text.includes('незачёт')) { hasFail = true; }
+                                            if (text.includes('отлично')) { sum += 5; count++; }
+                                            else if (text.includes('хорошо')) { sum += 4; count++; }
+                                            else if (text.includes('удовлетворительно') || text.includes('удовл.')) { sum += 3; count++; }
+                                            else if (text.includes('неудовлетворительно') || text.includes('незачет') || text.includes('незачёт')) { hasFail = true; }
 
-                                        // Оформляем капсулу оценки
-                                        if (text && !text.includes('нет итоговой оценки')) {
-                                            let bg = 'rgba(142, 142, 147, 0.15)', color = 'var(--color-text-secondary)';
-                                            if (text.includes('отлично') || (text.includes('зачет') && !text.includes('незачет'))) {
-                                                bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)';
-                                            } else if (text.includes('хорошо')) {
-                                                bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)';
-                                            } else if (text.includes('удовлетворительно') || text.includes('удовл.')) {
-                                                bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)';
-                                            } else if (text.includes('неуд') || text.includes('незач') || text === '2') {
-                                                bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)';
+                                            if (text && !text.includes('нет итоговой оценки') && text !== '-' && text !== '—') {
+                                                let bg = 'rgba(142, 142, 147, 0.15)', color = 'var(--color-text-secondary)';
+                                                if (text.includes('отлично') || (text.includes('зачет') && !text.includes('незачет'))) {
+                                                    bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)';
+                                                } else if (text.includes('хорошо')) {
+                                                    bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)';
+                                                } else if (text.includes('удовлетворительно') || text.includes('удовл.')) {
+                                                    bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)';
+                                                } else if (text.includes('неуд') || text.includes('незач') || text === '2') {
+                                                    bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)';
+                                                }
+
+                                                gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">${gradeCell.textContent.trim()}</span>`;
+                                            } else {
+                                                gradeCell.innerHTML = `<span class="kt-score-capsule" style="background: rgba(142, 142, 147, 0.15); color: var(--color-text-secondary); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">Неизвестно</span>`;
                                             }
-
-                                            gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">${gradeCell.textContent.trim()}</span>`;
-                                        } else if (text.includes('нет итоговой оценки')) {
-                                            gradeCell.innerHTML = `<span style="color: var(--color-text-secondary); font-size: 1.2rem;">Нет оценки</span>`;
                                         }
-
-                                        // Убираем старый шрифт из первой колонки (элективы)
-                                        const nameCell = cells[0];
-                                        if (nameCell && nameCell.querySelector('i')) {
-                                            nameCell.innerHTML = nameCell.innerHTML.replace(/<font[^>]*>/gi, '').replace(/<\/font>/gi, '');
-                                            const notes = nameCell.querySelectorAll('i');
-                                            notes.forEach(note => {
-                                                note.style.color = 'var(--color-text-secondary)';
-                                                note.style.fontSize = '1.1rem';
-                                                note.style.fontStyle = 'normal';
-                                                note.style.textTransform = 'uppercase';
-                                                note.style.letterSpacing = '0.5px';
-                                                note.style.display = 'block';
-                                                note.style.marginBottom = '0.4rem';
-                                            });
-                                        }
-                                    }
-                                });
+                                    });
+                                }
 
                                 const headerContainer = document.createElement('div');
                                 headerContainer.className = 'subject-header-flex';
@@ -26185,24 +27497,26 @@
                                     capsule.textContent = 'ЕСТЬ ДОЛГИ';
                                     capsule.style.background = 'var(--color-red)';
                                     capsule.style.color = '#fff';
+                                    saveSyncData('etis_diploma_gpa', 'debts');
                                 } else if (count > 0) {
                                     const avg = Math.round((sum / count) * 100) / 100;
-                                    saveSyncData('etis_diploma_gpa', avg.toString()); // Автоматически выгрузит балл в облако
+                                    saveSyncData('etis_diploma_gpa', avg.toString());
                                     capsule.textContent = `${avg} / 5`;
                                     const p = (avg / 5) * 100;
                                     if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
                                     else if (p < 81) { capsule.style.background = '#8BC34A'; capsule.style.color = '#fff'; }
                                     else { capsule.style.background = 'var(--color-green)'; capsule.style.color = '#fff'; }
-                                    if (avg >= 4.75) capsule.style.boxShadow = '0 0 0 2px #FFD700'; // Красивый бордер для красного диплома
+                                    if (avg >= 4.75) capsule.style.boxShadow = '0 0 0 2px #FFD700';
                                 } else {
                                     capsule.textContent = 'Нет оценок';
                                     capsule.style.background = 'var(--color-highlight)';
                                     capsule.style.color = 'var(--color-text-secondary)';
+                                    // Сохраняем отметку, что раздел посещен и оценок пока нет
+                                    saveSyncData('etis_diploma_gpa', 'none');
                                 }
                                 headerContainer.appendChild(capsule);
                                 span9.insertBefore(headerContainer, wrapper);
 
-                                // Оформление подвала с текстом
                                 const footerP = span9.querySelector('p');
                                 if (footerP && footerP.textContent.includes('Итоговая оценка по дисциплине')) {
                                     const infoBox = document.createElement('div');
@@ -26266,36 +27580,55 @@
                                 ratingTable.style.setProperty('width', '100%', 'important');
                                 ratingTable.style.setProperty('min-width', '100%', 'important');
 
-                                // --- ОФОРМЛЕНИЕ ЧИСЕЛ В КАПСУЛЫ ---
-                                ratingTable.querySelectorAll('tr').forEach(row => {
-                                    const cells = row.querySelectorAll('td');
-                                    if (cells.length >= 2) {
-                                        const ratingCell = cells[cells.length - 1]; // Последняя ячейка
-                                        const text = ratingCell.textContent.trim();
-                                        const match = text.match(/(\d+)\s+из\s+(\d+)/);
+                                const dataRows = Array.from(ratingTable.querySelectorAll('tbody tr:not(:has(th)), tr:has(td)'));
 
-                                        if (match) {
-                                            const current = parseInt(match[1], 10);
-                                            const total = parseInt(match[2], 10);
+                                // Если в таблице рейтинга нет строк
+                                if (dataRows.length === 0) {
+                                    const tbody = ratingTable.querySelector('tbody') || ratingTable;
+                                    const emptyTr = document.createElement('tr');
+                                    emptyTr.innerHTML = `
+                                        <td colspan="2" style="text-align: center !important; padding: 3.6rem 2rem !important; color: var(--color-text-secondary) !important; font-weight: 600 !important; font-size: 1.35rem !important; background: transparent !important; border: none !important;">
+                                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                                                <span class="material-icons" style="font-size: 2.8rem; color: var(--color-text-secondary); opacity: 0.4;">hourglass_empty</span>
+                                                <span>Данных пока нет</span>
+                                            </div>
+                                        </td>
+                                    `;
+                                    tbody.appendChild(emptyTr);
+                                } else {
+                                    // --- ОФОРМЛЕНИЕ ЧИСЕЛ В КАПСУЛЫ (ИЛИ "НЕИЗВЕСТНО") ---
+                                    ratingTable.querySelectorAll('tr').forEach(row => {
+                                        const cells = row.querySelectorAll('td');
+                                        if (cells.length >= 2) {
+                                            const ratingCell = cells[cells.length - 1];
+                                            const text = ratingCell.textContent.trim();
+                                            const match = text.match(/(\d+)\s+из\s+(\d+)/);
 
-                                            let bg = 'rgba(142, 142, 147, 0.15)'; // Дефолтный серый
-                                            let color = 'var(--color-text-secondary)';
+                                            // Если место в рейтинге сформировано и корректно
+                                            if (match && parseInt(match[1], 10) > 0 && parseInt(match[2], 10) > 0) {
+                                                const current = parseInt(match[1], 10);
+                                                const total = parseInt(match[2], 10);
 
-                                            if (current > 0) {
+                                                let bg = 'rgba(142, 142, 147, 0.15)';
+                                                let color = 'var(--color-text-secondary)';
+
                                                 const p = total > 1 ? ((total - current) / (total - 1)) * 100 : 100;
 
                                                 if (p < 30) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; }
                                                 else if (p < 60) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; }
                                                 else if (p < 85) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; }
                                                 else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; }
-                                            }
 
-                                            ratingCell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; pointer-events: none;">${text}</span>`;
+                                                ratingCell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; pointer-events: none;">${text}</span>`;
+                                            } else {
+                                                // Если рейтинга нет, прочерк, 0 из 0 или не сформирован
+                                                ratingCell.innerHTML = `<span style="background: rgba(142, 142, 147, 0.15); color: var(--color-text-secondary); padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; pointer-events: none;">Неизвестно</span>`;
+                                            }
                                             ratingCell.style.textAlign = 'right';
                                             ratingCell.style.cursor = 'help';
                                         }
-                                    }
-                                });
+                                    });
+                                }
 
                                 // --- ОФОРМЛЕНИЕ ТЕКСТА СНИЗУ ---
                                 const footerP = span9.querySelector('p');
@@ -27032,30 +28365,76 @@
                     }
 
                     case 'stu.special_est_list': {
-                        span9.querySelectorAll('h3').forEach(h => h.remove());
-                        span9.querySelectorAll('script, style').forEach(el => el.remove());
-
-                        span9.querySelectorAll('h2, h3').forEach(h => h.remove());
-
-                        let currentNode = span9.firstChild;
-                        while (currentNode) {
-                            if (currentNode.nodeType === Node.TEXT_NODE) {
-                                let text = currentNode.textContent.trim();
-                                if (text.length > 25 && !text.includes('FUNCTION')) {
-                                    const title = document.createElement('div');
-                                    title.className = 'survey-intro-text';
-                                    title.innerHTML = text.replace(/\n/g, '<br>');
-                                    span9.insertBefore(title, currentNode);
-                                    currentNode.textContent = '';
-                                }
-                            }
-                            currentNode = currentNode.nextSibling;
+                        // 1. Очистка мусорных заголовков
+                        span9.querySelectorAll('h3, h2').forEach(h => h.remove());
+                        while (span9.firstChild && (span9.firstChild.tagName === 'BR' || (span9.firstChild.nodeType === Node.TEXT_NODE && !span9.firstChild.textContent.trim()))) {
+                            span9.firstChild.remove();
                         }
 
-                        const surveyBlocks = span9.querySelectorAll('.nav.answ, .nav.msg');
+                        // 2. Оформление верхнего предупреждения (плашки)
+                        const warnings = document.querySelectorAll('.warning');
+                        if (warnings.length > 0) {
+                            const warningText = warnings[0].textContent.trim();
+                            warnings.forEach(w => w.remove());
+
+                            if (warningText) {
+                                const banner = document.createElement('div');
+                                banner.className = 'warning-banner-card anim-fade-up is-visible';
+                                banner.style.cssText = 'margin-top: 0 !important; margin-bottom: 2rem !important;';
+                                banner.innerHTML = `
+                                    <span class="material-icons">priority_high</span>
+                                    <div>${warningText}</div>
+                                `;
+                                span9.prepend(banner);
+                            }
+                        }
+
+                        // 3. Сбор вводного текста анкеты
+                        let introTitleText = '';
+                        let introBodyText = '';
+                        const nodesToDelete = [];
+
+                        Array.from(span9.childNodes).forEach(node => {
+                            if (node.nodeType === Node.TEXT_NODE) {
+                                const text = node.textContent.trim();
+                                if (text.includes('Уважаемый студент') || (text.length > 10 && !text.includes('FUNCTION') && !text.includes('function'))) {
+                                    introTitleText = text;
+                                    nodesToDelete.push(node);
+                                }
+                            } else if (node.tagName === 'P' && node.textContent.includes('мнение о преподавателях')) {
+                                introBodyText = node.innerHTML.replace(/\n/g, '<br>');
+                                nodesToDelete.push(node);
+                            }
+                        });
+
+                        nodesToDelete.forEach(n => n.remove());
+
+                        if (introTitleText || introBodyText) {
+                            const introCard = document.createElement('div');
+                            introCard.className = 'survey-intro-card anim-fade-up is-visible';
+                            introCard.style.cssText = 'margin: 0 0 2rem 0 !important;';
+                            introCard.innerHTML = `
+                                <h4>
+                                    <span class="material-icons" style="font-size: 2rem; color: var(--color-accent);">rate_review</span>
+                                    ${introTitleText || 'Опрос об учебном процессе'}
+                                </h4>
+                                ${introBodyText ? `<p style="margin: 0; line-height: 1.6; color: var(--color-text-secondary); font-size: 1.35rem;">${introBodyText}</p>` : ''}
+                            `;
+
+                            const firstCard = span9.querySelector('.survey-card, .nav.answ, .nav.msg');
+                            if (firstCard && firstCard.nextSibling) {
+                                span9.insertBefore(introCard, firstCard.nextSibling);
+                            } else {
+                                span9.appendChild(introCard);
+                            }
+                        }
+
+                        // 4. Оформление карточек опросов
+                        const surveyBlocks = span9.querySelectorAll('.nav.answ, .nav.msg, ul.survey-card');
 
                         surveyBlocks.forEach(survey => {
-                            survey.className = 'survey-card';
+                            survey.className = 'survey-card anim-fade-up is-visible';
+                            survey.style.cssText = 'margin-bottom: 2rem !important;';
 
                             const headerLi = survey.querySelector('li:first-child');
                             const contentLi = survey.querySelector('li:nth-child(2)');
@@ -27084,12 +28463,192 @@
 
                             if (contentLi) {
                                 const contentLink = contentLi.querySelector('a');
-                                if (contentLink) {
-                                    contentLi.innerHTML = contentLink.innerHTML;
+                                if (contentLink) contentLi.innerHTML = contentLink.innerHTML;
+
+                                const activeForm = contentLi.querySelector('form[name^="estimate_"]');
+
+                                // --- АКТИВНЫЙ ОПРОС С РАДИО-КНОПКАМИ ---
+                                if (activeForm) {
+                                    const reviewDiv = contentLi.querySelector('.review');
+                                    if (reviewDiv) {
+                                        const formInnerDiv = reviewDiv.querySelector('.form');
+                                        if (formInnerDiv) {
+                                            formInnerDiv.removeAttribute('style');
+                                        }
+
+                                        const actionButtonsWrap = document.createElement('div');
+                                        actionButtonsWrap.className = 'survey-action-buttons';
+
+                                        const sendBtn = reviewDiv.querySelector('button[id^="send_btn_"]');
+                                        const rejectBtn = reviewDiv.querySelector('button[id^="reject_send_btn_"]');
+
+                                        const counterBadge = document.createElement('span');
+                                        counterBadge.id = 'survey-progress-counter';
+                                        counterBadge.style.cssText = 'font-size: 1.25rem; font-weight: 700; color: var(--color-text-secondary); margin-left: 8px; align-self: center;';
+
+                                        if (sendBtn) {
+                                            const sendBtnWrap = sendBtn.closest('.button_gray') || sendBtn;
+                                            if (!sendBtn.querySelector('.material-icons')) {
+                                                sendBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem;">send</span>' + sendBtn.textContent;
+                                            }
+                                            actionButtonsWrap.appendChild(sendBtnWrap);
+                                        }
+
+                                        if (rejectBtn) {
+                                            const rejectBtnWrap = rejectBtn.closest('.button_gray') || rejectBtn;
+                                            if (!rejectBtn.querySelector('.material-icons')) {
+                                                rejectBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem;">update</span>' + rejectBtn.textContent;
+                                            }
+                                            actionButtonsWrap.appendChild(rejectBtnWrap);
+                                        }
+
+                                        actionButtonsWrap.appendChild(counterBadge);
+                                        reviewDiv.appendChild(actionButtonsWrap);
+
+                                        // ==========================================
+                                        // ТОЧНЫЙ СБОР ДАННЫХ В ФОРМАТЕ ЕТИСА (.serialize)
+                                        // ==========================================
+                                        const questions = activeForm.querySelectorAll('.question');
+                                        const totalQuestions = questions.length;
+
+                                        const serializeFormAnswers = () => {
+                                            const checkedInputs = activeForm.querySelectorAll('input[type="radio"][name^="q"]:checked');
+                                            const params = [];
+                                            checkedInputs.forEach(input => {
+                                                params.push(`${encodeURIComponent(input.name)}=${encodeURIComponent(input.value)}`);
+                                            });
+                                            return params.join('&');
+                                        };
+
+                                        const validateAndCollect = () => {
+                                            let answeredCount = 0;
+                                            let firstUnanswered = null;
+
+                                            questions.forEach(q => {
+                                                const checkedRadio = q.querySelector('input[type="radio"]:checked');
+                                                if (checkedRadio) {
+                                                    answeredCount++;
+                                                } else if (!firstUnanswered) {
+                                                    firstUnanswered = q;
+                                                }
+                                            });
+
+                                            // Записываем сериализованную строку в p_que_str
+                                            const serializedData = serializeFormAnswers();
+                                            const queInput = activeForm.querySelector('input[name="p_que_str"], #p_que_str');
+                                            if (queInput) queInput.value = serializedData;
+
+                                            if (counterBadge) {
+                                                counterBadge.textContent = `Отвечено: ${answeredCount} из ${totalQuestions}`;
+                                                counterBadge.style.color = (answeredCount === totalQuestions && totalQuestions > 0) ? 'var(--color-green)' : 'var(--color-text-secondary)';
+                                            }
+
+                                            if (sendBtn) {
+                                                if (answeredCount === totalQuestions && totalQuestions > 0) {
+                                                    sendBtn.removeAttribute('disabled');
+                                                    sendBtn.disabled = false;
+                                                    sendBtn.style.opacity = '1';
+                                                    sendBtn.style.cursor = 'pointer';
+                                                } else {
+                                                    sendBtn.setAttribute('disabled', 'disabled');
+                                                    sendBtn.disabled = true;
+                                                    sendBtn.style.opacity = '0.6';
+                                                    sendBtn.style.cursor = 'not-allowed';
+                                                }
+                                            }
+
+                                            return {
+                                                isComplete: (answeredCount === totalQuestions && totalQuestions > 0),
+                                                serializedData,
+                                                firstUnanswered
+                                            };
+                                        };
+
+                                        activeForm.querySelectorAll('input[type="radio"]').forEach(radio => {
+                                            radio.addEventListener('change', validateAndCollect);
+                                        });
+
+                                        // Отправка формы в строгом соответствии со скриптом ЕТИСа
+                                        if (sendBtn) {
+                                            sendBtn.onclick = (e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+
+                                                const status = validateAndCollect();
+                                                if (!status.isComplete) {
+                                                    alert('Пожалуйста, ответьте на все вопросы перед отправкой анкеты.');
+                                                    if (status.firstUnanswered) {
+                                                        status.firstUnanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                                    }
+                                                    return;
+                                                }
+
+                                                // Ищем или создаем форму отправки send_form_estimate_...
+                                                let sendForm = document.getElementById(`send_form_${activeForm.name}`) || document.querySelector(`form[name="send_form_${activeForm.name}"]`) || document.querySelector('form[name^="send_form_estimate_"]');
+                                                if (!sendForm) {
+                                                    sendForm = document.createElement('form');
+                                                    sendForm.method = 'POST';
+                                                    sendForm.action = activeForm.action || 'stu.special_est_action';
+                                                    sendForm.style.display = 'none';
+                                                    document.body.appendChild(sendForm);
+                                                }
+
+                                                sendForm.innerHTML = '';
+
+                                                // Копируем все служебные поля и p_que_str (исключая radio с именами q...)
+                                                activeForm.querySelectorAll('input, select').forEach(input => {
+                                                    if (!input.name.startsWith('q')) {
+                                                        const clone = input.cloneNode(true);
+                                                        clone.value = input.value;
+                                                        sendForm.appendChild(clone);
+                                                    }
+                                                });
+
+                                                // Копируем комментарии/textarea, если есть
+                                                activeForm.querySelectorAll('textarea').forEach(ta => {
+                                                    if (!ta.name.startsWith('q')) {
+                                                        const clone = ta.cloneNode(true);
+                                                        clone.value = ta.value;
+                                                        sendForm.appendChild(clone);
+                                                    }
+                                                });
+
+                                                sendBtn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Отправка...';
+                                                sendBtn.disabled = true;
+
+                                                // Отправка запроса в базу
+                                                HTMLFormElement.prototype.submit.call(sendForm);
+                                            };
+                                        }
+
+                                        if (rejectBtn) {
+                                            rejectBtn.onclick = (e) => {
+                                                e.preventDefault();
+                                                let sendForm = document.getElementById(`send_form_${activeForm.name}`) || document.querySelector(`form[name="send_form_${activeForm.name}"]`);
+                                                if (sendForm) {
+                                                    sendForm.innerHTML = '';
+                                                    activeForm.querySelectorAll('input, select').forEach(input => {
+                                                        if (!input.name.startsWith('q')) {
+                                                            const clone = input.cloneNode(true);
+                                                            clone.value = input.name === 'p_que_str' ? '' : input.value;
+                                                            sendForm.appendChild(clone);
+                                                        }
+                                                    });
+                                                    HTMLFormElement.prototype.submit.call(sendForm);
+                                                } else {
+                                                    window.location.href = 'stu.timetable';
+                                                }
+                                            };
+                                        }
+
+                                        setTimeout(validateAndCollect, 150);
+                                    }
+                                    return;
                                 }
 
                                 const rawHTML = contentLi.innerHTML;
 
+                                // --- ОПРОСЫ С ПОЛЕМ ТЕКСТОВОГО ВВОДА ---
                                 if (rawHTML.includes('<form') || rawHTML.includes('<textarea')) {
                                     const shortBtn = contentLi.querySelector('div[id$="_short"]');
                                     if (shortBtn) {
@@ -27132,6 +28691,7 @@
                                     return;
                                 }
 
+                                // --- РАНЕЕ ПРОЙДЕННЫЕ ОПРОСЫ ---
                                 const cleanContent = document.createElement('div');
 
                                 const dateMatch = rawHTML.match(/\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}:\d{2}/);
@@ -27160,13 +28720,13 @@
                                         let a = "";
                                         let next = b.nextSibling;
 
-                                        while(next && next.nodeName !== 'B') {
+                                        while (next && next.nodeName !== 'B') {
                                             if (next.nodeName === 'SPAN' || next.nodeName === 'I' || (next.nodeType === Node.TEXT_NODE && next.textContent.trim().length > 2)) {
                                                 a += next.textContent.trim() + " ";
                                             }
                                             next = next.nextSibling;
                                         }
-                                        if (q) items.push({q, a: a.trim()});
+                                        if (q) items.push({ q, a: a.trim() });
                                     });
                                 }
 
