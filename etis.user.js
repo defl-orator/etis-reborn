@@ -1,8 +1,8 @@
     // ==UserScript==
     // @name         ЕТИС REBORN
     // @namespace    http://tampermonkey.net/
-    // @version      2.81
-    // @changelog    Оформление страницы обязательного опроса. Новый вид карточек в расписании. Визуальные правки. Расширенная кастомизация.
+    // @version      2.82
+    // @changelog    Увеличенная скорость загрузки. Фикс очистки данных. Фикс отображения онлайн-занятий. Фикс оформления тем в оценках. Умные случайные цвета в окне внешнего вида. Доработка центра уведомлений.
     // @description  Глобальное обновление ЕТИСа
     // @author       dya_dya
     // @icon         https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png
@@ -18,7 +18,6 @@
     // @connect      *
     // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
     // @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
-    // @require      https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js
     // ==/UserScript==
 
     (function() {
@@ -252,14 +251,14 @@
         const foucStyle = document.createElement('style');
         foucStyle.textContent = `
             html { background-color: ${bgColor} !important; }
-            body { opacity: 0 !important; visibility: hidden !important; }
-            body.etis-reborn-loaded { opacity: 1 !important; visibility: visible !important; transition: opacity 0.3s ease-out !important; }
+            html:not(.etis-reborn-loaded) body { opacity: 0 !important; visibility: hidden !important; background-color: ${bgColor} !important; }
+            body.etis-reborn-loaded { opacity: 1 !important; visibility: visible !important; }
+            /* Мгновенно скрываем оригинальные элементы ЕТИСа до перестройки DOM */
+            html:not(.etis-reborn-loaded) .navbar-static-top,
+            html:not(.etis-reborn-loaded) .span3,
+            html:not(.etis-reborn-loaded) .span9 { display: none !important; }
         `;
-        if (document.head) {
-            document.head.appendChild(foucStyle);
-        } else {
-            document.documentElement.appendChild(foucStyle);
-        }
+        (document.head || document.documentElement).appendChild(foucStyle);
 
         const hideBody = () => {
             if (document.body) {
@@ -1968,8 +1967,6 @@
         // ==========================================
         const styles = `
 
-    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0');
-
     :root {
         --font-family: 'PT Sans Caption', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         --radius-small: 12px;
@@ -3630,71 +3627,90 @@
 
     .pair_info .aud a[href*="zoom"],
     .pair_info .aud a[href*="telemost"],
-    .pair_info .aud a.btn-generic-online {
+    .pair_info .aud a.btn-generic-online,
+    .pair_info .aud .pair-online-link {
         display: inline-flex !important;
         align-items: center !important;
-        justify-content: center !important;
-        gap: 0.6rem !important;
-        padding: 0.5rem 1.4rem 0.5rem 1.5rem !important;
-        border-radius: 50px !important;
+        gap: 4px !important;
+        padding: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
         text-decoration: none !important;
-        font-weight: 700 !important;
-        font-size: 1.2rem !important;
-        line-height: 1 !important;
-        transition: all 0.2s !important;
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
+        line-height: 1.2 !important;
+        transition: opacity 0.2s ease !important;
+        box-shadow: none !important;
         margin: 0 !important;
     }
 
+    /* Убираем подчеркивание со всей ссылки и иконки */
+    .pair_info .aud a[href*="zoom"]:hover,
+    .pair_info .aud a[href*="telemost"]:hover,
+    .pair_info .aud a.btn-generic-online:hover,
+    .pair_info .aud .pair-online-link:hover {
+        opacity: 0.8 !important;
+        text-decoration: none !important;
+        transform: none !important;
+        background: transparent !important;
+    }
+
+    /* Подчеркиваем ТОЛЬКО текст названия платформы при наведении */
+    .pair_info .aud a[href*="zoom"]:hover span:not(.material-icons),
+    .pair_info .aud a[href*="telemost"]:hover span:not(.material-icons),
+    .pair_info .aud a.btn-generic-online:hover span:not(.material-icons),
+    .pair_info .aud .pair-online-link:hover span:not(.material-icons) {
+        text-decoration: underline !important;
+    }
+
+    /* Защита иконки от подчеркивания */
+    .pair_info .aud a[href*="zoom"] .material-icons,
+    .pair_info .aud a[href*="telemost"] .material-icons,
+    .pair_info .aud a.btn-generic-online .material-icons,
+    .pair_info .aud .pair-online-link .material-icons {
+        text-decoration: none !important;
+        display: inline-block !important;
+    }
+
     /* ZOOM (Синий) */
-    .pair_info .aud a[href*="zoom"] {
-        background: rgba(45, 140, 255, 0.12) !important;
+    .pair_info .aud a[href*="zoom"],
+    .pair_info .aud .pair-online-link.zoom-link {
         color: #2D8CFF !important;
-        border: 1px solid rgba(45, 140, 255, 0.2) !important;
     }
-    .pair_info .aud a[href*="zoom"]:hover {
-        background: rgba(45, 140, 255, 0.2) !important;
-        transform: translateY(-1px);
+    .pair_info .aud a[href*="zoom"] .material-icons,
+    .pair_info .aud .pair-online-link.zoom-link .material-icons {
+        color: #2D8CFF !important;
+        font-size: 1.5rem !important;
     }
-    .pair_info .aud a[href*="zoom"]:before {
-        content: 'public' !important;
-        font-family: 'Material Symbols Rounded' !important;
-        font-size: 1.8rem !important;
-        display: block !important;
-    }
-    .pair_info .aud a[href*="zoom"] img { display: none !important; }
 
-    /* ЯНДЕКС ТЕЛЕМОСТ (Оранжевый) */
-    .pair_info .aud a[href*="telemost"] {
-        background: rgba(255, 149, 0, 0.12) !important;
+    /* ТЕЛЕМОСТ (Оранжевый) */
+    .pair_info .aud a[href*="telemost"],
+    .pair_info .aud .pair-online-link.telemost-link {
         color: #FF9500 !important;
-        border: 1px solid rgba(255, 149, 0, 0.2) !important;
     }
-    .pair_info .aud a[href*="telemost"]:hover {
-        background: rgba(255, 149, 0, 0.2) !important;
-        transform: translateY(-1px);
-    }
-    .pair_info .aud a[href*="telemost"]:before {
-        content: 'public' !important;
-        font-family: 'Material Symbols Rounded' !important;
-        font-size: 1.8rem !important;
-        display: block !important;
+    .pair_info .aud a[href*="telemost"] .material-icons,
+    .pair_info .aud .pair-online-link.telemost-link .material-icons {
+        color: #FF9500 !important;
+        font-size: 1.5rem !important;
     }
 
-    /* ДРУГИЕ ОНЛАЙН ССЫЛКИ (Фиолетовая капсула) */
-    .pair_info .aud a.btn-generic-online {
-        background: rgba(175, 82, 222, 0.12) !important;
+    /* ДРУГИЕ ОНЛАЙН ССЫЛКИ (Фиолетовый) */
+    .pair_info .aud a.btn-generic-online,
+    .pair_info .aud .pair-online-link:not(.zoom-link):not(.telemost-link) {
         color: #AF52DE !important;
-        border: 1px solid rgba(175, 82, 222, 0.2) !important;
     }
-    .pair_info .aud a.btn-generic-online:hover {
-        background: rgba(175, 82, 222, 0.2) !important;
-        transform: translateY(-1px);
+    .pair_info .aud a.btn-generic-online .material-icons,
+    .pair_info .aud .pair-online-link:not(.zoom-link):not(.telemost-link) .material-icons {
+        color: #AF52DE !important;
+        font-size: 1.5rem !important;
     }
+
+    .pair_info .aud a[href*="zoom"]:before,
+    .pair_info .aud a[href*="telemost"]:before,
     .pair_info .aud a.btn-generic-online:before {
-        content: 'public' !important;
-        font-family: 'Material Symbols Rounded' !important;
-        font-size: 1.8rem !important;
-        display: block !important;
+        display: none !important;
+        content: none !important;
     }
 
     /* --- DATE STYLING --- */
@@ -3877,24 +3893,34 @@
     .logo-say-hey {
         position: absolute;
         left: 45px;
-        top: 55px;
+        top: 48px;
         font-size: 1.2rem;
         font-weight: 900;
         color: var(--color-accent);
         background: var(--color-card);
-        padding: 2px 8px;
+        padding: 3px 10px;
         border-radius: 8px;
-        box-shadow: var(--shadow-main);
+        box-shadow: var(--shadow-dialog);
+        border: 1px solid var(--color-table-border);
         opacity: 0;
         transform: translateY(5px);
         transition: all 0.3s ease;
         pointer-events: none;
-        z-index: 10;
+        z-index: 100 !important;
+        white-space: nowrap;
     }
 
     .logo-say-hey.active {
         opacity: 1;
         transform: translateY(0);
+    }
+
+    @media (max-width: 960px) {
+        .logo-say-hey {
+            top: 36px;
+            left: 45px;
+            font-size: 1.15rem;
+        }
     }
 
     .sync-card {
@@ -10019,8 +10045,6 @@
             font-size: 2.4rem !important;
         }
         .sidebar-logo img {
-            transform: translateZ(0) !important;
-            -webkit-transform: translateZ(0) !important;
             backface-visibility: hidden !important;
             -webkit-backface-visibility: hidden !important;
         }
@@ -10028,8 +10052,6 @@
         [theme="dark"] .sidebar-logo img {
             filter: invert(1) brightness(2) !important;
             -webkit-filter: invert(1) brightness(2) !important;
-            transform: translateZ(0) !important;
-            -webkit-transform: translateZ(0) !important;
             will-change: filter, transform !important;
         }
     }
@@ -10556,6 +10578,12 @@
             }
         };
 
+        // Неблокирующее подключение шрифтов и иконок
+        const fontLink = document.createElement('link');
+        fontLink.rel = 'stylesheet';
+        fontLink.href = 'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0';
+        safeAppend(fontLink);
+
         // Внедряем стили
         const injectStyles = (css) => {
             const style = document.createElement('style');
@@ -10764,6 +10792,48 @@
 
         generalConfig.compactGradesConfig = { ...defaultCompactConfig, ...(generalConfig.compactGradesConfig || {}) };
         
+        // ==========================================
+        // ОПРЕДЕЛЕНИЕ СИСТЕМЫ ОБУЧЕНИЯ (СЕМЕСТР / ТРИМЕСТР)
+        // ==========================================
+        function getTermSystem() {
+            if (isDemoUser()) return 'semester';
+            
+            // 1. Проверяем сохраненное значение
+            const saved = localStorage.getItem('etis_term_system');
+            
+            // 2. Сканируем страницу на наличие ключевых слов
+            const pageText = (document.body ? document.body.innerText || document.body.textContent : '').toLowerCase();
+            
+            if (pageText.includes('семестр')) {
+                if (saved !== 'semester') localStorage.setItem('etis_term_system', 'semester');
+                return 'semester';
+            }
+            if (pageText.includes('триместр')) {
+                if (saved !== 'trimester') localStorage.setItem('etis_term_system', 'trimester');
+                return 'trimester';
+            }
+            
+            return saved || 'semester'; // По умолчанию семестр
+        }
+
+        function getTermWord(form = 'nom_sg', isCapital = false) {
+            const isSem = getTermSystem() === 'semester';
+            const forms = {
+                nom_sg:  isSem ? 'семестр'    : 'триместр',     // Именительный: (что?) семестр
+                gen_sg:  isSem ? 'семестра'   : 'триместра',    // Родительный: (чего?) семестра
+                dat_sg:  isSem ? 'семестру'   : 'триместру',    // Дательный: (чему?) семестру
+                acc_sg:  isSem ? 'семестр'    : 'триместр',     // Винительный: (что?) семестр
+                ins_sg:  isSem ? 'семестром'  : 'триместром',   // Творительный: (чем?) семестром
+                prep_sg: isSem ? 'семестре'   : 'триместре',    // Предложный: (в чём?) в семестре
+                nom_pl:  isSem ? 'семестры'   : 'триместры',    // Мн. число: семестры
+                gen_pl:  isSem ? 'семестров'  : 'триместров',   // Мн. число: семестров
+                prep_pl: isSem ? 'семестрах'  : 'триместрах',   // Мн. число (в чём?): в семестрах
+            };
+            
+            let res = forms[form] || forms.nom_sg;
+            return isCapital ? (res.charAt(0).toUpperCase() + res.slice(1)) : res;
+        }
+
         function applyAccentColor() {
             const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, isThreeColors: false, colors: ['blue', 'lightblue'], isGlass: false };
             const isGlass = config.isGlass === true;
@@ -11131,8 +11201,7 @@
                 return;
             }
 
-            const isTrimester = document.body.textContent.toLowerCase().includes('триместр') || !document.body.textContent.toLowerCase().includes('семестр');
-            const termWord = isTrimester ? 'триместре' : 'семестре';
+            const termWord = getTermWord('prep_sg');
 
             let title = 'Ничего не нашлось';
             let subtitle = 'Попробуйте изменить запрос или сбросить фильтры.';
@@ -11389,12 +11458,33 @@
             return 'school';
         }
 
-        // --- ЦЕНТР УВЕДОМЛЕНИЙ ---
+        // Белый список разрешённых типов уведомлений для колокольчика
+        const isAllowedNotification = (n) => {
+            if (!n) return false;
+            const title = n.title || '';
+            const icon = n.icon || '';
+            const targetUrl = n.targetUrl || '';
+            const type = n.type || '';
 
-        function addNotificationToHistory({ title, subject, body, type = 'info', icon = 'notifications', targetUrl = null }) {
-            let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+            // 1. Новый раздел (Обучение и др.)
+            if (title.includes('Новый раздел') || n.id === 'notif_guide_onboarding' || targetUrl === '#guide') return true;
+
+            // 2. Обновление успеваемости и оценок (триместры/семестры/сессии)
+            if (title.includes('Новые баллы') || title.includes('Выставлена оценка') || title.includes('Сессия:') || title.includes('Обновление успеваемости') || targetUrl.includes('stu.signs')) return true;
+
+            // 3. Завершение генерации ИИ-сводки
+            if (title.includes('ИИ-Сводка готова') || (title.includes('ИИ') && type === 'success')) return true;
+
+            // 4. Отключение синхронизации устройств
+            if (title.includes('Синхронизация отключена') || icon === 'cloud_off') return true;
+
+            return false;
+        };
+
+        // --- ЦЕНТР УВЕДОМЛЕНИЙ ---
+        function addNotificationToHistory({ title, subject, body, type = 'info', icon = 'notifications', targetUrl = null, id = null }) {
             const newNotif = {
-                id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+                id: id || ('notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4)),
                 title,
                 subject,
                 body,
@@ -11404,10 +11494,17 @@
                 read: false,
                 targetUrl
             };
+
+            // Если уведомление не входит в 4 разрешенные категории — не сохраняем в колокольчик
+            if (!isAllowedNotification(newNotif)) return null;
+
+            let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+            // Очищаем архив от старых нежелательных уведомлений
+            history = history.filter(isAllowedNotification);
+
             history.unshift(newNotif);
             if (history.length > 40) history = history.slice(0, 40);
             
-            // Используем безопасное сохранение с авто-выгрузкой
             saveSyncData('etis_notifications_history_v1', JSON.stringify(history));
             updateBellCounter();
             return newNotif;
@@ -11415,8 +11512,8 @@
 
         function updateBellCounter() {
             let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
-            history = history.filter(n => n.title !== 'Напоминание создано' && n.icon !== 'alarm_on');
-            
+            history = history.filter(isAllowedNotification);
+
             const unreadCount = history.filter(n => !n.read).length;
 
             document.querySelectorAll('.bell-counter-badge').forEach(badge => {
@@ -11457,7 +11554,7 @@
 
             const renderList = () => {
                 let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
-                history = history.filter(n => n.title !== 'Напоминание создано' && n.icon !== 'alarm_on');
+                history = history.filter(isAllowedNotification);
                 const unreadCount = history.filter(n => !n.read).length;
 
                 modal.innerHTML = `
@@ -11606,16 +11703,13 @@
             // 2. Обновляем счетчик на колокольчике сразу после загрузки страницы
             updateBellCounter();
 
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                    if (document.body) {
-                        document.body.style.removeProperty('opacity');
-                        document.body.style.removeProperty('visibility');
-                        document.body.style.removeProperty('background-color');
-                        document.body.classList.add('etis-reborn-loaded');
-                    }
-                });
-            });
+            if (document.body) {
+                document.body.style.removeProperty('opacity');
+                document.body.style.removeProperty('visibility');
+                document.body.style.removeProperty('background-color');
+                document.body.classList.add('etis-reborn-loaded');
+            }
+            document.documentElement.classList.add('etis-reborn-loaded');
 
             setTimeout(initAutoUpdateCheck, 1500);
             setTimeout(autoSyncOnLoad, 2000);
@@ -11871,16 +11965,21 @@
             if (href === '#settings') return 'settings';
             if (href === '#profile') return 'account_circle';
             if (href === '#guide') return 'auto_stories';
+            if (href.includes('tpr') || href.includes('theme')) return 'menu_book';
+            if (href.includes('fcl_choice')) return 'interests';
+            if (href.includes('ebl_choice')) return 'how_to_vote';
             if (href.includes('teach_plan')) return 'school';
             if (href.includes('timetable')) return 'calendar_month';
+            if (href.includes('schedule_detail')) return 'event_note';
             if (href.includes('signs')) return 'bar_chart_4_bars';
             if (href.includes('absence')) return 'auto_stories_off';
             if (href.includes('stu_phs.show_slots')) return 'steps';
             if (href.includes('orders')) return 'assignment';
             if (href.includes('library')) return 'book_2';
             if (href.includes('teachers')) return 'people';
+            if (href.includes('dis_stat') || href.includes('teacher_stats')) return 'insights';
             if (href.includes('est_pkg.show_list')) return 'forum';
-            if (href.includes('group_tt')) return 'playlist_add_check';
+            if (href.includes('group_tt') || href.includes('tt_pair')) return 'playlist_add_check';
             if (href.includes('announces')) return 'record_voice_over';
             if (href.includes('teacher_notes')) return 'mail';
             if (href.includes('ses')) return 'account_balance';
@@ -11891,13 +11990,14 @@
             if (href.includes('blank_forms')) return 'insert_drive_file';
             if (href.includes('portfolio')) return 'folder_shared';
             if (href.includes('about')) return 'info';
-            if (href.includes('term_test')) return 'rate_review';
+            if (href.includes('term_test') || href.includes('estimate_')) return 'rate_review';
             if (href.includes('special_est_list')) return 'poll';
             if (href.includes('change_pass')) return 'vpn_key';
             if (href.includes('change_email')) return 'alternate_email';
             if (href.includes('change_pr_page')) return 'account_box';
             if (href.includes('logout')) return 'exit_to_app';
-            return 'chevron_right';
+            
+            return 'widgets';
         };
 
         function initMobileMenu() {
@@ -12450,59 +12550,132 @@
             return info;
         }
 
-        function processDocxFile(file, callback, sourceUrl = null) {
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                mammoth.convertToHtml({arrayBuffer: event.target.result}).then(function(result) {
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = result.value;
+        // Вспомогательный хелпер поиска экземпляра библиотеки Mammoth в любых контекстах
+        const getMammothInstance = () => {
+            if (typeof mammoth !== 'undefined') return mammoth;
+            if (typeof window !== 'undefined' && window.mammoth) return window.mammoth;
+            if (typeof unsafeWindow !== 'undefined' && unsafeWindow.mammoth) return unsafeWindow.mammoth;
+            if (typeof globalThis !== 'undefined' && globalThis.mammoth) return globalThis.mammoth;
+            return null;
+        };
 
-                    let title = "Консультации";
-                    const fullText = tempDiv.textContent.toLowerCase().replace(/\s+/g, ' ');
-                    const seasonMatch = fullText.match(/(осенн[а-я]+|весенн[а-я]+|летн[а-я]+|зимн[а-я]+)\s*(триместр[а-я]*|семестр[а-я]*)/i);
-                    const yearMatch = fullText.match(/(\d{4}\s*\/\s*\d{4}|\d{4}-\d{4})/);
-                    let yearText = '';
-                    if (yearMatch) yearText = ' ' + yearMatch[1].replace(/\s/g, '');
+        // Загрузка библиотеки Mammoth через GM_xmlhttpRequest
+        const loadMammothLib = () => {
+            return new Promise((resolve, reject) => {
+                const existing = getMammothInstance();
+                if (existing) return resolve(existing);
 
-                    if (seasonMatch) {
-                        let season = 'Осенний';
-                        if(seasonMatch[1].includes('весен')) season = 'Весенний';
-                        if(seasonMatch[1].includes('летн')) season = 'Летний';
-                        if(seasonMatch[1].includes('зимн')) season = 'Зимний';
-                        let term = seasonMatch[2].includes('трим') ? 'триместр' : 'семестр';
-                        title = `${season} ${term}${yearText}`;
-                    } else if (yearText) {
-                        title = `Консультации${yearText}`;
-                    }
+                const cdnUrl = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
 
-                    const fileData = {
-                        id: 'cons_file_' + Date.now(),
-                        title,
-                        isActive: false,
-                        sourceUrl: sourceUrl,
-                        teachers:[]
-                    };
-
-                    tempDiv.querySelectorAll('tr').forEach(row => {
-                        const cells = row.querySelectorAll('td');
-                        if (cells.length < 2) return;
-                        const pTags = cells[0].querySelectorAll('p');
-                        let nameLines = pTags.length > 0 ? Array.from(pTags).map(p => p.textContent.trim()).filter(Boolean) : cells[0].innerHTML.replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').split('\n').map(s => s.trim()).filter(Boolean);
-                        if (nameLines.length < 1) return;
-                        const name = nameLines[0];
-                        const degree = nameLines.slice(1).join(', ');
-                        const rawDetailsText = cells[1].innerHTML.replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
-                        const parsedInfo = parseConsultationInfo(rawDetailsText, cells[1].innerHTML);
-                        if (name && (parsedInfo.events.length > 0 || parsedInfo.notes || parsedInfo.email)) {
-                            fileData.teachers.push({ name, degree, isActive: true, ...parsedInfo });
+                GM_xmlhttpRequest({
+                    method: 'GET',
+                    url: cdnUrl,
+                    onload: (res) => {
+                        if (res.status === 200 && res.responseText) {
+                            try {
+                                const fn = new Function(res.responseText);
+                                fn.call(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);
+                                const inst = getMammothInstance();
+                                if (inst) return resolve(inst);
+                            } catch (e) {
+                                console.warn('[Mammoth Eval Fallback]', e);
+                            }
                         }
+                        
+                        // Фоллбек через тег <script>
+                        const script = document.createElement('script');
+                        script.src = cdnUrl;
+                        script.onload = () => {
+                            const inst = getMammothInstance();
+                            if (inst) resolve(inst);
+                            else reject(new Error('Не удалось инициализировать Mammoth'));
+                        };
+                        script.onerror = () => reject(new Error('Ошибка загрузки Mammoth.js'));
+                        (document.head || document.documentElement).appendChild(script);
+                    },
+                    onerror: () => {
+                        // Фоллбек при сбое прямого запроса
+                        const script = document.createElement('script');
+                        script.src = cdnUrl;
+                        script.onload = () => {
+                            const inst = getMammothInstance();
+                            if (inst) resolve(inst);
+                            else reject(new Error('Не удалось инициализировать Mammoth'));
+                        };
+                        script.onerror = () => reject(new Error('Ошибка загрузки Mammoth.js'));
+                        (document.head || document.documentElement).appendChild(script);
+                    }
+                });
+            });
+        };
+
+        function processDocxFile(file, callback, sourceUrl = null) {
+            loadMammothLib().then((mammothInstance) => {
+                if (!mammothInstance || typeof mammothInstance.convertToHtml !== 'function') {
+                    throw new Error('Экземпляр Mammoth не найден или повреждён');
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    mammothInstance.convertToHtml({ arrayBuffer: event.target.result }).then(function(result) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = result.value;
+
+                        let title = "Консультации";
+                        const fullText = tempDiv.textContent.toLowerCase().replace(/\s+/g, ' ');
+                        const seasonMatch = fullText.match(/(осенн[а-я]+|весенн[а-я]+|летн[а-я]+|зимн[а-я]+)\s*(триместр[а-я]*|семестр[а-я]*)/i);
+                        const yearMatch = fullText.match(/(\d{4}\s*\/\s*\d{4}|\d{4}-\d{4})/);
+                        let yearText = '';
+                        if (yearMatch) yearText = ' ' + yearMatch[1].replace(/\s/g, '');
+
+                        if (seasonMatch) {
+                            let season = 'Осенний';
+                            if (seasonMatch[1].includes('весен')) season = 'Весенний';
+                            if (seasonMatch[1].includes('летн')) season = 'Летний';
+                            if (seasonMatch[1].includes('зимн')) season = 'Зимний';
+                            let term = seasonMatch[2].includes('трим') ? 'триместр' : 'семестр';
+                            title = `${season} ${term}${yearText}`;
+                        } else if (yearText) {
+                            title = `Консультации${yearText}`;
+                        }
+
+                        const fileData = {
+                            id: 'cons_file_' + Date.now(),
+                            title,
+                            isActive: false,
+                            sourceUrl: sourceUrl,
+                            teachers: []
+                        };
+
+                        tempDiv.querySelectorAll('tr').forEach(row => {
+                            const cells = row.querySelectorAll('td');
+                            if (cells.length < 2) return;
+                            const pTags = cells[0].querySelectorAll('p');
+                            let nameLines = pTags.length > 0 ? Array.from(pTags).map(p => p.textContent.trim()).filter(Boolean) : cells[0].innerHTML.replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').split('\n').map(s => s.trim()).filter(Boolean);
+                            if (nameLines.length < 1) return;
+                            const name = nameLines[0];
+                            const degree = nameLines.slice(1).join(', ');
+                            const rawDetailsText = cells[1].innerHTML.replace(/<\/p>/gi, '\n').replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]+>/g, '').trim();
+                            const parsedInfo = parseConsultationInfo(rawDetailsText, cells[1].innerHTML);
+                            if (name && (parsedInfo.events.length > 0 || parsedInfo.notes || parsedInfo.email)) {
+                                fileData.teachers.push({ name, degree, isActive: false, ...parsedInfo });
+                            }
+                        });
+
+                        consultationsFiles.push(fileData);
+                        saveConsultationsState();
+                        callback(true, fileData);
+                    }).catch((err) => {
+                        console.error('[DOCX Convert Error]', err);
+                        callback(false);
                     });
-                    consultationsFiles.push(fileData);
-                    saveConsultationsState();
-                    callback(true, fileData);
-                }).catch(err => callback(false));
-            };
-            reader.readAsArrayBuffer(file);
+                };
+                reader.onerror = () => callback(false);
+                reader.readAsArrayBuffer(file);
+            }).catch((err) => {
+                console.error('[Mammoth Load Error]', err);
+                callback(false);
+            });
         }
 
         document.addEventListener('click', (e) => {
@@ -12627,19 +12800,31 @@
                     headerTitle = 'Встроенные консультации';
                     const isSystemShow = localStorage.getItem('etis_show_consultations') !== 'false';
 
+                    // Проверяем наличие системных консультаций ЕТИС на текущей отображаемой неделе
+                    const hasSystemConsultations = Array.from(document.querySelectorAll('.span9 .timetable-grid tr:not(.docx-consultation-row):not(.custom-pair-row)')).some(row => {
+                        const dis = row.querySelector('.dis');
+                        return dis && dis.textContent.toLowerCase().includes('консультация');
+                    });
+
+                    const descText = hasSystemConsultations
+                        ? 'Это консультации, которые система ЕТИС автоматически добавила в ваше расписание.'
+                        : 'Это консультации, которые система ЕТИС автоматически добавила в ваше расписание. На этой неделе у преподавателей консультаций нет.';
+
                     contentHtml = `
                         <div style="background: var(--color-card); padding: 1.6rem; border-radius: var(--radius-large); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main);">
                             <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1.6rem; line-height: 1.4;">За текущий период</div>
                             <p style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 0; line-height: 1.5;">
-                                Это консультации, которые система ЕТИС автоматически добавила в ваше расписание.
+                                ${descText}
                             </p>
                         </div>
+                        ${hasSystemConsultations ? `
                         <div class="ios-settings-group">
                             <label>
                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Отображать в расписании</span>
                                 <input type="checkbox" id="system-cons-toggle" class="tumbler-checkbox" ${isSystemShow ? 'checked' : ''}>
                             </label>
                         </div>
+                        ` : ''}
                     `;
                 } else if (activeFileId === 'upload_cons') {
                     headerTitle = 'Загрузка расписания';
@@ -12691,8 +12876,8 @@
                             </span>`
                         ).join(' ');
 
-                        const isTeacherActive = t.isActive !== false;
-                        const cardOpacity = (!isFileActive || isTeacherActive) ? '1' : '0.5';
+                        const isTeacherActive = t.isActive === true;
+                        const cardOpacity = isTeacherActive ? '1' : '0.5';
 
                         const uniqueAuds =[...new Set(t.events.map(e => e.aud).filter(Boolean))].join(', ');
                         const uniqueLinks =[...new Set(t.events.map(e => e.link).filter(Boolean))];
@@ -13182,26 +13367,18 @@
                     // Сравнение времени последнего изменения
                     const isCloudNewer = (key, localKeyName, customCloudData = null) => {
                         const hasCloudData = customCloudData !== null ? !!customCloudData : !!data[key];
-                        const hasLocalData = !!localStorage.getItem(localKeyName);
+                        if (!hasCloudData) return false;
 
-                        if (hasCloudData && !hasLocalData) {
-                            return true;
-                        }
-                        if (!hasCloudData) {
-                            return false;
-                        }
-                        
                         const cloudTime = parseInt(cloudMeta[key], 10) || 0;
                         const localTime = parseInt(localMeta[key], 10) || 0;
 
                         // Если устройство новое (таймстампа локально еще нет), скачиваем из облака
-                        if (localTime === 0 && cloudTime > 0) {
-                            return true;
+                        if (localTime === 0) {
+                            return cloudTime > 0;
                         }
 
-                        // Если локально действие (удаление/редактирование) совершено позже, чем в облаке — не перезаписываем
-                        const newer = cloudTime > localTime;
-                        return newer;
+                        // Если локально данные были изменены/очищены позже, облако НЕ перезаписывает их
+                        return cloudTime > localTime;
                     };
 
                     let isUpdated = false;
@@ -13404,7 +13581,7 @@
 
             const addKey = async (key, localKey) => {
                 const val = localStorage.getItem(localKey);
-                if (val) {
+                if (val !== null && val !== undefined) {
                     try {
                         payload[key] = await encryptPayload(val, code);
                     } catch (e) {
@@ -13565,12 +13742,23 @@
                 const declinedDir = declineDirection(studentDirection);
 
                 let diplomaGpaStr = localStorage.getItem('etis_diploma_gpa');
+                let diplomaGpaVal = '—';
+                if (diplomaGpaStr) {
+                    if (diplomaGpaStr === 'none' || diplomaGpaStr === '0') {
+                        diplomaGpaVal = 'Нет';
+                    } else if (diplomaGpaStr === 'debts') {
+                        diplomaGpaVal = 'Долги';
+                    } else {
+                        const p = parseFloat(diplomaGpaStr);
+                        diplomaGpaVal = (isNaN(p) || p === 0) ? 'Нет' : p.toFixed(2);
+                    }
+                }
+
                 let gpa = isDemoUser() ? 4.69 : (diplomaGpaStr && !isNaN(parseFloat(diplomaGpaStr)) ? parseFloat(diplomaGpaStr) : 0);
                 const isDiplomaVisitedNoGrades = diplomaGpaStr === 'none' || diplomaGpaStr === '0';
                 const hasDiplomaDebts = diplomaGpaStr === 'debts';
 
                 let notifsCount = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]').length;
-                let diplomaGpaVal = localStorage.getItem('etis_diploma_gpa') || '—';
 
                 let installDateRaw = GM_getValue('etis_reborn_install_date') || localStorage.getItem('etis_reborn_install_date');
                 if (!installDateRaw) {
@@ -13793,7 +13981,6 @@
                     title = 'Мои данные';
                     backTarget = 'menu';
 
-                    // Если это демо-аккаунт, принудительно ставим прочерки везде
                     const isDemo = isDemoUser();
                     const lastCloudRaw = isDemo ? {} : JSON.parse(localStorage.getItem('etis_last_cloud_counts_v1') || '{}');
                     
@@ -13811,22 +13998,67 @@
                         notifs: !isDemo && lastCloudRaw.notifs !== undefined ? lastCloudRaw.notifs : '—'
                     };
 
+                    // Функция генерации половинчатой иконки (Download + Cloud)
+                    const getHybridSyncIcon = (uniqueId = 'icon') => `
+                        <svg width="17" height="17" viewBox="0 0 24 24" style="flex-shrink:0; vertical-align:middle; display:inline-block;">
+                            <defs>
+                                <clipPath id="clip-left-${uniqueId}">
+                                    <rect x="0" y="0" width="11.5" height="24" />
+                                </clipPath>
+                                <clipPath id="clip-right-${uniqueId}">
+                                    <rect x="11.5" y="0" width="12.5" height="24" />
+                                </clipPath>
+                            </defs>
+                            <g clip-path="url(#clip-left-${uniqueId})" fill="var(--color-text-secondary)">
+                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                            </g>
+                            <g clip-path="url(#clip-right-${uniqueId})" fill="var(--color-accent)">
+                                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
+                            </g>
+                        </svg>
+                    `;
+
                     const dataRow = (rowTitle, count, key, spanId = '', isSyncable = true, isHTML = false, cloudVal = '—', hasDetails = false, detailsView = '') => {
                         const localSpanId = `local-val-${key.replace(/_/g, '-')}`;
                         const displayCloudVal = isDemo ? '—' : cloudVal;
 
-                        // Проверка наличия данных (число > 0, не '0 мин', не пустота)
                         let hasData = true;
                         if (typeof count === 'number') {
                             hasData = count > 0;
                         } else if (typeof count === 'string') {
                             const cleanText = count.replace(/<[^>]+>/g, '').trim();
-                            if (cleanText === '0' || cleanText === '0 мин' || cleanText === '0 мин.' || cleanText === '—' || cleanText === '') {
+                            if (cleanText === '0' || cleanText === '0 мин' || cleanText === '0 мин.' || cleanText === '—' || cleanText === '' || cleanText === 'Нет') {
                                 hasData = false;
                             } else if (key === 'etis_accent_config') {
-                                // Для темы проверяем, сохранена ли кастомная конфигурация
                                 hasData = localStorage.getItem('etis_accent_config') !== null;
                             }
+                        }
+
+                        // Проверяем, равны ли данные на устройстве и в облаке
+                        const isSynced = (isSyncable && !isDemo && displayCloudVal !== '—' && String(count).trim() === String(displayCloudVal).trim());
+
+                        let indicatorsHtml = '';
+                        if (isSynced) {
+                            indicatorsHtml = `
+                                <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-primary); font-size: 1.25rem; font-weight: 700;" title="Синхронизировано: локально и в облаке одинаковые данные">
+                                    ${getHybridSyncIcon(key)}
+                                    <span id="${localSpanId}">${count}</span>
+                                    <span ${spanId ? `id="${spanId}"` : ''} style="display:none;">${displayCloudVal}</span>
+                                </span>
+                            `;
+                        } else {
+                            indicatorsHtml = `
+                                <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 1.25rem;" title="Сохранено на этом устройстве">
+                                    <span class="material-icons" style="font-size: 1.6rem; color: var(--color-text-secondary);">download</span>
+                                    <span id="${localSpanId}">${count}</span>
+                                </span>
+                                ${(isSyncable && !isDemo) ? `
+                                <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 1.25rem;" title="Сохранено в облаке Firebase">
+                                    <span class="material-icons" style="font-size: 1.6rem; color: var(--color-accent);">cloud</span>
+                                    <span ${spanId ? `id="${spanId}"` : ''} style="font-weight: 700;">${displayCloudVal}</span>
+                                </span>
+                                ` : ''}
+                            `;
                         }
 
                         return `
@@ -13834,16 +14066,7 @@
                                 <div style="display: flex; flex-direction: column; gap: 4px; text-align: left; flex: 1; min-width: 0; padding-right: 8px;">
                                     <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${rowTitle}</div>
                                     <div style="display: flex; align-items: center; gap: 16px; margin-top: 4px;">
-                                        <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 1.25rem;" title="Сохранено на этом устройстве">
-                                            <span class="material-icons" style="font-size: 1.6rem; color: var(--color-text-secondary);">download</span>
-                                            <span id="${localSpanId}">${count}</span>
-                                        </span>
-                                        ${(isSyncable && !isDemo) ? `
-                                        <span style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-size: 1.25rem;" title="Сохранено в облаке Firebase">
-                                            <span class="material-icons" style="font-size: 1.6rem; color: var(--color-accent);">cloud</span>
-                                            <span ${spanId ? `id="${spanId}"` : ''} style="font-weight: 700;">${displayCloudVal}</span>
-                                        </span>
-                                        ` : ''}
+                                        ${indicatorsHtml}
                                     </div>
                                 </div>
                                 ${hasData ? `
@@ -13954,7 +14177,7 @@
                         ${dataRow('Свои пары', cpCount, 'etis_custom_pairs_v1', 'cloud-val-cp', true, false, lastCloud.cp, true, 'details_custom_pairs')}
                         ${dataRow('Заметки и ДЗ', notesCount, 'etis_subject_notes_v2', 'cloud-val-notes', true, false, lastCloud.notes, true, 'details_subject_notes')}
                         ${dataRow('История оценок', gradesCount, 'etis_reborn_grades_snapshot_v3', 'cloud-val-grades', true, false, lastCloud.grades, false)}
-                        ${dataRow('Средний балл диплома', diplomaGpaVal !== '—' ? `${parseFloat(diplomaGpaVal).toFixed(2)}` : '—', 'etis_diploma_gpa', 'cloud-val-gpa', true, false, lastCloud.gpa, false)}
+                        ${dataRow('Средний балл диплома', diplomaGpaVal, 'etis_diploma_gpa', 'cloud-val-gpa', true, false, lastCloud.gpa, false)}
                         ${dataRow('Центр уведомлений', notifsCount, 'etis_notifications_history_v1', 'cloud-val-notifs', true, false, lastCloud.notifs, true, 'notifications_modal_redirect')}
                         ${dataRow('Файлы консультаций', consCount, 'etis_consultation_files_v1', 'cloud-val-cons', true, false, lastCloud.cons, true, 'details_consultations')}
                         ${dataRow('История расписания (для сводки)', weeklyPairsCount, 'etis_weekly_pairs_history_v1', 'cloud-val-weekly', true, false, lastCloud.weekly, false)}
@@ -14235,7 +14458,7 @@
                             ${makeToggle('subject_notes', 'Заметки и ДЗ', 'Синхронизация заметок, ДЗ и важных пар')}
                             ${makeToggle('accent_config', 'Цветовая тема', 'Синхронизация выбранных цветов и градиентов')}
                             ${makeToggle('general_config', 'Настройки интерфейса', 'Синхронизация настроек (окна, сокращения и т.д.)')}
-                            ${makeToggle('grades_snapshot', 'История оценок', 'Синхронизация баллов в триместрах и сессиях')}
+                            ${makeToggle('grades_snapshot', 'История оценок', `Синхронизация баллов в ${getTermWord('prep_pl')} и сессиях`)}
                             ${makeToggle('consultation_files', 'Файлы консультаций', 'Синхронизация загруженных DOCX-календарей')}
                             ${makeToggle('external_cals', 'Внешние календари', 'Синхронизация импортируемых .ics-ссылок')}
                             ${makeToggle('weekly_pairs_history', 'История расписания', 'Синхронизация сводки по нагрузке')}
@@ -14559,7 +14782,16 @@
                                 if (aiLocEl) aiLocEl.textContent = newAiCount;
                                 if (calsLocEl) calsLocEl.textContent = newCalsCount;
                                 if (themeLocEl) themeLocEl.innerHTML = getColorsIndicator(newAccent);
-                                if (gpaLocEl) gpaLocEl.textContent = newGpaVal !== '—' ? `${parseFloat(newGpaVal).toFixed(2)}` : '—';
+                                let formattedNewGpa = '—';
+                                if (newGpaVal && newGpaVal !== '—') {
+                                    if (newGpaVal === 'none' || newGpaVal === '0') formattedNewGpa = 'Нет';
+                                    else if (newGpaVal === 'debts') formattedNewGpa = 'Долги';
+                                    else {
+                                        const p = parseFloat(newGpaVal);
+                                        formattedNewGpa = (isNaN(p) || p === 0) ? 'Нет' : p.toFixed(2);
+                                    }
+                                }
+                                if (gpaLocEl) gpaLocEl.textContent = formattedNewGpa;
                                 if (notifsLocEl) notifsLocEl.textContent = newNotifsCount;
                             }
                         });
@@ -14583,16 +14815,35 @@
 
                     modal.querySelectorAll('.clear-data-btn').forEach(btn => {
                         btn.onclick = () => {
+                            const key = btn.getAttribute('data-key');
                             if (confirm('Очистить эти данные?')) {
-                                const key = btn.getAttribute('data-key');
+                                const emptyValues = {
+                                    'etis_custom_pairs_v1': '[]',
+                                    'etis_subject_notes_v2': '{"specific":{},"next_unbound":{}}',
+                                    'etis_reborn_grades_snapshot_v3': '{"grades":{}}',
+                                    'etis_diploma_gpa': 'none',
+                                    'etis_notifications_history_v1': '[]',
+                                    'etis_consultation_files_v1': '[]',
+                                    'etis_weekly_pairs_history_v1': '{}',
+                                    'etis_ai_summaries_v1': '{}',
+                                    'etis_accent_config': '{"isGradient":true,"isThreeColors":false,"colors":["blue","lightblue"],"isGlass":false}',
+                                    'etis_reborn_time_spent': '0',
+                                    'etis_external_cals_v2': '[]'
+                                };
+
                                 if (key === 'etis_quick_login_creds') {
-                                    GM_setValue('ql_accounts_v2', '[]');
+                                    if (typeof GM_setValue !== 'undefined') GM_setValue('ql_accounts_v2', '[]');
                                 } else {
-                                    localStorage.removeItem(key);
-                                    if (key === 'etis_notifications_history_v1') updateBellCounter();
-                                    if (typeof saveSyncData === 'function') {
-                                        saveSyncData(key, key === 'etis_notifications_history_v1' ? '[]' : '');
+                                    const emptyVal = emptyValues[key] !== undefined ? emptyValues[key] : '';
+                                    saveSyncData(key, emptyVal);
+
+                                    if (key === 'etis_custom_pairs_v1') customPairs = [];
+                                    if (key === 'etis_consultation_files_v1') consultationsFiles = [];
+                                    if (key === 'etis_accent_config') {
+                                        localStorage.removeItem('etis_accent_config');
+                                        applyAccentColor();
                                     }
+                                    if (key === 'etis_notifications_history_v1') updateBellCounter();
                                 }
                                 renderView('data');
                             }
@@ -14700,7 +14951,17 @@
                                     const themeValEl = modal.querySelector('#cloud-val-theme');
                                     const timeSpentValEl = modal.querySelector('#cloud-val-time-spent');
                                     const calsValEl = modal.querySelector('#cloud-val-cals');
-                                    const cloudGPA = data.diploma_gpa ? (parseFloat(data.diploma_gpa).toFixed(2)) : '—';
+                                    let cloudGPA = '—';
+                                    if (data.diploma_gpa) {
+                                        if (data.diploma_gpa === 'none' || data.diploma_gpa === '0') {
+                                            cloudGPA = 'Нет';
+                                        } else if (data.diploma_gpa === 'debts') {
+                                            cloudGPA = 'Долги';
+                                        } else {
+                                            const p = parseFloat(data.diploma_gpa);
+                                            cloudGPA = isNaN(p) || p === 0 ? 'Нет' : p.toFixed(2);
+                                        }
+                                    }
                                     const cloudNotifs = safeParseJSON(data.notifications_history, []).length;
                                     const gpaValEl = modal.querySelector('#cloud-val-gpa');
                                     const notifsValEl = modal.querySelector('#cloud-val-notifs');
@@ -15798,21 +16059,110 @@
                         };
                     }
 
-                    // Кнопка рандомайзера
+                    // База гармоничных палитр из 2 цветов
+                    const HARMONIOUS_2_COLOR_PALETTES = [
+                        // Синие / Голубые / Океан
+                        ['blue', 'lightblue'], ['darkblue', 'blue'], ['indigo', 'blue'], ['ultramarine', 'sky'],
+                        ['cobalt', 'aqua'], ['blue', 'electricblue'], ['darkblue', 'ultramarine'], ['midnight', 'blue'],
+                        
+                        // Фиолетовые / Розовые / Маджента
+                        ['purple', 'pink'], ['indigo', 'fuchsia'], ['deepviolet', 'magenta'], ['violet', 'lightpurple'],
+                        ['plum', 'rose'], ['lavender', 'lilac'], ['purple', 'coral'], ['berry', 'pink'],
+                        
+                        // Киберпанк / Неон (Синий + Фиолетовый / Розовый / Бирюзовый)
+                        ['indigo', 'cyan'], ['purple', 'turquoise'], ['blue', 'pink'], ['deepviolet', 'electricblue'],
+                        ['fuchsia', 'cyan'], ['ultramarine', 'mint'], ['violet', 'turquoise'],
+                        
+                        // Бирюза / Зелень / Мята
+                        ['ocean', 'teal'], ['cyan', 'mint'], ['teal', 'turquoise'], ['mint', 'emerald'],
+                        ['darkgreen', 'green'], ['forest', 'mint'], ['pine', 'emerald'], ['green', 'lime'],
+                        ['teal', 'cyan'], ['ocean', 'mint'],
+                        
+                        // Закат / Огонь / Цитрус / Тёплые
+                        ['red', 'orange'], ['magenta', 'orange'], ['crimson', 'peach'], ['ruby', 'tangerine'],
+                        ['pink', 'yellow'], ['orange', 'yellow'], ['tangerine', 'gold'], ['deeporange', 'amber'],
+                        ['coral', 'gold'], ['amber', 'lime'], ['rose', 'peach'], ['ruby', 'coral'],
+                        
+                        // Благородные тёмные / Земляные
+                        ['terracotta', 'caramel'], ['chocolate', 'sand'], ['brown', 'caramel'], ['rust', 'peach'],
+                        ['bluegrey', 'slate'], ['midnight', 'charcoal'], ['charcoal', 'slate']
+                    ];
+
+                    // База гармоничных палитр из 3 цветов
+                    const HARMONIOUS_3_COLOR_PALETTES = [
+                        // Неон и поп
+                        ['indigo', 'purple', 'pink'],
+                        ['deepviolet', 'magenta', 'peach'],
+                        ['purple', 'fuchsia', 'cyan'],
+                        ['indigo', 'blue', 'electricblue'],
+                        ['plum', 'violet', 'turquoise'],
+                        
+                        // Синие и Океанские
+                        ['darkblue', 'blue', 'lightblue'],
+                        ['midnight', 'cobalt', 'sky'],
+                        ['cobalt', 'ultramarine', 'aqua'],
+                        ['blue', 'cyan', 'mint'],
+                        ['darkblue', 'ultramarine', 'aqua'],
+                        
+                        // Природа / Бирюза / Изумруд
+                        ['ocean', 'teal', 'mint'],
+                        ['pine', 'forest', 'lime'],
+                        ['teal', 'turquoise', 'emerald'],
+                        ['ocean', 'cyan', 'turquoise'],
+                        ['darkgreen', 'green', 'pistachio'],
+                        
+                        // Закат и огонь
+                        ['ruby', 'magenta', 'orange'],
+                        ['crimson', 'coral', 'yellow'],
+                        ['purple', 'pink', 'peach'],
+                        ['tangerine', 'orange', 'gold'],
+                        ['deeporange', 'coral', 'peach'],
+                        ['berry', 'ruby', 'rose'],
+                        ['magenta', 'pink', 'yellow'],
+                        ['coral', 'amber', 'lime'],
+                        
+                        // Кибер-градиенты
+                        ['deepviolet', 'blue', 'electricblue'],
+                        ['indigo', 'cyan', 'mint'],
+                        ['fuchsia', 'purple', 'electricblue'],
+                        
+                        // Тёплые и благородные
+                        ['chocolate', 'terracotta', 'sand'],
+                        ['rust', 'terracotta', 'caramel'],
+                        ['midnight', 'bluegrey', 'slate']
+                    ];
+
+                    // Одиночные сочные цвета
+                    const VIBRANT_SINGLE_COLORS = [
+                        'blue', 'lightblue', 'ultramarine', 'cobalt', 'cyan', 'teal', 'turquoise', 'mint',
+                        'green', 'emerald', 'forest', 'lime', 'gold', 'amber', 'orange', 'tangerine',
+                        'coral', 'deeporange', 'red', 'crimson', 'ruby', 'pink', 'fuchsia', 'magenta',
+                        'purple', 'deepviolet', 'violet', 'indigo', 'bluegrey'
+                    ];
+
+                    // Кнопка рандомайзера с комплиментарным подбором
                     modal.querySelector('#random-color-row').onclick = (e) => {
                         e.preventDefault();
                         const activeSub = getActiveSubConfig();
-                        const r1 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
 
                         if (!activeSub.isGradient) {
-                            activeSub.colors = [r1];
+                            // Одиночный сочный цвет
+                            let candidates = VIBRANT_SINGLE_COLORS.filter(c => !activeSub.colors.includes(c));
+                            if (candidates.length === 0) candidates = VIBRANT_SINGLE_COLORS;
+                            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                            activeSub.colors = [chosen];
                         } else if (!activeSub.isThreeColors) {
-                            const r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
-                            activeSub.colors = [r1, r2];
+                            // 2 комплиментарных цвета
+                            let candidates = HARMONIOUS_2_COLOR_PALETTES.filter(p => p[0] !== activeSub.colors[0] || p[1] !== activeSub.colors[1]);
+                            if (candidates.length === 0) candidates = HARMONIOUS_2_COLOR_PALETTES;
+                            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                            activeSub.colors = [...chosen];
                         } else {
-                            const r2 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
-                            const r3 = COLOR_ORDER[Math.floor(Math.random() * COLOR_ORDER.length)];
-                            activeSub.colors = [r1, r2, r3];
+                            // 3 комплиментарных цвета
+                            let candidates = HARMONIOUS_3_COLOR_PALETTES.filter(p => p[0] !== activeSub.colors[0] || p[1] !== activeSub.colors[1]);
+                            if (candidates.length === 0) candidates = HARMONIOUS_3_COLOR_PALETTES;
+                            const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+                            activeSub.colors = [...chosen];
                         }
 
                         window._etisTargetIndex = 0;
@@ -17660,13 +18010,22 @@
                     }
 
                     // --- ЛОГИКА ПАСХАЛКИ ЛОГОТИПА ---
-                    const logoImg = sidebar.querySelector('.sidebar-logo img');
                     const logoContainer = sidebar.querySelector('.sidebar-logo');
+                    const logoImg = sidebar.querySelector('.sidebar-logo img');
+                    const logoBrand = sidebar.querySelector('.sidebar-logo-brand') || logoImg;
 
-                    if (logoImg && logoContainer) {
-                        const heyLabel = document.createElement('div');
-                        heyLabel.className = 'logo-say-hey';
-                        logoContainer.appendChild(heyLabel);
+                    if (logoImg && logoContainer && logoBrand) {
+                        let heyLabel = logoContainer.querySelector('.logo-say-hey');
+                        if (!heyLabel) {
+                            heyLabel = document.createElement('div');
+                            heyLabel.className = 'logo-say-hey';
+                            logoContainer.appendChild(heyLabel);
+                        }
+
+                        // Отключаем задержку двойного тапа в браузере для этой области
+                        logoBrand.style.touchAction = 'manipulation';
+                        logoBrand.style.webkitUserSelect = 'none';
+                        logoBrand.style.userSelect = 'none';
 
                         const phrases = [
                             'эй',                   // 10 кликов
@@ -17683,7 +18042,7 @@
                             'у меня пиксели болят',  // 120
                             'я пожалуюсь разработчику!', // 130
                             'остановись, кому говорю!', // 140
-                            'ты мышку сломаешь',     // 150
+                            'ты экран сломаешь',     // 150
                             'заняться совсем нечем?',// 160
                             'иди учись!',            // 170
                             'пары сами себя не сдадут', // 180
@@ -17696,10 +18055,10 @@
                             'окей, я тебя игнорирую',// 250
                             '...',                   // 260
                             '......',                // 270
-                            'всё ещё кликаешь?',     // 280
+                            'всё ещё тапаешь?',      // 280
                             'какая выдержка...',     // 290
                             'может, скачаешь кликер?', // 300
-                            'я вызываю полицию мышек', // 310
+                            'я вызываю полицию',     // 310
                             '🚨 виу-виу-виу 🚨',       // 320
                             'сдаюсь, ты победил',    // 330
                             'возьми с полки пирожок',// 340
@@ -17726,47 +18085,54 @@
                         let resetTimer;
                         let hideTimer;
                         let rotateTimer;
+                        let lastTapTime = 0;
 
-                        logoImg.addEventListener('click', () => {
-                            // 1. Поворот
+                        const onLogoTap = (e) => {
+                            // Защита от дублирования событий на сенсорных экранах
+                            const now = Date.now();
+                            if (now - lastTapTime < 50) return;
+                            lastTapTime = now;
+
+                            if (e.target.closest('#sidebar-notifications-btn')) return;
+
+                            // 1. Анимация поворота
                             clearTimeout(rotateTimer);
-
                             const angle = isRotateLeft ? -30 : 30;
-                            logoImg.style.transform = `rotate(${angle}deg) scale(1.1)`;
+                            logoImg.style.setProperty('transform', `rotate(${angle}deg) scale(1.15)`, 'important');
 
                             rotateTimer = setTimeout(() => {
-                                logoImg.style.transform = 'rotate(0deg) scale(1)';
+                                logoImg.style.setProperty('transform', 'rotate(0deg) scale(1)', 'important');
                             }, 250);
 
                             isRotateLeft = !isRotateLeft;
 
-                            // 2. Счётчик кликов
+                            // 2. Счётчик тапов
                             clickCounter++;
 
-                            // Сбрасываем всё, если не мучать медведя 3 секунды
                             clearTimeout(resetTimer);
                             resetTimer = setTimeout(() => {
                                 clickCounter = 0;
                                 heyLabel.classList.remove('active');
-                            }, 3000);
+                            }, 3500);
 
-                            // 3. Проверка порогов (каждые 10 кликов)
+                            // 3. Срабатывание каждые 10 тапов
                             if (clickCounter % 10 === 0 && clickCounter > 0) {
                                 localStorage.setItem('etis_easter_egg_found', 'true');
-                                const phraseIndex = (clickCounter / 10) - 1;
+                                if (navigator.vibrate) navigator.vibrate(20);
 
-                                if (phraseIndex < phrases.length) {
-                                    heyLabel.textContent = phrases[phraseIndex];
-                                    heyLabel.classList.add('active');
+                                const phraseIndex = Math.min((clickCounter / 10) - 1, phrases.length - 1);
+                                heyLabel.textContent = phrases[phraseIndex];
+                                heyLabel.classList.add('active');
 
-                                    // Прячем фразу через 2 секунды, чтобы она не висела вечно
-                                    clearTimeout(hideTimer);
-                                    hideTimer = setTimeout(() => {
-                                        heyLabel.classList.remove('active');
-                                    }, 2000);
-                                }
+                                clearTimeout(hideTimer);
+                                hideTimer = setTimeout(() => {
+                                    heyLabel.classList.remove('active');
+                                }, 2200);
                             }
-                        });
+                        };
+
+                        // Слушаем нажатие как по картинке, так и по надписи «ЕТИС»
+                        logoBrand.addEventListener('pointerdown', onLogoTap);
                     }
 
                     // 3. Инфо о студенте
@@ -17881,12 +18247,17 @@
                         }
 
                         let targetTab = 'main';
-                        const currentUrl = window.location.href;
 
-                        if (currentUrl.includes('timetable') || currentUrl.includes('group_tt')) {
-                            targetTab = 'timetable';
-                        } else if (currentUrl.includes('signs')) {
-                            targetTab = 'grades';
+                        // Автоматический выбор контекстной вкладки только на ПК
+                        if (window.innerWidth > 960) {
+                            const currentUrl = window.location.href;
+                            if (currentUrl.includes('timetable') || currentUrl.includes('group_tt')) {
+                                targetTab = 'timetable';
+                            } else if (currentUrl.includes('signs')) {
+                                targetTab = 'grades';
+                            } else {
+                                targetTab = 'general';
+                            }
                         }
 
                         openSettingsModal(targetTab);
@@ -19722,7 +20093,7 @@
 
                                         if (filenameLower.includes('.docx')) {
                                             try {
-                                                const mammothInstance = window.mammoth || mammoth;
+                                                const mammothInstance = await loadMammothLib();
                                                 const parsed = await mammothInstance.extractRawText({ arrayBuffer: buffer });
                                                 resolve(`\n\n[Текст прикрепленного файла "${file.name}"]:\n${parsed.value}`);
                                             } catch (e) {
@@ -20022,7 +20393,8 @@
                                             htmlContent = highlightDatesInHTML(htmlContent, subjectTitle);
                                         }
                                         openAiSummaryModal(subjectTitle, htmlContent);
-                                    }
+                                    },
+                                    'stu_ann.announces'
                                 );
                             }
 
@@ -21302,15 +21674,15 @@
 
                     case 'stu.tpr':
                     case 'stu.theme': {
-                        // 0. Кнопка "Назад"
+                        // 0. Кнопка "Назад" с поддержкой акцентного градиента
                         const backBtn = document.createElement('a');
                         backBtn.href = 'javascript:window.history.back()';
                         backBtn.className = 'answer-btn-custom';
-                        backBtn.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-bottom: 2.4rem; background: var(--color-highlight) !important; color: var(--color-text-primary) !important; box-shadow: none !important; border: 1px solid var(--color-table-border) !important; cursor: pointer; text-decoration: none; padding: 0.8rem 1.6rem; height: auto;';
-                        backBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem; color: var(--color-text-secondary);">arrow_back</span> Назад';
+                        backBtn.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-bottom: 2.4rem; background: var(--bg-accent) !important; color: #fff !important; -webkit-text-fill-color: #fff !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none !important; cursor: pointer; text-decoration: none; padding: 0.8rem 1.8rem; height: auto; font-weight: 700; border-radius: 50px;';
+                        backBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem; color: #fff !important;">arrow_back</span> Назад';
                         span9.prepend(backBtn);
 
-                        // 1. Красиво оформляем главный заголовок
+                        // 1. Оформляем заголовок темы
                         const h2 = span9.querySelector('h2');
                         if (h2) {
                             const parts = h2.innerHTML.split(/<br\s*\/?>/i);
@@ -21343,7 +21715,7 @@
                             h2.style.marginBottom = '3rem';
                         }
 
-                        // 2. Стилизуем кнопку "Оценить" (если она есть)
+                        // 2. Кнопка "Оценить" (если есть)
                         const estimateLink = span9.querySelector('a[href*="cust.estimate_tpr_form"]');
                         if (estimateLink) {
                             estimateLink.className = 'icon-button icon-feedback';
@@ -21352,110 +21724,97 @@
                             estimateLink.innerHTML = 'Оставить отзыв';
                         }
 
-                        // Очистка лишних <br> в корне контейнера
+                        // Очистка лишних <br>
                         span9.querySelectorAll('br').forEach(br => {
                             if (br.parentElement === span9) br.remove();
                         });
 
-                        // 3. Превращаем секции в красивые карточки
-                        const parts = span9.querySelectorAll('.theme_part, .tpr_part');
-                        parts.forEach(part => {
-                            const h3 = part.previousElementSibling;
+                        // 3. Обработка всех разделов H3 и связанных блоков
+                        const h3Elements = Array.from(span9.querySelectorAll('h3'));
 
-                            if (h3 && h3.tagName === 'H3') {
-                                const sectionTitle = h3.textContent.trim().toLowerCase();
-
-                                const card = document.createElement('div');
-                                card.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);';
-
-                                // Убрали иконки из заголовков по просьбе
-                                h3.style.cssText = 'margin-top: 0 !important; margin-bottom: 2.4rem !important; font-size: 1.4rem !important; font-weight: 800 !important; color: var(--color-text-secondary) !important; text-transform: uppercase; letter-spacing: 1px;';
-
-                                h3.parentNode.insertBefore(card, h3);
-                                card.appendChild(h3);
-                                card.appendChild(part);
-
-                                part.style.fontSize = '1.4rem';
-                                part.style.lineHeight = '1.6';
-                                part.style.color = 'var(--color-text-primary)';
-
-                                // --- ЛОГИКА ТРУДОЕМКОСТИ (Цветные метки) ---
-                                if (sectionTitle.includes('трудоемкость')) {
-                                    part.style.display = 'flex';
-                                    part.style.flexDirection = 'column';
-                                    part.style.gap = '1rem';
-
-                                    Array.from(part.children).forEach(child => {
-                                        if (child.tagName === 'DIV') {
-                                            const text = child.textContent.trim();
-                                            const match = text.match(/(.*?)\s*[–-]\s*(.*)/); // Ищем "Лекции – 4 часа"
-                                            if (match) {
-                                                const type = match[1].trim();
-                                                const hours = match[2].trim();
-
-                                                let bg = 'var(--color-highlight)', color = 'var(--color-text-secondary)', iconName = 'circle';
-
-                                                if (type.toLowerCase().includes('лекц')) { bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)'; iconName = 'menu_book'; }
-                                                else if (type.toLowerCase().includes('практ')) { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; iconName = 'engineering'; }
-                                                else if (type.toLowerCase().includes('лаб')) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; iconName = 'science'; }
-                                                else if (type.toLowerCase().includes('самост')) { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; iconName = 'person'; }
-
-                                                child.innerHTML = `
-                                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.4rem 1.8rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border);">
-                                                        <div style="display: flex; align-items: center; gap: 12px; font-weight: 600;">
-                                                            <span class="material-icons" style="color: ${color}; font-size: 2.2rem;">${iconName}</span>
-                                                            ${type}
-                                                        </div>
-                                                        <span style="background: ${bg}; color: ${color}; padding: 0.6rem 1.4rem; border-radius: 50px; font-weight: 800; font-size: 1.25rem; white-space: nowrap;">${hours}</span>
-                                                    </div>
-                                                `;
-                                            }
-                                        }
-                                    });
+                        h3Elements.forEach(h3 => {
+                            const sectionTitle = h3.textContent.trim().toLowerCase();
+                            
+                            // Собираем ВСЕ блоки .theme_part / .tpr_part, относящиеся к текущему H3
+                            const relatedParts = [];
+                            let next = h3.nextElementSibling;
+                            while (next && next.tagName !== 'H3') {
+                                if (next.classList.contains('theme_part') || next.classList.contains('tpr_part')) {
+                                    relatedParts.push(next);
                                 }
-                                // --- ЛОГИКА КОНТРОЛЯ (Виджеты баллов) ---
-                                else if (sectionTitle.includes('контроль')) {
+                                next = next.nextElementSibling;
+                            }
+
+                            if (relatedParts.length === 0) return;
+
+                            // Стилизуем заголовок секции
+                            h3.style.cssText = 'margin-top: 0 !important; margin-bottom: 1.8rem !important; font-size: 1.4rem !important; font-weight: 800 !important; color: var(--color-text-secondary) !important; text-transform: uppercase; letter-spacing: 1px;';
+
+                            // --- ОБРАБОТКА КОНТРОЛЯ ---
+                            if (sectionTitle.includes('контроль')) {
+                                relatedParts.forEach((part, partIdx) => {
+                                    const card = document.createElement('div');
+                                    card.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem 2.4rem 2rem 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2rem; border: 1px solid var(--color-table-border); box-sizing: border-box;';
+
+                                    if (partIdx === 0) {
+                                        h3.parentNode.insertBefore(card, h3);
+                                        card.appendChild(h3);
+                                    } else {
+                                        part.parentNode.insertBefore(card, part);
+                                    }
+                                    card.appendChild(part);
+
+                                    part.style.fontSize = '1.4rem';
+                                    part.style.lineHeight = '1.6';
+                                    part.style.color = 'var(--color-text-primary)';
+                                    part.style.margin = '0';
+                                    part.style.padding = '0';
+
+                                    // Чистим внешние <br> перед парсингом
+                                    part.querySelectorAll(':scope > br').forEach(br => br.remove());
+
+                                    // Парсинг баллов
                                     let passScore = '', maxScore = '', ratingScore = '';
                                     let passEl = null, maxEl = null, ratingEl = null;
 
                                     Array.from(part.children).forEach(child => {
                                         const text = child.textContent.trim().toLowerCase();
 
-                                        if (text.includes('проходной балл')) { passScore = child.textContent.split('-')[1]?.trim(); passEl = child; }
-                                        else if (text.includes('максимальный балл')) { maxScore = child.textContent.split('-')[1]?.trim(); maxEl = child; }
-                                        else if (text.includes('в рейтинг')) { ratingScore = child.textContent.split('-')[1]?.trim(); ratingEl = child; }
+                                        if (text.includes('проходной балл')) { passScore = child.textContent.split(/[-–:]/)[1]?.trim(); passEl = child; }
+                                        else if (text.includes('максимальный балл')) { maxScore = child.textContent.split(/[-–:]/)[1]?.trim(); maxEl = child; }
+                                        else if (text.includes('в рейтинг')) { ratingScore = child.textContent.split(/[-–:]/)[1]?.trim(); ratingEl = child; }
 
-                                        // Стилизуем первый элемент (Название КМ)
-                                        if (child.tagName === 'DIV' && !child.classList.contains('ctl_hours') && child !== passEl && child !== maxEl && child !== ratingEl && !text.includes('элементы') && !text.includes('оценивания')) {
-                                            if (child.textContent.includes('-')) {
-                                                const parts = child.textContent.split('-');
+                                        // Название контрольного мероприятия
+                                        if (child.tagName === 'DIV' && !child.classList.contains('ctl_hours') && child !== passEl && child !== maxEl && child !== ratingEl && !text.includes('элементы') && !text.includes('оценивания') && !child.classList.contains('theme_file') && !child.classList.contains('tpr_file')) {
+                                            if (child.textContent.includes('-') || child.textContent.includes('–')) {
+                                                const titleParts = child.textContent.split(/[-–]/);
                                                 child.innerHTML = `
-                                                    <div style="font-weight: 800; font-size: 1.8rem; color: var(--color-text-primary); margin-bottom: 0.6rem;">${parts[1].trim()}</div>
-                                                    <div style="color: var(--color-text-secondary); font-size: 1.3rem;">Контролирует: <span style="font-weight: 600; color: var(--color-accent);">${parts[0].trim()}</span></div>
+                                                    <div style="font-weight: 800; font-size: 1.8rem; color: var(--color-text-primary); margin-bottom: 0.6rem; line-height: 1.3;">${titleParts[1].trim()}</div>
+                                                    <div style="color: var(--color-text-secondary); font-size: 1.3rem;">Контролирует: <span style="font-weight: 600; color: var(--color-accent);">${titleParts[0].trim()}</span></div>
                                                 `;
                                             }
                                         }
 
-                                        // Стилизуем часы контроля
+                                        // Часы контроля
                                         if (child.classList.contains('ctl_hours')) {
-                                            child.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.6rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; margin-top: 1.6rem; margin-bottom: 2.4rem;';
-                                            child.innerHTML = `<span class="material-icons" style="font-size: 2rem;">timer</span> ${child.textContent}`;
+                                            child.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.6rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; margin-top: 1.2rem; margin-bottom: 1.4rem;';
+                                            child.innerHTML = `<span class="material-icons" style="font-size: 1.8rem;">timer</span> ${child.textContent.trim()}`;
                                         }
                                     });
 
-                                    // Если нашли баллы, создаем красивую сетку
+                                    // Виджет баллов (3 плашки)
                                     if (passScore || maxScore || ratingScore) {
                                         const statsGrid = document.createElement('div');
-                                        statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.2rem; margin: 2.4rem 0;';
+                                        statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.2rem; margin-top: 1.4rem; margin-bottom: 0;';
 
                                         const createStat = (label, val, colorClass) => {
                                             if (!val) return '';
                                             let colorStyle = colorClass === 'green' ? 'color: var(--color-green);' : (colorClass === 'blue' ? 'color: var(--color-blue);' : 'color: var(--color-accent);');
                                             let bgStyle = colorClass === 'green' ? 'background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3);' : (colorClass === 'blue' ? 'background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3);' : 'background: var(--color-accent-active); border: 1px solid var(--color-accent);');
                                             return `
-                                                <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 1.6rem; border-radius: var(--radius-medium); ${bgStyle}">
-                                                    <span style="font-size: 2.4rem; font-weight: 800; ${colorStyle} line-height: 1;">${val}</span>
-                                                    <span style="font-size: 1.1rem; font-weight: 700; ${colorStyle} margin-top: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">${label}</span>
+                                                <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 1.4rem 1.6rem; border-radius: var(--radius-medium); ${bgStyle}">
+                                                    <span style="font-size: 2.2rem; font-weight: 800; ${colorStyle} line-height: 1;">${val}</span>
+                                                    <span style="font-size: 1.05rem; font-weight: 700; ${colorStyle} margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">${label}</span>
                                                 </div>
                                             `;
                                         };
@@ -21471,76 +21830,181 @@
                                         if (ratingEl) ratingEl.remove();
                                     }
 
-                                    // Стилизуем заголовки списков "Элементы" и "Показатель"
+                                    // Оформление подразделов "Контролируемые элементы" и "Показатель оценивания" с разделителем сверху
                                     part.querySelectorAll('div').forEach(div => {
-                                        const text = div.textContent.trim();
-                                        if (text.includes('Контролируемые элементы') || text.includes('Показатель оценивания')) {
-                                            const partsSplit = div.innerHTML.split(':');
-                                            const title = partsSplit[0];
-                                            let rest = partsSplit.slice(1).join(':');
+                                        const rawText = div.textContent.trim();
+                                        if (rawText.startsWith('Контролируемые элементы') || rawText.startsWith('Показатель оценивания')) {
+                                            const match = rawText.match(/^(Контролируемые элементы|Показатель оценивания)\s*:/i);
+                                            if (match) {
+                                                const subTitle = match[1];
+                                                const pTag = div.querySelector('p');
+                                                const tableEl = div.querySelector('table');
 
-                                            // Убираем старый <br>
-                                            rest = rest.replace(/<br\s*\/?>/gi, '');
+                                                let contentInner = '';
+                                                if (tableEl) {
+                                                    contentInner = tableEl.outerHTML;
+                                                } else if (pTag) {
+                                                    contentInner = `<div style="line-height: 1.6; font-size: 1.35rem; color: var(--color-text-primary); margin-top: 0.6rem;">${pTag.innerHTML.replace(/^<br\s*\/?>/i, '').trim()}</div>`;
+                                                }
 
-                                            div.innerHTML = `<div style="font-weight: 800; color: var(--color-text-secondary); font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; margin: 3rem 0 1.6rem 0; opacity: 0.8;">${title}</div>${rest ? rest : ''}`;
-                                        }
-                                    });
-                                }
-                                else {
-                                    // Очистка лишних переносов в остальных карточках
-                                    part.querySelectorAll('br').forEach(br => br.remove());
-                                    Array.from(part.children).forEach(child => {
-                                        if (child.tagName === 'DIV' || child.tagName === 'P') {
-                                            child.style.marginBottom = '1.2rem';
-                                        }
-                                    });
-                                }
-
-                                // 4. Оформление таблиц (переосмысление таблицы "Показатель оценивания")
-                                part.querySelectorAll('table').forEach(table => {
-                                    // Создаем контейнер в виде списка
-                                    const listContainer = document.createElement('div');
-                                    listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 1rem; margin-top: 1.2rem; margin-bottom: 2.4rem;';
-
-                                    // Парсим строки оригинальной таблицы
-                                    table.querySelectorAll('tr').forEach(tr => {
-                                        const tds = tr.querySelectorAll('td');
-                                        if (tds.length > 0) {
-                                            const score = tds[0].textContent.trim();
-                                            // Ищем текст в последней ячейке (ЕТИС генерирует пустые td посередине)
-                                            const desc = tds[tds.length - 1].textContent.trim();
-
-                                            if (score && desc) {
-                                                const item = document.createElement('div');
-                                                item.style.cssText = 'display: flex; align-items: center; gap: 1.6rem; padding: 1.4rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border);';
-
-                                                item.innerHTML = `
-                                                    <div style="background: var(--color-accent-active); color: var(--color-accent); font-weight: 800; font-size: 1.6rem; padding: 0.8rem; border-radius: 12px; min-width: 52px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; height: 52px; box-sizing: border-box;">
-                                                        ${score}
+                                                div.style.cssText = 'border-top: 1px solid var(--color-table-border); padding-top: 2rem; margin-top: 2rem;';
+                                                div.innerHTML = `
+                                                    <div style="font-weight: 800; color: var(--color-text-secondary); font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem; opacity: 0.8;">
+                                                        ${subTitle}
                                                     </div>
-                                                    <div style="font-size: 1.35rem; color: var(--color-text-primary); line-height: 1.5; font-weight: 500;">
-                                                        ${desc}
-                                                    </div>
+                                                    ${contentInner}
                                                 `;
-                                                listContainer.appendChild(item);
                                             }
                                         }
                                     });
 
-                                    // Заменяем страшную таблицу ЕТИСа на новый список
-                                    table.replaceWith(listContainer);
-                                });
+                                    // Превращение таблицы показателей оценивания в список с цветными баллами (Золотой / Зеленый / Синий)
+                                    part.querySelectorAll('table').forEach(table => {
+                                        const listContainer = document.createElement('div');
+                                        listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; margin-bottom: 0 !important; width: 100%; box-sizing: border-box;';
 
-                                // 5. Оформление файлов (Word, PDF и т.д.)
-                                part.querySelectorAll('.theme_file, .tpr_file').forEach(fileDiv => {
-                                    const link = fileDiv.querySelector('a');
-                                    if (link) {
-                                        link.className = 'file-attachment-link';
-                                        link.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-top: 2rem; margin-bottom: 1rem; text-decoration: none; background: var(--color-highlight); border: 1px solid var(--color-table-border); padding: 1rem 1.6rem; border-radius: 50px; transition: all 0.2s ease;';
-                                        link.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem;">description</span><span class="file-name" style="font-weight: 600; font-size: 1.3rem;">${link.textContent.trim()}</span>`;
-                                        fileDiv.replaceWith(link);
+                                        // 1. Сбор всех строк и расчет мин/макс баллов
+                                        const itemsData = [];
+                                        table.querySelectorAll('tr').forEach(tr => {
+                                            const tds = tr.querySelectorAll('td');
+                                            if (tds.length > 0) {
+                                                const scoreText = tds[0].textContent.trim();
+                                                const descText = tds[tds.length - 1].textContent.trim();
+                                                const numScore = parseFloat(scoreText.replace(',', '.'));
+
+                                                if (scoreText && descText) {
+                                                    itemsData.push({
+                                                        score: scoreText,
+                                                        num: isNaN(numScore) ? null : numScore,
+                                                        desc: descText
+                                                    });
+                                                }
+                                            }
+                                        });
+
+                                        const numericScores = itemsData.map(i => i.num).filter(n => n !== null);
+                                        const maxScoreVal = numericScores.length > 0 ? Math.max(...numericScores) : null;
+                                        const minScoreVal = numericScores.length > 0 ? Math.min(...numericScores) : null;
+
+                                        // 2. Отрисовка элементов с цветными бейджами
+                                        itemsData.forEach(item => {
+                                            let bg = 'var(--color-accent-active)';
+                                            let color = 'var(--color-accent)';
+
+                                            if (item.num !== null && maxScoreVal !== null && minScoreVal !== null) {
+                                                if (maxScoreVal !== minScoreVal) {
+                                                    if (item.num === maxScoreVal) {
+                                                        // Самый большой балл (Золотой)
+                                                        bg = 'rgba(255, 204, 0, 0.16)';
+                                                        color = 'var(--color-yellow)';
+                                                    } else if (item.num === minScoreVal) {
+                                                        // Самый маленький балл (Синий)
+                                                        bg = 'rgba(0, 122, 255, 0.16)';
+                                                        color = 'var(--color-blue)';
+                                                    } else {
+                                                        // Все промежуточные баллы (Зеленый)
+                                                        bg = 'rgba(52, 199, 89, 0.16)';
+                                                        color = 'var(--color-green)';
+                                                    }
+                                                } else {
+                                                    // Если все баллы одинаковые
+                                                    bg = 'rgba(255, 204, 0, 0.16)';
+                                                    color = 'var(--color-yellow)';
+                                                }
+                                            }
+
+                                            const rowItem = document.createElement('div');
+                                            rowItem.style.cssText = 'display: flex; align-items: center; gap: 1.4rem; padding: 1.2rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border); box-sizing: border-box; width: 100%;';
+
+                                            rowItem.innerHTML = `
+                                                <div style="background: ${bg}; color: ${color}; font-weight: 800; font-size: 1.5rem; border-radius: 12px; min-width: 44px; height: 44px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
+                                                    ${item.score}
+                                                </div>
+                                                <div style="font-size: 1.35rem; color: var(--color-text-primary); line-height: 1.5; font-weight: 500; text-align: left; flex: 1;">
+                                                    ${item.desc}
+                                                </div>
+                                            `;
+                                            listContainer.appendChild(rowItem);
+                                        });
+
+                                        table.replaceWith(listContainer);
+                                    });
+
+                                    // Файлы (сброс старых классов ЕТИС для удаления левого отступа)
+                                    part.querySelectorAll('.theme_file, .tpr_file').forEach(fileDiv => {
+                                        const link = fileDiv.querySelector('a');
+                                        if (link) {
+                                            link.className = 'file-attachment-link';
+                                            link.style.cssText = 'display: inline-flex !important; align-items: center !important; gap: 8px !important; text-decoration: none !important; background: var(--color-highlight) !important; border: 1px solid var(--color-table-border) !important; padding: 1rem 1.6rem !important; border-radius: 50px !important; margin: 0 !important; transition: all 0.2s ease !important;';
+                                            link.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem;">description</span><span class="file-name" style="font-weight: 600; font-size: 1.3rem;">${link.textContent.trim()}</span>`;
+                                            
+                                            fileDiv.className = ''; // Удаляем класс ЕТИС, сдвигавший кнопку вправо
+                                            fileDiv.style.cssText = 'border-top: 1px solid var(--color-table-border) !important; padding: 1.8rem 0 0 0 !important; margin: 2rem 0 0 0 !important; display: flex !important; flex-wrap: wrap !important; gap: 8px !important; width: 100% !important; box-sizing: border-box !important; text-indent: 0 !important; justify-content: flex-start !important;';
+                                            fileDiv.innerHTML = '';
+                                            fileDiv.appendChild(link);
+                                        }
+                                    });
+
+                                    // Очистка висячих пустых тегов снизу блока контроля
+                                    while (part.lastChild && (part.lastChild.tagName === 'BR' || (part.lastChild.nodeType === Node.TEXT_NODE && !part.lastChild.textContent.trim()))) {
+                                        part.lastChild.remove();
                                     }
                                 });
+                            }
+                            // --- ОБРАБОТКА ОСТАЛЬНЫХ СЕКЦИЙ (Трудоемкость, Аннотация, Литература) ---
+                            else {
+                                const part = relatedParts[0];
+                                const card = document.createElement('div');
+                                card.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem 2.4rem 2rem 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2rem; border: 1px solid var(--color-table-border); box-sizing: border-box;';
+
+                                h3.parentNode.insertBefore(card, h3);
+                                card.appendChild(h3);
+                                card.appendChild(part);
+
+                                part.style.fontSize = '1.4rem';
+                                part.style.lineHeight = '1.6';
+                                part.style.color = 'var(--color-text-primary)';
+                                part.style.margin = '0';
+                                part.style.padding = '0';
+
+                                if (sectionTitle.includes('трудоемкость')) {
+                                    part.style.display = 'flex';
+                                    part.style.flexDirection = 'column';
+                                    part.style.gap = '0.8rem';
+
+                                    Array.from(part.children).forEach(child => {
+                                        if (child.tagName === 'DIV') {
+                                            const text = child.textContent.trim();
+                                            const match = text.match(/(.*?)\s*[–-]\s*(.*)/);
+                                            if (match) {
+                                                const type = match[1].trim();
+                                                const hours = match[2].trim();
+
+                                                let bg = 'var(--color-highlight)', color = 'var(--color-text-secondary)', iconName = 'circle';
+
+                                                if (type.toLowerCase().includes('лекц')) { bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)'; iconName = 'menu_book'; }
+                                                else if (type.toLowerCase().includes('практ')) { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; iconName = 'engineering'; }
+                                                else if (type.toLowerCase().includes('лаб')) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; iconName = 'science'; }
+                                                else if (type.toLowerCase().includes('самост')) { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; iconName = 'person'; }
+
+                                                child.innerHTML = `
+                                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.2rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border);">
+                                                        <div style="display: flex; align-items: center; gap: 12px; font-weight: 600;">
+                                                            <span class="material-icons" style="color: ${color}; font-size: 2.2rem;">${iconName}</span>
+                                                            ${type}
+                                                        </div>
+                                                        <span style="background: ${bg}; color: ${color}; padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; white-space: nowrap;">${hours}</span>
+                                                    </div>
+                                                `;
+                                            }
+                                        }
+                                    });
+                                } else {
+                                    // Удаляем висячие пустые строки и <br> в конце аннотации
+                                    while (part.lastChild && (part.lastChild.tagName === 'BR' || (part.lastChild.nodeType === Node.TEXT_NODE && !part.lastChild.textContent.trim()))) {
+                                        part.lastChild.remove();
+                                    }
+                                }
                             }
                         });
 
@@ -22643,7 +23107,7 @@
                             if (!file.isActive) return;
 
                             file.teachers.forEach(teacher => {
-                                if (teacher.isActive === false) return; // Пропускаем отключенных преподов
+                                if (teacher.isActive !== true) return; // Добавляем в расписание только явно включенных преподавателей
 
                                 teacher.events.forEach(ev => {
                                     if (ev.weekType === 'even' && !isEvenWeek) return;
@@ -22662,30 +23126,27 @@
                                         });
 
                                         let audHtml = '';
-                                        if (ev.aud || ev.link) {
-                                            audHtml += `<div class="aud" style="display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;">`;
-
-                                            if (ev.aud) {
-                                                let displayAud = ev.aud;
-                                                const m = ev.aud.match(/(\d+[а-яa-z]*)\s*[\/\\]\s*(\d+[а-яa-z]*)/i);
-                                                if (m) {
-                                                    if (generalConfig.shortAudFormat) {
-                                                        displayAud = `${m[1]}/${m[2]}`;
-                                                    } else {
-                                                        const floor = m[1].charAt(0);
-                                                        displayAud = `ауд. ${m[1]}, к. ${m[2]}, э. ${floor}`;
-                                                    }
+                                        if (ev.aud) {
+                                            let displayAud = ev.aud;
+                                            const m = ev.aud.match(/(\d+[а-яa-z]*)\s*[\/\\]\s*(\d+[а-яa-z]*)/i);
+                                            if (m) {
+                                                if (generalConfig.shortAudFormat) {
+                                                    displayAud = `${m[1]}/${m[2]}`;
+                                                } else {
+                                                    const floor = m[1].charAt(0);
+                                                    displayAud = `ауд. ${m[1]}, к. ${m[2]}, э. ${floor}`;
                                                 }
-                                                audHtml += `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>${displayAud}</div>`;
                                             }
+                                            audHtml += `<div class="pair-aud-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem;">place</span><span>${displayAud}</span></div>`;
+                                        }
 
-                                            if (ev.link) {
-                                                let pName = "Онлайн";
-                                                if (ev.link.includes('zoom')) pName = "Zoom";
-                                                if (ev.link.includes('telemost')) pName = "Телемост";
-                                                audHtml += `<a href="${ev.link}" target="_blank" class="${pName === "Онлайн" ? "btn-generic-online" : ""}">${pName}</a>`;
-                                            }
-                                            audHtml += `</div>`;
+                                        if (ev.link) {
+                                            let pName = "Онлайн";
+                                            let pClass = "";
+                                            let pColor = "#AF52DE";
+                                            if (ev.link.includes('zoom')) { pName = "Zoom"; pClass = "zoom-link"; pColor = "#2D8CFF"; }
+                                            else if (ev.link.includes('telemost')) { pName = "Телемост"; pClass = "telemost-link"; pColor = "#FF9500"; }
+                                            audHtml += `<a href="${ev.link}" target="_blank" class="pair-online-link ${pClass}" style="color: ${pColor} !important;"><span class="material-icons" style="font-size: 1.5rem; color: ${pColor} !important;">public</span><span>${pName}</span></a>`;
                                         }
 
                                         const tr = document.createElement('tr');
@@ -22697,7 +23158,7 @@
                                             timeHtml += `<span style="font-size: 1.05rem; color: var(--color-text-secondary); display: block; margin-top: 2px;">${ev.endTime}</span>`;
                                         }
 
-                                        let teacherHtml = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem; color: var(--color-text-secondary);">person</span><span>${shortenName(teacher.name)}</span></div>`;
+                                        let teacherHtml = `<div class="pair-teacher-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem; color: var(--color-text-secondary);">person</span><span>${shortenName(teacher.name)}</span></div>`;
 
                                         tr.innerHTML = `
                                             <td class="pair_num">
@@ -22931,9 +23392,9 @@
                         }
                     });
 
-                    // --- ПАРСИНГ АУДИТОРИЙ И ОБЪЕДИНЕНИЕ С ПРЕПОДАВАТЕЛЕМ ---
+                   // --- ПАРСИНГ АУДИТОРИЙ И ОБЪЕДИНЕНИЕ С ПРЕПОДАВАТЕЛЕМ ---
                     span9.querySelectorAll('.pair_info .aud').forEach(aud => {
-                        // 1. Сначала извлекаем и временно удаляем блок преподавателя, чтобы он не попал в текст аудитории
+                        // 1. Сначала извлекаем и временно удаляем блок преподавателя
                         const teacherWrap = aud.querySelector('.pair-teacher-wrap');
                         let teacherWrapHtml = teacherWrap ? teacherWrap.outerHTML : '';
                         if (teacherWrap) teacherWrap.remove();
@@ -22949,13 +23410,18 @@
                         let locHtml = '';
 
                         if (isOnlineText || linkEl) {
-                            if (isZoom || isTelemost) {
-                                let platformName = isZoom ? "Zoom" : "Телемост";
-                                locHtml = `<a href="${linkEl.href}" target="_blank">${platformName}</a>`;
-                            } else if (linkEl) {
-                                locHtml = `<a href="${linkEl.href}" target="_blank" class="btn-generic-online">Онлайн</a>`;
+                            let href = linkEl ? linkEl.href : '#';
+                            let pName = "Онлайн";
+                            let pClass = "";
+                            let pColor = "#AF52DE";
+
+                            if (isZoom) { pName = "Zoom"; pClass = "zoom-link"; pColor = "#2D8CFF"; }
+                            else if (isTelemost) { pName = "Телемост"; pClass = "telemost-link"; pColor = "#FF9500"; }
+
+                            if (linkEl) {
+                                locHtml = `<a href="${href}" target="_blank" class="pair-online-link ${pClass}" style="color: ${pColor} !important;"><span class="material-icons" style="font-size: 1.5rem; color: ${pColor} !important;">public</span><span>${pName}</span></a>`;
                             } else {
-                                locHtml = `<span class="btn-generic-online" style="display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.5rem 1.4rem 0.5rem 1.5rem; border-radius: 50px; font-weight: 700; font-size: 1.2rem; background: rgba(175, 82, 222, 0.12); color: #AF52DE; border: 1px solid rgba(175, 82, 222, 0.2);"><span class="material-icons" style="font-size: 1.8rem;">public</span>Онлайн</span>`;
+                                locHtml = `<div class="pair-online-link" style="display: inline-flex; align-items: center; gap: 4px; color: #AF52DE; font-size: 1.25rem; font-weight: 600;"><span class="material-icons" style="font-size: 1.5rem; color: #AF52DE;">public</span><span>Онлайн</span></div>`;
                             }
                         } else {
                             let roomNumber = '';
@@ -22979,11 +23445,11 @@
 
                             if (roomNumber) {
                                 const audDisplay = building ? `${roomNumber}/${building}` : roomNumber;
-                                locHtml = `<div class="pair-aud-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem;">place</span>${audDisplay}</div>`;
+                                locHtml = `<div class="pair-aud-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem;">place</span><span>${audDisplay}</span></div>`;
                             }
                         }
 
-                        // 3. Собираем обратно: Аудитория + Преподаватель отдельными блоками
+                        // 3. Собираем обратно в одну строку
                         aud.innerHTML = locHtml + teacherWrapHtml;
                     });
 
@@ -25875,10 +26341,7 @@
                         // УНИФИКАЦИЯ ПОДМЕНЮ
                         span9.querySelectorAll('.submenu').forEach(menu => {
                             // Определяем тип периода (семестр или триместр) на основе текста вкладок
-                            let termType = 'триместр';
-                            if (menu.textContent.toLowerCase().includes('семестр')) {
-                                termType = 'семестр';
-                            }
+                            let termType = getTermWord('nom_sg');
 
                             Array.from(menu.children).forEach(child => {
                                 if (child.tagName === 'A') {
@@ -26013,7 +26476,7 @@
                                     const trimM = block.headerRaw.match(/(\d+)\s+(триместр|семестр)/i);
                                     const courseM = block.headerRaw.match(/(\d+)\s+курс/i);
 
-                                    const typePart = trimM ? trimM[2].toUpperCase() : "ТРИМЕСТР";
+                                    const typePart = trimM ? trimM[2].toUpperCase() : getTermWord('nom_sg', true).toUpperCase();
                                     const numPart = trimM ? trimM[1] : "";
                                     const coursePart = courseM ? `${courseM[1]} КУРС` : "";
                                     const combinedInfo = [`${numPart} ${typePart}`, coursePart].filter(x => x.trim()).join(', ');
@@ -26084,12 +26547,17 @@
 
                                     const newTable = document.createElement('table');
                                     newTable.className = 'common session-table-v6';
+                                    const isEmptyBlock = block.rows.length === 0;
+
                                     if (headerRow) {
                                         const thead = document.createElement('thead');
                                         const clonedHeader = headerRow.cloneNode(true);
                                         let lastVisibleTh = null;
                                         clonedHeader.querySelectorAll('th').forEach((th, idx) => {
-                                            if (generalConfig.compactGrades) {
+                                            if (isEmptyBlock) {
+                                                // Если данных в семестре нет — скрываем колонки "Дата" и "Преподаватель"
+                                                if (idx > 1) th.style.display = 'none';
+                                            } else if (generalConfig.compactGrades) {
                                                 const cfg = generalConfig.compactGradesConfig;
                                                 if (idx === 2 && !cfg.showDate) th.style.display = 'none';
                                                 if (idx === 3 && !cfg.showTeacher) th.style.display = 'none';
@@ -26103,11 +26571,11 @@
                                     }
                                     const tbody = document.createElement('tbody');
                                     
-                                    if (block.rows.length === 0) {
-                                        // Оформление для пустого семестра/триместра
+                                    if (isEmptyBlock) {
+                                        // Оформление для пустого семестра/триместра (colspan 2 под оставшиеся 2 колонки)
                                         const emptyTr = document.createElement('tr');
                                         emptyTr.innerHTML = `
-                                            <td colspan="4" style="text-align: center !important; padding: 3.6rem 2rem !important; color: var(--color-text-secondary) !important; font-weight: 600 !important; font-size: 1.35rem !important; background: transparent !important; border: none !important;">
+                                            <td colspan="2" style="text-align: center !important; padding: 3.6rem 2rem !important; color: var(--color-text-secondary) !important; font-weight: 600 !important; font-size: 1.35rem !important; background: transparent !important; border: none !important;">
                                                 <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
                                                     <span class="material-icons" style="font-size: 2.8rem; color: var(--color-text-secondary); opacity: 0.4;">hourglass_empty</span>
                                                     <span>Данных пока нет</span>
@@ -26312,7 +26780,7 @@
 
                                         const termsData = [];
                                         const subjectsData = [];
-                                        let termTypeGlobal = 'период';
+                                        let termTypeGlobal = getTermWord('nom_sg');
 
                                         document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
                                             const rawTermName = wrapper.getAttribute('data-term-name');
@@ -26351,13 +26819,16 @@
                                         });
 
                                         termsData.sort((a, b) => a.num - b.num);
+                                        const shareAnalyticsBtn = modal.querySelector('#share-analytics-bento-btn');
 
                                         if (termsData.length === 0) {
                                             document.getElementById('analytics-content').style.display = 'none';
                                             document.getElementById('analytics-empty').style.display = 'block';
+                                            if (shareAnalyticsBtn) shareAnalyticsBtn.style.setProperty('display', 'none', 'important');
                                         } else {
                                             document.getElementById('analytics-content').style.display = 'block';
                                             document.getElementById('analytics-empty').style.display = 'none';
+                                            if (shareAnalyticsBtn) shareAnalyticsBtn.style.setProperty('display', 'flex', 'important');
 
                                             const maxAvg = Math.max(...termsData.map(t => t.avg));
                                             const minAvg = Math.min(...termsData.map(t => t.avg));
@@ -27265,7 +27736,7 @@
                                 // Структура модального окна без графика
                                 modal.innerHTML = `
                                     <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
-                                        <span class="ui-dialog-title">Топ предметов триместра</span>
+                                        <span class="ui-dialog-title">Топ предметов ${getTermWord('gen_sg')}</span>
                                         <span class="close-analytics material-icons" style="color:var(--color-text-secondary); font-size:24px; cursor:pointer; user-select:none; transition: color 0.2s;">close</span>
                                     </div>
                                     <div class="ui-dialog-content" style="padding: 2.4rem;">
@@ -27558,6 +28029,16 @@
 
                         // ОБРАБОТКА "ИТОГОВЫЙ РЕЙТИНГ"
                         if (pageMode === 'rating') {
+                            // Скрываем капсулу выбора периода, если доступен только 1 семестр/триместр
+                            const submenus = span9.querySelectorAll('.submenu');
+                            if (submenus.length > 1) {
+                                const termSubmenu = submenus[submenus.length - 1];
+                                const termItems = termSubmenu.querySelectorAll('a, b');
+                                if (termItems.length <= 1) {
+                                    termSubmenu.remove();
+                                }
+                            }
+
                             const allTables = span9.querySelectorAll('table.common');
                             let ratingTable = null;
 
@@ -27688,7 +28169,7 @@
                             // 1. Сбор баллов в триместре (Контрольные точки)
                             if (pageMode === 'current') {
                                 const activeSubmenu = document.querySelector('.submenu b');
-                                const activeTerm = activeSubmenu ? cleanTermName(activeSubmenu.textContent) : 'Текущий триместр';
+                                const activeTerm = activeSubmenu ? cleanTermName(activeSubmenu.textContent) : `Текущий ${getTermWord('nom_sg')}`;
 
                                 document.querySelectorAll('.term-subject-group').forEach(wrapper => {
                                     let name = wrapper.getAttribute('data-subject-name');
