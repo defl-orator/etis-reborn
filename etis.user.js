@@ -1,7 +1,7 @@
     // ==UserScript==
     // @name         ЕТИС REBORN
     // @namespace    http://tampermonkey.net/
-    // @version      2.82
+    // @version      2.8
     // @changelog    Увеличенная скорость загрузки. Фикс очистки данных. Фикс отображения онлайн-занятий. Фикс оформления тем в оценках. Умные случайные цвета в окне внешнего вида. Доработка центра уведомлений.
     // @description  Глобальное обновление ЕТИСа
     // @author       dya_dya
@@ -1865,6 +1865,23 @@
                     updateState.hasUpdate = true;
                     updateState.status = 'success';
                     triggerUpdateIndicators();
+
+                    // Добавляем уведомление в колокольчик (если для этой версии ещё не создавалось)
+                    const notifId = 'notif_update_' + targetData.version;
+                    let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+                    const alreadyExists = history.some(n => n.id === notifId);
+                    
+                    if (!alreadyExists) {
+                        addNotificationToHistory({
+                            id: notifId,
+                            title: isBetaUpdate ? 'Доступна бета-версия' : 'Доступно обновление',
+                            subject: `Версия ${targetData.version}`,
+                            body: targetData.changelog ? targetData.changelog : 'Нажмите, чтобы открыть окно обновления.',
+                            type: isBetaUpdate ? 'warning' : 'info',
+                            icon: 'system_update',
+                            targetUrl: '#settings'
+                        });
+                    }
                 } else {
                     updateState.hasUpdate = false;
                     updateState.status = 'success';
@@ -11478,6 +11495,12 @@
             // 4. Отключение синхронизации устройств
             if (title.includes('Синхронизация отключена') || icon === 'cloud_off') return true;
 
+            // 5. Новые объявления
+            if (title.includes('Новое объявление') || title.includes('Новые объявления') || icon === 'campaign' || icon === 'record_voice_over' || (targetUrl.includes('stu_ann.announces') && type !== 'event')) return true;
+
+            // 6. Обновления скрипта
+            if (title.includes('обновление') || title.includes('Обновление') || icon === 'system_update' || n.id?.startsWith('notif_update_') || targetUrl === '#settings') return true;
+
             return false;
         };
 
@@ -11628,6 +11651,10 @@
                                 }
                                 if (typeof openGuideModal === 'function') {
                                     openGuideModal(window.innerWidth <= 960 ? 'menu' : 'timetable_guide');
+                                }
+                            } else if (targetUrl === '#settings') {
+                                if (typeof openSettingsModal === 'function') {
+                                    openSettingsModal('version');
                                 }
                             } else if (targetUrl) {
                                 if (window.location.href.includes(targetUrl)) {
@@ -12290,7 +12317,7 @@
 
         function refreshModalUI() {
             const modal = document.getElementById('etis-settings-modal');
-            if (modal && modal.classList.contains('active')) {
+            if (modal) {
                 const wrapper = modal.querySelector('#version-content-wrapper');
                 if (wrapper) {
                     wrapper.innerHTML = getUpdateHTML();
@@ -15591,7 +15618,7 @@
 
                 } else if (currentView === 'version') {
                     title = 'Обновление';
-                    contentHTML = `<div id="version-content-wrapper"></div>`;
+                    contentHTML = `<div id="version-content-wrapper">${getUpdateHTML()}</div>`;
                 } else if (currentView === 'history') {
                     title = 'История версий';
                     backTarget = 'version';
@@ -18392,6 +18419,26 @@
                             const dot = document.createElement('span');
                             dot.className = 'badge-point';
                             a.appendChild(dot);
+                        }
+
+                        // Автоматическое добавление уведомления в колокольчик при появлении нового объявления
+                        const isAnnounces = href.includes('stu_ann.announces');
+                        if (isAnnounces && itemHasNotification) {
+                            const lastKnown = localStorage.getItem('etis_last_ann_unread_status');
+                            if (lastKnown !== 'unread') {
+                                localStorage.setItem('etis_last_ann_unread_status', 'unread');
+                                addNotificationToHistory({
+                                    id: 'notif_ann_sidebar_' + Date.now(),
+                                    title: 'Новое объявление',
+                                    subject: 'Объявление от разработчика',
+                                    body: 'Вам доступно новое объявление в настройках',
+                                    type: 'info',
+                                    icon: 'campaign',
+                                    targetUrl: 'stu_ann.announces'
+                                });
+                            }
+                        } else if (isAnnounces && !itemHasNotification) {
+                            localStorage.setItem('etis_last_ann_unread_status', 'read');
                         }
 
                         // 2. Стрелочка всегда остается крайней справа
@@ -25685,6 +25732,31 @@
                             const isUnread = msg.classList.contains('answ');
                             const firstLi = msg.querySelector('li:first-child');
                             if (!firstLi) return;
+
+                            // Фиксация детального уведомления для каждого нового объявления
+                            if (isUnread) {
+                                const rawTitle = firstLi.querySelector('font[style*="font-weight:bold"], b')?.textContent.trim() || '';
+                                const rawAuthor = firstLi.querySelector('font[color="#808080"]')?.textContent.trim() || '';
+                                const annKey = 'ann_id_' + (rawTitle + '_' + rawAuthor).replace(/[^\wа-яА-ЯёЁ]/g, '_');
+
+                                let notifiedAnnounces = JSON.parse(localStorage.getItem('etis_notified_ann_list_v1') || '[]');
+                                if (!notifiedAnnounces.includes(annKey)) {
+                                    notifiedAnnounces.push(annKey);
+                                    if (notifiedAnnounces.length > 50) notifiedAnnounces = notifiedAnnounces.slice(-50);
+                                    localStorage.setItem('etis_notified_ann_list_v1', JSON.stringify(notifiedAnnounces));
+
+                                    addNotificationToHistory({
+                                        id: annKey,
+                                        title: 'Новое объявление',
+                                        subject: rawTitle || 'Объявление от разработчика',
+                                        body: 'Опубликовано новое объявление',
+                                        type: 'info',
+                                        icon: 'campaign',
+                                        targetUrl: 'stu_ann.announces'
+                                    });
+                                }
+                            }
+
                             const cloneContent = firstLi.cloneNode(true);
 
                             if (firstLi.hasAttribute('onclick')) {
