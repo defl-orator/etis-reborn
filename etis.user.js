@@ -1,8 +1,8 @@
     // ==UserScript==
     // @name         ЕТИС REBORN
     // @namespace    http://tampermonkey.net/
-    // @version      2.82
-    // @changelog    Увеличенная скорость загрузки. Фикс очистки данных. Фикс отображения онлайн-занятий. Фикс оформления тем в оценках. Умные случайные цвета в окне внешнего вида. Доработка центра уведомлений.
+    // @version      2.9
+    // @changelog    Минималистичная боковая панель / шторка. Объединение выходных дней в расписании. Доработка внешнего вида расписания и возможность редактировать время пары. Оффлайн режим.
     // @description  Глобальное обновление ЕТИСа
     // @author       dya_dya
     // @icon         https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png
@@ -26,7 +26,7 @@
         let isSyncLocked = true;
 
         // ==========================================
-        // ПРОВЕРКА ДЕМО-РЕЖИМА И ФИКТИВНОГО СТУДЕНТА
+        // ПРОВЕРКА ОФФЛАЙН-РЕЖИМА И ФИКТИВНОГО СТУДЕНТА
         // ==========================================
         const isDemoUser = () => {
             if (sessionStorage.getItem('etis_demo_mode') === 'true') return true;
@@ -40,6 +40,7 @@
         // ==========================================
         const ACCOUNT_DATA_KEYS = [
             'etis_custom_pairs_v1',
+            'etis_ext_overrides',
             'etis_subject_notes_v2',
             'etis_important_pairs_v1',
             'etis_reborn_grades_snapshot_v3',
@@ -144,7 +145,7 @@
         }
 
         // ==========================================
-        // КОМАНДА ДЛЯ ДЕМО-РЕЖИМА
+        // КОМАНДА ДЛЯ ОФФЛАЙН-РЕЖИМА И ГЛОБАЛЬНЫЙ ВЫХОД
         // ==========================================
         const targetWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
@@ -152,7 +153,8 @@
             if (pageOrEnable === false) {
                 sessionStorage.removeItem('etis_demo_mode');
                 sessionStorage.removeItem('etis_demo_page');
-                console.log('%c[ETIS Reborn] Демо-режим отключен. Перезагрузка...', 'color: #FF3B30; font-weight: bold;');
+                console.log('%c[ETIS Reborn] Оффлайн-режим отключен...', 'color: #FF3B30; font-weight: bold;');
+                window.location.href = 'stu.login';
             } else {
                 sessionStorage.setItem('etis_demo_mode', 'true');
                 if (typeof pageOrEnable === 'string') {
@@ -160,12 +162,23 @@
                 } else if (!sessionStorage.getItem('etis_demo_page')) {
                     sessionStorage.setItem('etis_demo_page', 'timetable');
                 }
-                console.log('%c[ETIS Reborn] Демо-режим активирован. Перезагрузка...', 'color: #34C759; font-weight: bold;');
+                console.log('%c[ETIS Reborn] Оффлайн-режим активирован...', 'color: #34C759; font-weight: bold;');
+                window.location.reload();
             }
-            window.location.reload();
         };
 
         targetWindow.ex = targetWindow.etisExitDemo = () => targetWindow.e(false);
+
+        document.addEventListener('click', (e) => {
+            const logoutLink = e.target.closest('a[href*="stu.logout"], .demo-logout-link');
+            if (logoutLink && sessionStorage.getItem('etis_demo_mode') === 'true') {
+                e.preventDefault();
+                e.stopPropagation();
+                sessionStorage.removeItem('etis_demo_mode');
+                sessionStorage.removeItem('etis_demo_page');
+                window.location.href = 'stu.login';
+            }
+        }, true);
 
         // Команда переключения на тестовую ветку разработки
         targetWindow.devBeta = targetWindow.etisDevBeta = (enable = true) => {
@@ -730,6 +743,16 @@
             <span class="submenu-item">оценки в семестре</span>
             <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=rating">итоговый рейтинг за семестр</a></span>
             <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=diplom">оценки в диплом</a></span>
+            </div>
+            <div class="submenu">
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current&p_term=1">1 семестр</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current&p_term=2">2 семестр</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current&p_term=3">3 семестр</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current&p_term=4">4 семестр</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current&p_term=5">5 семестр</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current&p_term=6">6 семестр</a></span>
+            <span class="submenu-item"><a class="dashed" href="stu.signs?p_mode=current&p_term=7">7 семестр</a></span>
+            <span class="submenu-item">8 семестр</span>
             </div>
 
             <h3>Архитектура распределенных систем</h3>
@@ -1915,6 +1938,7 @@
                     'etis_subject_notes_v2': 'subject_notes',
                     'etis_important_pairs_v1': 'important_pairs',
                     'etis_custom_pairs_v1': 'custom_pairs',
+                    'etis_ext_overrides': 'custom_pairs',
                     'etis_general_config': 'general_config',
                     'etis_reborn_grades_snapshot_v3': 'grades_snapshot',
                     'etis_consultation_files_v1': 'consultation_files',
@@ -1928,15 +1952,13 @@
                 const metaKey = syncKeys[key];
                 if (metaKey) {
                     let meta = JSON.parse(localStorage.getItem('etis_sync_meta') || '{}');
-                    const now = Date.now();
-                    meta[metaKey] = now;
+                    meta[metaKey] = Date.now();
                     localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
-                    console.log(`[Sync] [${metaKey}] Таймстамп успешно обновлен вручную: ${now}`);
                 }
 
                 triggerSilentCloudUpload();
             } catch (e) {
-                console.error('[Sync] Ошибка при безопасной записи данных:', e);
+                console.error('[Sync] Ошибка при записи данных:', e);
             }
         };
 
@@ -2475,54 +2497,98 @@
     .tpr_part { line-height: 1.5 !important; }
     .ses_part { line-height: 1.5 !important; }
 
-    /* Week Select */
-    .week-select { margin: 0 auto 1.5rem !important; margin-top: 0 !important; margin-bottom: 1.5rem !important; width: 100% !important; clear: both !important; }
-    .week-select h3 { display: none !important; }
-
-    .timetable-toolbar + br,
-    .span9 > br {
-        display: none !important;
-    }
-
-    /* Капсула для недель */
-    .weeks {
+    /* --- ЕДИНАЯ КАПСУЛА: НЕДЕЛИ + ДАТА --- */
+    .week-select-wrapper {
         display: flex !important;
-        flex-wrap: nowrap !important;
-        justify-content: flex-start !important;
         align-items: center !important;
         gap: 8px !important;
-        margin: 0 !important;
-        margin-top: 0 !important;
-        margin-bottom: 0 !important;
-
         width: 100% !important;
-        padding: 4px !important;
+        height: 4.6rem !important;
+        box-sizing: border-box !important;
+        border-radius: 50px !important;
         background-color: var(--color-card) !important;
         box-shadow: var(--shadow-main) !important;
-        border-radius: 50px !important;
+        border: none !important;
+        padding: 4px !important;
+        margin: 0 0 2.4rem 0 !important;
+        clear: both !important;
+    }
 
+    .week-select-wrapper .weeks {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        height: 3.8rem !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        background: var(--color-highlight) !important;
+        box-shadow: none !important;
+        border-radius: 50px !important;
+        padding: 3px !important;
+        box-sizing: border-box !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
         scrollbar-width: none !important;
         -webkit-overflow-scrolling: touch !important;
-
-        background-image:
-            linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
-            linear-gradient(to left, var(--color-card) 20%, rgba(255,255,255,0) 100%) !important;
-        background-position: left center, right center !important;
-        background-repeat: no-repeat !important;
-        background-size: 40px 100% !important;
-        background-attachment: scroll !important;
     }
-    .weeks::-webkit-scrollbar { display: none !important; }
 
-    [theme="dark"] .weeks {
-        background:
-            linear-gradient(to right, var(--color-card) 30%, rgba(255,255,255,0)) left center / 40px 100% no-repeat local,
-            linear-gradient(to left, var(--color-card) 30%, rgba(255,255,255,0)) right center / 40px 100% no-repeat local,
-            radial-gradient(farthest-side at 0 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) left center / 15px 100% no-repeat scroll,
-            radial-gradient(farthest-side at 100% 50%, rgba(0,0,0,0.5), rgba(0,0,0,0)) right center / 15px 100% no-repeat scroll !important;
+    .week-select-wrapper .weeks::-webkit-scrollbar {
+        display: none !important;
+    }
+
+    [theme="dark"] .week-select-wrapper .weeks,
+    [theme="dark"] .week-date-styled {
+        background: var(--color-highlight) !important;
+        background-image: none !important;
+    }
+
+    .weeks .week {
+        background-color: transparent !important;
+        color: var(--color-text-secondary) !important;
+        border-radius: 50px !important;
+        width: auto !important;
+        min-width: 3.2rem !important;
+        height: 3.2rem !important;
+        padding: 0 12px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        box-sizing: border-box !important;
+    }
+
+    .week-select-wrapper .weeks .week.current,
+    .weeks .week.current,
+    .weeks .week.current:hover {
+        height: 3.2rem !important;
+        border-radius: 50px !important;
+        box-shadow: none !important;
+        transform: none !important;
+    }
+
+    .weeks .week:not(.current):hover {
         background-color: var(--color-card) !important;
+    }
+
+    .week-date-styled {
+        flex: 0 0 auto !important;
+        height: 3.8rem !important;
+        min-height: 3.8rem !important;
+        padding: 0 16px !important;
+        margin: 0 !important;
+        background: var(--color-highlight) !important;
+        border-radius: 50px !important;
+        box-shadow: none !important;
+        border: none !important;
+        color: var(--color-text-secondary) !important;
+        font-size: 1.3rem !important;
+        font-weight: 700 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        white-space: nowrap !important;
+        box-sizing: border-box !important;
     }
 
     .weeks .week {
@@ -2586,12 +2652,20 @@
     div.consultations { display: flex !important; align-items: center !important; float: none !important; color: var(--color-text-primary) !important; }
     span.holiday { background-color: var(--color-green) !important; color: var(--color-text-primary-invert) !important; padding: 0.4rem 0.8rem !important; border-radius: 50rem !important; margin-top: 0.6rem !important; display: inline-block !important; }
     .day {
+        position: relative !important;
+        z-index: 2 !important;
         border-radius: var(--radius-large) !important;
         background-color: var(--color-card) !important;
         box-shadow: var(--shadow-main) !important;
         overflow: hidden !important;
         padding: 0 !important;
         margin-bottom: 2rem !important;
+    }
+    .timetable-grid td {
+        position: relative !important;
+        z-index: 2 !important;
+        background: transparent !important;
+        background-color: transparent !important;
     }
     .span9 .day h3 {
         display: flex !important;
@@ -2648,12 +2722,31 @@
     .pair-teacher-wrap a {
         color: var(--color-text-secondary) !important;
         text-decoration: none !important;
+        -webkit-tap-highlight-color: transparent !important;
         transition: color 0.2s ease !important;
     }
     
-    .pair-teacher-wrap a:hover {
-        color: var(--color-accent) !important;
-        text-decoration: underline !important;
+    /* Ховер активен ТОЛЬКО на устройствах с мышкой (ПК) */
+    @media (hover: hover) and (pointer: fine) {
+        .pair-teacher-wrap a:hover {
+            color: var(--color-accent) !important;
+            text-decoration: underline !important;
+        }
+    }
+
+    /* На смартфонах при касании и свайпах цвет и подчёркивание никогда не меняются */
+    @media (hover: none), (pointer: coarse) {
+        .pair-teacher-wrap a,
+        .pair-teacher-wrap a:hover,
+        .pair-teacher-wrap a:active,
+        .pair-teacher-wrap a:focus,
+        .pair_teacher a,
+        .pair_teacher a:hover,
+        .pair_teacher a:active,
+        .pair_teacher a:focus {
+            color: var(--color-text-secondary) !important;
+            text-decoration: none !important;
+        }
     }
 
     .pair_info .aud > a:before { margin-right: 0.6rem !important; font-family: 'Material Symbols Rounded' !important; content: 'videocam' !important; font-size: 1.8rem !important; }
@@ -2992,7 +3085,6 @@
 
         padding: 4px !important;
         gap: 8px !important;
-        margin-bottom: 1.6rem !important;
 
         background-image:
             linear-gradient(to right, var(--color-card) 20%, rgba(255,255,255,0) 100%),
@@ -3430,7 +3522,6 @@
             border-radius: 50px !important;
             padding: 4px !important;
             gap: 6px !important;
-            margin-bottom: 1.5rem !important;
             background-color: var(--color-card) !important;
 
             background-image:
@@ -3728,21 +3819,6 @@
     .pair_info .aud a.btn-generic-online:before {
         display: none !important;
         content: none !important;
-    }
-
-    /* --- DATE STYLING --- */
-    .week-date-styled {
-        display: table !important;
-        margin: 2.4rem auto 0 auto !important;
-        padding: 0.6rem 1.6rem !important;
-        background: var(--color-card) !important;
-        border-radius: 2rem !important;
-        box-shadow: var(--shadow-main) !important;
-        color: var(--color-text-secondary) !important;
-        font-size: 1.3rem !important;
-        font-weight: 500 !important;
-        text-align: center !important;
-        margin-top: 1.5rem !important;
     }
 
     /* --- LOGIN HELP BUTTON --- */
@@ -4176,8 +4252,7 @@
         color: var(--color-accent) !important;
     }
 
-    /* --- TIMETABLE WINDOWS --- */
-
+    /* --- УНИФИЦИРОВАННЫЕ КАПСУЛЫ ОКОН И ПЕРЕМЕН --- */
     .timetable-gap-row td {
         padding-top: 1rem !important;
         padding-bottom: 1rem !important;
@@ -4189,14 +4264,32 @@
         display: inline-flex !important;
         align-items: center !important;
         gap: 0.6rem !important;
-        background: var(--color-accent-active) !important;
+        background: var(--color-highlight) !important;
         color: var(--color-accent) !important;
         padding: 0.5rem 1.2rem !important;
         border-radius: 50px !important;
-        font-size: 1.1rem !important;
-        font-weight: 600 !important;
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
         line-height: 1 !important;
-        border: 1px solid var(--color-accent-active) !important;
+        border: 1px solid var(--color-table-border) !important;
+        box-sizing: border-box !important;
+    }
+
+    .timetable-gap-capsule .material-icons {
+        font-size: 15px !important;
+        color: var(--color-accent) !important; 
+        line-height: 1 !important;
+    }
+
+    /* Когда окно или перемена уже ПРОШЛИ: и капсула, и иконка становятся серыми */
+    .timetable-grid tr.pair-passed .timetable-gap-capsule {
+        background: var(--color-highlight) !important;
+        color: var(--color-text-secondary) !important;
+        border-color: var(--color-table-border) !important;
+    }
+
+    .timetable-grid tr.pair-passed .timetable-gap-capsule .material-icons {
+        color: var(--color-text-secondary) !important;
     }
 
     .sidebar-user-info {
@@ -5698,6 +5791,20 @@
         width: 100% !important;
     }
 
+    .msg-unread-dot {
+        display: inline-block !important;
+        width: 8px !important;
+        height: 8px !important;
+        min-width: 8px !important;
+        min-height: 8px !important;
+        background-color: var(--color-red) !important;
+        border-radius: 50% !important;
+        box-shadow: 0 0 6px rgba(255, 59, 48, 0.5) !important;
+        transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1), transform 0.8s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        flex-shrink: 0 !important;
+        margin-left: 6px !important;
+    }
+
     .message-pages {
         display: flex !important;
         justify-content: center !important;
@@ -5891,6 +5998,40 @@
         background-repeat: no-repeat !important;
         background-position: right 1rem center !important;
         background-size: 1em !important;
+    }
+
+    form.que_form .question label select,
+    form[name="estimate"] .question label select {
+        flex: 1 1 auto !important;
+        width: 100% !important;
+        margin: 0 !important;
+        margin-left: 0 !important;
+        padding: 0 2.8rem 0 0 !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        outline: none !important;
+        font-size: 1.4rem !important;
+        font-weight: 500 !important;
+        color: var(--color-text-primary) !important;
+        cursor: pointer !important;
+        appearance: none !important;
+        background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+        background-repeat: no-repeat !important;
+        background-position: right 0.4rem center !important;
+        background-size: 1.2rem !important;
+    }
+
+    form.que_form .question label input[type="radio"],
+    form[name="estimate"] .question label input[type="radio"] {
+        flex-shrink: 0 !important;
+    }
+
+    form.que_form .question label:has(input[type="radio"]:checked),
+    form[name="estimate"] .question label:has(input[type="radio"]:checked) {
+        border-color: var(--color-accent) !important;
+        background: var(--color-accent-active) !important;
     }
 
     /* --- ТАБЛИЦА ОЦЕНКИ ЗАНЯТИЯ (ДЛЯ МОБИЛЬНЫХ) --- */
@@ -6475,6 +6616,9 @@
         color: var(--color-text-secondary) !important;
         text-decoration: underline !important;
         white-space: nowrap !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        cursor: pointer !important;
     }
 
     html[theme] .timetable-grid tr:not(.tr-needs-space):hover td.pair_teacher .eval {
@@ -6608,84 +6752,174 @@
     }
 
     /* ========================================================= */
-    /* --- УЧЕБНО-МЕТОДИЧЕСКИЙ КОМПЛЕКС (stu.tpr) --- */
+    /* --- УЧЕБНО-МЕТОДИЧЕСКИЙ КОМПЛЕКС (stu.tpr / stu.theme) --- */
     /* ========================================================= */
 
-    .themes {
-        display: flex !important;
-        flex-direction: column !important;
-        gap: 1rem !important;
-        margin-bottom: 3rem !important;
+    .tpr-card {
+        background: var(--color-card) !important;
+        border-radius: var(--radius-large) !important;
+        padding: 2.4rem !important;
+        box-shadow: var(--shadow-main) !important;
+        margin-bottom: 2rem !important;
+        border: 1px solid var(--color-table-border) !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+        width: 100% !important;
     }
 
-    .theme {
+    .tpr-card-header {
         display: flex !important;
         align-items: center !important;
-        flex-wrap: wrap !important;
-        gap: 0.8rem !important;
-        line-height: 1.5 !important;
+        justify-content: space-between !important;
+        margin-bottom: 1.8rem !important;
+        border-bottom: 1px solid var(--color-table-border) !important;
+        padding-bottom: 1.4rem !important;
+        gap: 1.2rem !important;
     }
 
-    .theme[style*="padding-left: 0px"] {
-        margin-top: 1rem !important;
-        margin-bottom: 0.5rem !important;
-    }
-    .theme[style*="padding-left: 0px"] a {
+    .tpr-card-title {
         font-size: 1.5rem !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
         color: var(--color-text-primary) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        margin: 0 !important;
+        line-height: 1.3 !important;
     }
 
-    .theme[style*="padding-left: 25px"] {
-        padding-left: 2rem !important;
-    }
-
-    .theme a {
-        font-size: 1.4rem !important;
+    .tpr-card-title .material-icons {
         color: var(--color-accent) !important;
+        font-size: 2.2rem !important;
+        flex-shrink: 0 !important;
+    }
+
+    .themes-list {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .theme-item {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 1.2rem 0 !important;
+        border-bottom: 1px solid var(--color-table-border) !important;
+        gap: 1.2rem !important;
+        background: transparent !important;
+    }
+
+    .theme-item:last-child {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
+    }
+
+    .theme-item:first-child {
+        padding-top: 0 !important;
+    }
+
+    .theme-item.module-header {
+        background: var(--color-highlight) !important;
+        padding: 1.2rem 1.6rem !important;
+        border-radius: var(--radius-small) !important;
+        margin: 1.6rem 0 0.8rem 0 !important;
+        border: 1px solid var(--color-table-border) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        gap: 1.2rem !important;
+    }
+
+    .theme-item.module-header:first-child {
+        margin-top: 0 !important;
+    }
+
+    .theme-title-link {
+        font-size: 1.4rem !important;
+        font-weight: 600 !important;
+        color: var(--color-text-primary) !important;
         text-decoration: none !important;
-        transition: opacity 0.2s !important;
-    }
-    .theme a:hover {
-        opacity: 0.8 !important;
+        line-height: 1.4 !important;
+        transition: color 0.2s ease !important;
+        flex: 1 1 auto !important;
     }
 
-    .theme .hour {
-        font-size: 1.2rem !important;
+    .theme-title-link:hover {
+        color: var(--color-accent) !important;
+        text-decoration: underline !important;
+    }
+
+    .theme-meta-pills {
+        display: flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .theme-hour-pill {
+        background: var(--color-highlight) !important;
         color: var(--color-text-secondary) !important;
+        border: 1px solid var(--color-table-border) !important;
+        padding: 0.4rem 0.9rem !important;
+        border-radius: 50px !important;
+        font-size: 1.15rem !important;
+        font-weight: 700 !important;
+        white-space: nowrap !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        line-height: 1 !important;
     }
-
-    /* --- АКЦЕНТНЫЙ БЕЙДЖ --- */
 
     .badge.ctl {
-        background: var(--color-accent-active) !important;
-        color: var(--color-accent) !important;
-        border: 1px solid var(--color-accent) !important;
-        padding: 0.2rem 0.8rem !important;
+        background: rgba(0, 122, 255, 0.12) !important;
+        color: var(--color-blue) !important;
+        border: 1px solid rgba(0, 122, 255, 0.3) !important;
+        padding: 0.4rem 0.9rem !important;
         border-radius: 50px !important;
         font-size: 1.1rem !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
         text-transform: uppercase !important;
         letter-spacing: 0.5px !important;
         display: inline-flex !important;
         align-items: center !important;
-        opacity: 0.9 !important;
+        line-height: 1 !important;
+        white-space: nowrap !important;
     }
 
-    .tpr_part > a {
-        display: inline-flex !important;
-        font-size: 1.4rem !important;
-        color: var(--color-accent) !important;
-        margin-bottom: 2rem !important;
-        text-decoration: none !important;
+    .tpr-card table,
+    .tpr-card .wide-table-wrapper {
+        margin-bottom: 0 !important;
     }
-    .tpr_part > a:hover { text-decoration: underline !important; }
 
-    .tpr_part > div:not([style]) {
-        font-size: 1.3rem !important;
-        line-height: 1.6 !important;
-        color: var(--color-text-primary) !important;
-        margin-bottom: 0.6rem !important;
+    .tpr-card .wide-table-wrapper {
+        margin-top: 1.4rem !important;
+        box-shadow: none !important;
+        border: 1px solid var(--color-table-border) !important;
+        border-radius: var(--radius-medium) !important;
+    }
+
+    .tpr-card .wide-table-wrapper table {
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+
+    @media (max-width: 600px) {
+        .tpr-card {
+            padding: 1.8rem 1.6rem !important;
+        }
+        .theme-item {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+        }
+        .theme-meta-pills {
+            align-self: flex-start !important;
+        }
     }
 
     /* --- ОБЕРТКА ТАБЛИЦЫ --- */
@@ -7262,6 +7496,67 @@
         box-shadow: none !important;
     }
 
+    html[theme] .timetable-grid td.pair_teacher .eval,
+    td.pair_teacher .eval {
+        display: none !important;
+    }
+
+    .pair-eval-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        color: var(--color-text-secondary) !important;
+        text-decoration: none !important;
+        font-size: 1.25rem !important;
+        font-weight: 500 !important;
+        line-height: 1 !important;
+        cursor: pointer !important;
+        margin-left: 6px !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: scale(0.85) !important;
+        pointer-events: none !important;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    }
+
+    .pair-eval-btn::before,
+    .pair_info .aud > a.pair-eval-btn::before {
+        display: none !important;
+        content: none !important;
+    }
+
+    .pair-eval-btn .material-icons {
+        font-size: 1.6rem !important;
+        color: var(--color-text-secondary) !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        transition: color 0.2s ease !important;
+    }
+
+    .timetable-grid tr:hover .pair-eval-btn {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: scale(1) !important;
+        pointer-events: auto !important;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .pair-eval-btn:hover {
+            color: var(--color-accent) !important;
+            text-decoration: none !important;
+        }
+        .pair-eval-btn:hover .material-icons {
+            color: var(--color-accent) !important;
+        }
+    }
+
+    /* На смартфонах скрыта в строке */
+    @media (hover: none), (pointer: coarse) {
+        .pair-eval-btn {
+            display: none !important;
+        }
+    }
+
     .timetable-toolbar > *,
     .timetable-toolbar .toolbar-item,
     .timetable-toolbar label.toolbar-item,
@@ -7286,7 +7581,7 @@
 
     .msg-date-wrapper {
         display: flex !important;
-        align-items: flex-end !important;
+        align-items: center !important;
         justify-content: flex-end;
     }
 
@@ -7360,7 +7655,8 @@
         .push-container { top: 1.5rem; left: 1rem; right: 1rem; }
         .submenu > *:not(:last-child):not(.answer-btn-custom)::after,
         .weeks .week:not(:last-child)::after {
-            right: -3.5px !important;
+            right: 0 !important;
+            transform: translateX(50%) !important;
         }
     }
 
@@ -7443,8 +7739,8 @@
     /* --- ПОЛЬЗОВАТЕЛЬСКИЕ ПАРЫ --- */
 
     .add-custom-pair-btn {
-        cursor: pointer;
-        color: var(--color-text-secondary);
+        cursor: pointer !important;
+        color: var(--color-text-secondary) !important;
 
         opacity: 0;
         visibility: hidden;
@@ -7452,24 +7748,36 @@
         transform: scale(0.8) translateZ(0);
         will-change: opacity, visibility, transform;
 
-        transition: all 0.2s ease;
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 28px;
-        height: 28px;
+        transition: all 0.2s ease !important;
+        border-radius: 50% !important;
+        
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        
+        width: 28px !important;
+        height: 28px !important;
+        min-width: 28px !important;
+        min-height: 28px !important;
+        
+        font-size: 18px !important;
+        line-height: 1 !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
+        text-align: center !important;
+        vertical-align: middle !important;
     }
 
     .span9 .day h3:hover .add-custom-pair-btn {
-        opacity: 1;
-        visibility: visible;
+        opacity: 1 !important;
+        visibility: visible !important;
         transform: scale(1) translateZ(0);
     }
 
     .add-custom-pair-btn:hover {
-        color: var(--color-accent);
-        background: var(--color-highlight);
+        color: var(--color-accent) !important;
+        background: var(--color-highlight) !important;
     }
 
     .custom-pair-row .pair_info .dis a {
@@ -7636,9 +7944,6 @@
     .weeks {
         background-image: none !important;
     }
-    [theme="dark"] .weeks {
-        background: var(--color-card) !important;
-    }
 
     .weeks .week {
         background-color: transparent !important;
@@ -7664,9 +7969,10 @@
         position: relative !important;
     }
     .weeks .week:not(:last-child)::after {
-        content: '';
+        content: '' !important;
         position: absolute !important;
-        right: -4.5px !important;
+        right: 0 !important;
+        transform: translateX(50%) !important;
         top: 25% !important;
         bottom: 25% !important;
         width: 1px !important;
@@ -7859,17 +8165,17 @@
 
     #swipe-action-bubble {
         position: fixed;
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         color: var(--color-text-secondary);
         display: flex;
         align-items: center;
         justify-content: center;
-        z-index: 10000;
+        z-index: 1000 !important;
         pointer-events: none;
         opacity: 0;
         transform: scale(0.8);
-        transition: color 0.2s, opacity 0.1s, transform 0.2s;
+        transition: color 0.2s, opacity 0.15s, transform 0.2s;
     }
 
     #swipe-action-bubble .material-icons {
@@ -8100,30 +8406,55 @@
     /* --- ВКЛАДКИ СИНХРОНИЗАЦИИ --- */
 
     .sync-tabs {
-        display: flex;
-        background: var(--color-input) !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        scrollbar-width: none !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        background: var(--color-card) !important;
+        box-shadow: var(--shadow-main) !important;
+        border: 1px solid var(--color-table-border) !important;
         border-radius: 50px !important;
         padding: 4px !important;
         margin-bottom: 2rem !important;
         gap: 4px !important;
-        border: none !important;
     }
+
+    .sync-tabs::-webkit-scrollbar {
+        display: none !important;
+    }
+
     button.sync-tab {
-        flex: 1;
-        padding: 1rem 1.6rem !important;
+        flex: 1 0 auto !important;
+        min-width: max-content !important;
+        white-space: nowrap !important;
+        padding: 0.8rem 1.4rem !important;
         background: transparent !important;
         border: none !important;
         border-radius: 50px !important;
         box-shadow: none !important;
         color: var(--color-text-secondary) !important;
-        cursor: pointer;
+        cursor: pointer !important;
         font-weight: 600 !important;
         font-size: 1.3rem !important;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
+        transition: all 0.2s !important;
+        display: inline-flex !important;
+        align-items: center !important;
         justify-content: center !important;
+        -webkit-tap-highlight-color: transparent !important;
     }
+
+    @media (max-width: 600px) {
+        button.sync-tab {
+            padding: 0.7rem 1.1rem !important;
+            font-size: 1.25rem !important;
+        }
+    }
+
     button.sync-tab.active {
         background: var(--color-card) !important;
         color: var(--color-text-primary) !important;
@@ -8300,12 +8631,6 @@
     .timetable-grid tr.pair-passed td {
         opacity: 0.45;
         transition: opacity 0.3s ease;
-    }
-
-    .timetable-grid tr.pair-passed .timetable-gap-capsule {
-        background: var(--color-highlight) !important;
-        color: var(--color-text-secondary) !important;
-        border-color: var(--color-highlight) !important;
     }
 
     @media (hover: hover) and (pointer: fine) {
@@ -8813,7 +9138,11 @@
         color: var(--color-accent) !important;
     }
 
-    #etis-settings-modal .settings-sidebar-btn {
+    /* ========================================================= */
+    /* --- ЕДИНЫЙ САЙДБАР ВО ВСЕХ МОДАЛЬНЫХ ОКНАХ НА ПК --- */
+    /* ========================================================= */
+
+    .settings-sidebar-btn {
         display: flex !important;
         flex-direction: row !important;
         align-items: center !important;
@@ -8829,62 +9158,51 @@
         font-size: 1.4rem !important;
         font-weight: 600 !important;
         cursor: pointer !important;
-        transition: all 0.2s ease !important;
+        transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
         font-family: inherit !important;
         box-shadow: none !important;
         box-sizing: border-box !important;
-        height: 48px !important;
+        height: auto !important;
+        min-height: 48px !important;
     }
 
-    #etis-settings-modal .settings-sidebar-btn:hover {
-        background: var(--color-table-highlight) !important;
+    /* Единый ховер для неактивных вкладок во всех окнах */
+    @media (hover: hover) and (pointer: fine) {
+        .settings-sidebar-btn:not(.active):hover {
+            background: var(--color-highlight) !important;
+        }
     }
 
-    #etis-settings-modal .settings-sidebar-btn span {
-        display: block !important;
+    .settings-sidebar-btn span {
+        display: inline-block !important;
         border: none !important;
         padding: 0 !important;
     }
 
-    #etis-settings-modal .settings-sidebar-btn .sidebar-btn-text {
+    .settings-sidebar-btn .sidebar-btn-text {
         flex-grow: 1 !important;
         text-align: left !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+        line-height: 1.3 !important;
         color: inherit !important;
     }
 
-    #etis-settings-modal .settings-sidebar-btn .material-icons {
+    .settings-sidebar-btn .material-icons {
         flex-shrink: 0 !important;
         margin-right: 12px !important;
         font-size: 2.2rem !important;
         color: var(--color-text-secondary) !important;
     }
 
-    #etis-settings-modal .settings-sidebar-btn .chevron {
-        flex-shrink: 0 !important;
-        margin-right: -4px !important;
-        margin-left: auto !important;
-        font-size: 20px !important;
-        width: auto !important;
-    }
-
-    #etis-settings-modal .settings-sidebar-btn.active {
-        background: var(--bg-accent) !important;
+    .settings-sidebar-btn.active .material-icons {
         color: var(--color-text-primary-invert) !important;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important;
+        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
     }
 
-    #etis-settings-modal .settings-sidebar-btn.active .material-icons {
-        color: var(--color-text-primary-invert) !important;
-    }
-
-    #etis-settings-modal .settings-sidebar-btn.active .chevron {
+    .settings-sidebar-btn.active .chevron {
         display: none !important;
     }
-
-
 
     .appearance-section {
         display: flex;
@@ -8959,6 +9277,20 @@
         flex: 1 1 auto !important;
         min-height: 0 !important;
         overscroll-behavior: contain !important;
+    }
+
+    .settings-content-scroll,
+    .analytics-modal .ui-dialog-content {
+        padding-left: 1.6rem !important;
+        padding-right: 1.6rem !important;
+        box-sizing: border-box !important;
+    }
+
+    .settings-content-scroll .ios-settings-group,
+    .analytics-modal .ios-settings-group {
+        margin-left: 2px !important;
+        margin-right: 2px !important;
+        width: calc(100% - 4px) !important;
     }
 
     /* ==========================================
@@ -9076,7 +9408,7 @@
     }
     .anim-fade-up.is-visible {
         opacity: 1 !important;
-        transform: none !important;
+        transform: none;
         animation: none !important;
     }
 
@@ -9393,10 +9725,15 @@
     .span3 .sidebar-card-row .material-icons {
         color: var(--color-text-primary) !important;
         font-size: 22px !important;
-        margin-right: 12px !important;
+        margin: 0 !important;
         width: 24px !important;
         text-align: center !important;
         flex-shrink: 0 !important;
+    }
+
+    .span3 li > a,
+    .span3 .sidebar-card-row {
+        gap: 12px !important;
     }
 
     .span3 li > a .badge-point {
@@ -9479,7 +9816,7 @@
             padding: 1rem 1.4rem !important;
             margin: 2px 12px !important;
             border-radius: var(--radius-small) !important;
-            gap: 12px !important;
+            gap: 23px !important;
             text-align: left !important;
         }
 
@@ -9781,7 +10118,8 @@
         }
 
         .span3 .sidebar-nav-group > li > a,
-        .span3 .sidebar-card-row {
+        .span3 .sidebar-card-row,
+        .sidebar-collapsible-sections .sidebar-folder-header {
             margin: 0 !important;
             border-radius: 0 !important;
             padding: 1.3rem 1.6rem !important;
@@ -9791,6 +10129,7 @@
             align-items: center !important;
             text-align: left !important;
             text-decoration: none !important;
+            gap: 12px !important;
             width: 100% !important;
             box-sizing: border-box !important;
         }
@@ -9985,7 +10324,7 @@
         opacity: 1 !important;
     }
 
-    /* --- КРАСНАЯ КНОПКА ВЫХОДА ИЗ ДЕМО-РЕЖИМА --- */
+    /* --- КРАСНАЯ КНОПКА ВЫХОДА ИЗ ОФФЛАЙН-РЕЖИМА --- */
     .span3 li > a.demo-logout-link,
     .span3 li > a.demo-logout-link *,
     .span3 li > a.demo-logout-link .sidebar-link-text,
@@ -10002,6 +10341,39 @@
     @media (hover: hover) and (pointer: fine) {
         .span3 > .nav.nav-tabs.nav-stacked > li > a.demo-logout-link:hover {
             background: rgba(255, 59, 48, 0.12) !important;
+        }
+    }
+
+   /* --- ВЫДЕЛЕНИЕ ПАПКИ АККАУНТ В ОФФЛАЙН-РЕЖИМЕ --- */
+    .sidebar-folder.offline-account-folder:not(.is-open) .sidebar-folder-header,
+    .sidebar-collapsible-sections .sidebar-folder.offline-account-folder .sidebar-folder-header {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .sidebar-folder.offline-account-folder .sidebar-folder-header .folder-icon,
+    .sidebar-folder.offline-account-folder .sidebar-folder-header .folder-title,
+    .sidebar-folder.offline-account-folder .sidebar-folder-header .chevron {
+        color: var(--color-red) !important;
+        -webkit-text-fill-color: var(--color-red) !important;
+        font-weight: 700 !important;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .sidebar-folder.offline-account-folder:not(.is-open) .sidebar-folder-header:hover {
+            background: var(--color-highlight) !important;
+        }
+    }
+
+    /* Когда папка раскрыта на ПК */
+    @media (min-width: 961px) {
+        .sidebar-folder.offline-account-folder.is-open {
+            border-color: var(--color-table-border) !important;
+        }
+        .sidebar-folder.offline-account-folder.is-open .sidebar-folder-header {
+            background: var(--color-table-header) !important;
+            border-bottom-color: var(--color-table-border) !important;
         }
     }
 
@@ -10584,6 +10956,726 @@
         color: var(--color-text-primary) !important;
     }
 
+    /* --- СТИЛИ ДЛЯ МАРШРУТИЗАТОРА И ТАЙМЛАЙНА --- */
+
+    .route-input-wrap input[type="text"],
+    #route-from-input,
+    #route-to-input,
+    #router-modal-from,
+    #router-modal-to {
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        border-radius: var(--radius-medium) !important;
+        box-shadow: var(--shadow-main) !important;
+        color: var(--color-text-primary) !important;
+        font-size: 1.4rem !important;
+        padding: 1.2rem 1.6rem 1.2rem 42px !important;
+        outline: none !important;
+        margin: 0 !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .route-input-wrap input[type="text"]:focus,
+    #route-from-input:focus,
+    #route-to-input:focus,
+    #router-modal-from:focus,
+    #router-modal-to:focus {
+        box-shadow: var(--shadow-main) !important;
+        border-color: var(--color-table-border) !important;
+        outline: none !important;
+    }
+
+    .route-swap-btn {
+        width: 40px !important;
+        height: 40px !important;
+        min-width: 40px !important;
+        min-height: 40px !important;
+        border-radius: 50% !important;
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        color: var(--color-text-secondary) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        box-shadow: var(--shadow-main) !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        flex-shrink: 0 !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .route-swap-btn:hover {
+        background: var(--color-highlight) !important;
+        color: var(--color-accent) !important;
+        transform: scale(1.08) !important;
+    }
+
+    .route-summary-card {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        border-radius: var(--radius-large) !important;
+        box-shadow: var(--shadow-main) !important;
+        padding: 1.4rem 1.8rem !important;
+        margin-bottom: 1.6rem !important;
+        box-sizing: border-box !important;
+    }
+
+    .route-quick-chip {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 0.7rem 1.4rem !important;
+        border-radius: 50px !important;
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        color: var(--color-text-primary) !important;
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        box-shadow: var(--shadow-main) !important;
+        transition: all 0.2s ease !important;
+    }
+
+    .route-quick-chip:hover {
+        background: var(--color-highlight) !important;
+        border-color: var(--color-accent) !important;
+        color: var(--color-accent) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    /* Переключатель режимов маршрута (По переходам / Через улицу) */
+    .route-mode-switch {
+        display: none !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: var(--color-input) !important;
+        border-radius: 50px !important;
+        padding: 4px !important;
+        gap: 8px !important;
+        margin-bottom: 1.4rem !important;
+        border: 1px solid var(--color-table-border) !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+        min-height: 42px !important;
+    }
+
+    .route-mode-tabs {
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .route-mode-buttons-group {
+        display: flex !important;
+        align-items: center !important;
+        gap: 4px !important;
+        flex-shrink: 0 !important;
+    }
+
+    .route-mode-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        padding: 0.6rem 1.2rem !important;
+        border-radius: 50px !important;
+        background: transparent !important;
+        border: none !important;
+        color: var(--color-text-secondary) !important;
+        font-size: 1.25rem !important;
+        font-weight: 600 !important;
+        cursor: pointer !important;
+        box-shadow: none !important;
+        transition: all 0.2s ease !important;
+        white-space: nowrap !important;
+    }
+
+    .route-mode-btn.active {
+        background: var(--color-card) !important;
+        color: var(--color-text-primary) !important;
+        box-shadow: var(--shadow-main) !important;
+    }
+
+    .route-mode-meta {
+        margin-left: auto !important;
+        padding: 0 1.2rem 0 0 !important;
+        font-size: 1.25rem !important;
+        font-weight: 700 !important;
+        color: var(--color-text-primary) !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        white-space: nowrap !important;
+    }
+
+    .route-mode-meta .meta-time {
+        color: var(--color-accent) !important;
+        font-weight: 800 !important;
+    }
+
+    .route-mode-meta .meta-steps {
+        color: var(--color-text-secondary) !important;
+        font-weight: 600 !important;
+    }
+
+    @media (max-width: 600px) {
+        .route-mode-switch {
+            padding: 4px 8px !important;
+            border-radius: 20px !important;
+        }
+        .route-mode-btn {
+            padding: 0.5rem 0.8rem !important;
+            font-size: 1.15rem !important;
+        }
+        .route-mode-meta {
+            padding: 0 0.4rem 0 0 !important;
+            font-size: 1.15rem !important;
+        }
+    }
+
+    .build-route-action-btn:disabled {
+        background: var(--color-highlight) !important;
+        color: var(--color-text-secondary) !important;
+        opacity: 0.45 !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+        pointer-events: none !important;
+    }
+
+    .route-mode-btn:disabled {
+        opacity: 0.4 !important;
+        cursor: not-allowed !important;
+    }
+
+    /* --- СТИЛИ ДЛЯ РАСКРЫВАЮЩИХСЯ ПАПОК / САЙДБАРА --- */
+
+    .sidebar-folder-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 12px !important;
+        background: transparent !important;
+        border: none !important;
+        cursor: pointer !important;
+        font-family: inherit !important;
+        font-size: 1.35rem !important;
+        font-weight: 500 !important;
+        color: var(--color-text-primary) !important;
+        text-align: left !important;
+        box-sizing: border-box !important;
+        outline: none !important;
+        transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
+        -webkit-tap-highlight-color: transparent !important;
+        box-shadow: none !important;
+    }
+
+    .sidebar-folder-header .folder-icon {
+        margin: 0 !important;
+        width: 24px !important;
+        text-align: center !important;
+        flex-shrink: 0 !important;
+        font-size: 22px !important;
+        color: var(--color-text-primary) !important;
+    }
+
+    .sidebar-folder-header .folder-title {
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+
+    /* Стрелка по умолчанию скрыта на ПК */
+    .sidebar-folder-header .chevron,
+    .span3 li > a .chevron {
+        margin-left: auto !important;
+        margin-right: -4px !important;
+        font-size: 20px !important;
+        color: var(--color-text-secondary) !important;
+        opacity: 0 !important;
+        transform: translateX(-4px) !important;
+        flex-shrink: 0 !important;
+        transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease !important;
+    }
+
+    /* Показываем стрелку при наведении на ПК */
+    @media (hover: hover) and (pointer: fine) {
+        .sidebar-folder-header:hover .chevron,
+        .span3 li > a:hover .chevron {
+            opacity: 0.7 !important;
+            transform: translateX(0) !important;
+        }
+    }
+
+    /* Поворот стрелки вниз РАЗРЕШЁН ТОЛЬКО НА ПК при раскрытии */
+    @media (min-width: 961px) {
+        .sidebar-folder.is-open .sidebar-folder-header .chevron {
+            opacity: 0.7 !important;
+            transform: rotate(90deg) !important;
+            color: var(--color-text-secondary) !important;
+        }
+    }
+
+    /* В раскрытой папке стрелка всегда видна, повернута и ОБЫЧНОГО цвета */
+    .sidebar-folder.is-open .sidebar-folder-header .chevron {
+        opacity: 0.7 !important;
+        transform: rotate(90deg) !important;
+        color: var(--color-text-secondary) !important;
+    }
+
+    .sidebar-folder-header .badge-point {
+        display: none !important;
+        width: 8px !important;
+        height: 8px !important;
+        min-width: 8px !important;
+        min-height: 8px !important;
+        background-color: #FF3B30 !important;
+        border-radius: 50% !important;
+        margin-left: auto !important;
+        margin-right: 8px !important;
+        flex-shrink: 0 !important;
+        box-shadow: 0 0 4px rgba(255, 59, 48, 0.4) !important;
+    }
+
+    .sidebar-folder-header.has-unread-badge .badge-point {
+        display: block !important;
+    }
+
+    /* ДЕСКТОП (ПК) */
+    @media (min-width: 961px) {
+        .sidebar-mobile-subview {
+            display: none !important;
+        }
+
+        .sidebar-collapsible-sections {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 2px !important;
+            width: 100% !important;
+        }
+
+        .sidebar-folder,
+        .sidebar-folder:not(.is-open) {
+            width: 100% !important;
+            margin: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+            transition: all 0.25s ease !important;
+        }
+
+        .sidebar-folder:not(.is-open) .sidebar-folder-header {
+            width: calc(100% - 24px) !important;
+            margin: 2px 12px !important;
+            padding: 10px 14px !important;
+            gap: 23px !important;
+            border-radius: var(--radius-small) !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        @media (hover: hover) and (pointer: fine) {
+            .sidebar-folder:not(.is-open) .sidebar-folder-header:not(.active-header):hover {
+                background: var(--color-highlight) !important;
+            }
+        }
+
+        .sidebar-folder-content {
+            display: flex !important;
+            flex-direction: column !important;
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden !important;
+            transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            list-style: none !important;
+        }
+
+        .sidebar-folder.is-open {
+            background: var(--color-card) !important;
+            border: 1px solid var(--color-table-border) !important;
+            border-radius: var(--radius-large) !important;
+            margin: 6px 12px 8px 12px !important;
+            overflow: hidden !important;
+            box-shadow: var(--shadow-main) !important;
+            width: calc(100% - 24px) !important;
+            padding: 0 0 6px 0 !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-header {
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 11px 16px !important;
+            gap: 23px !important;
+            background: var(--color-table-header) !important;
+            border-bottom: 1px solid var(--color-table-border) !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            position: relative !important;
+            font-weight: 700 !important;
+            transition: background-color 0.15s ease !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-header:hover {
+            background: var(--color-highlight) !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-header::after {
+            display: none !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-content {
+            max-height: 450px;
+            opacity: 1;
+            padding: 6px 0 0 0 !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-content li {
+            list-style: none !important;
+            margin: 0 !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-content li > a {
+            margin: 2px 6px !important;
+            padding: 10px 10px !important;
+            gap: 23px !important;
+            border-radius: var(--radius-small) !important;
+            width: calc(100% - 12px) !important;
+            box-sizing: border-box !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-content li:not(.active) > a:hover {
+            background: var(--color-highlight) !important;
+        }
+
+        /* Активная закрытая папка */
+        .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header {
+            width: calc(100% - 24px) !important;
+            margin: 2px 12px !important;
+            padding: 10px 14px !important;
+            gap: 23px !important;
+            border-radius: var(--radius-small) !important;
+            border: none !important;
+        }
+
+        .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .folder-icon,
+        .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .material-icons {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+        }
+
+        .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header:hover {
+            filter: brightness(0.92) !important;
+            transform: none !important;
+        }
+
+        .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .folder-title,
+        .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .folder-icon,
+        .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .chevron {
+            color: var(--color-text-primary-invert) !important;
+            -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+        }
+    }
+
+    /* МОБИЛЬНЫЕ УСТРОЙСТВА */
+    @media (max-width: 960px) {
+        .sidebar-folder-content {
+            display: none !important;
+        }
+
+        .sidebar-folder-header .chevron,
+        .span3 li > a .chevron {
+            opacity: 0.5 !important;
+            transform: none !important;
+        }
+
+        .sidebar-collapsible-sections {
+            background: var(--color-card) !important;
+            border: 1px solid var(--color-table-border) !important;
+            border-radius: var(--radius-large) !important;
+            margin-bottom: 1.6rem !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-shadow: var(--shadow-main) !important;
+            padding: 0 !important;
+        }
+
+        .sidebar-collapsible-sections .sidebar-folder {
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+            width: 100% !important;
+        }
+
+        .sidebar-collapsible-sections .sidebar-folder-header {
+            margin: 0 !important;
+            border-radius: 0 !important;
+            padding: 1.3rem 1.6rem !important;
+            position: relative !important;
+            background: transparent !important;
+            display: flex !important;
+            align-items: center !important;
+            text-align: left !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .sidebar-collapsible-sections .sidebar-folder:not(:last-child) .sidebar-folder-header::after {
+            content: '' !important;
+            position: absolute !important;
+            bottom: 0 !important;
+            left: 52px !important;
+            right: 16px !important;
+            height: 1px !important;
+            background: var(--color-table-border) !important;
+            display: block !important;
+        }
+
+        .sidebar-subview-header {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 12px !important;
+            padding: 0.6rem 0.8rem 1.6rem 0.8rem !important;
+            margin-bottom: 1.6rem !important;
+            border-bottom: none !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+        }
+
+        .sidebar-subview-back-btn {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            color: var(--color-text-secondary) !important;
+            font-size: 2.4rem !important;
+            cursor: pointer !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            line-height: 1 !important;
+        }
+
+        .sidebar-subview-back-btn .material-icons {
+            font-size: 22px !important;
+            color: var(--color-accent) !important;
+        }
+
+        .sidebar-subview-title {
+            font-size: 1.7rem !important;
+            font-weight: 800 !important;
+            color: var(--color-text-primary) !important;
+        }
+
+        .sidebar-subview-content .sidebar-nav-group {
+            background: var(--color-card) !important;
+            border: 1px solid var(--color-table-border) !important;
+            border-radius: var(--radius-large) !important;
+            overflow: hidden !important;
+            display: flex !important;
+            flex-direction: column !important;
+            box-shadow: var(--shadow-main) !important;
+            margin-bottom: 1.6rem !important;
+            padding: 0 !important;
+        }
+
+        /* --- АКТИВНАЯ ВКЛАДКА НА МОБИЛЬНЫХ --- */
+        .sidebar-collapsible-sections .sidebar-folder {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header,
+        .sidebar-collapsible-sections .sidebar-folder-header.active-header {
+            margin: 5px 6px !important;
+            padding: 1.1rem 1.4rem !important;
+            border-radius: 18px !important;
+            width: calc(100% - 12px) !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            gap: 12px !important;
+            box-sizing: border-box !important;
+        }
+
+        .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header .folder-icon,
+        .sidebar-collapsible-sections .sidebar-folder-header.active-header .folder-icon,
+        .sidebar-collapsible-sections .sidebar-folder-header.active-header .material-icons:not(.chevron) {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+            color: var(--color-text-primary-invert) !important;
+            -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+            margin: 0 !important;
+            width: 24px !important;
+            text-align: center !important;
+            flex-shrink: 0 !important;
+        }
+
+        .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header .folder-title,
+        .sidebar-collapsible-sections .sidebar-folder-header.active-header .folder-title {
+            color: var(--color-text-primary-invert) !important;
+            -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+            font-weight: 700 !important;
+            flex: 1 1 auto !important;
+            min-width: 0 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            text-align: left !important;
+        }
+
+        .span3 .sidebar-collapsible-sections .sidebar-folder-header .chevron,
+        .sidebar-collapsible-sections .sidebar-folder-header .chevron {
+            display: block !important;
+            margin-left: auto !important;
+            margin-right: -4px !important;
+            font-size: 20px !important;
+            color: var(--color-text-secondary) !important;
+            opacity: 0.5 !important;
+            transform: none !important;
+            flex-shrink: 0 !important;
+        }
+
+        .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header .chevron,
+        .sidebar-collapsible-sections .sidebar-folder-header.active-header .chevron {
+            color: var(--color-text-primary-invert) !important;
+            -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+            opacity: 0.8 !important;
+            transform: none !important;
+        }
+
+        .sidebar-collapsible-sections .sidebar-folder:has(.sidebar-folder-header.active-header) .sidebar-folder-header::after,
+        .sidebar-collapsible-sections .sidebar-folder:has(+ .sidebar-folder .sidebar-folder-header.active-header) .sidebar-folder-header::after {
+            display: none !important;
+        }
+    }
+
+    /* --- ИНФО О СТУДЕНТЕ И ПАПКА АККАУНТА НА ПК --- */
+    @media (min-width: 961px) {
+
+        .sidebar-account-info-desktop.sidebar-user-info {
+            position: static !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            display: flex !important;
+            flex-direction: column !important;
+            list-style: none !important;
+        }
+
+        .sidebar-account-info-desktop.sidebar-user-info::before {
+            display: none !important;
+            content: none !important;
+        }
+
+        .sidebar-account-info-desktop .sidebar-card-row {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: flex-start !important;
+            padding: 7px 10px !important;
+            margin: 2px 6px !important;
+            gap: 23px !important;
+            width: calc(100% - 12px) !important;
+            border-radius: var(--radius-small) !important;
+            box-sizing: border-box !important;
+            color: var(--color-text-primary) !important;
+            cursor: default !important;
+            user-select: text !important;
+            background: transparent !important;
+        }
+
+        .sidebar-account-info-desktop .sidebar-card-row .material-icons,
+        .sidebar-user-info-mobile .sidebar-card-row .material-icons {
+            font-size: 22px !important;
+            color: var(--color-text-primary) !important;
+            width: 24px !important;
+            text-align: center !important;
+            flex-shrink: 0 !important;
+            margin: 0 !important;
+        }
+
+        .sidebar-account-info-desktop .sidebar-card-text {
+            font-size: 1.35rem !important;
+            line-height: 1.35 !important;
+            color: var(--color-text-primary) !important;
+            white-space: normal !important;
+            word-break: break-word !important;
+        }
+
+        .sidebar-account-info-desktop .sidebar-card-text b {
+            font-size: 1.35rem !important;
+            font-weight: 700 !important;
+            color: var(--color-text-primary) !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-content li.sidebar-folder-divider {
+            display: block !important;
+            height: 1px !important;
+            background-color: var(--color-table-border) !important;
+            margin: 8px 12px !important;
+            padding: 0 !important;
+            list-style: none !important;
+            pointer-events: none !important;
+            border: none !important;
+            width: auto !important;
+        }
+
+        .sidebar-folder.is-open .sidebar-folder-content li > a .material-icons {
+            margin: 0 !important;
+            width: 24px !important;
+            text-align: center !important;
+            flex-shrink: 0 !important;
+            font-size: 22px !important;
+            color: var(--color-text-primary) !important;
+        }
+    }
+
+    @media (max-width: 960px) {
+        .sidebar-account-info-desktop,
+        .sidebar-folder-divider {
+            display: none !important;
+        }
+
+        .sidebar-user-info-mobile {
+            margin-bottom: 1.6rem !important;
+        }
+    }
+
+    @media (min-width: 961px) {
+        .span3 {
+            display: flex !important;
+            flex-direction: column !important;
+        }
+
+        .sidebar-mobile-main-view {
+            display: flex !important;
+            flex-direction: column !important;
+            flex: 1 1 auto !important;
+            min-height: 100% !important;
+        }
+
+        .span3 .sidebar-footer {
+            margin-top: auto !important;
+            padding: 1.6rem 2.6rem !important;
+        }
+    }
+
         `;
 
         // Безопасное внедрение элементов
@@ -10770,6 +11862,7 @@
             dimPastPairs: true,
             shortAudFormat: true,
             hideDaysOff: false,
+            mergeDaysOff: true,
             showSunday: false,
             absoluteScores: false,
             compactGrades: false,
@@ -10795,14 +11888,21 @@
         };
 
         // Применение режима умного сайдбара
-        function applySmartSidebar() {
-            if (generalConfig.smartSidebar !== false) {
-                document.documentElement.classList.add('smart-sidebar-enabled');
-            } else {
-                document.documentElement.classList.remove('smart-sidebar-enabled');
-            }
+        if (generalConfig.smartSidebar === false) {
+            generalConfig.smartSidebar = true;
+            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
         }
-        applySmartSidebar(); // Применяем сразу при запуске скрипта
+
+        // Единое сохранение настроек с авто-обновлением метки синхронизации
+        const saveGeneralConfig = () => {
+            saveSyncData(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
+        };
+
+        // Умный сайдбар всегда активен
+        function applySmartSidebar() {
+            document.documentElement.classList.add('smart-sidebar-enabled');
+        }
+        applySmartSidebar();
 
         // Подстраховка для пользователей, у которых конфиг уже был сохранен без этого параметра
         if (typeof generalConfig.gradeNotifications === 'undefined') generalConfig.gradeNotifications = true;
@@ -11011,6 +12111,8 @@
 
                 ${isGlass ? `
                 [theme="light"] .span3 li.active > a,
+                [theme="light"] .sidebar-folder-header.active-header,
+                [theme="light"] .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header,
                 [theme="light"] .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
                 [theme="light"] .weeks .week.current, [theme="light"] .submenu b,
                 [theme="light"] .answer-btn-custom, [theme="light"] #sbmt, [theme="light"] .gpa-capsule, [theme="light"] .mobile-menu-btn,
@@ -11022,6 +12124,8 @@
                 }
 
                 [theme="dark"] .span3 li.active > a,
+                [theme="dark"] .sidebar-folder-header.active-header,
+                [theme="dark"] .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header,
                 [theme="dark"] .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
                 [theme="dark"] .weeks .week.current, [theme="dark"] .submenu b,
                 [theme="dark"] .answer-btn-custom, [theme="dark"] #sbmt, [theme="dark"] .gpa-capsule, [theme="dark"] .mobile-menu-btn,
@@ -11031,28 +12135,12 @@
                 [theme="dark"] .etis-preview-active-element {
                     background: ${darkRes.bgAccentGlass} !important;
                 }
-
-                [theme="light"] .span3 li.active > a:hover,
-                [theme="light"] .weeks .week.current:hover, [theme="light"] .submenu b:hover,
-                [theme="light"] .answer-btn-custom:hover, [theme="light"] #sbmt:hover, [theme="light"] .mobile-menu-btn:hover,
-                [theme="light"] .timetable-toolbar .toolbar-item.is-active:hover,
-                [theme="light"] form.que_form #send_btn:hover,
-                [theme="light"] .settings-sidebar-btn.active:hover, [theme="light"] button.sync-tab.active:hover {
-                    background: ${lightRes.bgAccentGlassHover} !important;
-                }
-
-                [theme="dark"] .span3 li.active > a:hover,
-                [theme="dark"] .weeks .week.current:hover, [theme="dark"] .submenu b:hover,
-                [theme="dark"] .answer-btn-custom:hover, [theme="dark"] #sbmt:hover, [theme="dark"] .mobile-menu-btn:hover,
-                [theme="dark"] .timetable-toolbar .toolbar-item.is-active:hover,
-                [theme="dark"] form.que_form #send_btn:hover,
-                [theme="dark"] .settings-sidebar-btn.active:hover, [theme="dark"] button.sync-tab.active:hover {
-                    background: ${darkRes.bgAccentGlassHover} !important;
-                }
                 ` : ''}
 
                 .span3 li.active > a,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
+                .sidebar-folder-header.active-header,
+                .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header,
                 .weeks .week.current, .submenu b,
                 .answer-btn-custom, #sbmt, .gpa-capsule, .mobile-menu-btn,
                 .timetable-toolbar .toolbar-item.is-active,
@@ -11065,6 +12153,9 @@
 
                 .span3 li.active > a,
                 .span3 li.active > a *,
+                .sidebar-folder-header.active-header,
+                .sidebar-folder-header.active-header *,
+                .sidebar-folder-header.active-header .folder-title,
                 .span3 li.active > a .sidebar-link-text,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a *,
@@ -11084,6 +12175,9 @@
                 }
 
                 .span3 li.active > a .material-icons,
+                .sidebar-folder-header.active-header .material-icons,
+                .sidebar-folder-header.active-header .folder-icon,
+                .sidebar-folder-header.active-header .chevron,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a .material-icons,
                 .mobile-dock-item.active .material-icons,
                 button.mobile-dock-item.active .material-icons,
@@ -11095,6 +12189,7 @@
                 }
 
                 .span3 li.active > a:hover,
+                .sidebar-folder-header.active-header:hover,
                 .span3 > .nav.nav-tabs.nav-stacked > li.active > a:hover,
                 .weeks .week.current:hover, .submenu b:hover,
                 .answer-btn-custom:hover, #sbmt:hover, .mobile-menu-btn:hover,
@@ -11487,7 +12582,7 @@
             if (title.includes('Новый раздел') || n.id === 'notif_guide_onboarding' || targetUrl === '#guide') return true;
 
             // 2. Обновление успеваемости и оценок (триместры/семестры/сессии)
-            if (title.includes('Новые баллы') || title.includes('Выставлена оценка') || title.includes('Сессия:') || title.includes('Обновление успеваемости') || targetUrl.includes('stu.signs')) return true;
+            if (title.includes('Новые баллы') || title.includes('Выставлена оценка') || title.includes('Сессия:') || title.includes('Обновление успеваемости') || (targetUrl && targetUrl.includes('stu.signs'))) return true;
 
             // 3. Завершение генерации ИИ-сводки
             if (title.includes('ИИ-Сводка готова') || (title.includes('ИИ') && type === 'success')) return true;
@@ -11495,11 +12590,8 @@
             // 4. Отключение синхронизации устройств
             if (title.includes('Синхронизация отключена') || icon === 'cloud_off') return true;
 
-            // 5. Новые объявления
-            if (title.includes('Новое объявление') || title.includes('Новые объявления') || icon === 'campaign' || icon === 'record_voice_over' || (targetUrl.includes('stu_ann.announces') && type !== 'event')) return true;
-
-            // 6. Обновления скрипта
-            if (title.includes('обновление') || title.includes('Обновление') || icon === 'system_update' || n.id?.startsWith('notif_update_') || targetUrl === '#settings') return true;
+            // 5. Обновления скрипта
+            if (title.includes('обновление') || title.includes('Обновление') || title.includes('Доступна бета-версия') || title.includes('Доступно обновление') || icon === 'system_update' || n.id?.startsWith('notif_update_') || targetUrl === '#settings') return true;
 
             return false;
         };
@@ -11535,7 +12627,11 @@
 
         function updateBellCounter() {
             let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
-            history = history.filter(isAllowedNotification);
+            const cleanHistory = history.filter(isAllowedNotification);
+            if (cleanHistory.length !== history.length) {
+                localStorage.setItem('etis_notifications_history_v1', JSON.stringify(cleanHistory));
+            }
+            history = cleanHistory;
 
             const unreadCount = history.filter(n => !n.read).length;
 
@@ -11992,6 +13088,7 @@
             if (href === '#settings') return 'settings';
             if (href === '#profile') return 'account_circle';
             if (href === '#guide') return 'auto_stories';
+            if (href === '#router' || href === '#route') return 'alt_route';
             if (href.includes('tpr') || href.includes('theme')) return 'menu_book';
             if (href.includes('fcl_choice')) return 'interests';
             if (href.includes('ebl_choice')) return 'how_to_vote';
@@ -12101,6 +13198,13 @@
 
             function toggleMenu(show) {
                 if (show) {
+                    // Возвращаем мобильную шторку в главное меню
+                    const mainView = sidebar.querySelector('.sidebar-mobile-main-view');
+                    const subView = sidebar.querySelector('.sidebar-mobile-subview');
+                    if (mainView && subView) {
+                        mainView.style.display = '';
+                        subView.style.display = 'none';
+                    }
                     sidebar.scrollTop = 0;
                     sidebar.classList.add('mobile-active');
                     overlay.classList.add('active');
@@ -12162,7 +13266,11 @@
                 // Очищаем ВСЕ старые точки и иконки статуса в этом дне
                 dayBlock.querySelectorAll('.live-dot, .day-status-icon').forEach(dot => dot.remove());
 
-                if (dayHeaderName.textContent.trim() === todayName) {
+                const mergedDaysAttr = dayBlock.getAttribute('data-merged-days');
+                const isToday = (dayHeaderName.textContent.trim() === todayName) ||
+                                (mergedDaysAttr && mergedDaysAttr.split(',').includes(todayName));
+
+                if (isToday) {
                     let hasRealPairs = false;
                     let lastPairEnd = 0;
                     let firstPairStart = 24 * 60; // Для отслеживания начала первой пары
@@ -12326,9 +13434,8 @@
                     if (betaToggle) {
                         betaToggle.onchange = (e) => {
                             generalConfig.betaUpdates = e.target.checked;
-                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
-                            initAutoUpdateCheck(true); // Мгновенный перезапуск проверки
+                            saveGeneralConfig();
+                            initAutoUpdateCheck(true);
                         };
                     }
 
@@ -12731,40 +13838,6 @@
                 overlay.id = 'etis-cons-overlay';
                 overlay.className = 'analytics-overlay';
                 document.body.appendChild(overlay);
-
-                const style = document.createElement('style');
-                style.innerHTML = `
-                    #etis-cons-modal .settings-sidebar-btn { display: flex !important; align-items: center !important; padding: 12px 16px !important; border-radius: var(--radius-medium) !important; cursor: pointer !important; margin-bottom: 8px !important; transition: all 0.2s ease !important; border: 1px solid transparent; box-sizing: border-box; }
-                    #etis-cons-modal .settings-sidebar-btn:hover { background: var(--color-table-highlight) !important; }
-                    #etis-cons-modal .settings-sidebar-btn.active { background: var(--bg-accent) !important; color: var(--color-text-primary-invert) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; }
-                    #etis-cons-modal .settings-sidebar-btn.active .material-icons, #etis-cons-modal .settings-sidebar-btn.active .sidebar-btn-text { color: var(--color-text-primary-invert) !important; }
-                    #etis-cons-modal .settings-sidebar-btn.active .chevron { display: none !important; }
-
-                    .cons-email-copy { color: var(--color-text-link); cursor: pointer; text-decoration: none; transition: color 0.2s; }
-                    .cons-email-copy:hover { color: var(--color-accent) !important; text-decoration: underline; }
-
-                    .copy-word-hint { color: var(--color-accent); font-weight: 800; cursor: pointer; text-decoration: underline; text-decoration-style: dashed; transition: all 0.2s; display: inline-block; }
-
-                    #etis-cons-modal { display: flex !important; flex-direction: column !important; }
-                    #etis-cons-modal .settings-layout { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
-                    #etis-cons-modal .settings-content-area { flex: 1 1 auto !important; display: flex !important; flex-direction: column !important; overflow: hidden !important; min-height: 0 !important; }
-
-                    @media (max-width: 960px) { #etis-cons-modal .hidden-on-mobile { display: none !important; } }
-
-                    #etis-cons-modal .settings-sidebar,
-                    #etis-cons-modal .settings-content-scroll {
-                        flex: 1 1 auto !important; overflow-y: auto !important; -webkit-overflow-scrolling: touch !important;
-                        min-height: 0 !important; overscroll-behavior: contain !important;
-                        padding-bottom: calc(env(safe-area-inset-bottom, 20px) + 20px) !important;
-                    }
-
-                    @media (min-width: 961px) {
-                        #etis-cons-modal { max-width: 850px !important; height: 60vh !important; min-height: 500px !important; }
-                        #etis-cons-modal .settings-layout { flex-direction: row !important; }
-                        #etis-cons-modal .settings-sidebar { width: 250px !important; min-width: 250px !important; max-width: 250px !important; border-right: 1px solid var(--color-table-border); padding-bottom: 2.4rem !important; }
-                    }
-                `;
-                document.head.appendChild(style);
             }
             if (!modal) {
                 modal = document.createElement('div');
@@ -12904,7 +13977,7 @@
                         ).join(' ');
 
                         const isTeacherActive = t.isActive === true;
-                        const cardOpacity = isTeacherActive ? '1' : '0.5';
+                        const cardOpacity = (!isFileActive || isTeacherActive) ? '1' : '0.5';
 
                         const uniqueAuds =[...new Set(t.events.map(e => e.aud).filter(Boolean))].join(', ');
                         const uniqueLinks =[...new Set(t.events.map(e => e.link).filter(Boolean))];
@@ -13119,15 +14192,12 @@
             if (isDemoUser()) return null;
             if (typeof GM_getValue === 'undefined') return null;
 
-            // 1. Проверяем, разрешил ли пользователь синхронизацию
             const isEnabled = GM_getValue('etis_sync_enabled', true);
             if (!isEnabled) return null;
 
-            // 2. Извлекаем ФИО и Направление прямо со страницы
             let rawName = '';
             const nameNode = document.querySelector('.navbar-static-top .span12 > span') || document.querySelector('.sidebar-user-info b');
             if (nameNode) {
-                // Кроссбраузерный способ извлечения ФИО (удаляем вложенные span из клона во избежание багов Firefox с childNodes)
                 const clone = nameNode.cloneNode(true);
                 clone.querySelectorAll('span').forEach(span => span.remove());
                 rawName = clone.textContent.replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim().toLowerCase();
@@ -13146,37 +14216,29 @@
 
                     studentDirection = text.replace(/^(направление|специальность|направленность|профиль)\s*(подготовки)?\s*["«]?/i, '')
                                            .replace(/["»]$/, '')
-                                           .replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ') // Нормализуем пробелы
+                                           .replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ')
                                            .trim()
                                            .toLowerCase();
                     if (studentDirection) break;
                 }
             }
 
-            // Формируем уникальную строку идентификации
             let identityString = '';
             if (rawName && studentDirection) {
                 identityString = `${rawName}_${studentDirection}`;
-                GM_setValue('etis_secure_identity_cache', identityString); // Кешируем для страниц, где нет шапки
+                GM_setValue('etis_secure_identity_cache', identityString);
             } else {
                 identityString = GM_getValue('etis_secure_identity_cache', '');
             }
 
-            if (!identityString) {
-                console.log('[Sync] Ожидание извлечения ФИО и Направления обучения...');
-                return null; // Ожидаем загрузки страницы с профилем
-            }
+            if (!identityString) return null;
 
-            console.log(`[Sync] Строка идентификации для хэширования: "${identityString}"`);
-
-            // Хэшируем очищенные данные с секретной солью
             const encoder = new TextEncoder();
             const data = encoder.encode(identityString + "etis_reborn_invisible_salt_2026");
             const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-            // Возвращаем ровно 8 символов для Firebase
             return hashHex.substring(0, 8).toUpperCase();
         };
 
@@ -13256,65 +14318,125 @@
         const triggerSilentCloudUpload = async () => {
             if (isDemoUser()) return;
             const code = localStorage.getItem('etis_sync_code');
-            if (!code) {
-                console.warn('[Sync] Попытка тихой выгрузки отменена: код синхронизации отсутствует в localStorage.');
-                return;
-            }
+            if (!code) return;
 
-            console.log('[Sync] Инициализация таймера тихой выгрузки (задержка 1с)...');
             clearTimeout(syncDebounceTimer);
             syncDebounceTimer = setTimeout(async () => {
-                console.log('[Sync] Таймер сработал. Начинаем автоматическую выгрузку в облако...');
                 await uploadDataToCloud(code);
                 syncDebounceTimer = null;
-            }, 1000); // Сохраняем через 1 секунду после последнего изменения
+            }, 1000);
         };
 
-        // Гарантированная отправка данных перед обновлением/закрытием страницы
         window.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden' && syncDebounceTimer) {
                 clearTimeout(syncDebounceTimer);
                 const code = localStorage.getItem('etis_sync_code');
-                if (code) uploadDataToCloud(code); // Отправляем мгновенно в фоне
+                if (code) uploadDataToCloud(code);
             }
         });
 
-        // Асинхронный тихий импорт при старте страницы
         const autoSyncOnLoad = async () => {
-            if (isDemoUser()) {
-                console.log('[Sync] Демо-режим активен. Облачная синхронизация отключена.');
-                return;
-            }
+            if (isDemoUser()) return;
 
-            console.log('[Sync] Инициализация авто-синхронизации при загрузке страницы...');
             const code = await getAutomaticSyncCode();
-            if (!code) {
-                console.log('[Sync] Авто-синхронизация отключена или ожидает первого входа в аккаунт.');
-                return;
-            }
-            
+            if (!code) return;
+
             localStorage.setItem('etis_sync_code', code);
-            console.log(`[Sync] Установлен рабочий код синхронизации: ${code}`);
-            
-            console.log('[Sync] Запуск фоновой проверки обновлений в облаке...');
+            console.log(`%c[ETIS Reborn] Облачная синхронизация активна (ID: ${code})`, 'color: #34C759; font-weight: 700;');
+
             const isUpdated = await downloadDataFromCloud(code);
-            console.log('[Sync] Результат фоновой проверки:', isUpdated ? 'Обнаружены новые данные, обновляем!' : 'Локальные данные актуальны.');
-            
             if (isUpdated) {
-                console.log('[Sync] Обнаружены новые данные. Перезагружаем страницу для их полного применения...');
-                window.location.reload();
+                console.log('%c[ETIS Reborn] Свежие данные из облака сохранены (применятся при следующем обновлении страницы).', 'color: #007AFF;');
+            } else {
+                console.log('%c[ETIS Reborn] Данные синхронизированы и актуальны.', 'color: #8E8E93;');
             }
         };
 
-        const downloadDataFromCloud = async (code) => {
-            if (isDemoUser()) return false;
+        const uploadDataToCloud = async (code, skipPreDownload = false) => {
+            if (isDemoUser() || !FIREBASE_DB_URL) return false;
 
-            if (!FIREBASE_DB_URL) {
-                console.error('[Sync] Ошибка загрузки: FIREBASE_DB_URL не определен.');
-                return false;
+            // Тихо подтягиваем актуальные данные перед выгрузкой без перезагрузки вкладки
+            if (!skipPreDownload) {
+                await downloadDataFromCloud(code);
             }
 
-            console.log(`[Sync] Начинаем фоновую загрузку данных для кода: ${code}`);
+            registerCurrentDevice();
+
+            const payload = {};
+            const addKey = async (key, localKey) => {
+                const val = localStorage.getItem(localKey);
+                if (val !== null && val !== undefined) {
+                    try {
+                        payload[key] = await encryptPayload(val, code);
+                    } catch (e) {
+                        payload[key] = val;
+                    }
+                }
+            };
+
+            await addKey('custom_pairs', 'etis_custom_pairs_v1');
+            await addKey('ext_overrides', 'etis_ext_overrides');
+            await addKey('subject_notes', 'etis_subject_notes_v2');
+            await addKey('accent_config', 'etis_accent_config');
+            await addKey('general_config', 'etis_general_config');
+            await addKey('grades_snapshot', 'etis_reborn_grades_snapshot_v3');
+            await addKey('consultation_files', 'etis_consultation_files_v1');
+            await addKey('weekly_pairs_history', 'etis_weekly_pairs_history_v1');
+            await addKey('ai_summaries', 'etis_ai_summaries_v1');
+            await addKey('diploma_gpa', 'etis_diploma_gpa');
+            await addKey('notifications_history', 'etis_notifications_history_v1');
+
+            const imp = localStorage.getItem('etis_important_pairs_v1');
+            const cals = localStorage.getItem('etis_external_cals_v2');
+            if (imp || cals) {
+                const obj = {
+                    important: imp ? JSON.parse(imp) : [],
+                    external_cals: cals ? JSON.parse(cals) : []
+                };
+                try {
+                    payload['important_pairs'] = await encryptPayload(JSON.stringify(obj), code);
+                } catch (e) {
+                    payload['important_pairs'] = JSON.stringify(obj);
+                }
+            }
+
+            const meta = localStorage.getItem('etis_sync_meta');
+            if (meta) payload['sync_meta'] = meta;
+
+            let installDate = localStorage.getItem('etis_reborn_install_date') || GM_getValue('etis_reborn_install_date') || '';
+            let timeSpent = localStorage.getItem('etis_reborn_time_spent') || '0';
+            if (installDate) {
+                payload['install_date'] = installDate + '|' + timeSpent;
+            }
+
+            try {
+                const response = await new Promise((resolve, reject) => {
+                    GM_xmlhttpRequest({
+                        method: 'PUT',
+                        url: `${FIREBASE_DB_URL}sync/${code}.json`,
+                        headers: { 'Content-Type': 'application/json' },
+                        data: JSON.stringify(payload),
+                        onload: (res) => {
+                            resolve({ ok: res.status >= 200 && res.status < 300 });
+                        },
+                        onerror: (err) => reject(err)
+                    });
+                });
+
+                if (response.ok) {
+                    localStorage.setItem('etis_device_registered_in_cloud', 'true');
+                    console.log('%c[ETIS Reborn] Изменения успешно выгружены в облако.', 'color: #34C759;');
+                }
+                return response.ok;
+            } catch (e) {
+                console.error('[Sync] Ошибка при отправке данных в облако:', e);
+            }
+            return false;
+        };
+
+        const downloadDataFromCloud = async (code) => {
+            if (isDemoUser() || !FIREBASE_DB_URL) return false;
+
             try {
                 const response = await new Promise((resolve, reject) => {
                     GM_xmlhttpRequest({
@@ -13322,10 +14444,7 @@
                         url: `${FIREBASE_DB_URL}sync/${code}.json?t=${Date.now()}`,
                         onload: (res) => {
                             if (res.status === 200) {
-                                resolve({
-                                    ok: true,
-                                    json: () => JSON.parse(res.responseText)
-                                });
+                                resolve({ ok: true, json: () => JSON.parse(res.responseText) });
                             } else {
                                 resolve({ ok: false, status: res.status });
                             }
@@ -13336,39 +14455,29 @@
 
                 if (response.ok) {
                     const rawData = response.json();
-                    if (!rawData) {
-                        console.log('[Sync] Облачная база данных пуста (rawData === null).');
-                        return false;
-                    }
+                    if (!rawData) return false;
 
-                    console.log('[Sync] Облачные данные получены. Начинаем дешифровку ключей...');
                     const data = {};
                     for (const [key, value] of Object.entries(rawData)) {
                         if (value !== undefined && value !== null) {
                             if (typeof value === 'string' && value.length > 20 && !value.includes('{') && !value.includes('[')) {
                                 try {
                                     data[key] = await decryptPayload(value, code);
-                                    console.log(`[Sync] Ключ [${key}] успешно дешифрован. Длина: ${data[key].length}`);
                                 } catch (err) {
                                     data[key] = value;
-                                    console.warn(`[Sync] Ошибка дешифровки ключа [${key}], оставлено исходное значение:`, err);
                                 }
                             } else {
                                 data[key] = value;
-                                console.log(`[Sync] Ключ [${key}] оставлен без дешифровки (не подходит по формату).`);
                             }
                         }
                     }
 
-                    // Обработка проверки удаления
                     let deviceId = localStorage.getItem('etis_device_id');
                     let isRegistered = localStorage.getItem('etis_device_registered_in_cloud') === 'true';
-                    console.log(`[Sync] Проверка устройства: ID = ${deviceId}, Зарегистрировано = ${isRegistered}`);
 
                     if (deviceId && data.sync_meta && isRegistered) {
                         let cloudMeta = safeParseJSON(data.sync_meta, {});
                         if (cloudMeta.devices && !cloudMeta.devices[deviceId]) {
-                            console.warn('[Sync] ВНИМАНИЕ: Это устройство отсутствует в облачном списке! Инициируем отключение.');
                             localStorage.removeItem('etis_sync_code');
                             localStorage.removeItem('etis_last_sync_time');
                             localStorage.removeItem('etis_device_registered_in_cloud');
@@ -13388,10 +14497,6 @@
                     const cloudMeta = safeParseJSON(data.sync_meta, {});
                     const localMeta = safeParseJSON(localStorage.getItem('etis_sync_meta'), {});
 
-                    console.log('[Sync] Облачные таймстампы:', cloudMeta);
-                    console.log('[Sync] Локальные таймстампы:', localMeta);
-
-                    // Сравнение времени последнего изменения
                     const isCloudNewer = (key, localKeyName, customCloudData = null) => {
                         const hasCloudData = customCloudData !== null ? !!customCloudData : !!data[key];
                         if (!hasCloudData) return false;
@@ -13399,25 +14504,23 @@
                         const cloudTime = parseInt(cloudMeta[key], 10) || 0;
                         const localTime = parseInt(localMeta[key], 10) || 0;
 
-                        // Если устройство новое (таймстампа локально еще нет), скачиваем из облака
-                        if (localTime === 0) {
-                            return cloudTime > 0;
-                        }
-
-                        // Если локально данные были изменены/очищены позже, облако НЕ перезаписывает их
+                        if (localTime === 0) return cloudTime > 0;
                         return cloudTime > localTime;
                     };
 
                     let isUpdated = false;
 
                     if (toggles.custom_pairs && data.custom_pairs && isCloudNewer('custom_pairs', 'etis_custom_pairs_v1')) {
-                        console.log('[Sync] Применяем облачные "Свои пары" (custom_pairs)...');
                         localStorage.setItem('etis_custom_pairs_v1', data.custom_pairs);
                         isUpdated = true;
                     }
 
+                    if (toggles.custom_pairs && data.ext_overrides && isCloudNewer('custom_pairs', 'etis_ext_overrides')) {
+                        localStorage.setItem('etis_ext_overrides', data.ext_overrides);
+                        isUpdated = true;
+                    }
+
                     if (toggles.subject_notes && data.subject_notes && isCloudNewer('subject_notes', 'etis_subject_notes_v2')) {
-                        console.log('[Sync] Применяем облачные "Заметки и ДЗ" (subject_notes)...');
                         localStorage.setItem('etis_subject_notes_v2', data.subject_notes);
                         isUpdated = true;
                     }
@@ -13426,12 +14529,10 @@
                         const parsed = safeParseJSON(data.important_pairs, null);
                         if (parsed && typeof parsed === 'object') {
                             if (toggles.subject_notes && parsed.important && isCloudNewer('important_pairs', 'etis_important_pairs_v1', parsed.important)) {
-                                console.log('[Sync] Применяем облачные "Важные пары" (important_pairs)...');
                                 localStorage.setItem('etis_important_pairs_v1', JSON.stringify(parsed.important));
                                 isUpdated = true;
                             }
                             if (toggles.external_cals && parsed.external_cals && isCloudNewer('external_cals', 'etis_external_cals_v2', parsed.external_cals)) {
-                                console.log('[Sync] Применяем облачные "Внешние календари" (external_cals)...');
                                 localStorage.setItem('etis_external_cals_v2', JSON.stringify(parsed.external_cals));
                                 isUpdated = true;
                             }
@@ -13439,64 +14540,60 @@
                     }
 
                     if (toggles.accent_config && data.accent_config && isCloudNewer('accent_config', 'etis_accent_config')) {
-                        console.log('[Sync] Применяем облачную "Цветовую тему" (accent_config)...');
                         localStorage.setItem('etis_accent_config', data.accent_config);
                         if (typeof applyAccentColor === 'function') applyAccentColor();
                         isUpdated = true;
                     }
 
                     if (toggles.general_config && data.general_config && isCloudNewer('general_config', 'etis_general_config')) {
-                        console.log('[Sync] Применяем облачные "Настройки интерфейса" (general_config)...');
                         localStorage.setItem(GENERAL_CONFIG_KEY, data.general_config);
+                        const parsedGen = safeParseJSON(data.general_config, null);
+                        if (parsedGen) {
+                            generalConfig = { ...generalConfig, ...parsedGen };
+                            if (parsedGen.theme && parsedGen.theme !== localStorage.getItem('theme')) {
+                                localStorage.setItem('theme', parsedGen.theme);
+                                detectTheme();
+                            }
+                        }
                         isUpdated = true;
                     }
 
                     if (toggles.general_config && data.ai_summaries && isCloudNewer('ai_summaries', 'etis_ai_summaries_v1')) {
-                        console.log('[Sync] Применяем облачные "ИИ-сводки" (ai_summaries)...');
                         localStorage.setItem('etis_ai_summaries_v1', data.ai_summaries);
                         isUpdated = true;
                     }
 
                     if (toggles.grades_snapshot && data.grades_snapshot && isCloudNewer('grades_snapshot', 'etis_reborn_grades_snapshot_v3')) {
-                        console.log('[Sync] Применяем облачную "Историю оценок" (grades_snapshot)...');
                         localStorage.setItem('etis_reborn_grades_snapshot_v3', data.grades_snapshot);
                         isUpdated = true;
                     }
 
                     if (toggles.consultation_files && data.consultation_files && isCloudNewer('consultation_files', 'etis_consultation_files_v1')) {
-                        console.log('[Sync] Применяем облачные "Файлы консультаций" (consultation_files)...');
                         localStorage.setItem('etis_consultation_files_v1', data.consultation_files);
                         isUpdated = true;
                     }
 
                     if (toggles.weekly_pairs_history && data.weekly_pairs_history && isCloudNewer('weekly_pairs_history', 'etis_weekly_pairs_history_v1')) {
-                        console.log('[Sync] Применяем облачную "Историю расписания" (weekly_pairs_history)...');
                         localStorage.setItem('etis_weekly_pairs_history_v1', data.weekly_pairs_history);
                         isUpdated = true;
                     }
 
-                    // Синхронизация среднего балла диплома
                     if (data.diploma_gpa && isCloudNewer('diploma_gpa', 'etis_diploma_gpa')) {
-                        console.log('[Sync] Применяем облачный "Средний балл диплома" (diploma_gpa)...');
                         localStorage.setItem('etis_diploma_gpa', data.diploma_gpa);
                         isUpdated = true;
                     }
 
-                    // Умное слияние истории уведомлений и статусов прочтения
                     if (data.notifications_history) {
                         const cloudNotifs = safeParseJSON(data.notifications_history, []);
                         const localNotifs = safeParseJSON(localStorage.getItem('etis_notifications_history_v1'), []);
 
                         if (Array.isArray(cloudNotifs) && cloudNotifs.length > 0) {
                             const notifMap = new Map();
-                            // 1. Загружаем локальные
                             localNotifs.forEach(n => notifMap.set(n.id, { ...n }));
                             
-                            // 2. Сливаем с облачными
                             cloudNotifs.forEach(cn => {
                                 if (notifMap.has(cn.id)) {
                                     const local = notifMap.get(cn.id);
-                                    // Если уведомление прочитано хотя бы на одном устройстве — помечаем прочитанным
                                     local.read = local.read || cn.read;
                                 } else {
                                     notifMap.set(cn.id, { ...cn });
@@ -13504,7 +14601,6 @@
                             });
 
                             let mergedList = Array.from(notifMap.values());
-                            // Исключаем служебные (напоминания и ИИ)
                             mergedList = mergedList.filter(n => 
                                 !n.title?.includes('Напоминание') && 
                                 !n.title?.includes('ИИ-') && 
@@ -13517,7 +14613,6 @@
 
                             const mergedStr = JSON.stringify(mergedList);
                             if (mergedStr !== JSON.stringify(localNotifs)) {
-                                console.log('[Sync] Применяем объединенную "Историю уведомлений" (notifications_history)...');
                                 localStorage.setItem('etis_notifications_history_v1', mergedStr);
                                 updateBellCounter();
                             }
@@ -13541,7 +14636,6 @@
                         }
                     }
 
-                    // Слияние метаданных
                     const mergedMeta = {};
                     const keys = ['accent_config', 'subject_notes', 'important_pairs', 'custom_pairs', 'general_config', 'grades_snapshot', 'consultation_files', 'external_cals', 'weekly_pairs_history', 'ai_summaries', 'diploma_gpa', 'notifications_history'];
 
@@ -13567,120 +14661,13 @@
                         }
                     });
                     mergedMeta['time_spent'] = Date.now();
-
                     if (cloudMeta.devices) mergedMeta.devices = cloudMeta.devices;
 
                     localStorage.setItem('etis_sync_meta', JSON.stringify(mergedMeta));
-                    console.log('[Sync] Слияние завершено успешно. Снимок метаданных сохранен:', mergedMeta);
-
                     return isUpdated;
                 }
             } catch (e) {
-                console.error('[Sync] Ошибка фоновой загрузки/слияния данных с облаком:', e);
-            }
-            return false;
-        };
-
-        const uploadDataToCloud = async (code, skipPreDownload = false) => {
-            if (isDemoUser()) return false;
-            if (!FIREBASE_DB_URL) {
-                console.error('[Sync] Ошибка выгрузки: FIREBASE_DB_URL не определен.');
-                return false;
-            }
-
-            console.log(`[Sync] Инициализация выгрузки в облако для кода: ${code}`);
-
-            // Пропускаем предварительное скачивание при удалении/переименовании устройств
-            if (!skipPreDownload) {
-                console.log('[Sync] Вызов предварительного скачивания во избежание затирания...');
-                const isUpdated = await downloadDataFromCloud(code);
-
-                if (isUpdated) {
-                    console.log('[Sync] Во время выгрузки обнаружены и применены более свежие облачные данные. Перезагружаем страницу...');
-                    window.location.reload();
-                    return true; 
-                }
-            }
-
-            registerCurrentDevice();
-
-            const payload = {};
-
-            const addKey = async (key, localKey) => {
-                const val = localStorage.getItem(localKey);
-                if (val !== null && val !== undefined) {
-                    try {
-                        payload[key] = await encryptPayload(val, code);
-                    } catch (e) {
-                        payload[key] = val;
-                    }
-                }
-            };
-
-            await addKey('custom_pairs', 'etis_custom_pairs_v1');
-            await addKey('subject_notes', 'etis_subject_notes_v2');
-            await addKey('accent_config', 'etis_accent_config');
-            await addKey('general_config', 'etis_general_config');
-            await addKey('grades_snapshot', 'etis_reborn_grades_snapshot_v3');
-            await addKey('consultation_files', 'etis_consultation_files_v1');
-            await addKey('weekly_pairs_history', 'etis_weekly_pairs_history_v1');
-            await addKey('ai_summaries', 'etis_ai_summaries_v1');
-            await addKey('diploma_gpa', 'etis_diploma_gpa');
-            await addKey('notifications_history', 'etis_notifications_history_v1');
-
-            // Объединяем важные пары и внешние календари в один объект
-            const imp = localStorage.getItem('etis_important_pairs_v1');
-            const cals = localStorage.getItem('etis_external_cals_v2');
-            if (imp || cals) {
-                const obj = {
-                    important: imp ? JSON.parse(imp) : [],
-                    external_cals: cals ? JSON.parse(cals) : []
-                };
-                try {
-                    payload['important_pairs'] = await encryptPayload(JSON.stringify(obj), code);
-                } catch (e) {
-                    payload['important_pairs'] = JSON.stringify(obj);
-                }
-            }
-
-            const meta = localStorage.getItem('etis_sync_meta');
-            if (meta) payload['sync_meta'] = meta;
-
-            // Время установки и наигранное время использования
-            let installDate = localStorage.getItem('etis_reborn_install_date') || GM_getValue('etis_reborn_install_date') || '';
-            let timeSpent = localStorage.getItem('etis_reborn_time_spent') || '0';
-            if (installDate) {
-                payload['install_date'] = installDate + '|' + timeSpent;
-            }
-
-            console.log(`[Sync] Отправка PUT-запроса на адрес: ${FIREBASE_DB_URL}sync/${code}.json`);
-            try {
-                const response = await new Promise((resolve, reject) => {
-                    GM_xmlhttpRequest({
-                        method: 'PUT',
-                        url: `${FIREBASE_DB_URL}sync/${code}.json`,
-                        headers: { 'Content-Type': 'application/json' },
-                        data: JSON.stringify(payload),
-                        onload: (res) => {
-                            if (res.status >= 200 && res.status < 300) {
-                                resolve({ ok: true });
-                            } else {
-                                resolve({ ok: false, status: res.status });
-                            }
-                        },
-                        onerror: (err) => reject(err)
-                    });
-                });
-                
-                if (response.ok) {
-                    localStorage.setItem('etis_device_registered_in_cloud', 'true');
-                    console.log('[Sync] Успешная выгрузка данных в облако завершена!');
-                } else {
-                    console.error('[Sync] Сервер отклонил выгрузку данных! Статус:', response.status);
-                }
-                return response.ok;
-            } catch (e) {
-                console.error('[Sync] Сетевая ошибка при отправке PUT-запроса:', e);
+                console.error('[Sync] Ошибка загрузки данных:', e);
             }
             return false;
         };
@@ -13969,7 +14956,7 @@
                             <!-- Направление обучения -->
                             ${declinedDir ? `
                             <div style="grid-column: span 3; background: var(--color-highlight); border-radius: 20px; padding: 12px 16px; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; flex-wrap: wrap;">
-                                <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">school</span>
+                                <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">${getDirectionIcon(studentDirection)}</span>
                                 <span style="font-size: 1.25rem; color: var(--color-text-secondary); font-weight: 500; text-transform: lowercase;">изучаю</span>
                                 <span style="font-size: 1.45rem; font-weight: 800; color: var(--color-accent);">${declinedDir}</span>
                             </div>
@@ -14122,10 +15109,10 @@
                                 <div>
                                     <div style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Облачная синхронизация</div>
                                     <div style="font-size: 1.3rem; color: var(--color-warning); font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 6px;">
-                                        <span class="material-icons" style="font-size: 1.6rem;">cloud_off</span> Отключена в демо-режиме
+                                        <span class="material-icons" style="font-size: 1.6rem;">cloud_off</span> Отключена в оффлайн-режиме
                                     </div>
                                     <div style="font-size: 1.15rem; color: var(--color-text-secondary); margin-top: 6px; line-height: 1.4;">
-                                        В демонстрационном режиме обмен данными с сервером заблокирован в целях безопасности.
+                                        В оффлайн-режиме отображается сохранённая копия вашего расписания без обращения к серверу.
                                     </div>
                                 </div>
                             </div>
@@ -14207,7 +15194,7 @@
                         ${dataRow('Средний балл диплома', diplomaGpaVal, 'etis_diploma_gpa', 'cloud-val-gpa', true, false, lastCloud.gpa, false)}
                         ${dataRow('Центр уведомлений', notifsCount, 'etis_notifications_history_v1', 'cloud-val-notifs', true, false, lastCloud.notifs, true, 'notifications_modal_redirect')}
                         ${dataRow('Файлы консультаций', consCount, 'etis_consultation_files_v1', 'cloud-val-cons', true, false, lastCloud.cons, true, 'details_consultations')}
-                        ${dataRow('История расписания (для сводки)', weeklyPairsCount, 'etis_weekly_pairs_history_v1', 'cloud-val-weekly', true, false, lastCloud.weekly, false)}
+                        ${dataRow('История расписания', weeklyPairsCount, 'etis_weekly_pairs_history_v1', 'cloud-val-weekly', true, false, lastCloud.weekly, false)}
                         ${dataRow('ИИ-сводки объявлений', aiSummariesCount, 'etis_ai_summaries_v1', 'cloud-val-ai-summaries', true, false, lastCloud.aiSummaries, true, 'details_ai_summaries')}
                         ${dataRow('Тема и цвета', getColorsIndicator(localAccent), 'etis_accent_config', 'cloud-val-theme', true, true, lastCloud.theme, false)}
                         ${dataRow('Время использования', `${Math.round(totalSeconds / 60)} мин`, 'etis_reborn_time_spent', 'cloud-val-time-spent', true, false, lastCloud.timeSpent, false)}
@@ -15226,13 +16213,6 @@
                     title = 'Общие';
                     contentHTML = `
                         <div class="ios-settings-group">
-                            <label class="pc-only-setting" style="display: ${window.innerWidth > 960 ? 'flex' : 'none'} !important;">
-                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
-                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Умный сайдбар</span>
-                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Фиксация активной вкладки при выходе за пределы экрана</span>
-                                </div>
-                                <input type="checkbox" id="setting-smart-sidebar" class="tumbler-checkbox" ${generalConfig.smartSidebar !== false ? 'checked' : ''}>
-                            </label>
                             
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
@@ -15340,6 +16320,13 @@
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Убирает из расписания пустые дни без пар</span>
                                 </div>
                                 <input type="checkbox" id="setting-hide-days" class="tumbler-checkbox" ${generalConfig.hideDaysOff ? 'checked' : ''}>
+                            </label>
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Объединять выходные</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Объединяет идущие подряд дни без пар в одну карточку</span>
+                                </div>
+                                <input type="checkbox" id="setting-merge-days" class="tumbler-checkbox" ${generalConfig.mergeDaysOff !== false ? 'checked' : ''}>
                             </label>
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
@@ -15705,31 +16692,24 @@
                 });
 
                 if (currentView === 'general') {
-                    modal.querySelector('#setting-watermark').onchange = (e) => { generalConfig.watermark = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); };
-                    modal.querySelector('#setting-generate-qr').onchange = (e) => { generalConfig.generateQR = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); };
+                    modal.querySelector('#setting-watermark').onchange = (e) => {
+                        generalConfig.watermark = e.target.checked;
+                        saveGeneralConfig();
+                    };
+                    modal.querySelector('#setting-generate-qr').onchange = (e) => {
+                        generalConfig.generateQR = e.target.checked;
+                        saveGeneralConfig();
+                    };
 
                     const qlToggle = modal.querySelector('#setting-quick-login');
                     if (qlToggle) {
                         qlToggle.onchange = (e) => {
                             generalConfig.quickLoginEnabled = e.target.checked;
-                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                            saveGeneralConfig();
                             const wrapper = modal.querySelector('#quick-login-settings-btn-wrapper');
                             if (wrapper) {
                                 wrapper.style.setProperty('display', e.target.checked ? 'flex' : 'none', 'important');
                             }
-                        };
-                    }
-
-                    const sidebarToggle = modal.querySelector('#setting-smart-sidebar');
-                    if (sidebarToggle) {
-                        sidebarToggle.onchange = (e) => {
-                            generalConfig.smartSidebar = e.target.checked;
-                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
-                            applySmartSidebar();
                         };
                     }
 
@@ -15864,36 +16844,62 @@
                         generalConfig.showGaps = e.target.checked;
                         const wrap = modal.querySelector('#gaps-custom-wrapper');
                         if (wrap) wrap.style.setProperty('display', e.target.checked ? 'flex' : 'none', 'important');
-                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                        saveGeneralConfig();
                         if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                     };
-                    modal.querySelector('#setting-show-gaps-custom').onchange = (e) => { generalConfig.showGapsCustom = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable(); };
-                    modal.querySelector('#setting-hide-days').onchange = (e) => { generalConfig.hideDaysOff = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); if (window.applyHideDaysOff) window.applyHideDaysOff(); };
-                    modal.querySelector('#setting-dim-pairs').onchange = (e) => { generalConfig.dimPastPairs = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); if (window.applyDimming) window.applyDimming(); };
-                    modal.querySelector('#setting-dates-left').onchange = (e) => { generalConfig.datesLeft = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
+                    modal.querySelector('#setting-show-gaps-custom').onchange = (e) => {
+                        generalConfig.showGapsCustom = e.target.checked;
+                        saveGeneralConfig();
+                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                    };
+                    modal.querySelector('#setting-hide-days').onchange = (e) => {
+                        generalConfig.hideDaysOff = e.target.checked;
+                        saveGeneralConfig();
+                        if (typeof window.recalculateTimetable === 'function') {
+                            window.recalculateTimetable();
+                        } else if (window.applyHideDaysOff) {
+                            window.applyHideDaysOff();
+                        }
+                    };
+                    modal.querySelector('#setting-merge-days').onchange = (e) => {
+                        generalConfig.mergeDaysOff = e.target.checked;
+                        saveGeneralConfig();
+                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                    };
+                    modal.querySelector('#setting-dim-pairs').onchange = (e) => {
+                        generalConfig.dimPastPairs = e.target.checked;
+                        saveGeneralConfig();
+                        if (window.applyDimming) window.applyDimming();
+                    };
+                    modal.querySelector('#setting-dates-left').onchange = (e) => {
+                        generalConfig.datesLeft = e.target.checked;
+                        saveGeneralConfig();
+                        requiresReloadOnClose = true;
+                    };
                     modal.querySelector('#setting-show-big-break').onchange = (e) => {
                         generalConfig.showBigBreak = e.target.checked;
-                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                        saveGeneralConfig();
                         if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                     };
-                    modal.querySelector('#setting-show-sunday').onchange = (e) => { generalConfig.showSunday = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
+                    modal.querySelector('#setting-show-sunday').onchange = (e) => {
+                        generalConfig.showSunday = e.target.checked;
+                        saveGeneralConfig();
+                        requiresReloadOnClose = true;
+                    };
                 } else if (currentView === 'grades') {
-                    modal.querySelector('#setting-grade-notifs').onchange = (e) => { generalConfig.gradeNotifications = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); };
-                    modal.querySelector('#setting-abs-scores').onchange = (e) => { generalConfig.absoluteScores = e.target.checked; localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload(); requiresReloadOnClose = true; };
+                    modal.querySelector('#setting-grade-notifs').onchange = (e) => {
+                        generalConfig.gradeNotifications = e.target.checked;
+                        saveGeneralConfig();
+                    };
+                    modal.querySelector('#setting-abs-scores').onchange = (e) => {
+                        generalConfig.absoluteScores = e.target.checked;
+                        saveGeneralConfig();
+                        requiresReloadOnClose = true;
+                    };
                     modal.querySelector('#setting-compact-grades').onchange = (e) => {
                         generalConfig.compactGrades = e.target.checked;
                         modal.querySelector('#compact-settings-btn-wrapper').style.setProperty('display', e.target.checked ? 'flex' : 'none', 'important');
-                        localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                        saveGeneralConfig();
                         requiresReloadOnClose = true;
                     };
                 } else if (currentView === 'compact_grades_settings') {
@@ -15906,16 +16912,18 @@
                             if (id === 'cfg-rating') generalConfig.compactGradesConfig.showRating = e.target.checked;
                             if (id === 'cfg-date') generalConfig.compactGradesConfig.showDate = e.target.checked;
                             if (id === 'cfg-teacher') generalConfig.compactGradesConfig.showTeacher = e.target.checked;
-                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                            saveGeneralConfig();
                             requiresReloadOnClose = true;
-                        }
+                        };
                     });
                 } else if (currentView === 'theme_settings') {
                     modal.querySelectorAll('.theme-option-row').forEach(row => {
                         row.onclick = () => {
                             theme = row.getAttribute('data-theme');
                             localStorage.setItem('theme', theme);
+                            generalConfig.theme = theme;
+                            saveGeneralConfig();        
+
                             if (theme === 'auto') setSystemThemeDetection();
                             else { removeSystemThemeDetection(); document.documentElement.setAttribute('theme', theme); }
                             renderView('theme_settings');
@@ -16258,10 +17266,8 @@
                         masterToggle.onchange = (e) => {
                             const isEnabled = e.target.checked;
                             generalConfig.betaFeaturesEnabled = isEnabled;
-                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                            saveGeneralConfig();
 
-                            // Плавно делаем частные функции тусклыми и блокируем нажатия
                             const subRows = modal.querySelectorAll('.beta-subfeature-row');
                             subRows.forEach(row => {
                                 row.style.opacity = isEnabled ? '1' : '0.4';
@@ -16280,8 +17286,7 @@
                     if (aiToggle) {
                         aiToggle.onchange = (e) => {
                             generalConfig.betaFeatures.aiSummary = e.target.checked;
-                            localStorage.setItem(GENERAL_CONFIG_KEY, JSON.stringify(generalConfig));
-                            if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                            saveGeneralConfig();
                             requiresReloadOnClose = true;
                         };
                     }
@@ -16300,6 +17305,283 @@
                 modal.classList.add('active');
                 document.body.classList.add('modal-open-body');
             });
+        }
+
+        function openRouterModal() {
+            let overlay = document.getElementById('etis-router-overlay');
+            let modal = document.getElementById('etis-router-modal');
+
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'etis-router-overlay';
+                overlay.className = 'analytics-overlay';
+                document.body.appendChild(overlay);
+            }
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'etis-router-modal';
+                modal.className = 'analytics-modal';
+                document.body.appendChild(modal);
+            }
+
+            const closeAll = () => {
+                overlay.classList.remove('active');
+                modal.classList.remove('active');
+                document.body.classList.remove('modal-open-body');
+                document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
+            };
+            overlay.onclick = closeAll;
+
+            let currentAud = '';
+            const activeRow = document.querySelector('.timetable-grid tr:has(.live-dot.active), .timetable-grid tr:has(.live-dot.ending)');
+            if (activeRow) {
+                const audEl = activeRow.querySelector('.pair_info .aud');
+                const parsed = parseAudience(audEl ? audEl.textContent : '');
+                if (parsed) currentAud = parsed.raw;
+            }
+
+            modal.innerHTML = `
+                <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; padding: 1.6rem 2.4rem !important; border-bottom: 1px solid var(--color-table-border) !important;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <span class="material-icons back-to-drawer-btn" style="cursor:pointer; color:var(--color-text-secondary); font-size:24px;">arrow_back</span>
+                        <span style="font-size:1.8rem; font-weight:800; color:var(--color-text-primary);">Маршрутизатор</span>
+                    </div>
+                    <span class="material-icons close-modal-btn" style="cursor:pointer; color:var(--color-text-secondary); font-size:24px;">close</span>
+                </div>
+                <div class="ui-dialog-content" style="padding: 2rem 2.4rem 3rem 2.4rem; max-height: 75vh; overflow-y: auto;">
+                    
+                    <div id="router-modal-desc" style="font-size: 1.25rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 1.4rem; text-align: left; padding: 0 4px; transition: opacity 0.2s ease;">
+                        Навигация по кампусу ПГНИУ. Укажите аудитории в формате Номер/Корпус или выберите быстрое действие.
+                    </div>
+
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.4rem;">
+                        <div class="cp-input-wrap route-input-wrap" style="flex: 1;">
+                            <span class="material-icons" style="color: var(--color-accent);">my_location</span>
+                            <input type="text" id="router-modal-from" placeholder="Откуда" value="${currentAud}">
+                        </div>
+                        <button id="router-modal-swap" class="route-swap-btn" title="Поменять местами">
+                            <span class="material-icons" style="font-size: 20px;">swap_horiz</span>
+                        </button>
+                        <div class="cp-input-wrap route-input-wrap" style="flex: 1;">
+                            <span class="material-icons" style="color: var(--color-red);">place</span>
+                            <input type="text" id="router-modal-to" placeholder="Куда">
+                        </div>
+                    </div>
+
+                    <div id="router-quick-chips" style="display: none; gap: 8px; flex-wrap: wrap; margin-bottom: 1.4rem; animation: fadeIn 0.2s ease;">
+                        <div class="route-quick-chip" id="quick-toilet-male-btn">
+                            <span class="material-icons" style="color: #007AFF; font-size: 1.8rem;">man</span>
+                            <span>Мужской туалет</span>
+                        </div>
+                        <div class="route-quick-chip" id="quick-toilet-female-btn">
+                            <span class="material-icons" style="color: #FF2D55; font-size: 1.8rem;">woman</span>
+                            <span>Женский туалет</span>
+                        </div>
+                        <div class="route-quick-chip" id="quick-canteen-btn">
+                            <span class="material-icons" style="color: var(--color-warning); font-size: 1.8rem;">restaurant</span>
+                            <span>Столовая (2 корп.)</span>
+                        </div>
+                    </div>
+
+                    <button id="router-modal-build" class="answer-btn-custom build-route-action-btn" style="width: 100% !important; justify-content: center !important; height: 44px !important; font-size: 1.45rem !important; font-weight: 700 !important; border-radius: 50px !important; margin-bottom: 1.6rem !important; gap: 8px !important; opacity: 0.45; pointer-events: none; cursor: not-allowed;" disabled>
+                        <span class="material-icons" style="font-size: 1.8rem;">alt_route</span>
+                        Построить маршрут
+                    </button>
+
+                    <div class="route-mode-switch" id="router-modal-mode-switch" style="display: none;"></div>
+
+                    <div id="router-modal-results" style="display: flex; flex-direction: column; text-align: left;"></div>
+                </div>
+            `;
+
+            modal.querySelector('.close-modal-btn').onclick = closeAll;
+            const backBtn = modal.querySelector('.back-to-drawer-btn');
+            if (backBtn) backBtn.onclick = () => returnToDrawer(modal, overlay);
+
+            let routerModalMode = 'bridge';
+            const modeSwitchEl = modal.querySelector('#router-modal-mode-switch');
+            const mFrom = modal.querySelector('#router-modal-from');
+            const mTo = modal.querySelector('#router-modal-to');
+            const mSwap = modal.querySelector('#router-modal-swap');
+            const mBuild = modal.querySelector('#router-modal-build');
+            const mResults = modal.querySelector('#router-modal-results');
+            const chipsContainer = modal.querySelector('#router-quick-chips');
+            const descEl = modal.querySelector('#router-modal-desc');
+
+            const isValidAud = (val) => {
+                if (!val) return false;
+                const clean = val.trim().toLowerCase();
+                if (clean.includes('туалет') || clean.includes('столовая')) return true;
+                return parseAudience(clean) !== null;
+            };
+
+            const updateButtonStatus = () => {
+                const valFrom = (mFrom ? mFrom.value : '').trim();
+                const valTo = (mTo ? mTo.value : '').trim();
+                const valid = isValidAud(valFrom) && isValidAud(valTo);
+
+                if (mBuild) {
+                    mBuild.disabled = !valid;
+                    if (valid) {
+                        mBuild.removeAttribute('disabled');
+                        mBuild.style.removeProperty('opacity');
+                        mBuild.style.removeProperty('pointer-events');
+                        mBuild.style.removeProperty('cursor');
+                    } else {
+                        mBuild.setAttribute('disabled', 'disabled');
+                        mBuild.style.setProperty('opacity', '0.45', 'important');
+                        mBuild.style.setProperty('pointer-events', 'none', 'important');
+                        mBuild.style.setProperty('cursor', 'not-allowed', 'important');
+                    }
+                }
+
+                if (descEl) {
+                    descEl.style.display = (valFrom && valTo) ? 'none' : 'block';
+                }
+            };
+
+            ['input', 'change', 'keyup', 'paste', 'blur'].forEach(evt => {
+                if (mFrom) mFrom.addEventListener(evt, updateButtonStatus);
+                if (mTo) mTo.addEventListener(evt, updateButtonStatus);
+            });
+
+            const showChips = () => {
+                if (chipsContainer) chipsContainer.style.display = 'flex';
+            };
+
+            const hideChipsWithDelay = () => {
+                setTimeout(() => {
+                    if (!modal.contains(document.activeElement) || 
+                        (document.activeElement !== mFrom && document.activeElement !== mTo && !chipsContainer.contains(document.activeElement))) {
+                        if (chipsContainer) chipsContainer.style.display = 'none';
+                    }
+                }, 200);
+            };
+
+            if (mFrom) {
+                mFrom.addEventListener('focus', showChips);
+                mFrom.addEventListener('blur', hideChipsWithDelay);
+            }
+            if (mTo) {
+                mTo.addEventListener('focus', showChips);
+                mTo.addEventListener('blur', hideChipsWithDelay);
+            }
+
+            chipsContainer.querySelectorAll('.route-quick-chip').forEach(chip => {
+                chip.addEventListener('mousedown', (e) => e.preventDefault());
+            });
+
+            const executeRouterBuild = () => {
+                const fromV = (mFrom ? mFrom.value : '').trim();
+                const toV = (mTo ? mTo.value : '').trim();
+                if (!fromV || !toV) return;
+
+                const route = buildCampusRoute(fromV, toV, routerModalMode === 'bridge');
+                if (!route) {
+                    mResults.innerHTML = `
+                        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--color-text-secondary);">
+                            <span class="material-icons" style="font-size: 3rem; color: var(--color-warning); opacity: 0.7; margin-bottom: 8px;">warning</span>
+                            <div style="font-size: 1.35rem; font-weight: 600; color: var(--color-text-primary);">Не удалось определить маршрут</div>
+                        </div>
+                    `;
+                    if (modeSwitchEl) modeSwitchEl.style.setProperty('display', 'none', 'important');
+                    return;
+                }
+
+                if (modeSwitchEl) {
+                    modeSwitchEl.style.setProperty('display', 'flex', 'important');
+
+                    if (route.canToggle) {
+                        modeSwitchEl.innerHTML = `
+                            <div class="route-mode-tabs">
+                                <button type="button" class="route-mode-btn ${routerModalMode === 'bridge' ? 'active' : ''}" data-mode="bridge">
+                                    <span class="material-icons" style="font-size:16px;">swap_horiz</span>По переходам
+                                </button>
+                                <button type="button" class="route-mode-btn ${routerModalMode === 'outdoor' ? 'active' : ''}" data-mode="outdoor">
+                                    <span class="material-icons" style="font-size:16px;">directions_walk</span>Через улицу
+                                </button>
+                            </div>
+                            <div class="route-mode-meta">
+                                <span class="meta-time">~${route.totalMinutes} мин</span>
+                                <span class="meta-steps">• ${route.totalSteps} ш.</span>
+                            </div>
+                        `;
+                        modeSwitchEl.querySelectorAll('.route-mode-btn').forEach(b => {
+                            b.onclick = (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                routerModalMode = b.getAttribute('data-mode');
+                                executeRouterBuild();
+                            };
+                        });
+                    } else {
+                        modeSwitchEl.innerHTML = `
+                            <div class="route-mode-tabs">
+                                <span class="route-mode-btn active" style="cursor: default;">
+                                    <span class="material-icons" style="font-size:16px;">apartment</span>Внутри корпуса
+                                </span>
+                            </div>
+                            <div class="route-mode-meta">
+                                <span class="meta-time">~${route.totalMinutes} мин</span>
+                                <span class="meta-steps">• ${route.totalSteps} ш.</span>
+                            </div>
+                        `;
+                    }
+                }
+
+                mResults.innerHTML = renderRouteTimelineHTML(route);
+            };
+
+            mBuild.onclick = (e) => { e.preventDefault(); executeRouterBuild(); };
+            mFrom.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !mBuild.disabled) executeRouterBuild(); });
+            mTo.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !mBuild.disabled) executeRouterBuild(); });
+
+            mSwap.onclick = (e) => {
+                e.preventDefault();
+                const temp = mFrom.value;
+                mFrom.value = mTo.value;
+                mTo.value = temp;
+                updateButtonStatus();
+                executeRouterBuild();
+            };
+
+            modal.querySelector('#quick-toilet-male-btn').onclick = (e) => {
+                e.preventDefault();
+                const fromV = mFrom.value.trim() || "240/5";
+                mFrom.value = fromV;
+                const nearest = findNearestToilet(fromV, 'male');
+                mTo.value = nearest.targetStr;
+                chipsContainer.style.display = 'none';
+                updateButtonStatus();
+                executeRouterBuild();
+            };
+
+            modal.querySelector('#quick-toilet-female-btn').onclick = (e) => {
+                e.preventDefault();
+                const fromV = mFrom.value.trim() || "240/5";
+                mFrom.value = fromV;
+                const nearest = findNearestToilet(fromV, 'female');
+                mTo.value = nearest.targetStr;
+                chipsContainer.style.display = 'none';
+                updateButtonStatus();
+                executeRouterBuild();
+            };
+
+            modal.querySelector('#quick-canteen-btn').onclick = (e) => {
+                e.preventDefault();
+                if (!mFrom.value.trim()) mFrom.value = "501/8";
+                mTo.value = "Столовая/2";
+                chipsContainer.style.display = 'none';
+                updateButtonStatus();
+                executeRouterBuild();
+            };
+
+            updateButtonStatus();
+
+            overlay.classList.add('active');
+            modal.classList.add('active');
+            document.body.classList.add('modal-open-body');
+            document.querySelector('.mobile-nav-dock')?.classList.add('dock-hidden');
         }
 
         function openSyncModal(view = 'export') {
@@ -16743,30 +18025,261 @@
             });
         }
 
+        // ==========================================
+        // ОФОРМЛЕНИЕ СТРАНИЦЫ ОШИБКИ СЕРВЕРА (502 / 503 / 504)
+        // ==========================================
+        function checkAndRenderServerError() {
+            const bodyText = document.body ? (document.body.innerText || document.body.textContent) : '';
+            const pageTitle = document.title || '';
+            
+            const is50x = /502 Bad Gateway|503 Service Temporarily Unavailable|504 Gateway Time-out/i.test(bodyText) ||
+                          /502|503|504/i.test(pageTitle);
+
+            if (!is50x) return false;
+
+            document.body.innerHTML = `
+                <div style="min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem; box-sizing: border-box; background: var(--color-body); font-family: var(--font-family);">
+                    <div style="background: var(--color-card); border: 1px solid var(--color-table-border); border-radius: var(--radius-large); box-shadow: var(--shadow-dialog); padding: 4rem 3rem; max-width: 480px; width: 100%; box-sizing: border-box; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 1.6rem; animation: cellScaleIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+                        
+                        <!-- Логотип ЕТИС -->
+                        <div style="width: 64px; height: 64px; border-radius: 50%; background: var(--color-highlight); display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-main); margin-bottom: 0.4rem;">
+                            <img src="${LOGO_DATA_URI}" alt="Logo" style="width: 36px; height: auto; ${document.documentElement.getAttribute('theme') === 'dark' ? 'filter: invert(1) brightness(2);' : ''}">
+                        </div>
+
+                        <!-- Бейдж ошибки -->
+                        <div style="background: rgba(255, 59, 48, 0.12); color: var(--color-red); font-weight: 800; font-size: 1.15rem; padding: 0.4rem 1.2rem; border-radius: 50px; text-transform: uppercase; letter-spacing: 0.6px; display: inline-flex; align-items: center; gap: 6px;">
+                            <span class="material-icons" style="font-size: 1.6rem; color: var(--color-red);">cloud_off</span>
+                            502 Bad Gateway
+                        </div>
+
+                        <!-- Заголовок -->
+                        <div style="font-size: 2.2rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.25; margin-top: 0.2rem;">
+                            Сервер ЕТИС временно недоступен
+                        </div>
+
+                        <!-- Описание -->
+                        <div style="font-size: 1.35rem; color: var(--color-text-secondary); line-height: 1.6; max-width: 380px;">
+                            На стороне университета произошёл сбой в работе шлюза или сервер перегружен. Ваши локальные настройки и сохранённые данные в безопасности.
+                        </div>
+
+                        <!-- Кнопки действий -->
+                        <div style="display: flex; flex-direction: column; gap: 1rem; width: 100%; margin-top: 1rem;">
+                            <button id="retry-502-btn" class="answer-btn-custom" style="width: 100% !important; justify-content: center !important; height: 44px !important; font-size: 1.45rem !important; font-weight: 700 !important; border-radius: 50px !important; gap: 8px !important; cursor: pointer !important;">
+                                <span class="material-icons" style="font-size: 2rem;">refresh</span>
+                                Повторить попытку
+                            </button>
+
+                            <button id="demo-502-btn" class="answer-btn-custom" style="width: 100% !important; justify-content: center !important; height: 44px !important; font-size: 1.45rem !important; font-weight: 700 !important; border-radius: 50px !important; background: var(--color-highlight) !important; color: var(--color-text-primary) !important; -webkit-text-fill-color: var(--color-text-primary) !important; border: 1px solid var(--color-table-border) !important; box-shadow: none !important; gap: 8px !important; cursor: pointer !important;">
+                                <span class="material-icons" style="font-size: 2rem; color: var(--color-accent) !important; -webkit-text-fill-color: var(--color-accent) !important;">cloud_off</span>
+                                <span style="color: var(--color-text-primary) !important; -webkit-text-fill-color: var(--color-text-primary) !important;">Открыть расписание оффлайн</span>
+                            </button>
+                        </div>
+
+                        <!-- Ссылка на новости в Telegram -->
+                        <div style="margin-top: 0.8rem; padding-top: 1.4rem; border-top: 1px solid var(--color-table-border); width: 100%;">
+                            <a href="https://t.me/etisreborn" target="_blank" style="font-size: 1.25rem; font-weight: 600; color: var(--color-text-secondary); text-decoration: none; display: inline-flex; align-items: center; gap: 6px; transition: color 0.2s;">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.832.942z"/></svg>
+                                Проверить статус сбоя в канале
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Обработчик "Повторить попытку"
+            const retryBtn = document.getElementById('retry-502-btn');
+            if (retryBtn) {
+                retryBtn.onclick = (e) => {
+                    e.preventDefault();
+                    retryBtn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite; font-size: 2rem;">sync</span> Проверяем...';
+                    retryBtn.style.pointerEvents = 'none';
+                    setTimeout(() => window.location.reload(), 300);
+                };
+            }
+
+            // Обработчик "Открыть Демо-режим"
+            const demoBtn = document.getElementById('demo-502-btn');
+            if (demoBtn) {
+                demoBtn.onclick = (e) => {
+                    e.preventDefault();
+                    sessionStorage.setItem('etis_demo_mode', 'true');
+                    sessionStorage.setItem('etis_demo_page', 'timetable');
+                    window.location.reload();
+                };
+            }
+
+            return true;
+        }
+
         // Модификация стилей страниц
         function stylePages() {
             const isDemoActive = sessionStorage.getItem('etis_demo_mode') === 'true';
-            let demoPage = sessionStorage.getItem('etis_demo_page') || 'timetable';
             
+            // Если оригинальный сервер отдал ошибку 502/503/504
+            if (!isDemoActive && checkAndRenderServerError()) {
+                return;
+            }
+
+            let demoPage = sessionStorage.getItem('etis_demo_page') || 'timetable';
+
+            // 1. ОПРЕДЕЛЯЕМ ПЕРЕМЕННЫЕ В САМОМ НАЧАЛЕ (устраняет ReferenceError)
+            const urlParams = new URLSearchParams(window.location.search);
+            let pageMode = urlParams.get('p_mode');
+
             if (isDemoActive) {
+                if (demoPage === 'signs' || demoPage === 'signs_session') pageMode = 'session';
+                else if (demoPage === 'signs_current') pageMode = 'current';
+                else if (demoPage === 'signs_rating') pageMode = 'rating';
+                else if (demoPage === 'signs_diplom') pageMode = 'diplom';
+                else if (demoPage === 'teach_plan_advanced') pageMode = 'advanced';
+                else if (demoPage === 'teach_plan' || demoPage === 'teach_plan_short') pageMode = 'short';
+            }
+
+            const page = isDemoActive 
+                ? (demoPage.startsWith('signs') ? 'stu.signs' : (demoPage === 'announces' ? 'stu_ann.announces' : (demoPage === 'notes' ? 'stu.teacher_notes' : (demoPage.startsWith('teach_plan') ? 'stu.teach_plan' : 'stu.timetable')))) 
+                : window.location.pathname.split('/').pop();
+
+            if (!isDemoActive && !pageMode && (window.location.pathname.includes('stu.signs') || page === 'stu.signs')) {
+                pageMode = 'session';
+            }
+
+            // =========================================================================
+            // 2. АВТОМАТИЧЕСКОЕ СОХРАНЕНИЕ ДАННЫХ ДЛЯ ОФФЛАЙН-РЕЖИМА (КОГДА ОНЛАЙН)
+            // =========================================================================
+            if (!isDemoActive) {
+                try {
+                    const navInfo = document.querySelector('.navbar-static-top .span12 > span');
+                    if (navInfo) {
+                        localStorage.setItem('etis_offline_student_info_html', navInfo.outerHTML);
+                    }
+
+                    const s9 = document.querySelector('.span9');
+                    if (s9) {
+                        const rawHtml = s9.innerHTML;
+                        const pMode = urlParams.get('p_mode') || '';
+
+                        if (page === 'stu.signs') {
+                            const key = pMode ? `etis_offline_signs_${pMode}_html` : 'etis_offline_signs_session_html';
+                            localStorage.setItem(key, rawHtml);
+                        } else if (page === 'stu_ann.announces') {
+                            localStorage.setItem('etis_offline_announces_html', rawHtml);
+                        } else if (page === 'stu.teacher_notes') {
+                            localStorage.setItem('etis_offline_notes_html', rawHtml);
+                        } else if (page === 'stu.teach_plan') {
+                            const key = pMode === 'advanced' ? 'etis_offline_teach_plan_advanced_html' : 'etis_offline_teach_plan_short_html';
+                            localStorage.setItem(key, rawHtml);
+                        }
+                    }
+                } catch (e) {
+                    console.error('[Offline Cache Save Error]', e);
+                }
+            }
+
+            // =========================================================================
+            // 3. ЗАГРУЗКА ДАННЫХ В ОФФЛАЙН-РЕЖИМЕ (КЭШ ПОЛЬЗОВАТЕЛЯ ИЛИ ДЕМО-ФОЛЛБЭК)
+            // =========================================================================
+            if (isDemoActive) {
+                // Вспомогательный генератор каркаса страницы ЕТИС для подстановки кэша
+                const buildOfflinePageHTML = (contentHtml, activeHref = '') => {
+                    const studentInfo = localStorage.getItem('etis_offline_student_info_html') || `
+                        <span style="color: #808080;white-space:nowrap;">Студент (Оффлайн-режим)
+                            <span style="margin-left: 10px;">ПГНИУ</span>
+                        </span>
+                    `;
+                    return `
+                        <div class="navbar navbar-static-top">
+                            <div class="navbar-inner">
+                                <div class="container">
+                                    <a class="brand" href="stu.main" style="white-space:nowrap;">ЕТИС ПГНИУ:Студенты - управление вузом</a>
+                                    <div class="row" style="clear:both;">
+                                        <div class="span12" style="margin-top: -6px;margin-bottom: 7px;">
+                                            ${studentInfo}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="container" style="padding-top: 20px;">
+                            <div class="row">
+                                <div class="span3">
+                                    <ul class="nav nav-tabs nav-stacked">
+                                        <li class="${activeHref.includes('timetable') ? 'active' : ''}"><a href="stu.timetable">Мое расписание</a></li>
+                                        <li class="${activeHref.includes('signs') ? 'active' : ''}"><a href="stu.signs">Мои оценки</a></li>
+                                        <li class="${activeHref.includes('announces') ? 'active' : ''}"><a href="stu_ann.announces">Объявления</a></li>
+                                        <li class="${activeHref.includes('notes') ? 'active' : ''}"><a href="stu.teacher_notes">Сообщения от преподавателей</a></li>
+                                        <li class="${activeHref.includes('teach_plan') ? 'active' : ''}"><a href="stu.teach_plan">Мой учебный план</a></li>
+                                        <li><a href="stu.logout" class="need_redirect">Выход из оффлайн-режима</a></li>
+                                    </ul>
+                                </div>
+                                <div class="span9">
+                                    ${contentHtml}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                };
+
                 if (demoPage === 'signs' || demoPage === 'signs_session') {
-                    document.body.innerHTML = DEMO_SIGNS_HTML;
+                    const cached = localStorage.getItem('etis_offline_signs_session_html');
+                    document.body.innerHTML = cached ? buildOfflinePageHTML(cached, 'stu.signs') : DEMO_SIGNS_HTML;
                 } else if (demoPage === 'signs_current') {
-                    document.body.innerHTML = DEMO_SIGNS_CURRENT_HTML;
+                    const cached = localStorage.getItem('etis_offline_signs_current_html');
+                    document.body.innerHTML = cached ? buildOfflinePageHTML(cached, 'stu.signs') : DEMO_SIGNS_CURRENT_HTML;
                 } else if (demoPage === 'signs_rating') {
-                    document.body.innerHTML = DEMO_SIGNS_RATING_HTML;
+                    const cached = localStorage.getItem('etis_offline_signs_rating_html');
+                    document.body.innerHTML = cached ? buildOfflinePageHTML(cached, 'stu.signs') : DEMO_SIGNS_RATING_HTML;
                 } else if (demoPage === 'signs_diplom') {
-                    document.body.innerHTML = DEMO_SIGNS_DIPLOM_HTML;
+                    const cached = localStorage.getItem('etis_offline_signs_diplom_html');
+                    document.body.innerHTML = cached ? buildOfflinePageHTML(cached, 'stu.signs') : DEMO_SIGNS_DIPLOM_HTML;
                 } else if (demoPage === 'announces') {
-                    document.body.innerHTML = DEMO_ANNOUNCES_HTML;
+                    const cached = localStorage.getItem('etis_offline_announces_html');
+                    document.body.innerHTML = cached ? buildOfflinePageHTML(cached, 'stu_ann.announces') : DEMO_ANNOUNCES_HTML;
                 } else if (demoPage === 'notes') {
-                    document.body.innerHTML = DEMO_NOTES_HTML;
+                    const cached = localStorage.getItem('etis_offline_notes_html');
+                    document.body.innerHTML = cached ? buildOfflinePageHTML(cached, 'stu.teacher_notes') : DEMO_NOTES_HTML;
                 } else if (demoPage === 'teach_plan_advanced') {
-                    document.body.innerHTML = DEMO_TEACH_PLAN_ADVANCED_HTML;
+                    const cached = localStorage.getItem('etis_offline_teach_plan_advanced_html');
+                    document.body.innerHTML = cached ? buildOfflinePageHTML(cached, 'stu.teach_plan') : DEMO_TEACH_PLAN_ADVANCED_HTML;
                 } else if (demoPage === 'teach_plan' || demoPage === 'teach_plan_short') {
-                    document.body.innerHTML = DEMO_TEACH_PLAN_SHORT_HTML;
+                    const cached = localStorage.getItem('etis_offline_teach_plan_short_html');
+                    document.body.innerHTML = cached ? buildOfflinePageHTML(cached, 'stu.teach_plan') : DEMO_TEACH_PLAN_SHORT_HTML;
                 } else {
-                    document.body.innerHTML = DEMO_TIMETABLE_HTML;
+                    const cachedUserTimetable = localStorage.getItem('etis_offline_timetable_html');
+                    if (cachedUserTimetable) {
+                        document.body.innerHTML = buildOfflinePageHTML(cachedUserTimetable, 'stu.timetable');
+                    } else {
+                        // Стандартная генерация демо-расписания по умолчанию
+                        const now = new Date();
+                        const currentDay = now.getDay();
+                        const diffToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+                        const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+
+                        const monthsGenitive = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+                        const pad = (n) => String(n).padStart(2, '0');
+
+                        const weekDates = [];
+                        for (let i = 0; i < 7; i++) {
+                            const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i);
+                            weekDates.push({
+                                dayNum: d.getDate(),
+                                monthName: monthsGenitive[d.getMonth()],
+                                fullStr: `${pad(d.getDate())}.${pad(d.getMonth() + 1)}.${d.getFullYear()}`
+                            });
+                        }
+
+                        const weekRangeStr = `Неделя с ${weekDates[0].fullStr} по ${weekDates[6].fullStr}`;
+
+                        let demoHtml = DEMO_TIMETABLE_HTML;
+                        demoHtml = demoHtml.replace(/Неделя с 01\.09\.2025 по 07\.09\.2025/g, weekRangeStr);
+                        demoHtml = demoHtml.replace(/Понедельник, 1 сентября/g, `Понедельник, ${weekDates[0].dayNum} ${weekDates[0].monthName}`);
+                        demoHtml = demoHtml.replace(/Вторник, 2 сентября/g, `Вторник, ${weekDates[1].dayNum} ${weekDates[1].monthName}`);
+                        demoHtml = demoHtml.replace(/Среда, 3 сентября/g, `Среда, ${weekDates[2].dayNum} ${weekDates[2].monthName}`);
+                        demoHtml = demoHtml.replace(/Четверг, 4 сентября/g, `Четверг, ${weekDates[3].dayNum} ${weekDates[3].monthName}`);
+                        demoHtml = demoHtml.replace(/Пятница, 5 сентября/g, `Пятница, ${weekDates[4].dayNum} ${weekDates[4].monthName}`);
+                        demoHtml = demoHtml.replace(/Суббота, 6 сентября/g, `Суббота, ${weekDates[5].dayNum} ${weekDates[5].monthName}`);
+
+                        document.body.innerHTML = demoHtml;
+                    }
                 }
             }
 
@@ -16947,8 +18460,107 @@
                 return declinedWords.join(' ');
             }
 
+            // Вспомогательное окно выбора дня для объединенных выходных
+            function showChooseDayModal(daysList, onSelect) {
+                let overlay = document.getElementById('etis-choose-day-overlay');
+                let modal = document.getElementById('etis-choose-day-modal');
+
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'etis-choose-day-overlay';
+                    overlay.className = 'analytics-overlay';
+                    document.body.appendChild(overlay);
+                }
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.id = 'etis-choose-day-modal';
+                    modal.className = 'analytics-modal';
+                    document.body.appendChild(modal);
+                }
+
+                const closeModal = () => {
+                    overlay.classList.remove('active');
+                    modal.classList.remove('active');
+                    document.body.classList.remove('modal-open-body');
+                };
+                overlay.onclick = closeModal;
+
+                modal.innerHTML = `
+                    <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center; padding: 1.6rem 2.4rem !important; border-bottom: 1px solid var(--color-table-border) !important;">
+                        <span class="ui-dialog-title" style="font-size: 1.6rem; font-weight: 800; color: var(--color-text-primary);">Выберите день</span>
+                        <button class="close-choose-day" style="background:none; border:none; cursor:pointer; font-size:0; padding:0; display:flex; align-items:center;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
+                    </div>
+                    <div class="ui-dialog-content" style="padding: 2rem 2.4rem 2.4rem 2.4rem;">
+                        <div style="font-size: 1.3rem; color: var(--color-text-secondary); margin-bottom: 1.6rem; text-align: left; line-height: 1.5;">
+                            Эта карточка объединяет несколько дней без занятий. Выберите день, в который нужно добавить пару:
+                        </div>
+                        <div class="ios-settings-group" style="margin-bottom: 0 !important;">
+                            ${daysList.map(d => `
+                                <div class="ios-settings-row select-day-option" data-day="${d}" style="cursor: pointer; padding: 1.4rem 1.6rem !important;">
+                                    <div style="display: flex; align-items: center; gap: 12px;">
+                                        <span class="material-icons" style="color: var(--color-accent); font-size: 2.2rem;">calendar_today</span>
+                                        <span style="font-size: 1.45rem; font-weight: 700; color: var(--color-text-primary); text-transform: capitalize;">${d}</span>
+                                    </div>
+                                    <span class="material-icons chevron" style="color: var(--color-text-secondary);">chevron_right</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+
+                modal.querySelector('.close-choose-day').onclick = closeModal;
+
+                modal.querySelectorAll('.select-day-option').forEach(btn => {
+                    btn.onclick = () => {
+                        const chosenDay = btn.getAttribute('data-day');
+                        closeModal();
+                        setTimeout(() => {
+                            onSelect(chosenDay);
+                        }, 120);
+                    };
+                });
+
+                requestAnimationFrame(() => {
+                    overlay.classList.add('active');
+                    modal.classList.add('active');
+                    document.body.classList.add('modal-open-body');
+                });
+            }
+
             // Модальное окно создания/редактирования пары
             function openCustomPairModal(dayName, isFromToolbar = false, existingPair = null) {
+                const dispSubject = existingPair ? (existingPair.subject || '') : '';
+
+                // Проверка объединенных выходных дней
+                if (!existingPair && dayName) {
+                    let mergedDays = null;
+                    const dayBlock = Array.from(document.querySelectorAll('.span9 .day')).find(d => {
+                        const nameEl = d.querySelector('.day-name');
+                        return nameEl && nameEl.textContent.trim().toLowerCase() === dayName.toLowerCase();
+                    });
+
+                    if (dayBlock && dayBlock.getAttribute('data-merged-days')) {
+                        mergedDays = dayBlock.getAttribute('data-merged-days').split(',').map(s => s.trim()).filter(Boolean);
+                    } else if (/[-–—]/.test(dayName)) {
+                        const parts = dayName.split(/[-–—]/).map(s => s.trim());
+                        const daysList = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+                        const startIdx = daysList.findIndex(d => d.toLowerCase() === parts[0].toLowerCase());
+                        const endIdx = daysList.findIndex(d => d.toLowerCase() === parts[parts.length - 1].toLowerCase());
+                        if (startIdx !== -1 && endIdx !== -1 && startIdx <= endIdx) {
+                            mergedDays = daysList.slice(startIdx, endIdx + 1);
+                        } else {
+                            mergedDays = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase());
+                        }
+                    }
+
+                    if (mergedDays && mergedDays.length > 1) {
+                        showChooseDayModal(mergedDays, (selectedDay) => {
+                            openCustomPairModal(selectedDay, isFromToolbar, null);
+                        });
+                        return;
+                    }
+                }
+
                 let overlay = document.querySelector('.analytics-overlay');
                 let modal = document.querySelector('.analytics-modal');
 
@@ -16962,7 +18574,6 @@
                     document.body.appendChild(modal);
                 }
 
-                // Склонение дня недели в винительный падеж ("Среда" -> "среду")
                 const getAccusativeDay = (d) => {
                     if (!d) return '';
                     const map = {
@@ -16991,7 +18602,6 @@
                 const daysArr = ["Воскресенье", "Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
                 const todayNamePlaceholder = daysArr[new Date().getDay()];
 
-                // Извлечение предметов из реального расписания на странице
                 const timetableSubjects = [];
                 document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
                     const disA = row.querySelector('.pair_info .dis a') || row.querySelector('.pair_info .dis');
@@ -17014,7 +18624,6 @@
                 const raw3 = timetableSubjects[2] || 'Иностранный язык в сфере IT';
                 const raw4 = timetableSubjects[3] || 'Физика';
 
-                // Склоняем в дательный падеж для естественных фраз
                 const s1 = declineSubjectDative(raw1);
                 const s2 = declineSubjectDative(raw2);
                 const s3 = declineSubjectDative(raw3);
@@ -17068,7 +18677,7 @@
                             <div class="custom-pair-input-group">
                                 <div class="cp-input-wrap">
                                     <span class="material-icons">menu_book</span>
-                                    <input type="text" id="cp-subject" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : ''}">
+                                    <input type="text" id="cp-subject" placeholder="Название предмета *" value="${existingPair ? existingPair.subject : (dispSubject || '')}">
                                 </div>
                             </div>
 
@@ -17309,8 +18918,8 @@
                     if (window.location.href.includes('timetable')) {
                         document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
                         if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
-                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                         if (typeof window.renderNotes === 'function') window.renderNotes();
+                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                         if (typeof window.applyDimming === 'function') window.applyDimming();
                     }
                 };
@@ -17530,10 +19139,6 @@
                     };
                 });
             }
-
-            const page = isDemoActive 
-                ? (demoPage.startsWith('signs') ? 'stu.signs' : (demoPage === 'announces' ? 'stu_ann.announces' : (demoPage === 'notes' ? 'stu.teacher_notes' : (demoPage.startsWith('teach_plan') ? 'stu.teach_plan' : 'stu.timetable')))) 
-                : window.location.pathname.split('/').pop();
 
             // --- ПЕРЕХВАТ СТРАНИЦЫ РАСПИСАНИЯ ПРЕПОДАВАТЕЛЯ ---
             const isPeoTT = document.querySelector('form#form1 input[name="P_PEO_ID"]') !== null;
@@ -17888,8 +19493,8 @@
                 demoBtn.className = 'answer-btn-custom';
                 demoBtn.style.cssText = 'width: 100% !important; justify-content: center !important; font-size: 1.25rem !important; font-weight: 700 !important; height: 36px !important; gap: 8px !important; box-shadow: none !important; margin: 0 !important; cursor: pointer !important;';
                 demoBtn.innerHTML = `
-                    <span class="material-icons" style="font-size: 18px;">play_circle</span>
-                    <span>Демо-режим</span>
+                    <span class="material-icons" style="font-size: 18px;">cloud_off</span>
+                    <span>Оффлайн-режим</span>
                 `;
                 demoBtn.onclick = (e) => {
                     e.preventDefault();
@@ -18162,40 +19767,41 @@
                         logoBrand.addEventListener('pointerdown', onLogoTap);
                     }
 
-                    // 3. Инфо о студенте
+                    // 3. Подготовка данных студента для папки «Аккаунт»
                     const originalInfo = document.querySelector('.navbar-static-top .span12 > span');
-                    if (originalInfo && !sidebar.querySelector('.sidebar-user-info')) {
-                        const userInfoDiv = document.createElement('div');
-                        userInfoDiv.className = 'sidebar-user-info';
-                        const nameText = originalInfo.childNodes[0].textContent.trim();
+                    let generateStudentInfoRowsHtml = () => '';
+
+                    if (originalInfo) {
+                        const rawFullName = originalInfo.childNodes[0].textContent.trim();
+                        const cleanName = rawFullName.replace(/\s*\(\s*\d{2}\.\d{2}\.\d{4}.*?\)/i, '').trim();
+                        const birthDateMatch = rawFullName.match(/\(\s*\d{2}\.\d{2}\.\d{4}.*?\)/i);
+                        const birthDateStr = birthDateMatch ? ' ' + birthDateMatch[0] : '';
+                        const displayNameHtml = `${cleanName}<span style="display: none !important;">${birthDateStr}</span>`;
                         const subInfo = Array.from(originalInfo.querySelectorAll('span')).map(s => s.textContent.trim());
 
-                        userInfoDiv.innerHTML = `
-                            <div class="sidebar-bio-desktop">
-                                <b>${nameText}</b>
-                                ${subInfo.map(info => `<span>${info}</span>`).join('')}
-                            </div>
-                            <div class="sidebar-bio-mobile">
+                        generateStudentInfoRowsHtml = () => {
+                            const rows = [];
+                            rows.push(`
                                 <div class="sidebar-card-row">
                                     <span class="material-icons">person</span>
-                                    <span class="sidebar-card-text"><b>${nameText}</b></span>
+                                    <span class="sidebar-card-text"><b>${displayNameHtml}</b></span>
                                 </div>
-                                ${subInfo.map((info, idx) => {
-                                    let iconName = idx === 0 ? getDirectionIcon(info) : 'school';
-                                    if (info.toLowerCase().includes('курс')) iconName = 'history_edu';
-                                    else if (/\d{4}/.test(info)) iconName = 'calendar_today';
-                                    else if (/очная|заочная/i.test(info)) iconName = 'schedule';
+                            `);
+                            subInfo.forEach((info, idx) => {
+                                let iconName = idx === 0 ? getDirectionIcon(info) : 'school';
+                                if (info.toLowerCase().includes('курс')) iconName = 'history_edu';
+                                else if (/\d{4}/.test(info)) iconName = 'calendar_today';
+                                else if (/очная|заочная/i.test(info)) iconName = 'schedule';
 
-                                    return `
-                                        <div class="sidebar-card-row">
-                                            <span class="material-icons">${iconName}</span>
-                                            <span class="sidebar-card-text">${info}</span>
-                                        </div>
-                                    `;
-                                }).join('')}
-                            </div>
-                        `;
-                        sidebar.appendChild(userInfoDiv);
+                                rows.push(`
+                                    <div class="sidebar-card-row">
+                                        <span class="material-icons">${iconName}</span>
+                                        <span class="sidebar-card-text">${info}</span>
+                                    </div>
+                                `);
+                            });
+                            return rows.join('');
+                        };
                     }
 
                     // --- АНТИ-БЛОКИРОВКА ЕТИСА: ВОССТАНОВЛЕНИЕ ССЫЛОК МЕНЮ ---
@@ -18256,6 +19862,16 @@
                         });
                     });
 
+                    // В демо-режиме гарантируем наличие кнопки выхода на всех подстраницах
+                    if (isDemoActive) {
+                        const hasLogout = allListItems.some(li => li.querySelector('a')?.getAttribute('href')?.includes('logout'));
+                        if (!hasLogout) {
+                            const logoutLi = document.createElement('li');
+                            logoutLi.innerHTML = `<a href="stu.logout" class="demo-logout-link">Выход из демо-режима</a>`;
+                            allListItems.push(logoutLi);
+                        }
+                    }
+
                     // Вкладка "Настройки"
                     const settingsLi = document.createElement("li");
                     settingsLi.className = 'theme-switcher-item';
@@ -18315,6 +19931,28 @@
 
                     profileLi.appendChild(profileLink);
                     allListItems.push(profileLi);
+
+                    // Вкладка "Маршрутизатор"
+                    const routerLi = document.createElement("li");
+                    routerLi.className = 'theme-switcher-item';
+                    const routerLink = document.createElement("a");
+                    routerLink.style.cursor = 'pointer';
+                    routerLink.href = "#router";
+                    routerLink.textContent = 'Маршрутизатор';
+
+                    routerLink.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const side = document.querySelector('.span3');
+                        if (side && side.classList.contains('mobile-active')) {
+                            side.classList.remove('mobile-active');
+                            document.querySelector('.mobile-overlay')?.classList.remove('active');
+                            document.querySelector('.mobile-menu-btn')?.classList.remove('open');
+                        }
+                        openRouterModal();
+                    });
+
+                    routerLi.appendChild(routerLink);
+                    // allListItems.push(routerLi);
 
                     // Вкладка "Обучение"
                     const guideLi = document.createElement("li");
@@ -18390,10 +20028,17 @@
                         const iconName = getIconForHref(href);
                         let pureText = a.textContent.trim();
 
-                        // В демо-режиме меняем текст и вешаем красный стиль
+                        // В оффлайн-режиме меняем текст, вешаем красный стиль и прямой обработчик выхода
                         if (isDemoActive && href.includes('logout')) {
-                            pureText = 'Выход из демо-режима';
+                            pureText = 'Выход из оффлайн-режима';
                             a.classList.add('demo-logout-link');
+                            a.onclick = (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                sessionStorage.removeItem('etis_demo_mode');
+                                sessionStorage.removeItem('etis_demo_page');
+                                window.location.href = 'stu.login';
+                            };
                         }
 
                         a.innerHTML = '';
@@ -18413,30 +20058,24 @@
                         // 1. Точка уведомления вставляется ПЕРЕД стрелочкой
                         const isAllowed = allowedDotHrefs.some(target => href.includes(target)) || href.includes('term_test');
                         const isGuideUnread = (href === '#guide' && localStorage.getItem('etis_guide_viewed_v1') !== 'true');
+                        
+                        // Если вкладка открыта прямо сейчас — точку не ставим
+                        const isCurrentTab = (href && page && (href.includes(page) || page.includes(href.split('?')[0])));
+                        if (isCurrentTab) {
+                            itemHasNotification = false;
+                        }
 
-                        if ((itemHasNotification && isAllowed) || isGuideUnread) {
+                        if (((itemHasNotification && isAllowed) || isGuideUnread) && !isCurrentTab) {
                             globalHasNotifications = true;
                             const dot = document.createElement('span');
                             dot.className = 'badge-point';
                             a.appendChild(dot);
                         }
 
-                        // Автоматическое добавление уведомления в колокольчик при появлении нового объявления
+                        // Учет статуса прочтения объявлений для сайдбара
                         const isAnnounces = href.includes('stu_ann.announces');
                         if (isAnnounces && itemHasNotification) {
-                            const lastKnown = localStorage.getItem('etis_last_ann_unread_status');
-                            if (lastKnown !== 'unread') {
-                                localStorage.setItem('etis_last_ann_unread_status', 'unread');
-                                addNotificationToHistory({
-                                    id: 'notif_ann_sidebar_' + Date.now(),
-                                    title: 'Новое объявление',
-                                    subject: 'Объявление от разработчика',
-                                    body: 'Вам доступно новое объявление в настройках',
-                                    type: 'info',
-                                    icon: 'campaign',
-                                    targetUrl: 'stu_ann.announces'
-                                });
-                            }
+                            localStorage.setItem('etis_last_ann_unread_status', 'unread');
                         } else if (isAnnounces && !itemHasNotification) {
                             localStorage.setItem('etis_last_ann_unread_status', 'read');
                         }
@@ -18463,26 +20102,188 @@
                         if (mobileBtn) mobileBtn.classList.add('has-updates');
                     }
 
-                    // 5. ГРУППИРОВКА И СОРТИРОВКА
+                    // 5. ГРУППИРОВКА И СОРТИРОВКА С МИНИМАЛИСТИЧНЫМИ ПАПКАМИ
                     mainNav.innerHTML = '';
 
-                    const groupsOrder = [
-                        { id: 'group-plan', items: ['teach_plan'] },
-                        { id: 'group-timetable', items: ['timetable', 'signs'] },
-                        { id: 'group-messages', items: ['announces', 'teacher_notes', 'teachers', 'est_pkg.show_list'] },
-                        { id: 'group-attendance', items: ['absence', 'group_tt', 'stu_phs.show_slots'] },
-                        { id: 'group-library', items: ['library', 'electr', 'advice', 'ses', 'about'] },
-                        { id: 'group-docs', items: ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'портфолио'] },
-                        { id: 'group-surveys', items: ['term_test', 'special_est_list', 'оцените дистанционное'] },
-                        { id: 'group-account', items: ['change_pass', 'change_email', 'change_pr_page', 'logout'] },
-                        { id: 'group-reborn', items: ['#settings', 'profile', '#guide'] }
+                    const STANDALONE_ITEMS = ['teach_plan', 'timetable', 'signs'];
+
+                    const COLLAPSIBLE_GROUPS = [
+                        {
+                            id: 'group-messages',
+                            title: 'Сообщения',
+                            icon: 'forum',
+                            items: ['announces', 'teacher_notes', 'teachers', 'est_pkg.show_list']
+                        },
+                        {
+                            id: 'group-attendance',
+                            title: 'Посещаемость',
+                            icon: 'fact_check',
+                            items: ['absence', 'group_tt', 'stu_phs.show_slots']
+                        },
+                        {
+                            id: 'group-library',
+                            title: 'Ресурсы',
+                            icon: 'auto_stories',
+                            items: ['library', 'electr', 'advice', 'ses', 'about']
+                        },
+                        {
+                            id: 'group-docs',
+                            title: 'Документы',
+                            icon: 'folder',
+                            items: ['orders', 'cert_pkg', 'contract_list', 'blank_forms', 'portfolio', 'портфолио']
+                        },
+                        {
+                            id: 'group-surveys',
+                            title: 'Опросы',
+                            icon: 'poll',
+                            items: ['term_test', 'special_est_list', 'оцените дистанционное', 'gra_test']
+                        },
+                        {
+                            id: 'group-account',
+                            title: 'Аккаунт',
+                            icon: 'manage_accounts',
+                            items: ['change_pass', 'change_email', 'change_pr_page', 'logout']
+                        }
                     ];
 
+                    const REBORN_ITEMS = ['#settings', '#profile', '#router', '#guide'];
                     const usedItems = new Set();
 
-                    groupsOrder.forEach(group => {
-                        const groupContainer = document.createElement('div');
-                        groupContainer.className = `sidebar-nav-group ${group.id}`;
+                    // Оборачиваем ВЕСЬ интерфейс сайдбара (меню, студента и футер) в мобильный контейнер главного экрана
+                    let mobileMainView = sidebar.querySelector('.sidebar-mobile-main-view');
+                    if (!mobileMainView) {
+                        mobileMainView = document.createElement('div');
+                        mobileMainView.className = 'sidebar-mobile-main-view';
+                        sidebar.appendChild(mobileMainView);
+                    }
+
+                    // Перенос логотипа, меню и футера:
+                    const sLogo = sidebar.querySelector('.sidebar-logo');
+                    const sFooter = sidebar.querySelector('.sidebar-footer');
+
+                    if (sLogo && sLogo.parentNode !== mobileMainView) mobileMainView.appendChild(sLogo);
+                    if (mainNav.parentNode !== mobileMainView) mobileMainView.appendChild(mainNav);
+                    if (sFooter && sFooter.parentNode !== mobileMainView) mobileMainView.appendChild(sFooter);
+
+                    // Контейнер отдельной мобильной подвкладки
+                    let mobileSubView = sidebar.querySelector('.sidebar-mobile-subview');
+                    if (!mobileSubView) {
+                        mobileSubView = document.createElement('div');
+                        mobileSubView.className = 'sidebar-mobile-subview';
+                        mobileSubView.style.display = 'none';
+                        mobileSubView.innerHTML = `
+                            <div class="sidebar-subview-header">
+                                <span class="material-icons sidebar-subview-back-btn">arrow_back</span>
+                                <span class="sidebar-subview-title"></span>
+                                <span class="material-icons close-subview-drawer-btn" style="margin-left:auto; cursor:pointer; color:var(--color-text-secondary); font-size:24px;">close</span>
+                            </div>
+                            <div class="sidebar-subview-content"></div>
+                        `;
+                        sidebar.appendChild(mobileSubView);
+
+                        // Кнопка «Назад»
+                        mobileSubView.querySelector('.sidebar-subview-back-btn').addEventListener('click', (e) => {
+                            e.preventDefault();
+                            mobileSubView.style.display = 'none';
+                            mobileMainView.style.display = '';
+                            sidebar.scrollTop = 0;
+                        });
+
+                        // Крестик закрытия шторки
+                        mobileSubView.querySelector('.close-subview-drawer-btn').addEventListener('click', (e) => {
+                            e.preventDefault();
+                            sidebar.classList.remove('mobile-active');
+                            document.querySelector('.mobile-overlay')?.classList.remove('active');
+                            document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
+                            document.body.classList.remove('modal-open-body');
+                            setTimeout(() => {
+                                mobileSubView.style.display = 'none';
+                                mobileMainView.style.display = '';
+                            }, 300);
+                        });
+                    }
+
+                    // --- 1. ВЕРХНИЕ ВКЛАДКИ С РАЗДЕЛИТЕЛЕМ МЕЖДУ ПЛАНОМ И РАСПИСАНИЕМ ---
+                    
+                    // Блок Учебного плана
+                    const planGroup = document.createElement('div');
+                    planGroup.className = 'sidebar-nav-group group-plan';
+                    const planLi = allListItems.find(item => item.querySelector('a')?.getAttribute('href')?.includes('teach_plan'));
+                    if (planLi) {
+                        planGroup.appendChild(planLi);
+                        usedItems.add(planLi);
+                        mainNav.appendChild(planGroup);
+
+                        // Разделитель между Учебным планом и Расписанием
+                        const planDivider = document.createElement('li');
+                        planDivider.className = 'sidebar-divider';
+                        mainNav.appendChild(planDivider);
+                    }
+
+                    // Блок Расписания и Оценок
+                    const ttGroup = document.createElement('div');
+                    ttGroup.className = 'sidebar-nav-group group-timetable';
+                    ['timetable', 'signs'].forEach(pattern => {
+                        const li = allListItems.find(item => {
+                            if (usedItems.has(item)) return false;
+                            const h = item.querySelector('a')?.getAttribute('href') || '';
+                            return h.includes(pattern);
+                        });
+                        if (li) {
+                            ttGroup.appendChild(li);
+                            usedItems.add(li);
+                        }
+                    });
+                    if (ttGroup.children.length > 0) {
+                        mainNav.appendChild(ttGroup);
+
+                        // Разделитель перед началом раскрывающихся разделов
+                        const ttDivider = document.createElement('li');
+                        ttDivider.className = 'sidebar-divider';
+                        mainNav.appendChild(ttDivider);
+                    }
+
+                    // --- 2. РАСКРЫВАЮЩИЕСЯ ПАПКИ (БЕЗ РАЗДЕЛИТЕЛЕЙ НА ПК МЕЖДУ НИМИ) ---
+                    const collapsibleContainer = document.createElement('div');
+                    collapsibleContainer.className = 'sidebar-collapsible-sections';
+
+                    COLLAPSIBLE_GROUPS.forEach(group => {
+                        const folder = document.createElement('div');
+                        folder.className = 'sidebar-folder';
+                        folder.setAttribute('data-folder-id', group.id);
+
+                        // Если активен оффлайн-режим — помечаем папку аккаунта красным цветом
+                        if (isDemoActive && group.id === 'group-account') {
+                            folder.classList.add('offline-account-folder');
+                        }
+
+                        const folderHeader = document.createElement('button');
+                        folderHeader.className = 'sidebar-folder-header';
+                        folderHeader.setAttribute('data-folder-target', group.id);
+                        folderHeader.setAttribute('data-orig-title', group.title);
+                        folderHeader.setAttribute('data-orig-icon', group.icon);
+                        folderHeader.innerHTML = `
+                            <span class="material-icons folder-icon">${group.icon}</span>
+                            <span class="folder-title">${group.title}</span>
+                            <span class="material-icons chevron">chevron_right</span>
+                        `;
+
+                        const folderContent = document.createElement('ul');
+                        folderContent.className = 'sidebar-folder-content';
+
+                        let hasBadge = false;
+
+                        // Вставляем блок инфо и разделитель на ПК выше остальных вкладок
+                        if (group.id === 'group-account' && originalInfo) {
+                            const infoLi = document.createElement('li');
+                            infoLi.className = 'sidebar-account-info-desktop sidebar-user-info';
+                            infoLi.innerHTML = generateStudentInfoRowsHtml();
+                            folderContent.appendChild(infoLi);
+
+                            const dividerLi = document.createElement('li');
+                            dividerLi.className = 'sidebar-folder-divider';
+                            folderContent.appendChild(dividerLi);
+                        }
 
                         group.items.forEach(pattern => {
                             const li = allListItems.find(item => {
@@ -18492,30 +20293,225 @@
                                 if (pattern === 'оцените дистанционное') return t.includes('дистанционн');
                                 return h.includes(pattern);
                             });
-
                             if (li) {
-                                groupContainer.appendChild(li);
+                                if (li.querySelector('.badge-point')) hasBadge = true;
+                                folderContent.appendChild(li);
                                 usedItems.add(li);
                             }
                         });
 
-                        if (groupContainer.children.length > 0) {
-                            mainNav.appendChild(groupContainer);
+                        // Красная точка создаётся ТОЛЬКО если внутри реально есть непрочитанное уведомление
+                        if (hasBadge) {
+                            const dot = document.createElement('span');
+                            dot.className = 'badge-point folder-badge';
+                            folderHeader.insertBefore(dot, folderHeader.querySelector('.chevron'));
+                            folderHeader.classList.add('has-unread-badge');
+                        }
 
-                            // Создаем разделитель между группами для десктопа в общем контейнере mainNav
-                            const divider = document.createElement('li');
-                            divider.className = 'sidebar-divider';
-                            mainNav.appendChild(divider);
+                        if (folderContent.children.length > 0) {
+                            folder.appendChild(folderHeader);
+                            folder.appendChild(folderContent);
+                            collapsibleContainer.appendChild(folder);
                         }
                     });
 
-                    const remaining = allListItems.filter(li => !usedItems.has(li));
-                    if (remaining.length > 0) {
-                        const remGroup = document.createElement('div');
-                        remGroup.className = 'sidebar-nav-group group-other';
-                        remaining.forEach(li => remGroup.appendChild(li));
-                        mainNav.appendChild(remGroup);
+                    mainNav.appendChild(collapsibleContainer);
+
+                    // Разделитель после папок (перед разделом REBORN)
+                    const dividerAfterFolders = document.createElement('li');
+                    dividerAfterFolders.className = 'sidebar-divider';
+                    mainNav.appendChild(dividerAfterFolders);
+
+                    // --- 3. РАЗДЕЛ ETIS REBORN ---
+                    const rebornGroup = document.createElement('div');
+                    rebornGroup.className = 'sidebar-nav-group group-reborn';
+                    REBORN_ITEMS.forEach(pattern => {
+                        const li = allListItems.find(item => {
+                            if (usedItems.has(item)) return false;
+                            const h = item.querySelector('a')?.getAttribute('href') || '';
+                            return h.includes(pattern);
+                        });
+                        if (li) {
+                            rebornGroup.appendChild(li);
+                            usedItems.add(li);
+                        }
+                    });
+                    if (rebornGroup.children.length > 0) {
+                        mainNav.appendChild(rebornGroup);
                     }
+
+                    const checkIsMobileScreen = () => {
+                        return (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) ||
+                               (window.matchMedia && window.matchMedia('(max-width: 960px)').matches) ||
+                               (window.innerWidth <= 960);
+                    };
+
+                    const updateFolderHeaderState = (folder) => {
+                        const header = folder.querySelector('.sidebar-folder-header');
+                        if (!header) return;
+
+                        // Надежное определение смартфона даже до завершения рефлоу вьюпорта
+                        const isMobile = checkIsMobileScreen();
+                        const isOpen = !isMobile && folder.classList.contains('is-open');
+
+                        // Находим активный пункт внутри папки
+                        const activeLi = folder.querySelector('.sidebar-folder-content li.active');
+                        const hasActive = folder.classList.contains('has-active') || !!activeLi;
+
+                        const titleEl = header.querySelector('.folder-title');
+                        const iconEl = header.querySelector('.folder-icon');
+
+                        const origTitle = header.getAttribute('data-orig-title') || (titleEl ? titleEl.textContent.trim() : '');
+                        const origIcon = header.getAttribute('data-orig-icon') || (iconEl ? iconEl.textContent.trim() : '');
+
+                        let activeTitle = folder.getAttribute('data-active-title');
+                        let activeIcon = folder.getAttribute('data-active-icon');
+
+                        if (!activeTitle && activeLi) {
+                            const a = activeLi.querySelector('a');
+                            if (a) {
+                                activeTitle = a.querySelector('.sidebar-link-text')?.textContent.trim() || a.textContent.trim();
+                                activeIcon = a.querySelector('.material-icons:not(.chevron)')?.textContent.trim() || '';
+                                folder.setAttribute('data-active-title', activeTitle);
+                                if (activeIcon) folder.setAttribute('data-active-icon', activeIcon);
+                            }
+                        }
+
+                        if (!isOpen && hasActive && activeTitle) {
+                            header.classList.add('active-header');
+                            if (titleEl) titleEl.textContent = activeTitle;
+                            if (iconEl && activeIcon) iconEl.textContent = activeIcon;
+                        } else {
+                            header.classList.remove('active-header');
+                            if (titleEl && origTitle) titleEl.textContent = origTitle;
+                            if (iconEl && origIcon) iconEl.textContent = origIcon;
+                        }
+                    };
+
+                    // Обработчики кликов по папкам (на мобилке — открытие отдельной вкладки, на ПК — плавное раскрытие)
+                    const openMobileSubView = (folderId) => {
+                        const groupDef = COLLAPSIBLE_GROUPS.find(g => g.id === folderId);
+                        if (!groupDef) return;
+
+                        const folder = collapsibleContainer.querySelector(`.sidebar-folder[data-folder-id="${folderId}"]`);
+                        if (!folder) return;
+
+                        mobileSubView.querySelector('.sidebar-subview-title').textContent = groupDef.title;
+                        const contentBox = mobileSubView.querySelector('.sidebar-subview-content');
+                        contentBox.innerHTML = '';
+
+                        // Для папки «Аккаунт» на мобильных создаем 2 раздельных блока
+                        if (folderId === 'group-account' && originalInfo) {
+                            // Блок 1 (верхний): Информация о студенте
+                            const infoCard = document.createElement('div');
+                            infoCard.className = 'sidebar-nav-group sidebar-user-info-mobile sidebar-user-info';
+                            infoCard.innerHTML = generateStudentInfoRowsHtml();
+                            contentBox.appendChild(infoCard);
+
+                            // Блок 2 (нижний): Действия аккаунта
+                            const linksCard = document.createElement('div');
+                            linksCard.className = 'sidebar-nav-group';
+
+                            folder.querySelectorAll('.sidebar-folder-content li').forEach(li => {
+                                if (li.classList.contains('sidebar-account-info-desktop') || li.classList.contains('sidebar-folder-divider')) return;
+
+                                const cloneLi = li.cloneNode(true);
+                                cloneLi.querySelectorAll('a').forEach(a => {
+                                    a.addEventListener('click', () => {
+                                        sidebar.classList.remove('mobile-active');
+                                        document.querySelector('.mobile-overlay')?.classList.remove('active');
+                                        document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
+                                        document.body.classList.remove('modal-open-body');
+                                        setTimeout(() => {
+                                            mobileSubView.style.display = 'none';
+                                            mobileMainView.style.display = '';
+                                        }, 300);
+                                    });
+                                });
+                                linksCard.appendChild(cloneLi);
+                            });
+
+                            contentBox.appendChild(linksCard);
+                        } else {
+                            // Стандартный один блок для остальных разделов
+                            const groupCard = document.createElement('div');
+                            groupCard.className = 'sidebar-nav-group';
+
+                            folder.querySelectorAll('.sidebar-folder-content li').forEach(li => {
+                                const cloneLi = li.cloneNode(true);
+                                cloneLi.querySelectorAll('a').forEach(a => {
+                                    a.addEventListener('click', () => {
+                                        sidebar.classList.remove('mobile-active');
+                                        document.querySelector('.mobile-overlay')?.classList.remove('active');
+                                        document.querySelector('.mobile-nav-dock')?.classList.remove('dock-hidden');
+                                        document.body.classList.remove('modal-open-body');
+                                        setTimeout(() => {
+                                            mobileSubView.style.display = 'none';
+                                            mobileMainView.style.display = '';
+                                        }, 300);
+                                    });
+                                });
+                                groupCard.appendChild(cloneLi);
+                            });
+
+                            contentBox.appendChild(groupCard);
+                        }
+
+                        mobileMainView.style.display = 'none';
+                        mobileSubView.style.display = 'block';
+                        sidebar.scrollTop = 0;
+                    };
+
+                    collapsibleContainer.querySelectorAll('.sidebar-folder-header').forEach(header => {
+                        header.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const targetId = header.getAttribute('data-folder-target');
+
+                            if (window.innerWidth <= 960) {
+                                openMobileSubView(targetId);
+                            } else {
+                                const folder = header.closest('.sidebar-folder');
+                                if (folder) {
+                                    const willOpen = !folder.classList.contains('is-open');
+
+                                    // Автоматически закрываем все остальные папки
+                                    collapsibleContainer.querySelectorAll('.sidebar-folder').forEach(otherFolder => {
+                                        if (otherFolder !== folder) {
+                                            otherFolder.classList.remove('is-open');
+                                            updateFolderHeaderState(otherFolder);
+                                        }
+                                    });
+
+                                    // Переключаем текущую папку
+                                    folder.classList.toggle('is-open', willOpen);
+                                    updateFolderHeaderState(folder);
+                                }
+                            }
+                        });
+                    });
+
+                    // Функция синхронизации точек на заголовках папок
+                    window.updateFolderBadges = function() {
+                        document.querySelectorAll('.sidebar-folder').forEach(folder => {
+                            const header = folder.querySelector('.sidebar-folder-header');
+                            const hasBadge = !!folder.querySelector('.sidebar-folder-content .badge-point');
+                            if (header) {
+                                let dot = header.querySelector('.folder-badge');
+                                if (hasBadge) {
+                                    if (!dot) {
+                                        dot = document.createElement('span');
+                                        dot.className = 'badge-point folder-badge';
+                                        header.insertBefore(dot, header.querySelector('.chevron'));
+                                    }
+                                    header.classList.add('has-unread-badge');
+                                } else {
+                                    if (dot) dot.remove();
+                                    header.classList.remove('has-unread-badge');
+                                }
+                            }
+                        });
+                    };
 
                     // 6. Активный класс и скролл
                     requestAnimationFrame(() => {
@@ -18556,21 +20552,56 @@
                         }
                     });
 
-                    if (bestMatch) bestMatch.classList.add('active');
-                    else {
-                        const currentBase = currentFullUrl.split('?')[0].split('.').pop();
+                    if (bestMatch) {
+                        bestMatch.classList.add('active');
+                        const parentFolder = bestMatch.closest('.sidebar-folder');
+                        if (parentFolder) {
+                            parentFolder.classList.add('has-active');
 
-                        // --- ФИКС ПОДСВЕТКИ ДЛЯ СКРЫТЫХ ВКЛАДОК ---
-                        if (currentBase === 'ebl_choice' || currentBase === 'fcl_choice' || currentBase === 'choose_dis') {
-                            const tpLi = Array.from(mainNav.querySelectorAll('li')).find(li => li.querySelector('a')?.getAttribute('href')?.includes('teach_plan'));
-                            if (tpLi) tpLi.classList.add('active');
-                        } else {
-                            mainNav.querySelectorAll('li').forEach(li => {
-                                const href = li.querySelector('a')?.getAttribute('href') || '';
-                                if (currentBase.length > 3 && href.includes(currentBase)) li.classList.add('active');
-                            });
+                            const isMobileScreen = checkIsMobileScreen();
+
+                            if (!isMobileScreen) {
+                                parentFolder.classList.add('is-open');
+                            } else {
+                                parentFolder.classList.remove('is-open');
+                            }
+
+                            const activeA = bestMatch.querySelector('a');
+                            const activeText = activeA.querySelector('.sidebar-link-text')?.textContent.trim() || activeA.textContent.trim();
+                            const activeIcon = activeA.querySelector('.material-icons:not(.chevron)')?.textContent.trim() || '';
+
+                            parentFolder.setAttribute('data-active-title', activeText);
+                            parentFolder.setAttribute('data-active-icon', activeIcon);
                         }
+                    } else {
+                        const currentBase = currentFullUrl.split('?')[0].split('.').pop();
+                        mainNav.querySelectorAll('li').forEach(li => {
+                            const href = li.querySelector('a')?.getAttribute('href') || '';
+                            if (currentBase.length > 3 && href.includes(currentBase)) {
+                                li.classList.add('active');
+                                const pFolder = li.closest('.sidebar-folder');
+                                if (pFolder) pFolder.classList.add('has-active');
+                            }
+                        });
                     }
+
+                    // Принудительно обновляем состояние всех папок
+                    const refreshAllFolders = () => {
+                        collapsibleContainer.querySelectorAll('.sidebar-folder').forEach(folder => {
+                            updateFolderHeaderState(folder);
+                        });
+                    };
+
+                    refreshAllFolders();
+
+                    // Повторный вызов после применения мобильного вьюпорта
+                    setTimeout(refreshAllFolders, 100);
+                    setTimeout(refreshAllFolders, 300);
+                    window.addEventListener('resize', refreshAllFolders);
+
+                    collapsibleContainer.querySelectorAll('.sidebar-folder').forEach(folder => {
+                        updateFolderHeaderState(folder);
+                    });
 
                     // Подвал
                     if (!sidebar.querySelector('.sidebar-footer')) {
@@ -18607,7 +20638,7 @@
                                 </a>
                             </div>
                         `;
-                        sidebar.appendChild(footer);
+                        (mobileMainView || sidebar).appendChild(footer);
 
                         const closeMobileMenu = () => {
                             sidebar.classList.remove('mobile-active');
@@ -18628,21 +20659,6 @@
                 // Main page content
                 const span9 = document.querySelector('div.span9');
                 if (!span9 && !document.querySelector('.login') && page !== 'stu.schedule_detail') return;
-                const urlParams = new URLSearchParams(window.location.search);
-                let pageMode = urlParams.get('p_mode');
-
-                // Корректно выставляем pageMode для демо-режима и реального ЕТИСа
-                if (isDemoActive) {
-                    if (demoPage === 'signs' || demoPage === 'signs_session') pageMode = 'session';
-                    else if (demoPage === 'signs_current') pageMode = 'current';
-                    else if (demoPage === 'signs_rating') pageMode = 'rating';
-                    else if (demoPage === 'signs_diplom') pageMode = 'diplom';
-                    else if (demoPage === 'teach_plan_advanced') pageMode = 'advanced';
-                    else if (demoPage === 'teach_plan' || demoPage === 'teach_plan_short') pageMode = 'short';
-                } else if (!pageMode && page === 'stu.signs') {
-                    // В реальном ЕТИСе по умолчанию открываются сессии
-                    pageMode = 'session';
-                }
 
                 const warning = document.querySelector('div.warning');
                 if (warning && span9) {
@@ -21721,155 +23737,546 @@
 
                     case 'stu.tpr':
                     case 'stu.theme': {
-                        // 0. Кнопка "Назад" с поддержкой акцентного градиента
+                        // 0. Верхняя панель с кнопкой "Назад" и кнопкой "Оставить отзыв"
+                        const topBar = document.createElement('div');
+                        topBar.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2.4rem; flex-wrap: wrap; width: 100%; box-sizing: border-box;';
+
                         const backBtn = document.createElement('a');
                         backBtn.href = 'javascript:window.history.back()';
                         backBtn.className = 'answer-btn-custom';
-                        backBtn.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; margin-bottom: 2.4rem; background: var(--bg-accent) !important; color: #fff !important; -webkit-text-fill-color: #fff !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; border: none !important; cursor: pointer; text-decoration: none; padding: 0.8rem 1.8rem; height: auto; font-weight: 700; border-radius: 50px;';
-                        backBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem; color: #fff !important;">arrow_back</span> Назад';
-                        span9.prepend(backBtn);
+                        backBtn.style.cssText = 'display: inline-flex !important; align-items: center !important; gap: 8px !important; padding: 0.8rem 1.8rem !important; height: auto !important; border-radius: 50px !important; width: fit-content !important; cursor: pointer !important; text-decoration: none !important; border: none !important;';
+                        backBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem;">arrow_back</span><span>Назад</span>';
+                        topBar.appendChild(backBtn);
 
-                        // 1. Оформляем заголовок темы
+                        const estimateLink = span9.querySelector('a[href*="cust.estimate_tpr_form"], a[href*="cust.estimate_tt_form"]');
+                        if (estimateLink) {
+                            estimateLink.className = 'estimate-tpr-top-btn';
+                            estimateLink.style.cssText = 'display: inline-flex !important; align-items: center !important; gap: 8px !important; background: var(--color-card) !important; color: var(--color-text-primary) !important; -webkit-text-fill-color: var(--color-text-primary) !important; box-shadow: var(--shadow-main) !important; border: 1px solid var(--color-table-border) !important; cursor: pointer !important; text-decoration: none !important; padding: 0.8rem 1.8rem !important; height: auto !important; font-weight: 600 !important; border-radius: 50px !important; font-size: 1.3rem !important; transition: all 0.2s ease !important;';
+                            estimateLink.innerHTML = '<span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent); line-height: 1;">rate_review</span><span style="color: var(--color-text-primary) !important; -webkit-text-fill-color: var(--color-text-primary) !important;">Оставить отзыв</span>';
+                            
+                            estimateLink.onmouseenter = () => { estimateLink.style.background = 'var(--color-highlight)'; };
+                            estimateLink.onmouseleave = () => { estimateLink.style.background = 'var(--color-card)'; };
+                            
+                            topBar.appendChild(estimateLink);
+                        }
+                        span9.prepend(topBar);
+
+                        // 1. Оформляем заголовок дисциплины / темы
                         const h2 = span9.querySelector('h2');
                         if (h2) {
+                            const heroCard = document.createElement('div');
+                            heroCard.className = 'tpr-card';
+                            heroCard.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem 2.4rem 2rem 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);';
+
                             const parts = h2.innerHTML.split(/<br\s*\/?>/i);
                             if (parts.length > 1) {
-                                h2.innerHTML = `
-                                    <span style="font-size: 1.2rem; color: var(--color-text-secondary); display: block; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.8rem;">
-                                        ${parts[0]}
-                                    </span>
-                                    <span style="font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--color-text-primary);">
-                                        ${parts[1].replace(/«/g, '').replace(/»/g, '')}
-                                    </span>
+                                heroCard.innerHTML = `
+                                    <div style="font-size: 1.2rem; color: var(--color-accent); font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.8rem;">
+                                        ${parts[0].replace(/«/g, '').replace(/»/g, '').trim()}
+                                    </div>
+                                    <div style="font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--color-text-primary);">
+                                        ${parts[1].replace(/«/g, '').replace(/»/g, '').trim()}
+                                    </div>
                                 `;
                             } else {
                                 let text = h2.textContent.trim();
+                                let badgeLabel = 'Учебно-методический комплекс по дисциплине';
                                 if (text.toLowerCase().startsWith('тема')) {
+                                    badgeLabel = 'Тема';
                                     text = text.replace(/^Тема\s*/i, '');
-                                    h2.innerHTML = `
-                                        <span style="font-size: 1.2rem; color: var(--color-accent); display: block; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.8rem;">
-                                            Тема
-                                        </span>
-                                        <span style="font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--color-text-primary);">
-                                            ${text.replace(/«/g, '').replace(/»/g, '')}
-                                        </span>
+                                }
+                                heroCard.innerHTML = `
+                                    <div style="font-size: 1.2rem; color: var(--color-accent); font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.8rem;">
+                                        ${badgeLabel}
+                                    </div>
+                                    <div style="font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--color-text-primary);">
+                                        ${text.replace(/«/g, '').replace(/»/g, '').trim()}
+                                    </div>
+                                `;
+                            }
+                            h2.replaceWith(heroCard);
+                        }
+
+                        span9.querySelectorAll(':scope > br').forEach(br => br.remove());
+
+                        // 2. Оформление списка тем (.themes)
+                        const themesContainer = span9.querySelector('.themes');
+                        if (themesContainer) {
+                            const themesCard = document.createElement('div');
+                            themesCard.className = 'tpr-card';
+                            themesCard.style.cssText = 'padding: 2.4rem 2.4rem 2rem 2.4rem;';
+
+                            let themesTitleText = 'Темы';
+                            let prevH3 = themesContainer.previousElementSibling;
+                            if (prevH3 && prevH3.tagName === 'H3' && (prevH3.textContent.toLowerCase().includes('тем') || prevH3.textContent.toLowerCase().includes('содержан'))) {
+                                themesTitleText = prevH3.textContent.trim();
+                                prevH3.remove();
+                            }
+
+                            const themesList = document.createElement('div');
+                            themesList.className = 'themes-list';
+
+                            const themeElements = Array.from(themesContainer.querySelectorAll('.theme'));
+                            themeElements.forEach(themeEl => {
+                                const textRaw = themeEl.textContent.trim();
+                                const isModuleHeader = themeEl.style.paddingLeft === '0px' || themeEl.style.paddingLeft === '0' || textRaw.toLowerCase().startsWith('раздел') || textRaw.toLowerCase().startsWith('модуль');
+                                const link = themeEl.querySelector('a');
+                                const hourSpan = themeEl.querySelector('.hour');
+                                const ctlBadge = themeEl.querySelector('.badge.ctl');
+
+                                const row = document.createElement('div');
+                                row.className = isModuleHeader ? 'theme-item module-header' : 'theme-item';
+
+                                let pillsHtml = '';
+                                if (hourSpan && hourSpan.textContent.trim()) {
+                                    pillsHtml += `<span class="theme-hour-pill" style="${isModuleHeader ? 'background: var(--color-card) !important;' : ''}">${hourSpan.textContent.trim()}</span>`;
+                                }
+                                if (ctlBadge && ctlBadge.textContent.trim()) {
+                                    pillsHtml += `<span class="badge ctl">${ctlBadge.textContent.trim()}</span>`;
+                                }
+
+                                if (isModuleHeader) {
+                                    let cleanTitle = textRaw;
+                                    if (hourSpan) cleanTitle = cleanTitle.replace(hourSpan.textContent.trim(), '').trim();
+                                    if (ctlBadge) cleanTitle = cleanTitle.replace(ctlBadge.textContent.trim(), '').trim();
+
+                                    row.innerHTML = `
+                                        <div style="font-weight: 800; font-size: 1.4rem; color: var(--color-text-primary); line-height: 1.35; flex: 1;">
+                                            ${cleanTitle}
+                                        </div>
+                                        ${pillsHtml ? `<div class="theme-meta-pills">${pillsHtml}</div>` : ''}
+                                    `;
+                                } else if (link) {
+                                    row.innerHTML = `
+                                        <a href="${link.href}" class="theme-title-link">
+                                            ${link.textContent.trim()}
+                                        </a>
+                                        ${pillsHtml ? `<div class="theme-meta-pills">${pillsHtml}</div>` : ''}
                                     `;
                                 } else {
-                                    h2.style.fontSize = '2.2rem';
-                                    h2.style.fontWeight = '800';
+                                    row.innerHTML = `
+                                        <div style="font-weight: 600; color: var(--color-text-primary); font-size: 1.4rem; line-height: 1.4; flex: 1;">
+                                            ${textRaw}
+                                        </div>
+                                        ${pillsHtml ? `<div class="theme-meta-pills">${pillsHtml}</div>` : ''}
+                                    `;
                                 }
-                            }
-                            h2.style.marginBottom = '3rem';
+
+                                themesList.appendChild(row);
+                            });
+
+                            themesCard.innerHTML = `
+                                <div class="tpr-card-header">
+                                    <div class="tpr-card-title">
+                                        <span class="material-icons">list_alt</span>
+                                        <span>${themesTitleText}</span>
+                                    </div>
+                                    <span style="background: var(--color-accent-active); color: var(--color-accent); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.15rem;">
+                                        ${themeElements.length} тем
+                                    </span>
+                                </div>
+                            `;
+                            themesCard.appendChild(themesList);
+                            themesContainer.replaceWith(themesCard);
                         }
 
-                        // 2. Кнопка "Оценить" (если есть)
-                        const estimateLink = span9.querySelector('a[href*="cust.estimate_tpr_form"]');
-                        if (estimateLink) {
-                            estimateLink.className = 'icon-button icon-feedback';
-                            estimateLink.style.display = 'inline-flex';
-                            estimateLink.style.marginBottom = '3rem';
-                            estimateLink.innerHTML = 'Оставить отзыв';
-                        }
+                        // --- ТРАНСФОРМЕР ТАБЛИЦ ОЦЕНИВАНИЯ ---
+                        const transformIndicatorsTable = (table) => {
+                            const listContainer = document.createElement('div');
+                            listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 0.8rem; margin-top: 0.8rem; margin-bottom: 0 !important; width: 100%; box-sizing: border-box;';
 
-                        // Очистка лишних <br>
-                        span9.querySelectorAll('br').forEach(br => {
-                            if (br.parentElement === span9) br.remove();
-                        });
+                            const itemsData = [];
+                            table.querySelectorAll('tr').forEach(tr => {
+                                const tds = tr.querySelectorAll('td');
+                                if (tds.length >= 2) {
+                                    const scoreText = tds[0].textContent.trim();
+                                    const descText = tds[tds.length - 1].textContent.trim();
+                                    if (scoreText && descText) {
+                                        itemsData.push({ score: scoreText, desc: descText });
+                                    }
+                                }
+                            });
 
-                        // 3. Обработка всех разделов H3 и связанных блоков
-                        const h3Elements = Array.from(span9.querySelectorAll('h3'));
+                            if (itemsData.length === 0) return null;
 
-                        h3Elements.forEach(h3 => {
-                            const sectionTitle = h3.textContent.trim().toLowerCase();
-                            
-                            // Собираем ВСЕ блоки .theme_part / .tpr_part, относящиеся к текущему H3
-                            const relatedParts = [];
+                            const numericScores = itemsData
+                                .map(i => parseFloat(i.score.replace(',', '.')))
+                                .filter(n => !isNaN(n));
+                            const maxScoreVal = numericScores.length > 0 ? Math.max(...numericScores) : null;
+                            const minScoreVal = numericScores.length > 0 ? Math.min(...numericScores) : null;
+
+                            itemsData.forEach(item => {
+                                const s = item.score.toLowerCase();
+                                const numVal = parseFloat(item.score.replace(',', '.'));
+                                let display = item.score;
+                                let bg = 'var(--color-highlight)';
+                                let color = 'var(--color-text-primary)';
+
+                                // 1. Числовые баллы
+                                if (!isNaN(numVal) && maxScoreVal !== null && minScoreVal !== null && maxScoreVal !== minScoreVal) {
+                                    display = String(numVal);
+                                    if (numVal === maxScoreVal) {
+                                        bg = 'rgba(255, 184, 0, 0.18)';
+                                        color = '#FFB800';
+                                    } else if (numVal === minScoreVal) {
+                                        bg = 'rgba(52, 199, 89, 0.15)';
+                                        color = 'var(--color-green)';
+                                    } else {
+                                        bg = 'rgba(0, 122, 255, 0.15)';
+                                        color = 'var(--color-blue)';
+                                    }
+                                }
+                                // 2. Словесные оценки (неуд проверяется первым)
+                                else if (s.includes('неуд') || s.includes('незач') || s === '2' || s === '0') {
+                                    display = s.includes('незач') ? 'Незачет' : '2';
+                                    bg = 'rgba(255, 59, 48, 0.15)';
+                                    color = 'var(--color-red)';
+                                } else if (s.includes('отлич') || s === '5') {
+                                    display = '5';
+                                    bg = 'rgba(52, 199, 89, 0.15)';
+                                    color = 'var(--color-green)';
+                                } else if (s.includes('хор') || s === '4') {
+                                    display = '4';
+                                    bg = 'rgba(0, 122, 255, 0.15)';
+                                    color = 'var(--color-blue)';
+                                } else if (s.includes('удовл') || s === '3') {
+                                    display = '3';
+                                    bg = 'rgba(255, 149, 0, 0.15)';
+                                    color = 'var(--color-warning)';
+                                } else if (s.includes('зач')) {
+                                    display = 'Зачет';
+                                    bg = 'rgba(52, 199, 89, 0.15)';
+                                    color = 'var(--color-green)';
+                                }
+
+                                const rowItem = document.createElement('div');
+                                rowItem.style.cssText = 'display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 1.4rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border); box-sizing: border-box; width: 100%; text-align: left;';
+
+                                rowItem.innerHTML = `
+                                    <div style="display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 8px; border-radius: 8px; font-size: 1.4rem; font-weight: 800; background: ${bg}; color: ${color}; line-height: 1;">
+                                        ${display}
+                                    </div>
+                                    <div style="font-size: 1.35rem; color: var(--color-text-primary); line-height: 1.5; font-weight: 500; text-align: left; width: 100%;">
+                                        ${item.desc}
+                                    </div>
+                                `;
+                                listContainer.appendChild(rowItem);
+                            });
+
+                            return listContainer;
+                        };
+
+                        // 3. Упаковка H3 секций
+                        const h3List = Array.from(span9.querySelectorAll('h3'));
+
+                        h3List.forEach(h3 => {
+                            const titleRaw = h3.textContent.trim();
+                            const titleLower = titleRaw.toLowerCase();
+
+                            const sectionElements = [];
                             let next = h3.nextElementSibling;
-                            while (next && next.tagName !== 'H3') {
-                                if (next.classList.contains('theme_part') || next.classList.contains('tpr_part')) {
-                                    relatedParts.push(next);
-                                }
+                            while (next && next.tagName !== 'H3' && !next.classList.contains('tpr-card')) {
+                                sectionElements.push(next);
                                 next = next.nextElementSibling;
                             }
 
-                            if (relatedParts.length === 0) return;
+                            if (sectionElements.length === 0) {
+                                h3.remove();
+                                return;
+                            }
 
-                            // Стилизуем заголовок секции
-                            h3.style.cssText = 'margin-top: 0 !important; margin-bottom: 1.8rem !important; font-size: 1.4rem !important; font-weight: 800 !important; color: var(--color-text-secondary) !important; text-transform: uppercase; letter-spacing: 1px;';
-
-                            // --- ОБРАБОТКА КОНТРОЛЯ ---
-                            if (sectionTitle.includes('контроль')) {
-                                relatedParts.forEach((part, partIdx) => {
-                                    const card = document.createElement('div');
-                                    card.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem 2.4rem 2rem 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2rem; border: 1px solid var(--color-table-border); box-sizing: border-box;';
-
-                                    if (partIdx === 0) {
-                                        h3.parentNode.insertBefore(card, h3);
-                                        card.appendChild(h3);
-                                    } else {
-                                        part.parentNode.insertBefore(card, part);
-                                    }
-                                    card.appendChild(part);
-
-                                    part.style.fontSize = '1.4rem';
-                                    part.style.lineHeight = '1.6';
-                                    part.style.color = 'var(--color-text-primary)';
-                                    part.style.margin = '0';
-                                    part.style.padding = '0';
-
-                                    // Чистим внешние <br> перед парсингом
-                                    part.querySelectorAll(':scope > br').forEach(br => br.remove());
-
-                                    // Парсинг баллов
-                                    let passScore = '', maxScore = '', ratingScore = '';
-                                    let passEl = null, maxEl = null, ratingEl = null;
-
-                                    Array.from(part.children).forEach(child => {
-                                        const text = child.textContent.trim().toLowerCase();
-
-                                        if (text.includes('проходной балл')) { passScore = child.textContent.split(/[-–:]/)[1]?.trim(); passEl = child; }
-                                        else if (text.includes('максимальный балл')) { maxScore = child.textContent.split(/[-–:]/)[1]?.trim(); maxEl = child; }
-                                        else if (text.includes('в рейтинг')) { ratingScore = child.textContent.split(/[-–:]/)[1]?.trim(); ratingEl = child; }
-
-                                        // Название контрольного мероприятия
-                                        if (child.tagName === 'DIV' && !child.classList.contains('ctl_hours') && child !== passEl && child !== maxEl && child !== ratingEl && !text.includes('элементы') && !text.includes('оценивания') && !child.classList.contains('theme_file') && !child.classList.contains('tpr_file')) {
-                                            if (child.textContent.includes('-') || child.textContent.includes('–')) {
-                                                const titleParts = child.textContent.split(/[-–]/);
-                                                child.innerHTML = `
-                                                    <div style="font-weight: 800; font-size: 1.8rem; color: var(--color-text-primary); margin-bottom: 0.6rem; line-height: 1.3;">${titleParts[1].trim()}</div>
-                                                    <div style="color: var(--color-text-secondary); font-size: 1.3rem;">Контролирует: <span style="font-weight: 600; color: var(--color-accent);">${titleParts[0].trim()}</span></div>
-                                                `;
+                            // === СПЕЦИАЛЬНАЯ ОБРАБОТКА "ПЛАНИРУЕМЫЙ РЕЗУЛЬТАТ ОБУЧЕНИЯ" ===
+                            // Заменяем единый блок на отдельные карточки под каждый результат
+                            if (titleLower.includes('результат') || titleLower.includes('планируем')) {
+                                const el = sectionElements.find(e => e.classList?.contains('tpr_part') || e.querySelector?.('table'));
+                                if (el) {
+                                    const outcomeDivs = Array.from(el.children).filter(child => child.tagName === 'DIV' && child.querySelector('table'));
+                                    if (outcomeDivs.length > 0) {
+                                        outcomeDivs.forEach((outcomeDiv, idx) => {
+                                            const descDiv = outcomeDiv.querySelector(':scope > div:first-child');
+                                            let lines = [];
+                                            if (descDiv) {
+                                                lines = descDiv.innerHTML.split(/<br\s*\/?>/i)
+                                                    .map(s => s.replace(/<[^>]+>/g, '').trim())
+                                                    .filter(Boolean);
                                             }
-                                        }
 
-                                        // Часы контроля
-                                        if (child.classList.contains('ctl_hours')) {
-                                            child.style.cssText = 'display: inline-flex; align-items: center; gap: 8px; background: rgba(0, 122, 255, 0.1); color: var(--color-blue); padding: 0.6rem 1.6rem; border-radius: 50px; font-weight: 700; font-size: 1.3rem; margin-top: 1.2rem; margin-bottom: 1.4rem;';
-                                            child.innerHTML = `<span class="material-icons" style="font-size: 1.8rem;">timer</span> ${child.textContent.trim()}`;
+                                            const table = outcomeDiv.querySelector('table');
+                                            const transformedCards = table ? transformIndicatorsTable(table) : null;
+
+                                            // Создаём отдельную полноценную карточку под результат
+                                            const outcomeCard = document.createElement('div');
+                                            outcomeCard.className = 'tpr-card';
+                                            outcomeCard.style.cssText = 'padding: 2.4rem 2.4rem 2rem 2.4rem;';
+                                            outcomeCard.innerHTML = `
+                                                <div class="tpr-card-header">
+                                                    <div class="tpr-card-title">
+                                                        <span class="material-icons">flag</span>
+                                                        <span>Планируемый результат обучения ${outcomeDivs.length > 1 ? (idx + 1) : ''}</span>
+                                                    </div>
+                                                </div>
+                                            `;
+
+                                            const cardBody = document.createElement('div');
+                                            cardBody.style.cssText = 'display: flex; flex-direction: column; width: 100%; box-sizing: border-box; font-size: 1.35rem; line-height: 1.6; color: var(--color-text-primary); margin: 0; padding: 0;';
+
+                                            // Описание результата чистым текстом прямо под шапкой (без рамок)
+                                            if (lines.length > 0) {
+                                                const descEl = document.createElement('div');
+                                                descEl.style.cssText = 'font-size: 1.35rem; line-height: 1.6; color: var(--color-text-primary); text-align: left; margin-bottom: 1.2rem;';
+                                                descEl.innerHTML = lines.join('<br>');
+                                                cardBody.appendChild(descEl);
+                                            }
+
+                                            // Подзаголовок критериев оценивания
+                                            const criteriaHeader = document.createElement('div');
+                                            criteriaHeader.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 1.35rem; font-weight: 800; color: var(--color-text-primary); margin-top: 0.4rem; margin-bottom: 0.8rem; text-align: left;';
+                                            criteriaHeader.innerHTML = `
+                                                <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">rule</span>
+                                                <span>Критерии оценивания</span>
+                                            `;
+                                            cardBody.appendChild(criteriaHeader);
+
+                                            // Карточки с баллами
+                                            if (transformedCards) {
+                                                cardBody.appendChild(transformedCards);
+                                            }
+
+                                            if (cardBody.lastElementChild) {
+                                                cardBody.lastElementChild.style.marginBottom = '0';
+                                            }
+
+                                            outcomeCard.appendChild(cardBody);
+                                            h3.parentNode.insertBefore(outcomeCard, h3);
+                                        });
+
+                                        h3.remove();
+                                        sectionElements.forEach(s => s.remove());
+                                        return;
+                                    }
+                                }
+                            }
+
+                            // Для всех остальных секций (Трудоемкость, Аннотация, Контроль и т.д.)
+                            let iconName = 'category';
+                            if (titleLower.includes('показател') || titleLower.includes('шкал')) iconName = 'fact_check';
+                            else if (titleLower.includes('контрол') || titleLower.includes('оцен')) iconName = 'fact_check';
+                            else if (titleLower.includes('вопрос') || titleLower.includes('аттестац')) iconName = 'quiz';
+                            else if (titleLower.includes('трудоемкост')) iconName = 'schedule';
+                            else if (titleLower.includes('аннотац') || titleLower.includes('цел')) iconName = 'description';
+                            else if (titleLower.includes('литератур')) iconName = 'menu_book';
+                            else if (titleLower.includes('преподават')) iconName = 'groups';
+                            else if (titleLower.includes('материал') || titleLower.includes('аудитор')) iconName = 'apartment';
+                            else if (titleLower.includes('программн') || titleLower.includes('интернет')) iconName = 'devices';
+
+                            const card = document.createElement('div');
+                            card.className = 'tpr-card';
+                            card.style.cssText = 'padding: 2.4rem 2.4rem 2rem 2.4rem;';
+                            card.innerHTML = `
+                                <div class="tpr-card-header">
+                                    <div class="tpr-card-title">
+                                        <span class="material-icons">${iconName}</span>
+                                        <span>${titleRaw}</span>
+                                    </div>
+                                </div>
+                            `;
+
+                            const cardBody = document.createElement('div');
+                            cardBody.style.cssText = 'display: flex; flex-direction: column; width: 100%; box-sizing: border-box; font-size: 1.35rem; line-height: 1.6; color: var(--color-text-primary); margin: 0; padding: 0;';
+
+                            sectionElements.forEach(el => {
+                                el.style.marginLeft = '0';
+                                el.style.paddingLeft = '0';
+                                el.querySelectorAll('*').forEach(child => {
+                                    if (child.style) {
+                                        child.style.marginLeft = '0';
+                                        child.style.paddingLeft = '0';
+                                    }
+                                });
+
+                                // Стилизация блока "Контроль"
+                                if (titleLower.includes('контрол')) {
+                                    const ctlHoursEl = el.querySelector('.ctl_hours');
+                                    let hoursText = ctlHoursEl ? ctlHoursEl.textContent.trim() : '';
+                                    if (ctlHoursEl) ctlHoursEl.remove();
+
+                                    const allDivs = Array.from(el.querySelectorAll('div'));
+                                    const eventNameDiv = allDivs.find(d => {
+                                        const t = d.textContent;
+                                        return (t.includes('мероприятие') || t.includes('контроль')) && !t.includes('Проходной') && !t.includes('Максимальный') && !t.includes('рейтинг');
+                                    });
+
+                                    if (eventNameDiv) {
+                                        const rawText = eventNameDiv.textContent.replace(/^[\s:]+|[\s:]+$/g, '').trim();
+                                        const matchEvent = rawText.match(/(.*?)\s*[-–:]\s*(.*)/);
+                                        const workType = matchEvent ? matchEvent[1].trim() : 'Контроль';
+                                        const eventTitle = matchEvent ? matchEvent[2].trim() : rawText;
+
+                                        const headerCard = document.createElement('div');
+                                        headerCard.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 1.2rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border); margin-bottom: 1.2rem; flex-wrap: wrap;';
+                                        headerCard.innerHTML = `
+                                            <div style="display: flex; align-items: center; gap: 10px;">
+                                                <span style="background: rgba(0, 122, 255, 0.12); color: var(--color-blue); padding: 0.3rem 0.8rem; border-radius: 50px; font-size: 1.1rem; font-weight: 800; text-transform: uppercase;">
+                                                    ${workType}
+                                                </span>
+                                                <span style="font-weight: 700; font-size: 1.4rem; color: var(--color-text-primary);">
+                                                    ${eventTitle}
+                                                </span>
+                                            </div>
+                                            ${hoursText ? `
+                                            <div style="display: inline-flex; align-items: center; gap: 6px; color: var(--color-text-secondary); font-weight: 600; font-size: 1.25rem;">
+                                                <span class="material-icons" style="font-size: 1.6rem; color: var(--color-accent);">timer</span>
+                                                <span>${hoursText}</span>
+                                            </div>` : ''}
+                                        `;
+                                        eventNameDiv.replaceWith(headerCard);
+                                    }
+
+                                    allDivs.forEach(div => {
+                                        if (div.textContent.toLowerCase().includes('контролируемые элементы')) {
+                                            const p = div.querySelector('p');
+                                            let items = [];
+                                            if (p) {
+                                                items = p.innerHTML.split(/<br\s*\/?>/i).map(s => s.replace(/<[^>]+>/g, '').trim()).filter(Boolean);
+                                            } else {
+                                                items = div.innerHTML.split(/<br\s*\/?>/i).map(s => s.replace(/<[^>]+>/g, '').trim()).filter(s => s.length > 5 && !s.toLowerCase().includes('контролируемые'));
+                                            }
+
+                                            if (items.length > 0) {
+                                                const listWrap = document.createElement('div');
+                                                listWrap.style.cssText = 'margin-top: 1.6rem; margin-bottom: 1.4rem;';
+                                                listWrap.innerHTML = `
+                                                    <div style="display: flex; align-items: center; gap: 8px; font-size: 1.35rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 1rem;">
+                                                        <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">checklist</span>
+                                                        <span>Контролируемые элементы</span>
+                                                    </div>
+                                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                                        ${items.map(it => `
+                                                            <div style="display: flex; align-items: flex-start; gap: 10px; font-size: 1.35rem; line-height: 1.5; color: var(--color-text-secondary);">
+                                                                <span class="material-icons" style="font-size: 1.6rem; color: var(--color-accent); flex-shrink: 0; margin-top: 2px;">check_circle</span>
+                                                                <span>${it}</span>
+                                                            </div>
+                                                        `).join('')}
+                                                    </div>
+                                                `;
+                                                div.replaceWith(listWrap);
+                                            }
                                         }
                                     });
 
-                                    // Виджет баллов (3 плашки)
-                                    if (passScore || maxScore || ratingScore) {
-                                        const statsGrid = document.createElement('div');
-                                        statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 1.2rem; margin-top: 1.4rem; margin-bottom: 0;';
+                                    allDivs.forEach(div => {
+                                        if (div.textContent.toLowerCase().includes('показатель оценивания') && div.querySelector('table')) {
+                                            const heading = document.createElement('div');
+                                            heading.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 1.35rem; font-weight: 800; color: var(--color-text-primary); margin-top: 1.6rem; margin-bottom: 0.8rem;';
+                                            heading.innerHTML = `
+                                                <span class="material-icons" style="font-size: 1.8rem; color: var(--color-accent);">rule</span>
+                                                <span>Критерии начисления баллов</span>
+                                            `;
+                                            div.prepend(heading);
 
-                                        const createStat = (label, val, colorClass) => {
-                                            if (!val) return '';
-                                            let colorStyle = colorClass === 'green' ? 'color: var(--color-green);' : (colorClass === 'blue' ? 'color: var(--color-blue);' : 'color: var(--color-accent);');
-                                            let bgStyle = colorClass === 'green' ? 'background: rgba(52, 199, 89, 0.1); border: 1px solid rgba(52, 199, 89, 0.3);' : (colorClass === 'blue' ? 'background: rgba(0, 122, 255, 0.1); border: 1px solid rgba(0, 122, 255, 0.3);' : 'background: var(--color-accent-active); border: 1px solid var(--color-accent);');
-                                            return `
-                                                <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 1.4rem 1.6rem; border-radius: var(--radius-medium); ${bgStyle}">
-                                                    <span style="font-size: 2.2rem; font-weight: 800; ${colorStyle} line-height: 1;">${val}</span>
-                                                    <span style="font-size: 1.05rem; font-weight: 700; ${colorStyle} margin-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">${label}</span>
+                                            Array.from(div.childNodes).forEach(n => {
+                                                if (n.nodeType === Node.TEXT_NODE && n.textContent.includes('Показатель')) n.remove();
+                                            });
+                                        }
+                                    });
+                                }
+
+                                // Преобразование таблиц с критериями
+                                const tables = Array.from(el.querySelectorAll('table'));
+                                if (el.tagName === 'TABLE') tables.push(el);
+
+                                tables.forEach(tbl => {
+                                    const transformed = transformIndicatorsTable(tbl);
+                                    if (transformed) {
+                                        tbl.replaceWith(transformed);
+                                    }
+                                });
+
+                                // Обычные таблицы оборачиваем в скролл
+                                el.querySelectorAll?.('table').forEach(table => {
+                                    table.removeAttribute('style');
+                                    table.removeAttribute('width');
+                                    table.removeAttribute('border');
+                                    table.removeAttribute('bgcolor');
+                                    table.removeAttribute('align');
+                                    table.className = 'common';
+
+                                    if (!table.parentNode.classList.contains('wide-table-wrapper')) {
+                                        const wrapper = document.createElement('div');
+                                        wrapper.className = 'wide-table-wrapper';
+                                        table.parentNode.insertBefore(wrapper, table);
+                                        wrapper.appendChild(table);
+                                    }
+                                });
+
+                                if (el.tagName === 'TABLE') {
+                                    el.removeAttribute('style');
+                                    el.removeAttribute('width');
+                                    el.removeAttribute('border');
+                                    el.className = 'common';
+
+                                    const wrapper = document.createElement('div');
+                                    wrapper.className = 'wide-table-wrapper';
+                                    wrapper.appendChild(el);
+                                    cardBody.appendChild(wrapper);
+                                    return;
+                                }
+
+                                // Блок "Трудоемкость"
+                                if (titleLower.includes('трудоемкост')) {
+                                    el.querySelectorAll('div').forEach(child => {
+                                        const text = child.textContent.trim();
+                                        const match = text.match(/(.*?)\s*[–-]\s*(.*)/);
+                                        if (match) {
+                                            const type = match[1].trim();
+                                            const hours = match[2].trim();
+
+                                            let bg = 'var(--color-highlight)', color = 'var(--color-text-secondary)', rowIcon = 'circle';
+                                            if (type.toLowerCase().includes('лекц')) { bg = 'rgba(0, 122, 255, 0.12)'; color = 'var(--color-blue)'; rowIcon = 'menu_book'; }
+                                            else if (type.toLowerCase().includes('практ')) { bg = 'rgba(52, 199, 89, 0.12)'; color = 'var(--color-green)'; rowIcon = 'engineering'; }
+                                            else if (type.toLowerCase().includes('лаб')) { bg = 'rgba(255, 149, 0, 0.12)'; color = 'var(--color-warning)'; rowIcon = 'science'; }
+                                            else if (type.toLowerCase().includes('самост')) { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; rowIcon = 'person'; }
+                                            else if (type.toLowerCase().includes('контр') || type.toLowerCase().includes('зачет') || type.toLowerCase().includes('экзамен')) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; rowIcon = 'fact_check'; }
+
+                                            child.innerHTML = `
+                                                <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.2rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border); margin-bottom: 0.8rem;">
+                                                    <div style="display: flex; align-items: center; gap: 12px; font-weight: 600;">
+                                                        <span class="material-icons" style="color: ${color}; font-size: 2rem;">${rowIcon}</span>
+                                                        <span>${type}</span>
+                                                    </div>
+                                                    <span style="background: ${bg}; color: ${color}; padding: 0.4rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; white-space: nowrap;">${hours}</span>
                                                 </div>
                                             `;
-                                        };
+                                        }
+                                    });
+                                }
+
+                                // Плашки баллов
+                                if (titleLower.includes('контрол') || titleLower.includes('оцен')) {
+                                    let passScore = '', maxScore = '', ratingScore = '';
+                                    let passEl = null, maxEl = null, ratingEl = null;
+
+                                    Array.from(el.children || []).forEach(child => {
+                                        const cText = child.textContent.trim().toLowerCase();
+                                        if (cText.includes('проходной балл')) { passScore = child.textContent.split(/[-–:]/)[1]?.trim(); passEl = child; }
+                                        else if (cText.includes('максимальный балл')) { maxScore = child.textContent.split(/[-–:]/)[1]?.trim(); maxEl = child; }
+                                        else if (cText.includes('в рейтинг')) { ratingScore = child.textContent.split(/[-–:]/)[1]?.trim(); ratingEl = child; }
+                                    });
+
+                                    if (passScore || maxScore || ratingScore) {
+                                        const statsGrid = document.createElement('div');
+                                        statsGrid.style.cssText = 'display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 1.2rem; margin: 1.2rem 0; width: 100%; box-sizing: border-box;';
+
+                                        const createStat = (label, val, bg, border, color) => val ? `
+                                            <div style="display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 1.2rem 1.4rem; border-radius: var(--radius-medium); background: ${bg}; border: 1px solid ${border};">
+                                                <span style="font-size: 2rem; font-weight: 800; color: ${color}; line-height: 1;">${val}</span>
+                                                <span style="font-size: 1.05rem; font-weight: 700; color: ${color}; margin-top: 0.5rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.9;">${label}</span>
+                                            </div>` : '';
 
                                         statsGrid.innerHTML = `
-                                            ${createStat('Максимум', maxScore, 'blue')}
-                                            ${createStat('В рейтинг', ratingScore, 'accent')}
-                                            ${createStat('Проходной', passScore, 'green')}
+                                            ${createStat('Максимум', maxScore, 'rgba(0, 122, 255, 0.1)', 'rgba(0, 122, 255, 0.25)', 'var(--color-blue)')}
+                                            ${createStat('В рейтинг', ratingScore, 'var(--color-accent-active)', 'var(--color-accent)', 'var(--color-accent)')}
+                                            ${createStat('Проходной', passScore, 'rgba(52, 199, 89, 0.1)', 'rgba(52, 199, 89, 0.25)', 'var(--color-green)')}
                                         `;
 
                                         if (passEl) passEl.replaceWith(statsGrid);
@@ -21877,184 +24284,40 @@
                                         if (ratingEl) ratingEl.remove();
                                     }
 
-                                    // Оформление подразделов "Контролируемые элементы" и "Показатель оценивания" с разделителем сверху
-                                    part.querySelectorAll('div').forEach(div => {
-                                        const rawText = div.textContent.trim();
-                                        if (rawText.startsWith('Контролируемые элементы') || rawText.startsWith('Показатель оценивания')) {
-                                            const match = rawText.match(/^(Контролируемые элементы|Показатель оценивания)\s*:/i);
-                                            if (match) {
-                                                const subTitle = match[1];
-                                                const pTag = div.querySelector('p');
-                                                const tableEl = div.querySelector('table');
-
-                                                let contentInner = '';
-                                                if (tableEl) {
-                                                    contentInner = tableEl.outerHTML;
-                                                } else if (pTag) {
-                                                    contentInner = `<div style="line-height: 1.6; font-size: 1.35rem; color: var(--color-text-primary); margin-top: 0.6rem;">${pTag.innerHTML.replace(/^<br\s*\/?>/i, '').trim()}</div>`;
-                                                }
-
-                                                div.style.cssText = 'border-top: 1px solid var(--color-table-border); padding-top: 2rem; margin-top: 2rem;';
-                                                div.innerHTML = `
-                                                    <div style="font-weight: 800; color: var(--color-text-secondary); font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem; opacity: 0.8;">
-                                                        ${subTitle}
-                                                    </div>
-                                                    ${contentInner}
-                                                `;
-                                            }
-                                        }
-                                    });
-
-                                    // Превращение таблицы показателей оценивания в список с цветными баллами (Золотой / Зеленый / Синий)
-                                    part.querySelectorAll('table').forEach(table => {
-                                        const listContainer = document.createElement('div');
-                                        listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 0.8rem; margin-top: 1rem; margin-bottom: 0 !important; width: 100%; box-sizing: border-box;';
-
-                                        // 1. Сбор всех строк и расчет мин/макс баллов
-                                        const itemsData = [];
-                                        table.querySelectorAll('tr').forEach(tr => {
-                                            const tds = tr.querySelectorAll('td');
-                                            if (tds.length > 0) {
-                                                const scoreText = tds[0].textContent.trim();
-                                                const descText = tds[tds.length - 1].textContent.trim();
-                                                const numScore = parseFloat(scoreText.replace(',', '.'));
-
-                                                if (scoreText && descText) {
-                                                    itemsData.push({
-                                                        score: scoreText,
-                                                        num: isNaN(numScore) ? null : numScore,
-                                                        desc: descText
-                                                    });
-                                                }
-                                            }
-                                        });
-
-                                        const numericScores = itemsData.map(i => i.num).filter(n => n !== null);
-                                        const maxScoreVal = numericScores.length > 0 ? Math.max(...numericScores) : null;
-                                        const minScoreVal = numericScores.length > 0 ? Math.min(...numericScores) : null;
-
-                                        // 2. Отрисовка элементов с цветными бейджами
-                                        itemsData.forEach(item => {
-                                            let bg = 'var(--color-accent-active)';
-                                            let color = 'var(--color-accent)';
-
-                                            if (item.num !== null && maxScoreVal !== null && minScoreVal !== null) {
-                                                if (maxScoreVal !== minScoreVal) {
-                                                    if (item.num === maxScoreVal) {
-                                                        // Самый большой балл (Золотой)
-                                                        bg = 'rgba(255, 204, 0, 0.16)';
-                                                        color = 'var(--color-yellow)';
-                                                    } else if (item.num === minScoreVal) {
-                                                        // Самый маленький балл (Синий)
-                                                        bg = 'rgba(0, 122, 255, 0.16)';
-                                                        color = 'var(--color-blue)';
-                                                    } else {
-                                                        // Все промежуточные баллы (Зеленый)
-                                                        bg = 'rgba(52, 199, 89, 0.16)';
-                                                        color = 'var(--color-green)';
-                                                    }
-                                                } else {
-                                                    // Если все баллы одинаковые
-                                                    bg = 'rgba(255, 204, 0, 0.16)';
-                                                    color = 'var(--color-yellow)';
-                                                }
-                                            }
-
-                                            const rowItem = document.createElement('div');
-                                            rowItem.style.cssText = 'display: flex; align-items: center; gap: 1.4rem; padding: 1.2rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border); box-sizing: border-box; width: 100%;';
-
-                                            rowItem.innerHTML = `
-                                                <div style="background: ${bg}; color: ${color}; font-weight: 800; font-size: 1.5rem; border-radius: 12px; min-width: 44px; height: 44px; text-align: center; flex-shrink: 0; display: flex; align-items: center; justify-content: center; box-sizing: border-box;">
-                                                    ${item.score}
-                                                </div>
-                                                <div style="font-size: 1.35rem; color: var(--color-text-primary); line-height: 1.5; font-weight: 500; text-align: left; flex: 1;">
-                                                    ${item.desc}
-                                                </div>
-                                            `;
-                                            listContainer.appendChild(rowItem);
-                                        });
-
-                                        table.replaceWith(listContainer);
-                                    });
-
-                                    // Файлы (сброс старых классов ЕТИС для удаления левого отступа)
-                                    part.querySelectorAll('.theme_file, .tpr_file').forEach(fileDiv => {
-                                        const link = fileDiv.querySelector('a');
+                                    el.querySelectorAll?.('.theme_file, .tpr_file, a[href*="file_download"]').forEach(fileEl => {
+                                        const link = fileEl.tagName === 'A' ? fileEl : fileEl.querySelector('a');
                                         if (link) {
                                             link.className = 'file-attachment-link';
-                                            link.style.cssText = 'display: inline-flex !important; align-items: center !important; gap: 8px !important; text-decoration: none !important; background: var(--color-highlight) !important; border: 1px solid var(--color-table-border) !important; padding: 1rem 1.6rem !important; border-radius: 50px !important; margin: 0 !important; transition: all 0.2s ease !important;';
-                                            link.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem;">description</span><span class="file-name" style="font-weight: 600; font-size: 1.3rem;">${link.textContent.trim()}</span>`;
-                                            
-                                            fileDiv.className = ''; // Удаляем класс ЕТИС, сдвигавший кнопку вправо
-                                            fileDiv.style.cssText = 'border-top: 1px solid var(--color-table-border) !important; padding: 1.8rem 0 0 0 !important; margin: 2rem 0 0 0 !important; display: flex !important; flex-wrap: wrap !important; gap: 8px !important; width: 100% !important; box-sizing: border-box !important; text-indent: 0 !important; justify-content: flex-start !important;';
-                                            fileDiv.innerHTML = '';
-                                            fileDiv.appendChild(link);
+                                            link.style.cssText = 'display: inline-flex !important; align-items: center !important; gap: 8px !important; text-decoration: none !important; background: var(--color-highlight) !important; border: 1px solid var(--color-table-border) !important; padding: 1rem 1.6rem !important; border-radius: 50px !important; margin: 0.5rem 0 !important; font-weight: 600 !important; font-size: 1.3rem !important;';
+                                            link.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem;">description</span><span class="file-name">${link.textContent.trim()}</span>`;
                                         }
                                     });
-
-                                    // Очистка висячих пустых тегов снизу блока контроля
-                                    while (part.lastChild && (part.lastChild.tagName === 'BR' || (part.lastChild.nodeType === Node.TEXT_NODE && !part.lastChild.textContent.trim()))) {
-                                        part.lastChild.remove();
-                                    }
-                                });
-                            }
-                            // --- ОБРАБОТКА ОСТАЛЬНЫХ СЕКЦИЙ (Трудоемкость, Аннотация, Литература) ---
-                            else {
-                                const part = relatedParts[0];
-                                const card = document.createElement('div');
-                                card.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem 2.4rem 2rem 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2rem; border: 1px solid var(--color-table-border); box-sizing: border-box;';
-
-                                h3.parentNode.insertBefore(card, h3);
-                                card.appendChild(h3);
-                                card.appendChild(part);
-
-                                part.style.fontSize = '1.4rem';
-                                part.style.lineHeight = '1.6';
-                                part.style.color = 'var(--color-text-primary)';
-                                part.style.margin = '0';
-                                part.style.padding = '0';
-
-                                if (sectionTitle.includes('трудоемкость')) {
-                                    part.style.display = 'flex';
-                                    part.style.flexDirection = 'column';
-                                    part.style.gap = '0.8rem';
-
-                                    Array.from(part.children).forEach(child => {
-                                        if (child.tagName === 'DIV') {
-                                            const text = child.textContent.trim();
-                                            const match = text.match(/(.*?)\s*[–-]\s*(.*)/);
-                                            if (match) {
-                                                const type = match[1].trim();
-                                                const hours = match[2].trim();
-
-                                                let bg = 'var(--color-highlight)', color = 'var(--color-text-secondary)', iconName = 'circle';
-
-                                                if (type.toLowerCase().includes('лекц')) { bg = 'rgba(0, 122, 255, 0.15)'; color = 'var(--color-blue)'; iconName = 'menu_book'; }
-                                                else if (type.toLowerCase().includes('практ')) { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; iconName = 'engineering'; }
-                                                else if (type.toLowerCase().includes('лаб')) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; iconName = 'science'; }
-                                                else if (type.toLowerCase().includes('самост')) { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; iconName = 'person'; }
-
-                                                child.innerHTML = `
-                                                    <div style="display: flex; align-items: center; justify-content: space-between; padding: 1.2rem 1.6rem; background: var(--color-highlight); border-radius: var(--radius-medium); border: 1px solid var(--color-table-border);">
-                                                        <div style="display: flex; align-items: center; gap: 12px; font-weight: 600;">
-                                                            <span class="material-icons" style="color: ${color}; font-size: 2.2rem;">${iconName}</span>
-                                                            ${type}
-                                                        </div>
-                                                        <span style="background: ${bg}; color: ${color}; padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; white-space: nowrap;">${hours}</span>
-                                                    </div>
-                                                `;
-                                            }
-                                        }
-                                    });
-                                } else {
-                                    // Удаляем висячие пустые строки и <br> в конце аннотации
-                                    while (part.lastChild && (part.lastChild.tagName === 'BR' || (part.lastChild.nodeType === Node.TEXT_NODE && !part.lastChild.textContent.trim()))) {
-                                        part.lastChild.remove();
-                                    }
                                 }
+
+                                cardBody.appendChild(el);
+                            });
+
+                            // Выравнивание нижнего отступа у карточки
+                            while (cardBody.lastChild && (cardBody.lastChild.tagName === 'BR' || (cardBody.lastChild.nodeType === Node.TEXT_NODE && !cardBody.lastChild.textContent.trim()))) {
+                                cardBody.lastChild.remove();
                             }
+                            cardBody.querySelectorAll('.tpr_part, .theme_part').forEach(part => {
+                                while (part.lastChild && (part.lastChild.tagName === 'BR' || (part.lastChild.nodeType === Node.TEXT_NODE && !part.lastChild.textContent.trim()))) {
+                                    part.lastChild.remove();
+                                }
+                                if (part.lastElementChild) {
+                                    part.lastElementChild.style.marginBottom = '0';
+                                }
+                            });
+                            if (cardBody.lastElementChild) {
+                                cardBody.lastElementChild.style.marginBottom = '0';
+                            }
+
+                            card.appendChild(cardBody);
+                            h3.replaceWith(card);
                         });
 
+                        span9.querySelectorAll('br, p:empty').forEach(el => el.remove());
                         break;
                     }
 
@@ -22834,8 +25097,13 @@
                     }
 
                     // --- 5. КНОПКА ОТЗЫВА ---
-                    const feedbackLink = Array.from(span9.querySelectorAll('a')).find(a => a.textContent.includes('Напишите, что вы думаете о расписании'));
+                    const feedbackLink = Array.from(span9.querySelectorAll('a')).find(a => 
+                        a.textContent.includes('Напишите, что вы думаете о расписании') ||
+                        a.classList.contains('estimate_tt') ||
+                        (a.getAttribute('href') && a.getAttribute('href').includes('estimate_tt'))
+                    );
                     if (feedbackLink) {
+                        window.etisEstimateTTHref = feedbackLink.getAttribute('href') || feedbackLink.href;
                         let oldParent = feedbackLink.parentElement;
                         feedbackLink.className = 'toolbar-item';
                         feedbackLink.innerHTML = '<span class="material-icons" style="font-size: 1.4rem;">feedback</span> Оставить отзыв';
@@ -22880,50 +25148,66 @@
                         }
                     });
 
-                    // 7. КРАСИВАЯ ДАТА И КАНИКУЛЫ
+                    // 7. ОБЪЕДИНЕННЫЙ БЛОК: НЕДЕЛИ СЛЕВА + ДАТА СПРАВА
                     const weekSelect = span9.querySelector('.week-select');
                     if (weekSelect) {
                         const dateDiv = weekSelect.querySelector('div[style*="text-align:center"]');
+                        const weeksUl = weekSelect.querySelector('.weeks');
+
+                        let dateText = '';
+                        let holidayText = '';
+
                         if (dateDiv) {
                             const holidayEl = dateDiv.querySelector('.holiday');
-                            let holidayText = '';
-
                             if (holidayEl) {
-                                holidayText = holidayEl.textContent.trim();
+                                holidayText = holidayEl.textContent.trim().replace(/\.\d{4}/g, '');
                                 holidayEl.remove();
                             }
 
                             const dateSpan = dateDiv.querySelector('span');
-                            if (dateSpan || dateDiv.textContent.trim()) {
-                                let text = (dateSpan ? dateSpan.textContent : dateDiv.textContent).trim();
-                                text = text.replace(/^Неделя\s+/i, '').replace(/\.\d{4}/g, '');
-                                if (text) text = text.charAt(0).toUpperCase() + text.slice(1);
+                            let raw = (dateSpan ? dateSpan.textContent : dateDiv.textContent).trim();
 
-                                dateDiv.innerHTML = '';
-                                dateDiv.className = '';
-                                dateDiv.style.cssText = 'display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 1.5rem;';
-
-                                if (text) {
-                                    const dateCapsule = document.createElement('div');
-                                    dateCapsule.className = 'week-date-styled';
-                                    dateCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 3.4rem !important; padding: 0 1.6rem !important; box-sizing: border-box !important;';
-                                    dateCapsule.textContent = text;
-                                    dateDiv.appendChild(dateCapsule);
-                                }
-
-                                if (holidayText) {
-                                    holidayText = holidayText.replace(/\.\d{4}/g, '');
-
-                                    const holidayCapsule = document.createElement('div');
-                                    holidayCapsule.className = 'week-date-styled';
-                                    holidayCapsule.style.cssText = 'margin: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; height: 3.4rem !important; padding: 0 1.6rem !important; box-sizing: border-box !important; background: rgba(52, 199, 89, 0.15) !important; color: var(--color-green) !important; font-weight: 800 !important; border: 1px solid rgba(52, 199, 89, 0.3) !important;';
-                                    holidayCapsule.innerHTML = `<span class="material-icons" style="font-size: 1.6rem; margin-right: 6px; line-height: 1;">celebration</span>${holidayText}`;
-
-                                    dateDiv.appendChild(holidayCapsule);
-                                }
+                            // Извлекаем числа и форматируем строго как "07.09 - 13.09"
+                            const m = raw.match(/(\d{1,2}\.\d{1,2})(?:\.\d{2,4})?.*?(\d{1,2}\.\d{1,2})(?:\.\d{2,4})?/);
+                            if (m) {
+                                dateText = `${m[1]} - ${m[2]}`;
+                            } else {
+                                dateText = raw.replace(/^Неделя\s+/i, '')
+                                              .replace(/^с\s+/i, '')
+                                              .replace(/\s*по\s*/i, ' - ')
+                                              .replace(/\.\d{4}/g, '')
+                                              .trim();
                             }
                         }
+
+                        if (weeksUl) {
+                            // Создаем единую внешнюю капсулу (как у тулбара выше)
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'week-select-wrapper';
+                            weekSelect.parentNode.insertBefore(wrapper, weekSelect);
+                            
+                            // 1. Слева — скролл недель
+                            wrapper.appendChild(weeksUl);
+
+                            // 2. Справа — плашка даты "07.09 - 13.09"
+                            if (dateText || holidayText) {
+                                const dateCapsule = document.createElement('div');
+                                dateCapsule.className = 'week-date-styled';
+
+                                if (holidayText) {
+                                    dateCapsule.style.setProperty('background', 'rgba(52, 199, 89, 0.15)', 'important');
+                                    dateCapsule.style.setProperty('color', 'var(--color-green)', 'important');
+                                    dateCapsule.innerHTML = `<span class="material-icons" style="font-size: 1.6rem; color: var(--color-green);">celebration</span><span>${holidayText}</span>`;
+                                } else {
+                                    dateCapsule.textContent = dateText;
+                                }
+                                wrapper.appendChild(dateCapsule);
+                            }
+
+                            weekSelect.remove();
+                        }
                     }
+
                     // 8. Центрирование активной недели при загрузке (Мобильные)
                     if (window.innerWidth <= 960) {
                         const weeksContainer = span9.querySelector('.weeks');
@@ -23265,6 +25549,12 @@
                             datePart = parts.slice(1).join(',').trim();
                         }
 
+                        const dayCard = header.closest('.day');
+                        if (dayCard) {
+                            dayCard.setAttribute('data-orig-day-name', dayOfWeek);
+                            dayCard.setAttribute('data-orig-date', datePart);
+                        }
+
                         let leftDateHTML = '';
                         let rightDateHTML = '';
 
@@ -23291,7 +25581,22 @@
 
                         header.querySelector('.add-custom-pair-btn').addEventListener('click', (e) => {
                             e.stopPropagation();
-                            openCustomPairModal(dayOfWeek, false);
+                            const dayCard = header.closest('.day');
+                            const isMerged = dayCard && dayCard.classList.contains('merged-day-off-head');
+                            
+                            // Если дни объединены — открываем выбор дня из сохраненного списка
+                            if (isMerged) {
+                                const mergedDays = (dayCard.getAttribute('data-merged-days') || '').split(',').map(s => s.trim()).filter(Boolean);
+                                if (mergedDays.length > 1) {
+                                    showChooseDayModal(mergedDays, (selectedDay) => {
+                                        openCustomPairModal(selectedDay, false, null);
+                                    });
+                                    return;
+                                }
+                            }
+                            
+                            const dayTitle = header.querySelector('.day-name')?.textContent.trim() || dayOfWeek;
+                            openCustomPairModal(dayTitle, false);
                         });
 
                         header.querySelector('.share-day-btn').addEventListener('click', (e) => {
@@ -23562,8 +25867,148 @@
                     // Вызываем инъекцию DOCX перед основным пересчетом, чтобы они появились при первой загрузке!
                     if (window.injectConsultationPairs) window.injectConsultationPairs();
 
-                    // --- ЛОГИКА СКРЫТИЯ ПУСТЫХ ПАР И ОБРАБОТКИ ОКОН (УМНАЯ) ---
+                    // Функция объединения дат (например: "7 сентября" и "9 сентября" -> "7–9 сентября")
+                    function formatMergedDateRange(startDateStr, endDateStr) {
+                        if (!startDateStr || !endDateStr) return startDateStr || endDateStr || '';
+                        if (startDateStr === endDateStr) return startDateStr;
+
+                        const s1 = startDateStr.replace(/\s*г\.?$/i, '').trim();
+                        const s2 = endDateStr.replace(/\s*г\.?$/i, '').trim();
+
+                        const textRegex = /^(\d{1,2})\s+([а-яёА-ЯЁ]+)(?:\s+(\d{4}))?/i;
+                        const m1 = s1.match(textRegex);
+                        const m2 = s2.match(textRegex);
+
+                        if (m1 && m2) {
+                            const d1 = m1[1];
+                            const month1 = m1[2].toLowerCase();
+                            const d2 = m2[1];
+                            const month2 = m2[2].toLowerCase();
+                            const y2 = m2[3] || m1[3] || '';
+
+                            if (month1 === month2) {
+                                return `${d1}–${d2} ${m1[2]}${y2 ? ' ' + y2 : ''}`;
+                            } else {
+                                return `${d1} ${m1[2]} – ${d2} ${m2[2]}${y2 ? ' ' + y2 : ''}`;
+                            }
+                        }
+
+                        const numRegex = /^(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?/;
+                        const n1 = s1.match(numRegex);
+                        const n2 = s2.match(numRegex);
+                        if (n1 && n2) {
+                            if (n1[2] === n2[2]) {
+                                return `${parseInt(n1[1], 10)}–${parseInt(n2[1], 10)}.${n1[2]}${n2[3] ? '.' + n2[3] : ''}`;
+                            }
+                            return `${s1} – ${s2}`;
+                        }
+
+                        return `${s1}–${s2}`;
+                    }
+
+                    // Сброс объединения в исходное состояние
+                    function unmergeDaysOff() {
+                        const days = document.querySelectorAll('.span9 .day');
+                        days.forEach(day => {
+                            if (day.classList.contains('merged-day-off-head')) {
+                                day.classList.remove('merged-day-off-head');
+                                day.removeAttribute('data-merged-days');
+                                const origName = day.getAttribute('data-orig-day-name');
+                                const origDate = day.getAttribute('data-orig-date');
+                                const nameEl = day.querySelector('.day-name');
+                                if (nameEl && origName) nameEl.textContent = origName;
+                                const dateEl = day.querySelector('.day-date');
+                                if (dateEl && origDate !== null) dateEl.textContent = origDate;
+
+                                const capsule = day.querySelector('.custom-no-pairs .pair_info div');
+                                if (capsule) {
+                                    capsule.innerHTML = `
+                                        <span class="material-icons" style="font-size: 1.8rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;">free_breakfast</span>
+                                        Выходной
+                                    `;
+                                }
+                            }
+                            if (day.classList.contains('merged-day-off-hidden')) {
+                                day.classList.remove('merged-day-off-hidden');
+                                day.style.removeProperty('display');
+                            }
+                        });
+                    }
+
+                    // Объединение идущих подряд выходных
+                    function mergeConsecutiveDaysOff() {
+                        unmergeDaysOff();
+
+                        if (generalConfig.mergeDaysOff === false) return;
+
+                        const days = Array.from(document.querySelectorAll('.span9 .day'));
+                        if (days.length < 2) return;
+
+                        const isDayOff = (day) => {
+                            const visibleRows = Array.from(day.querySelectorAll('.timetable-grid tr')).filter(r =>
+                                r.style.display !== 'none' && !r.classList.contains('hidden-by-filter') && !r.classList.contains('timetable-gap-row')
+                            );
+                            return visibleRows.length === 0 || (visibleRows.length === 1 && visibleRows[0].classList.contains('custom-no-pairs'));
+                        };
+
+                        const groups = [];
+                        let currentGroup = [];
+
+                        days.forEach(day => {
+                            if (isDayOff(day)) {
+                                currentGroup.push(day);
+                            } else {
+                                if (currentGroup.length > 1) groups.push([...currentGroup]);
+                                currentGroup = [];
+                            }
+                        });
+                        if (currentGroup.length > 1) groups.push([...currentGroup]);
+
+                        groups.forEach(group => {
+                            const headDay = group[0];
+                            const lastDay = group[group.length - 1];
+
+                            headDay.classList.add('merged-day-off-head');
+
+                            // Сохраняем список дней для живой индикации
+                            const groupDayNames = group.map(d => d.getAttribute('data-orig-day-name') || d.querySelector('.day-name')?.textContent.trim());
+                            headDay.setAttribute('data-merged-days', groupDayNames.join(','));
+
+                            const startName = headDay.getAttribute('data-orig-day-name') || headDay.querySelector('.day-name')?.textContent.trim() || '';
+                            const endName = lastDay.getAttribute('data-orig-day-name') || lastDay.querySelector('.day-name')?.textContent.trim() || '';
+
+                            const startDate = headDay.getAttribute('data-orig-date') || headDay.querySelector('.day-date')?.textContent.trim() || '';
+                            const endDate = lastDay.getAttribute('data-orig-date') || lastDay.querySelector('.day-date')?.textContent.trim() || '';
+
+                            const mergedDayName = `${startName}–${endName.toLowerCase()}`;
+                            const mergedDate = formatMergedDateRange(startDate, endDate);
+
+                            const nameEl = headDay.querySelector('.day-name');
+                            if (nameEl) nameEl.textContent = mergedDayName;
+
+                            const dateEl = headDay.querySelector('.day-date');
+                            if (dateEl) dateEl.textContent = mergedDate;
+
+                            // Меняем капсулу на "Выходные"
+                            const capsule = headDay.querySelector('.custom-no-pairs .pair_info div');
+                            if (capsule) {
+                                capsule.innerHTML = `
+                                    <span class="material-icons" style="font-size: 1.8rem; line-height: 1; display: inline-flex; align-items: center; justify-content: center;">free_breakfast</span>
+                                    Выходные
+                                `;
+                            }
+
+                            // Скрываем остальные дни группы
+                            for (let i = 1; i < group.length; i++) {
+                                group[i].classList.add('merged-day-off-hidden');
+                                group[i].style.setProperty('display', 'none', 'important');
+                            }
+                        });
+                    }
+
+                    // --- ЛОГИКА СКРЫТИЯ ПУСТЫХ ПАР И ОБРАБОТКИ ОКОН ---
                     window.recalculateTimetable = function() {
+                        if (typeof unmergeDaysOff === 'function') unmergeDaysOff();
                         const days = span9.querySelectorAll("div.day");
                         days.forEach(day => {
                             const table = day.querySelector('table');
@@ -23671,8 +26116,8 @@
                                             breakRow.innerHTML = `
                                                 <td class="pair_num"></td>
                                                 <td class="pair_info">
-                                                    <div class="timetable-gap-capsule timetable-break-capsule" style="background: var(--color-highlight) !important; color: var(--color-text-secondary) !important; border: 1px solid var(--color-table-border) !important;">
-                                                        <span class="material-icons" style="font-size: 14px; color: var(--color-accent) !important;">restaurant</span>
+                                                    <div class="timetable-gap-capsule timetable-break-capsule">
+                                                        <span class="material-icons">restaurant</span>
                                                         Перемена 30 минут
                                                     </div>
                                                 </td>
@@ -23790,6 +26235,7 @@
                             });
                         });
 
+                        if (typeof mergeConsecutiveDaysOff === 'function') mergeConsecutiveDaysOff();
                         if (typeof window.applyHideDaysOff === 'function') window.applyHideDaysOff();
                         if (typeof window.applyDimming === 'function') window.applyDimming();
                         if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
@@ -23797,32 +26243,34 @@
 
                     // Экспортируем функцию скрытия дней наружу
                     window.applyHideDaysOff = function() {
+                        if (typeof mergeConsecutiveDaysOff === 'function') {
+                            mergeConsecutiveDaysOff();
+                        }
+
                         const days = document.querySelectorAll('.span9 .day');
                         let visibleDaysCount = 0;
 
                         days.forEach(day => {
-                            // Находим все видимые строки в дне
-                            const visibleRows = Array.from(day.querySelectorAll('.timetable-grid tr')).filter(r => r.style.display !== 'none' && !r.classList.contains('hidden-by-filter'));
+                            if (day.classList.contains('merged-day-off-hidden')) return;
 
-                            // Если единственная видимая строка — это "Выходной" (0 пар), значит день пустой
-                            const isDayOff = visibleRows.length === 1 && visibleRows[0].classList.contains('custom-no-pairs');
+                            const visibleRows = Array.from(day.querySelectorAll('.timetable-grid tr')).filter(r => r.style.display !== 'none' && !r.classList.contains('hidden-by-filter'));
+                            const isDayOff = (visibleRows.length === 1 && visibleRows[0].classList.contains('custom-no-pairs')) || day.classList.contains('merged-day-off-head');
 
                             if (generalConfig.hideDaysOff && isDayOff) {
-                                day.style.display = 'none'; // Прячем весь день
+                                day.style.display = 'none';
                             } else {
-                                day.style.display = ''; // Возвращаем обратно
+                                day.style.display = '';
                                 visibleDaysCount++;
                             }
                         });
 
-                        // Если включен тумблер скрытия дней и все дни недели оказались пустыми
                         const span9 = document.querySelector('.span9');
                         if (span9) {
                             updateEmptyState(span9, visibleDaysCount > 0, '', 'timetable');
                         }
                     };
 
-                    // --- УМНЫЕ ЗАМЕТКИ И РЕДАКТОР ПАР ---
+                    // --- ЗАМЕТКИ И РЕДАКТОР ПАР ---
                     window.renderNotes = function() {
                         let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
                         const seenSubjects = new Set();
@@ -23838,7 +26286,6 @@
 
                             const targetEl = disContainer.querySelector('a') || disContainer;
 
-                            // 1. Запоминаем оригинальные данные (для отката и поиска)
                             let origSubject = row.getAttribute('data-orig-subject');
                             if (!origSubject) {
                                 origSubject = targetEl.textContent.trim();
@@ -23857,7 +26304,7 @@
                             });
                             if (!rawPairNum) rawPairNum = numTd.textContent.trim().split(' ')[0] + ' пара';
 
-                            // 2. ПРИМЕНЕНИЕ ПЕРЕОПРЕДЕЛЕНИЙ
+                            // Применение переопределений для стандартных пар
                             const isExternal = row.classList.contains('external-event-row');
                             const isPureCustom = row.classList.contains('custom-pair-row') && !isExternal;
                             let isSeriesOverride = false;
@@ -23865,56 +26312,129 @@
                             if (!isPureCustom && !isExternal) {
                                 const overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
                                 const singleKey = `SINGLE_${dayDateStr}_${rawPairNum}_${origSubject}`;
-                                const seriesKey = `SERIES_ALL_${origSubject}`; // Глобальное переопределение по имени
+                                const seriesKey = `SERIES_ALL_${origSubject}`;
+
+                                // Фиксируем исходное системное время пары
+                                let origStartTime = row.getAttribute('data-orig-start-time');
+                                if (!origStartTime) {
+                                    const tMatch = numTd.querySelector('.eval')?.textContent.match(/\d{1,2}:\d{2}/);
+                                    origStartTime = tMatch ? tMatch[0] : '';
+                                    if (origStartTime) row.setAttribute('data-orig-start-time', origStartTime);
+                                }
+
+                                // Точное имя дня недели (Понедельник, Вторник и т.д.)
+                                const origDayName = row.closest('.day')?.getAttribute('data-orig-day-name') ||
+                                                    row.closest('.day')?.querySelector('.day-name')?.textContent.trim() || '';
+
+                                // Ключи безопасных серий
+                                const timeSeriesKey = `SERIES_TIME_${origStartTime}_${origSubject}`;
+                                const dayTimeSeriesKey = `SERIES_DAY_TIME_${origDayName}_${origStartTime}_${origSubject}`;
 
                                 let activeSingle = overrides[singleKey];
                                 let activeSeries = overrides[seriesKey];
+                                let activeTimeSeries = overrides[timeSeriesKey];
+                                let activeDayTimeSeries = overrides[dayTimeSeriesKey];
+
                                 let mergedOverride = {};
                                 let hasOverride = false;
 
-                                // Глобальное название (если есть)
+                                // 1. Серия: по названию предмета
                                 if (activeSeries) {
-                                    mergedOverride.title = activeSeries.title;
+                                    if (activeSeries.title) mergedOverride.title = activeSeries.title;
+                                    if (activeSeries.loc !== undefined) mergedOverride.loc = activeSeries.loc;
+                                    if (activeSeries.teacher !== undefined) mergedOverride.teacher = activeSeries.teacher;
+                                    if (activeSeries.type !== undefined) mergedOverride.type = activeSeries.type;
                                     isSeriesOverride = true;
                                     hasOverride = true;
                                 }
-                                // Локальные настройки конкретной пары (имеют приоритет)
+                                // 2. Серия: по исходному времени + предмету
+                                if (activeTimeSeries) {
+                                    if (activeTimeSeries.title) mergedOverride.title = activeTimeSeries.title;
+                                    if (activeTimeSeries.loc !== undefined) mergedOverride.loc = activeTimeSeries.loc;
+                                    if (activeTimeSeries.teacher !== undefined) mergedOverride.teacher = activeTimeSeries.teacher;
+                                    if (activeTimeSeries.type !== undefined) mergedOverride.type = activeTimeSeries.type;
+                                    if (activeTimeSeries.timeStart) mergedOverride.timeStart = activeTimeSeries.timeStart;
+                                    if (activeTimeSeries.timeEnd) mergedOverride.timeEnd = activeTimeSeries.timeEnd;
+                                    hasOverride = true;
+                                }
+                                // 3. Серия: по дню недели + исходному времени + предмету
+                                if (activeDayTimeSeries) {
+                                    if (activeDayTimeSeries.title) mergedOverride.title = activeDayTimeSeries.title;
+                                    if (activeDayTimeSeries.loc !== undefined) mergedOverride.loc = activeDayTimeSeries.loc;
+                                    if (activeDayTimeSeries.teacher !== undefined) mergedOverride.teacher = activeDayTimeSeries.teacher;
+                                    if (activeDayTimeSeries.type !== undefined) mergedOverride.type = activeDayTimeSeries.type;
+                                    if (activeDayTimeSeries.timeStart) mergedOverride.timeStart = activeDayTimeSeries.timeStart;
+                                    if (activeDayTimeSeries.timeEnd) mergedOverride.timeEnd = activeDayTimeSeries.timeEnd;
+                                    hasOverride = true;
+                                }
+                                // 4. Индивидуально для конкретного дня
                                 if (activeSingle) {
                                     if (activeSingle.title) mergedOverride.title = activeSingle.title;
                                     if (activeSingle.loc !== undefined) mergedOverride.loc = activeSingle.loc;
                                     if (activeSingle.teacher !== undefined) mergedOverride.teacher = activeSingle.teacher;
                                     if (activeSingle.type !== undefined) mergedOverride.type = activeSingle.type;
+                                    if (activeSingle.timeStart) mergedOverride.timeStart = activeSingle.timeStart;
+                                    if (activeSingle.timeEnd) mergedOverride.timeEnd = activeSingle.timeEnd;
                                     hasOverride = true;
                                 }
 
                                 if (hasOverride) {
                                     if (mergedOverride.title) targetEl.textContent = mergedOverride.title;
-                                    if (mergedOverride.loc !== undefined) {
-                                        let audEl = row.querySelector('.pair_info .aud');
-                                        if (!audEl) {
-                                            audEl = document.createElement('div');
-                                            audEl.className = 'aud';
-                                            audEl.style.cssText = 'display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 0.8rem; margin-top: 0.6rem;';
-                                            disContainer.parentNode.appendChild(audEl);
-                                        }
-                                        audEl.innerHTML = `<div style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary);"><span class="material-icons" style="font-size: 1.5rem;">place</span>${mergedOverride.loc}</div>`;
+
+                                    let audEl = row.querySelector('.pair_info .aud');
+                                    if (!audEl && (mergedOverride.loc !== undefined || mergedOverride.teacher !== undefined)) {
+                                        audEl = document.createElement('div');
+                                        audEl.className = 'aud';
+                                        audEl.style.cssText = 'display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 6px;';
+                                        disContainer.parentNode.appendChild(audEl);
                                     }
-                                    if (mergedOverride.teacher !== undefined) {
-                                        let teacherEl = row.querySelector('.pair_teacher a:not(.eval)');
-                                        if (teacherEl) teacherEl.textContent = mergedOverride.teacher;
-                                        else {
-                                            const tTd = row.querySelector('.pair_teacher');
-                                            if (tTd) tTd.innerHTML = `<a href="#" style="color: var(--color-text-secondary); text-decoration: none; pointer-events: none;">${mergedOverride.teacher}</a>` + (tTd.innerHTML || '');
+
+                                    if (audEl) {
+                                        let locText = mergedOverride.loc !== undefined ? mergedOverride.loc : extractCleanLocation(row);
+                                        let teacherText = mergedOverride.teacher !== undefined ? mergedOverride.teacher : extractCleanTeacher(row);
+
+                                        let locHtml = '';
+                                        if (locText) {
+                                            locHtml = `<div class="pair-aud-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem;">place</span><span>${locText}</span></div>`;
                                         }
+
+                                        let teacherHtml = '';
+                                        if (teacherText) {
+                                            teacherHtml = `<div class="pair-teacher-wrap" style="display: inline-flex; align-items: center; gap: 4px; color: var(--color-text-secondary); font-size: 1.25rem;"><span class="material-icons" style="font-size: 1.5rem; color: var(--color-text-secondary);">person</span><span>${teacherText}</span></div>`;
+                                        }
+
+                                        audEl.innerHTML = locHtml + teacherHtml;
+
+                                        const teacherInRightCol = row.querySelector('.pair_teacher a:not(.eval), .pair_teacher span:not(.eval)');
+                                        if (teacherInRightCol) teacherInRightCol.remove();
                                     }
+
                                     if (mergedOverride.type !== undefined) {
                                         row.setAttribute('data-ext-disp-type', mergedOverride.type);
                                     }
+
+                                    if (mergedOverride.timeStart) {
+                                        const evalTimeEl = numTd.querySelector('.eval');
+                                        if (evalTimeEl) {
+                                            evalTimeEl.textContent = mergedOverride.timeStart;
+                                        }
+                                    }
+                                    if (mergedOverride.timeEnd) {
+                                        row.setAttribute('data-end-time', mergedOverride.timeEnd);
+                                    }
+                                    row.setAttribute('data-ext-is-series', isSeriesOverride);
+                                } else if (!isPureCustom && !isExternal) {
+                                    if (origSubject) targetEl.textContent = origSubject;
+                                    if (origStartTime) {
+                                        const evalTimeEl = numTd.querySelector('.eval');
+                                        if (evalTimeEl) evalTimeEl.textContent = origStartTime;
+                                    }
+                                    row.removeAttribute('data-ext-disp-type');
+                                    row.removeAttribute('data-end-time');
+                                    row.setAttribute('data-ext-is-series', 'false');
                                 }
-                                row.setAttribute('data-ext-is-series', isSeriesOverride);
                             }
 
-                            // Чистим название предмета от текста иконок (чтобы не прилипало "edit")
                             let tempSubjEl = targetEl.cloneNode(true);
                             tempSubjEl.querySelectorAll('.material-icons, .note-btn-wrapper, .delete-custom-pair-btn').forEach(el => el.remove());
                             const cleanSubjectName = tempSubjEl.textContent.trim();
@@ -23927,7 +26447,6 @@
                                 if (teacherEl) pairId += `_${teacherEl.textContent.trim()}`;
                             }
 
-                            // Логика переноса непривязанных заметок
                             if (notesData.next_unbound && notesData.next_unbound[cleanSubjectName] && !seenSubjects.has(cleanSubjectName)) {
                                 const unbound = notesData.next_unbound[cleanSubjectName];
                                 if (currentWeek > unbound.week) {
@@ -23940,11 +26459,6 @@
 
                             const currentNote = notesData.specific[pairId] || '';
 
-                            row.querySelectorAll('.note-btn-wrapper').forEach(w => w.remove());
-                            row.querySelectorAll('.subject-note-btn').forEach(btn => btn.remove());
-                            row.querySelectorAll('.pair-important-btn').forEach(btn => btn.remove());
-
-                            // Проверка на то, прошла ли пара
                             let isPassed = false;
                             if (dayDateStr !== 'UnknownDate') {
                                 const match = dayDateStr.match(/(\d{1,2})\s+([а-яА-Я]+)/);
@@ -23973,12 +26487,14 @@
                                 }
                             }
 
-                            // Кнопка Важной пары (колокольчик)
+                            // Колокольчик важной пары
                             const importantPairs = JSON.parse(localStorage.getItem('etis_important_pairs_v1') || '[]');
                             const isImportant = importantPairs.includes(pairId);
 
                             if (isImportant) row.classList.add('is-important');
                             else row.classList.remove('is-important');
+
+                            row.querySelectorAll('.pair-important-btn').forEach(btn => btn.remove());
 
                             if (!isPassed || isImportant) {
                                 const impBtn = document.createElement('button');
@@ -24007,7 +26523,7 @@
                                 }
                             }
 
-                            // КНОПКА РЕДАКТИРОВАНИЯ И ЗАМЕТОК (Карандаш)
+                            // Кнопка карандаша
                             const noteBtn = document.createElement('button');
                             noteBtn.className = 'subject-note-btn';
                             if (currentNote) noteBtn.classList.add('has-note');
@@ -24026,9 +26542,22 @@
 
                             const audContainer = row.querySelector('.pair_info .aud');
                             let targetContainer = audContainer && audContainer.textContent.trim() !== '' ? audContainer : disContainer;
+                            
+                            targetContainer.querySelectorAll('.note-btn-wrapper, .pair-eval-btn').forEach(w => w.remove());
                             targetContainer.appendChild(noteWrapper);
+
+                            // Кнопка оценки прошедшей пары справа от карандаша
+                            if (isPassed && !isExternal && !row.classList.contains('custom-no-pairs')) {
+                                const evalHref = window.etisEstimateTTHref || document.querySelector('a[href*="estimate_tt"]')?.getAttribute('href') || 'cust.estimate_tt_form';
+                                const evalA = document.createElement('a');
+                                evalA.className = 'eval pair-eval-btn';
+                                evalA.href = evalHref;
+                                evalA.title = 'Оценить занятие';
+                                evalA.innerHTML = '<span class="material-icons">star_rate</span><span>Оценить</span>';
+                                targetContainer.appendChild(evalA);
+                            }
                         });
-                    }
+                    };
 
                     // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ICS И НАПОМИНАНИЙ ---
 
@@ -24204,8 +26733,1019 @@
                         window.open(url.toString(), '_blank');
                     }
 
-                    // Единое модальное окно для всех типов пар
+                    // =========================================================================
+                    //  ТОПОЛОГИЧЕСКИЙ ДВИЖОК
+                    // =========================================================================
+                    const PSU_INDOOR_DB = {
+                        STEP_TO_METERS: 0.7,
+                        STEP_TO_SECONDS: 0.65,
+                        STAIR_FLIGHT_STEPS: 25,
+
+                        buildings: {
+                            // -------------------------------------------------------------
+                            // КОРПУС 8 (3 узла: Левое крыло, Правое крыло, Центр)
+                            // -------------------------------------------------------------
+                            8: {
+                                name: "8 корпус",
+                                floors: 7,
+                                stairs: {
+                                    "stair_left": { wing: "left", pos: 35, desc: "лестница и лифт левого крыла (у туалета)" },
+                                    "stair_right": { wing: "right", pos: 35, desc: "лестница и лифт правого крыла (слева от женского туалета)" },
+                                    "stair_center": { wing: "center", pos: 0, desc: "центральная лестница и центральный лифт (вход с улицы)" }
+                                },
+                                nodes: {
+                                    "left": { wing: "left", pos: 35, desc: "лестница и лифт левого крыла (у туалета)" },
+                                    "right": { wing: "right", pos: 35, desc: "лестница и лифт правого крыла (слева от женского туалета)" },
+                                    "center": { wing: "center", pos: 0, desc: "центральная лестница и центральный лифт (вход с улицы)" }
+                                },
+                                layout: {
+                                    1: {
+                                        left:  { len: 65, fromCenter: { left: ["118", "116", "114", "112", "110", "102"], right: ["109", "107", "105", "103", "101"] } },
+                                        right: { len: 65, fromCenter: { left: ["113", "115"], right: ["124", "126", "128", "130", "132"] } }
+                                    },
+                                    2: {
+                                        left:  { len: 65, fromCenter: { left: ["214", "212", "210", "208", "206", "204", "202"], right: ["221", "219", "217", "215", "213", "201"] } },
+                                        right: { len: 65, fromCenter: { left: ["216", "218", "220", "222", "233"], right: ["224", "226", "228", "230", "238"] } }
+                                    },
+                                    3: {
+                                        left:  { len: 65, fromCenter: { left: ["317", "315", "313", "311", "309", "302"], right: ["322", "320", "318", "316", "312", "310", "301"] } },
+                                        right: { len: 65, fromCenter: { left: ["319", "321", "323", "325", "331"], right: ["324", "326", "328", "330", "336", "338", "340", "342"] } }
+                                    },
+                                    4: {
+                                        left:  { len: 65, fromCenter: { left: ["413", "411", "409", "407", "405", "401"], right: ["424", "422", "420", "418", "404", "406"] } },
+                                        right: { len: 65, fromCenter: { left: ["417", "419", "421", "423", "427"], right: ["426", "428", "430", "432", "440"] } }
+                                    },
+                                    5: {
+                                        left:  { len: 65, fromCenter: { left: ["515", "517", "519", "521", "527"], right: ["520", "522", "524", "526", "534"] } },
+                                        right: { len: 65, fromCenter: { left: ["513", "511", "509", "501"], right: ["518", "516", "514", "502"] } }
+                                    },
+                                    6: {
+                                        left:  { len: 65, fromCenter: { left: ["615", "617", "619", "629"], right: ["622", "624", "626", "638"] } },
+                                        right: { len: 65, fromCenter: { left: ["613", "611", "609", "601"], right: ["620", "618", "616", "602"] } }
+                                    },
+                                    7: {
+                                        left:  { len: 65, fromCenter: { left: ["710", "712"], right: ["715", "713"] } },
+                                        right: { len: 65, fromCenter: { left: ["711", "709", "701"], right: ["708", "706", "702"] } }
+                                    }
+                                }
+                            },
+
+                            // 1 КОРПУС
+                            1: {
+                                name: "1 корпус",
+                                floors: 4,
+                                mainCorridorLen: 105,
+                                layout: {
+                                    1: {
+                                        left: { len: 52, rooms: ["129", "128", "127", "126", "125", "118", "115", "117", "119", "111", "102", "101", "103", "104", "106"] },
+                                        right: { len: 53, rooms: ["133", "134", "138а", "138б", "138в", "138г", "140", "141", "143", "150", "152"] }
+                                    },
+                                    2: {
+                                        main: { len: 105, fromCenterLeft: ["225", "227", "229", "235", "242"], fromCenterRight: ["244", "245", "250", "256", "257"] }
+                                    },
+                                    3: {
+                                        main: { len: 105, fromCenterLeft: ["313", "315", "317", "323", "325", "329", "331"], fromCenterRight: ["319", "322", "334", "339", "341"] }
+                                    },
+                                    4: {
+                                        isolatedWings: true,
+                                        left_wing: { len: 40, rooms: ["417", "422", "424", "401", "402", "404", "407", "409", "410", "414", "415", "416", "420"] },
+                                        right_wing: { len: 40, rooms: ["419", "421", "426", "428", "429", "431", "433", "435", "438", "440", "446", "448"] }
+                                    }
+                                }
+                            },
+
+                            // 12 КОРПУС
+                            12: {
+                                name: "12 корпус",
+                                floors: 3,
+                                corridorLen: 120,
+                                centerOffsetFromBldg1: 40,
+                                layout: {
+                                    1: { rooms: ["101", "102", "104", "107", "115", "128"] },
+                                    2: { rooms: ["228", "225", "222", "220", "216", "214", "209", "206", "204", "202", "201"] },
+                                    3: { rooms: ["301", "302", "303", "311", "313", "318", "320", "321", "323", "328", "329"] }
+                                }
+                            },
+
+                            // 5 КОРПУС
+                            5: {
+                                name: "5 корпус",
+                                floors: 3,
+                                layout: {
+                                    1: {
+                                        wing_stair5_right: { len: 18, rooms: ["166", "168", "169", "170", "171", "172"] },
+                                        corridor_stair5_to_angle: { len: 65, rooms: ["167", "164", "160", "158", "157", "156", "155"] },
+                                        corridor_angle_to_entrance: { len: 110, rooms: ["147", "145", "144", "138", "137", "136", "135", "134", "133", "132", "131", "129", "127", "125", "122"] },
+                                        left_wing: { len: 38, rooms: ["114", "113", "112", "111", "107", "106", "104"] }
+                                    },
+                                    2: {
+                                        bridge_corridor: { len: 25, rooms: ["278", "276", "274", "272", "270", "267", "265", "263"] },
+                                        stair4_corridor: { len: 35, rooms: ["260", "256", "254", "253", "250", "249", "248", "247", "246", "243"] },
+                                        stair3_to_stair2: { len: 25, rooms: ["241", "240", "239", "238"] },
+                                        left_wing: { len: 38, rooms: ["218", "215", "210", "209"] }
+                                    },
+                                    3: {
+                                        left_from_stair5: { len: 35, rooms: ["308", "307", "306", "304", "302", "301"] }
+                                    }
+                                }
+                            }
+                        },
+
+                        // Переходы
+                        interBuildingBridges: [
+                            { from: 8, fromFloor: 1, to: 1, toFloor: 1, steps: 35, desc: "Переход 8 ↔ 1 корпус" },
+                            { from: 8, fromFloor: 2, to: 7, toFloor: 2, steps: 50, desc: "Переход 8 ↔ 7 корпус" },
+                            { from: 8, fromFloor: 2, to: 6, toFloor: 1, steps: 85, desc: "Переход 8 ↔ 6 корпус" },
+                            { from: 1, fromFloor: 1, to: 12, toFloor: 2, steps: 105, desc: "Переход 1 ↔ 12 корпус" },
+                            { from: 12, fromFloor: 2, to: 5, toFloor: 2, steps: 25, desc: "Переход 12 ↔ 5 корпус" },
+                            { from: 1, fromFloor: 2, to: 2, toFloor: 2, steps: 40, desc: "Переход 1 ↔ 2 корпус" },
+                            { from: 1, fromFloor: 2, to: 10, toFloor: 1, steps: 45, desc: "Переход 1 ↔ 10 корпус" },
+                            { from: 9, fromFloor: 1, to: 11, toFloor: 1, steps: 35, desc: "Переход 9 ↔ 11 корпус" }
+                        ],
+
+                        outdoorRoutes: {
+                            "bldg_walks": {
+                                "8_to_5": 230, "1_to_5": 170, "2_to_5": 210, "8_to_2": 190,
+                                "12_to_2": 230, "3_to_9": 120, "4_to_6": 140, "11_to_1": 160
+                            }
+                        }
+                    };
+
+                    // =========================================================================
+                    // МАТЕМАТИЧЕСКИЙ РАСЧЕТ ТОЧНОГО ПОЛОЖЕНИЯ АУДИТОРИИ В ШАГАХ
+                    // =========================================================================
+                    function locateRoomInBuilding(buildingNum, floorNum, roomCode) {
+                        const bldg = PSU_INDOOR_DB.buildings[buildingNum];
+                        if (!bldg || !bldg.layout || !bldg.layout[floorNum]) {
+                            return { found: false, floor: floorNum, estimatedOffset: 25, stepsFromHub: 25 };
+                        }
+
+                        const cleanCode = roomCode.toLowerCase().replace(/ауд\.?/g, '').trim();
+                        const floorData = bldg.layout[floorNum];
+
+                        // 1. Поиск в Корпусе 8
+                        if (buildingNum === 8) {
+                            for (const wingKey of ["left", "right"]) {
+                                const wing = floorData[wingKey];
+                                if (!wing || !wing.fromCenter) continue;
+                                for (const sideKey of ["left", "right"]) {
+                                    const list = wing.fromCenter[sideKey];
+                                    if (!list) continue;
+                                    const idx = list.findIndex(r => r.toLowerCase() === cleanCode);
+                                    if (idx !== -1) {
+                                        const stepPerRoom = wing.len / list.length;
+                                        const stepsFromCenter = Math.round((idx + 0.5) * stepPerRoom);
+                                        const stairPos = (bldg.stairs && bldg.stairs[`stair_${wingKey}`]?.pos) || 
+                                                        (bldg.nodes && bldg.nodes[wingKey]?.pos) || 35;
+                                        return {
+                                            found: true,
+                                            wing: wingKey === "left" ? "левом крыле" : "правом крыле",
+                                            wingSide: sideKey === "left" ? "слева" : "справа",
+                                            stepsFromHub: stepsFromCenter,
+                                            totalWingLen: wing.len,
+                                            stairOffset: stairPos
+                                        };
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2. Поиск в Корпусе 12
+                        if (buildingNum === 12 && floorData.rooms) {
+                            const list = floorData.rooms;
+                            const idx = list.findIndex(r => r.toLowerCase() === cleanCode);
+                            if (idx !== -1) {
+                                const stepPerRoom = (bldg.corridorLen || 120) / list.length;
+                                const offsetFromBldg1 = Math.round((idx + 0.5) * stepPerRoom);
+                                const centerOffset = bldg.centerOffsetFromBldg1 || 40;
+                                return {
+                                    found: true,
+                                    offsetFromBldg1: offsetFromBldg1,
+                                    stepsFromHub: Math.abs(offsetFromBldg1 - centerOffset),
+                                    stepsFromCenter: Math.abs(offsetFromBldg1 - centerOffset),
+                                    closerToBldg5: offsetFromBldg1 > 60
+                                };
+                            }
+                        }
+
+                        // 3. Поиск в Корпусе 1
+                        if (buildingNum === 1) {
+                            if (floorData.main) {
+                                const findInList = (arr) => arr ? arr.findIndex(r => r.toLowerCase() === cleanCode) : -1;
+                                let iLeft = findInList(floorData.main.fromCenterLeft);
+                                let iRight = findInList(floorData.main.fromCenterRight);
+
+                                if (iLeft !== -1) {
+                                    const stepPerRoom = 52 / (floorData.main.fromCenterLeft.length || 1);
+                                    return { found: true, wing: "левом крыле", stepsFromHub: Math.round((iLeft + 0.5) * stepPerRoom) };
+                                }
+                                if (iRight !== -1) {
+                                    const stepPerRoom = 53 / (floorData.main.fromCenterRight.length || 1);
+                                    return { found: true, wing: "правом крыле", stepsFromHub: Math.round((iRight + 0.5) * stepPerRoom) };
+                                }
+                            }
+                            for (const key of ["left", "right", "left_wing", "right_wing"]) {
+                                const sec = floorData[key];
+                                if (sec && sec.rooms) {
+                                    const idx = sec.rooms.findIndex(r => r.toLowerCase() === cleanCode);
+                                    if (idx !== -1) {
+                                        const stepPerRoom = (sec.len || 50) / sec.rooms.length;
+                                        return { 
+                                            found: true, 
+                                            wing: key.includes("left") ? "левом крыле" : "правом крыле", 
+                                            stepsFromHub: Math.round((idx + 0.5) * stepPerRoom) 
+                                        };
+                                    }
+                                }
+                            }
+                        }
+
+                        // 4. Поиск в Корпусе 5
+                        if (buildingNum === 5) {
+                            for (const [secKey, sec] of Object.entries(floorData)) {
+                                if (sec.rooms) {
+                                    const idx = sec.rooms.findIndex(r => r.toLowerCase() === cleanCode);
+                                    if (idx !== -1) {
+                                        const stepPerRoom = sec.len / sec.rooms.length;
+                                        return {
+                                            found: true,
+                                            section: secKey,
+                                            stepsFromSecStart: Math.round((idx + 0.5) * stepPerRoom),
+                                            stepsFromHub: 35,
+                                            secLen: sec.len
+                                        };
+                                    }
+                                }
+                            }
+                        }
+
+                        return { found: false, floor: floorNum, estimatedOffset: 25, stepsFromHub: 25 };
+                    }
+
+                    // =========================================================================
+                    // МАРШРУТИЗАТОР
+                    // =========================================================================
+                    function buildCampusRoute(audStartStr, audEndStr, preferBridge = true) {
+                        const start = parseAudience(audStartStr);
+                        let end = parseAudience(audEndStr);
+
+                        let isToilet = false;
+                        let targetLabel = '';
+                        if (!end && audEndStr.toLowerCase().includes('туалет')) {
+                            const tMatch = audEndStr.match(/туалет\s*[\/\\]\s*(\d+)/i);
+                            const bNum = tMatch ? parseInt(tMatch[1], 10) : 2;
+                            end = { room: "Туалет", building: bNum, floor: 1, raw: `Туалет/${bNum}` };
+                            isToilet = true;
+                            targetLabel = 'туалету';
+                        }
+
+                        if (!start || !end) return null;
+                        if (!targetLabel) targetLabel = `ауд. ${end.room}`;
+
+                        const startLoc = locateRoomInBuilding(start.building, start.floor, start.room);
+                        const endLoc = locateRoomInBuilding(end.building, end.floor, end.room);
+
+                        const steps = [];
+                        let totalSteps = 0;
+                        let totalSeconds = 0;
+
+                        const getDetailedExitInstruction = (bldg, floor, room, targetBldg, targetFloor) => {
+                            const num = parseInt(room, 10);
+
+                            if (bldg === 5) {
+                                if (floor === 1 && num >= 104 && num <= 114) {
+                                    if (num === 104) return "Выйдите из ауд. 104 (кафе «Кис-Рис») и идите по коридору прямо к выходу из крыла";
+                                    const isEven = num % 2 === 0;
+                                    return isEven 
+                                        ? "Выйдите из аудитории и поверните направо к выходу из крыла"
+                                        : "Выйдите из аудитории и поверните налево к выходу из крыла";
+                                }
+                                if (floor === 1 && num >= 122 && num <= 147) {
+                                    return "Выйдите из аудитории в длинный коридор и идите в сторону угла к лестнице 5";
+                                }
+                                if (floor === 1 && num >= 155 && num <= 172) {
+                                    return "Выйдите из аудитории в коридор и идите к лестнице 5";
+                                }
+                                return `Выйдите из ауд. ${room}/5 в коридор`;
+                            }
+
+                            if (bldg === 2) {
+                                return `Выйдите из ауд. ${room}/2 в коридор`;
+                            }
+
+                            if (bldg === 12) {
+                                const goingToBldg1 = [1, 8, 2, 6, 7, 10].includes(targetBldg);
+                                const isEven = num % 2 === 0;
+                                const turn = goingToBldg1 ? (isEven ? "направо" : "налево") : (isEven ? "налево" : "направо");
+                                const targetText = goingToBldg1 ? "в сторону перехода в 1 корпус" : "в сторону перехода в 5 корпус";
+                                return `Выйдите из аудитории ${room} и поверните ${turn} по коридору ${targetText}`;
+                            }
+
+                            if (bldg === 8) {
+                                if (floor === 5) {
+                                    if (num >= 520 && num <= 534) {
+                                        return "Выйдите из аудитории и поверните налево к лестнице справа от мужского туалета (или воспользуйтесь лифтом)";
+                                    } else if (num >= 515 && num <= 519) {
+                                        return "Выйдите из аудитории и поверните направо к лестнице или лифту левого крыла";
+                                    } else if (num >= 501 && num <= 514) {
+                                        return "Выйдите из аудитории и поверните к лестнице или лифту правого крыла";
+                                    }
+                                }
+                                if (floor === 3) {
+                                    if (num >= 324 && num <= 342) {
+                                        return "Выйдите из аудитории и поверните налево к лестнице или лифту правого крыла";
+                                    } else if (num >= 301 && num <= 322) {
+                                        return "Выйдите из аудитории и поверните направо к лестнице или лифту левого крыла";
+                                    }
+                                }
+                                const turn = startLoc.wing === "левом крыле" ? "налево" : "направо";
+                                return `Выйдите из аудитории и поверните ${turn} к лестнице (или лифту рядом с ней)`;
+                            }
+
+                            return `Выйдите из ауд. ${room}/${bldg} в коридор`;
+                        };
+
+                        // Внутри одного корпуса
+                        if (start.building === end.building) {
+                            steps.push({
+                                icon: 'door_front',
+                                text: getDetailedExitInstruction(start.building, start.floor, start.room, end.building, end.floor)
+                            });
+
+                            if (start.floor === end.floor) {
+                                let walkSteps = 35;
+                                if (startLoc.found && endLoc.found && startLoc.wing === endLoc.wing) {
+                                    walkSteps = Math.abs(startLoc.stepsFromHub - endLoc.stepsFromHub) || 20;
+                                }
+                                steps.push({
+                                    icon: 'directions_walk',
+                                    text: `Идите прямо по коридору ~${walkSteps} шагов к ${targetLabel}`
+                                });
+                                totalSteps += walkSteps;
+                                totalSeconds += walkSteps * 0.7;
+                            } else {
+                                const isUp = end.floor > start.floor;
+                                const floorDiff = Math.abs(end.floor - start.floor);
+                                const stairSteps = floorDiff * 25;
+                                const elevatorText = start.building === 8 ? " (или на лифте)" : "";
+
+                                steps.push({
+                                    icon: isUp ? 'north' : 'south',
+                                    text: `${isUp ? 'Поднимитесь' : 'Спуститесь'} по лестнице${elevatorText} на ${end.floor} этаж`
+                                });
+                                totalSteps += stairSteps;
+                                totalSeconds += floorDiff * 25;
+
+                                steps.push({
+                                    icon: isToilet ? 'wc' : 'room',
+                                    text: `Пройдите по коридору к ${targetLabel}`
+                                });
+                                totalSteps += 30;
+                                totalSeconds += 25;
+                            }
+
+                            return {
+                                steps,
+                                totalSteps,
+                                canToggle: false,
+                                isBridge: false,
+                                totalMinutes: Math.max(1, Math.ceil(totalSeconds / 60))
+                            };
+                        }
+
+                        // Гарантированная топология переходов кампуса
+                        const CAMPUS_BRIDGES = [
+                            { from: 8, fromFloor: 1, to: 1, toFloor: 1, steps: 35 },
+                            { from: 8, fromFloor: 2, to: 7, toFloor: 2, steps: 50 },
+                            { from: 8, fromFloor: 2, to: 6, toFloor: 1, steps: 85 },
+                            { from: 1, fromFloor: 1, to: 12, toFloor: 2, steps: 105 },
+                            { from: 12, fromFloor: 2, to: 5, toFloor: 2, steps: 25 },
+                            { from: 1, fromFloor: 2, to: 2, toFloor: 2, steps: 40 },
+                            { from: 1, fromFloor: 2, to: 10, toFloor: 1, steps: 45 },
+                            { from: 9, fromFloor: 1, to: 11, toFloor: 1, steps: 35 }
+                        ];
+
+                        const findBridgesPath = (bStart, bEnd) => {
+                            const s = parseInt(bStart, 10);
+                            const e = parseInt(bEnd, 10);
+                            if (isNaN(s) || isNaN(e)) return null;
+                            if (s === e) return [];
+
+                            const queue = [[s, []]];
+                            const visited = new Set([s]);
+
+                            while (queue.length > 0) {
+                                const [curr, path] = queue.shift();
+                                if (curr === e) return path;
+
+                                for (const b of CAMPUS_BRIDGES) {
+                                    const f = parseInt(b.from, 10);
+                                    const t = parseInt(b.to, 10);
+                                    let next = null;
+                                    let forward = true;
+
+                                    if (f === curr) {
+                                        next = t;
+                                        forward = true;
+                                    } else if (t === curr) {
+                                        next = f;
+                                        forward = false;
+                                    }
+
+                                    if (next !== null && !visited.has(next)) {
+                                        visited.add(next);
+                                        queue.push([next, [...path, { ...b, from: f, to: t, forward }]]);
+                                    }
+                                }
+                            }
+                            return null;
+                        };
+
+                        const bridgePath = findBridgesPath(start.building, end.building);
+                        const canUseBridges = bridgePath !== null;
+
+                        // По переходам
+                        if (canUseBridges && preferBridge) {
+                            const firstBridge = bridgePath[0];
+                            const neededStartFloor = firstBridge.forward ? firstBridge.fromFloor : firstBridge.toFloor;
+
+                            let startHandled = false;
+
+                            steps.push({
+                                icon: 'door_front',
+                                text: getDetailedExitInstruction(start.building, start.floor, start.room, end.building, neededStartFloor)
+                            });
+
+                            // Старт из 5 корпуса (левое крыло 1 этажа)
+                            const startNum5 = parseInt(start.room, 10);
+                            if (start.building === 5 && start.floor === 1 && startNum5 >= 104 && startNum5 <= 114) {
+                                steps.push({
+                                    icon: 'navigation',
+                                    text: `Идите прямо до конца крыла, поверните налево и после направо, пройдите проходную, затем поверните направо и после налево к длинному коридору (~38 шагов)`
+                                });
+                                totalSteps += 38;
+                                totalSeconds += 28;
+
+                                steps.push({
+                                    icon: 'straight',
+                                    text: `Идите по длинному коридору до конца, затем налево (~110 шагов)`
+                                });
+                                totalSteps += 110;
+                                totalSeconds += 75;
+
+                                steps.push({
+                                    icon: 'straight',
+                                    text: `Продолжайте идти по коридору вперёд до последней лестницы (лестница 5) (~65 шагов)`
+                                });
+                                totalSteps += 65;
+                                totalSeconds += 45;
+
+                                steps.push({
+                                    icon: 'north',
+                                    text: `Поднимайтесь по лестнице, затем поверните налево (~25 шагов)`
+                                });
+                                totalSteps += 25;
+                                totalSeconds += 22;
+
+                                steps.push({
+                                    icon: 'swap_horiz',
+                                    text: `Пройдите коридор в переход в 12 корпус (~25 шагов)`
+                                });
+                                totalSteps += 25;
+                                totalSeconds += 20;
+
+                                startHandled = true;
+                            } else {
+                                totalSteps += (startLoc.stepsFromHub || 25);
+                                totalSeconds += (startLoc.stepsFromHub || 25) * 0.7;
+                            }
+
+                            if (!startHandled) {
+                                if (start.building === 8) {
+                                    const floorDiff = Math.abs(start.floor - neededStartFloor);
+                                    if (startLoc.wing === "левом крыле" && (firstBridge.to === 1 || firstBridge.from === 1)) {
+                                        steps.push({
+                                            icon: 'south',
+                                            text: `Спуститесь по лестнице (или на лифте) на 1 этаж, пройдите коридор левого крыла, минуя главный вход, и пройдите по правому крылу к переходу в 1 корпус (~95 шагов)`
+                                        });
+                                        totalSteps += floorDiff * 25 + 95;
+                                        totalSeconds += floorDiff * 25 + 70;
+                                    } else {
+                                        steps.push({
+                                            icon: 'south',
+                                            text: `Спуститесь по лестнице (или на лифте) на ${neededStartFloor} этаж и поверните к переходу`
+                                        });
+                                        totalSteps += floorDiff * 25 + 30;
+                                        totalSeconds += floorDiff * 25 + 30;
+                                    }
+                                } else if (start.building === 12) {
+                                    if (start.floor !== 2) {
+                                        const isUp = 2 > start.floor;
+                                        steps.push({
+                                            icon: isUp ? 'north' : 'south',
+                                            text: `Пройдите к лестнице и ${isUp ? 'поднимитесь' : 'спуститесь'} на 2 этаж 12 корпуса`
+                                        });
+                                        totalSteps += 35;
+                                        totalSeconds += 30;
+                                    } else {
+                                        steps.push({
+                                            icon: 'straight',
+                                            text: `Пройдите по коридору 2 этажа до перехода в 1 корпус (слева от ауд. 228)`
+                                        });
+                                        totalSteps += 20;
+                                        totalSeconds += 15;
+                                    }
+                                } else if (start.floor !== neededStartFloor) {
+                                    const isUp = neededStartFloor > start.floor;
+                                    steps.push({
+                                        icon: isUp ? 'north' : 'south',
+                                        text: `${isUp ? 'Поднимитесь' : 'Спуститесь'} по лестнице на ${neededStartFloor} этаж к переходу`
+                                    });
+                                    totalSteps += Math.abs(neededStartFloor - start.floor) * 25;
+                                    totalSeconds += Math.abs(neededStartFloor - start.floor) * 24;
+                                }
+                            }
+
+                            for (let i = 0; i < bridgePath.length; i++) {
+                                const bLink = bridgePath[i];
+                                const fromB = bLink.forward ? bLink.from : bLink.to;
+                                const toB = bLink.forward ? bLink.to : bLink.from;
+
+                                if (startHandled && i === 0 && fromB === 5 && toB === 12) {
+                                    // Уже пройден в блоке 5 корпуса
+                                } else if (fromB === 12 && toB === 1) {
+                                    steps.push({
+                                        icon: 'south',
+                                        text: `Пройдите по переходу со спуском по лестнице на 1 этаж 1 корпуса (~30 шагов)`
+                                    });
+                                    totalSteps += 30;
+                                    totalSeconds += 25;
+                                } else if (fromB === 1 && toB === 12) {
+                                    steps.push({
+                                        icon: 'north',
+                                        text: `Поднимитесь по лестнице на 2 этаж 12 корпуса (~30 шагов)`
+                                    });
+                                    totalSteps += 30;
+                                    totalSeconds += 25;
+                                } else if ((fromB === 8 && toB === 1) || (fromB === 1 && toB === 8)) {
+                                    steps.push({
+                                        icon: 'swap_horiz',
+                                        text: `Пройдите переход в ${toB} корпус (~35 шагов)`
+                                    });
+                                    totalSteps += 35;
+                                    totalSeconds += 30;
+                                } else if ((fromB === 12 && toB === 5) || (fromB === 5 && toB === 12)) {
+                                    steps.push({
+                                        icon: 'swap_horiz',
+                                        text: `Пройдите переход в ${toB} корпус к лестнице 5 (~25 шагов)`
+                                    });
+                                    totalSteps += 25;
+                                    totalSeconds += 20;
+                                } else if ((fromB === 2 && toB === 1) || (fromB === 1 && toB === 2)) {
+                                    steps.push({
+                                        icon: 'swap_horiz',
+                                        text: `Пройдите по переходу на 2 этаж ${toB} корпуса (~40 шагов)`
+                                    });
+                                    totalSteps += 40;
+                                    totalSeconds += 30;
+                                } else {
+                                    steps.push({
+                                        icon: 'swap_horiz',
+                                        text: `Пройдите по переходу в ${toB} корпус (~${bLink.steps || 35} шагов)`
+                                    });
+                                    totalSteps += (bLink.steps || 35);
+                                    totalSeconds += (bLink.steps || 35) * 0.7 + 10;
+                                }
+
+                                // Транзит по 1 корпусу
+                                if (toB === 1 && i < bridgePath.length - 1) {
+                                    const nextBLink = bridgePath[i + 1];
+                                    const nextDest = nextBLink.to === 1 ? nextBLink.from : nextBLink.to;
+                                    
+                                    if (fromB === 2 && nextDest === 8) {
+                                        steps.push({
+                                            icon: 'south',
+                                            text: `Спуститесь по лестнице 1 корпуса на 1 этаж и пройдите через раздевалку к переходу в 8 корпус (~105 шагов)`
+                                        });
+                                        totalSteps += 105;
+                                        totalSeconds += 75;
+                                    } else if (fromB === 8 && nextDest === 2) {
+                                        steps.push({
+                                            icon: 'north',
+                                            text: `Пройдите по 1 этажу 1 корпуса и поднимитесь по лестнице на 2 этаж к переходу во 2 корпус (~105 шагов)`
+                                        });
+                                        totalSteps += 105;
+                                        totalSeconds += 75;
+                                    } else if (fromB === 12 && nextDest === 8) {
+                                        steps.push({
+                                            icon: 'navigation',
+                                            text: `Пройдите по длинному коридору через столовую, банкоматы, зону отдыха и раздевалку к переходу в 8 корпус (~105 шагов)`
+                                        });
+                                        totalSteps += 105;
+                                        totalSeconds += 75;
+                                    } else if (fromB === 8 && nextDest === 12) {
+                                        steps.push({
+                                            icon: 'navigation',
+                                            text: `Пройдите по длинному коридору через раздевалку, зону отдыха, банкоматы и столовую к переходу в 12 корпус (~105 шагов)`
+                                        });
+                                        totalSteps += 105;
+                                        totalSeconds += 75;
+                                    }
+                                }
+
+                                // Транзит по 12 корпусу
+                                if (toB === 12 && i < bridgePath.length - 1) {
+                                    const nextBLink = bridgePath[i + 1];
+                                    const nextDest = nextBLink.to === 12 ? nextBLink.from : nextBLink.to;
+                                    if (fromB === 1 && nextDest === 5) {
+                                        steps.push({
+                                            icon: 'straight',
+                                            text: `Поверните направо и пройдите длинный коридор 12 корпуса до конца (~120 шагов), где слева будет переход в 5 корпус`
+                                        });
+                                        totalSteps += 120;
+                                        totalSeconds += 85;
+                                    } else if (fromB === 5 && nextDest === 1) {
+                                        steps.push({
+                                            icon: 'straight',
+                                            text: `Пройдите коридор 12 корпуса до конца (~120 шагов) к переходу в 1 корпус (слева от ауд. 228)`
+                                        });
+                                        totalSteps += 120;
+                                        totalSeconds += 85;
+                                    }
+                                }
+                            }
+
+                            // Выход к аудитории в конечном корпусе
+                            if (end.building === 8) {
+                                const num = parseInt(end.room, 10);
+                                const isLeftWing = (end.floor === 3 && num <= 322) || (end.floor === 5 && num >= 515) || (end.floor === 1 && num <= 118) || (end.floor === 2 && num <= 214);
+                                const floorDiff = Math.abs(end.floor - 1);
+
+                                if (end.floor > 1) {
+                                    steps.push({
+                                        icon: 'north',
+                                        text: `Дойдите до ближайшей лестницы (слева от женского туалета) либо воспользуйтесь лифтом рядом с ней, и поднимитесь на ${end.floor} этаж`
+                                    });
+                                    totalSteps += floorDiff * 25 + 30;
+                                    totalSeconds += floorDiff * 25 + 30;
+                                }
+
+                                if (isLeftWing) {
+                                    steps.push({
+                                        icon: isToilet ? 'wc' : 'room',
+                                        text: `Поверните направо (в сторону центра), пройдите через центральный холл в левое крыло и идите прямо до конца коридора — справа будет ауд. ${end.room} (~65 шагов)`
+                                    });
+                                    totalSteps += 65;
+                                    totalSeconds += 45;
+                                } else {
+                                    steps.push({
+                                        icon: isToilet ? 'wc' : 'room',
+                                        text: `Поверните налево в правое крыло и пройдите по коридору — ${endLoc.wingSide || 'в коридоре'} будет ${targetLabel}`
+                                    });
+                                    totalSteps += 35;
+                                    totalSeconds += 25;
+                                }
+                            } else if (end.building === 12) {
+                                const targetNum = parseInt(end.room, 10);
+                                const isNearStair1 = targetNum <= 110 || (targetNum >= 201 && targetNum <= 210) || (targetNum >= 301 && targetNum <= 313);
+
+                                if (end.floor === 1) {
+                                    if (isNearStair1) {
+                                        steps.push({
+                                            icon: 'south',
+                                            text: `Поверните направо и дойдите до лестницы напротив буфета (ауд. 209), затем спуститесь на 1 этаж`
+                                        });
+                                        totalSteps += 65;
+                                        totalSeconds += 50;
+
+                                        steps.push({
+                                            icon: 'room',
+                                            text: targetNum === 102 ? `Поверните направо — рядом с кафе (ауд. 104) будет 102 аудитория` : `Поверните направо к ауд. ${end.room}`
+                                        });
+                                    } else {
+                                        steps.push({
+                                            icon: 'south',
+                                            text: `Пройдите к ближайшей лестнице 2 (слева от ауд. 222) и спуститесь на 1 этаж`
+                                        });
+                                        totalSteps += 45;
+                                        totalSeconds += 35;
+                                        steps.push({
+                                            icon: 'room',
+                                            text: `Пройдите по коридору к ауд. ${end.room}`
+                                        });
+                                    }
+                                    totalSteps += 20;
+                                    totalSeconds += 15;
+                                } else {
+                                    steps.push({
+                                        icon: 'room',
+                                        text: `Пройдите по коридору к ${targetLabel}`
+                                    });
+                                    totalSteps += 25;
+                                    totalSeconds += 20;
+                                }
+                            } else if (end.building === 5 && end.floor === 1) {
+                                const endNum5 = parseInt(end.room, 10);
+                                steps.push({
+                                    icon: 'south',
+                                    text: `Спуститесь по лестнице 5 на 1 этаж (~25 шагов)`
+                                });
+                                steps.push({
+                                    icon: 'straight',
+                                    text: `Идите по коридору прямо (~65 шагов), затем поверните направо в длинный коридор (~110 шагов)`
+                                });
+                                totalSteps += 200;
+                                totalSeconds += 140;
+
+                                if (endNum5 >= 104 && endNum5 <= 114) {
+                                    steps.push({
+                                        icon: 'turn_left',
+                                        text: `Пройдите мимо главного входа и проходной, затем поверните направо и после налево в левое крыло (справа от мужского туалета)`
+                                    });
+                                    steps.push({
+                                        icon: 'room',
+                                        text: end.room === "104" ? `Идите по коридору до конца (~38 шагов) — ауд. 104 (кафе «Кис-Рис») будет прямо перед вами` : `Идите по крылу (~38 шагов) — ${targetLabel} будет в коридоре`
+                                    });
+                                    totalSteps += 50;
+                                    totalSeconds += 35;
+                                }
+                            } else {
+                                const lastBridge = bridgePath[bridgePath.length - 1];
+                                const arrivalFloorInTarget = lastBridge.forward ? lastBridge.toFloor : lastBridge.fromFloor;
+
+                                if (arrivalFloorInTarget !== end.floor) {
+                                    const isUp = end.floor > arrivalFloorInTarget;
+                                    const diff = Math.abs(end.floor - arrivalFloorInTarget);
+                                    steps.push({
+                                        icon: isUp ? 'north' : 'south',
+                                        text: `В ${end.building} корпусе ${isUp ? 'поднимитесь' : 'спуститесь'} по лестнице на ${end.floor} этаж`
+                                    });
+                                    totalSteps += diff * 25;
+                                    totalSeconds += diff * 24;
+                                }
+
+                                const finalWalk = endLoc.stepsFromHub || 25;
+                                steps.push({
+                                    icon: isToilet ? 'wc' : 'room',
+                                    text: `Пройдите по коридору ~${finalWalk} шагов — ${targetLabel} будет ${endLoc.wingSide || 'в коридоре'}`
+                                });
+                                totalSteps += finalWalk;
+                                totalSeconds += finalWalk * 0.7;
+                            }
+
+                            return {
+                                steps,
+                                totalSteps,
+                                canToggle: true,
+                                isBridge: true,
+                                totalMinutes: Math.max(1, Math.ceil(totalSeconds / 60))
+                            };
+                        }
+
+                        // Через улицу
+                        const outdoorWalks = {
+                            "8_to_5": 230, "5_to_8": 230,
+                            "1_to_5": 170, "5_to_1": 170,
+                            "2_to_5": 210, "5_to_2": 210,
+                            "8_to_2": 190, "2_to_8": 190,
+                            "12_to_2": 230, "2_to_12": 230
+                        };
+                        const walkPairKey = `${start.building}_to_${end.building}`;
+                        const outdoorSteps = outdoorWalks[walkPairKey] || 180;
+
+                        const num5Start = parseInt(start.room, 10);
+                        if (start.building === 5 && start.floor === 1 && num5Start >= 104 && num5Start <= 114) {
+                            const isEven = num5Start % 2 === 0;
+                            steps.push({
+                                icon: 'door_front',
+                                text: num5Start === 104 
+                                    ? `Выйдите из ауд. 104 (кафе «Кис-Рис») и идите по коридору прямо к выходу из крыла`
+                                    : `Выйдите из аудитории и поверните ${isEven ? 'направо' : 'налево'} к выходу из крыла`
+                            });
+                            steps.push({
+                                icon: 'directions_walk',
+                                text: `Идите прямо до конца крыла, поверните налево и после направо через проходную к главному выходу на улицу (~38 шагов)`
+                            });
+                            totalSteps += 38;
+                            totalSeconds += 28;
+                        } else {
+                            steps.push({
+                                icon: 'door_front',
+                                text: `${getDetailedExitInstruction(start.building, start.floor, start.room, end.building, 1)} и спуститесь на 1 этаж к выходу`
+                            });
+                            totalSteps += (start.floor - 1) * 25 + 30;
+                            totalSeconds += (start.floor - 1) * 25 + 30;
+                        }
+
+                        steps.push({
+                            icon: 'directions_walk',
+                            text: `Выйдите на улицу и пройдите ко входу в ${end.building} корпус (~${outdoorSteps} шагов, ~${Math.round(outdoorSteps * 0.7)} м)`
+                        });
+                        totalSteps += outdoorSteps;
+                        totalSeconds += outdoorSteps * 0.75;
+
+                        if (end.building === 12 && end.floor === 1 && parseInt(end.room, 10) <= 110) {
+                            steps.push({
+                                icon: 'door_front',
+                                text: `Зайдите в 12 корпус через главный вход (напротив ауд. 107)`
+                            });
+                            steps.push({
+                                icon: 'room',
+                                text: `Поверните направо — рядом с кафе (ауд. 104) будет 102 аудитория`
+                            });
+                            totalSteps += 25;
+                            totalSeconds += 20;
+                        } else {
+                            if (end.floor > 1) {
+                                const climbSteps = (end.floor - 1) * 25;
+                                steps.push({
+                                    icon: 'north',
+                                    text: `Зайдите в ${end.building} корпус и поднимитесь по лестнице на ${end.floor} этаж`
+                                });
+                                totalSteps += climbSteps;
+                                totalSeconds += (end.floor - 1) * 26;
+                            }
+                            steps.push({
+                                icon: isToilet ? 'wc' : 'room',
+                                text: `Пройдите по коридору к ${targetLabel}`
+                            });
+                            totalSteps += 25;
+                            totalSeconds += 20;
+                        }
+
+                        return {
+                            steps,
+                            totalSteps,
+                            canToggle: canUseBridges,
+                            isBridge: false,
+                            totalMinutes: Math.max(1, Math.ceil(totalSeconds / 60))
+                        };
+                    }
+
+                    function parseAudience(audStr) {
+                        if (!audStr) return null;
+                        let clean = audStr.replace(/ауд(?:итори[яи]|\.)?\s*/ig, '').trim();
+                        // 1. Формат 106/2, 106 / 2, 106\2, 106-2
+                        let m = clean.match(/(\d+[а-яa-zё]?)\s*[\/\\-]\s*(\d+)/i);
+                        if (!m) {
+                            // 2. Формат 106 к 2, 106к2, 106 корп 2
+                            m = clean.match(/(\d+[а-яa-zё]?)\s*(?:к|корп|корпус)\.?\s*(\d+)/i);
+                        }
+                        if (!m) {
+                            // 3. Формат 2 корпус 106, 2к 106
+                            let mRev = clean.match(/(\d+)\s*(?:к|корп|корпус)\.?\s*(\d+[а-яa-zё]?)/i);
+                            if (mRev) m = [mRev[0], mRev[2], mRev[1]];
+                        }
+                        if (m) {
+                            const room = String(m[1]).trim();
+                            const building = parseInt(m[2], 10);
+                            const firstDigit = room.match(/\d/);
+                            const floor = firstDigit ? parseInt(firstDigit[0], 10) : 1;
+                            return { room, building, floor, raw: `${room}/${building}` };
+                        }
+                        return null;
+                    }
+
+                    function getDistanceMeters(lat1, lon1, lat2, lon2) {
+                        const R = 6371e3;
+                        const dLat = (lat2 - lat1) * Math.PI / 180;
+                        const dLon = (lon2 - lon1) * Math.PI / 180;
+                        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                                Math.sin(dLon/2) * Math.sin(dLon/2);
+                        return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+                    }
+
+                    // =========================================================
+                    // ГРАФ ПЕРЕХОДОВ И ТОЧЕК (ТУАЛЕТЫ, КОРПУСА)
+                    // =========================================================
+                    const PSU_CAMPUS_GRAPH = {
+                        bridges: [
+                            { from: 8, fromFloor: 1, to: 1, toFloor: 1 },
+                            { from: 8, fromFloor: 2, to: 7, toFloor: 2 },
+                            { from: 8, fromFloor: 2, to: 6, toFloor: 1 },
+                            { from: 1, fromFloor: 1, to: 12, toFloor: 2 },
+                            { from: 12, fromFloor: 2, to: 5, toFloor: 2 },
+                            { from: 1, fromFloor: 2, to: 2, toFloor: 2 },
+                            { from: 1, fromFloor: 2, to: 10, toFloor: 1 },
+                            { from: 9, fromFloor: 1, to: 11, toFloor: 1 }
+                        ],
+                        toilets: [
+                            // 8 корпус
+                            { building: 8, floor: 1, gender: 'male', desc: '8 корпус, 1 этаж (левое крыло)' },
+                            { building: 8, floor: 1, gender: 'female', desc: '8 корпус, 1 этаж (правое крыло)' },
+                            { building: 8, floor: 5, gender: 'male', desc: '8 корпус, 5 этаж (левое крыло)' },
+                            { building: 8, floor: 5, gender: 'female', desc: '8 корпус, 5 этаж (правое крыло)' },
+                            // 1 корпус
+                            { building: 1, floor: 1, gender: 'all', desc: '1 корпус, 1 этаж' },
+                            // 2 корпус
+                            { building: 2, floor: 1, gender: 'all', desc: '2 корпус, 1 этаж' },
+                            // 5 корпус
+                            { building: 5, floor: 1, gender: 'male', desc: '5 корпус, 1 этаж (левое крыло)' },
+                            { building: 5, floor: 1, gender: 'female', desc: '5 корпус, 1 этаж (у входа)' },
+                            // 12 корпус
+                            { building: 12, floor: 1, gender: 'all', desc: '12 корпус, 1 этаж' }
+                        ]
+                    };
+
+                    // Поиск пути по переходам (BFS по графу мостов)
+                    function findBridgeSequence(startB, endB) {
+                        if (startB === endB) return [startB];
+
+                        const adj = {};
+                        PSU_CAMPUS_GRAPH.bridges.forEach(b => {
+                            if (!adj[b.from]) adj[b.from] = [];
+                            if (!adj[b.to]) adj[b.to] = [];
+                            adj[b.from].push({ to: b.to, fromFloor: b.fromFloor, toFloor: b.toFloor });
+                            adj[b.to].push({ to: b.from, fromFloor: b.toFloor, toFloor: b.fromFloor });
+                        });
+
+                        const queue = [[startB]];
+                        const visited = new Set([startB]);
+
+                        while (queue.length > 0) {
+                            const path = queue.shift();
+                            const curr = path[path.length - 1];
+
+                            if (curr === endB) return path;
+
+                            if (adj[curr]) {
+                                for (const edge of adj[curr]) {
+                                    if (!visited.has(edge.to)) {
+                                        visited.add(edge.to);
+                                        queue.push([...path, edge.to]);
+                                    }
+                                }
+                            }
+                        }
+                        return null; // Пути только по переходам нет
+                    }
+
+                    // Поиск ближайшего туалета с учётом пола
+                    function findNearestToilet(fromAudStr, targetGender = 'all') {
+                        const start = parseAudience(fromAudStr) || { building: 2, floor: 1, room: "1" };
+                        
+                        // Фильтруем туалеты по полу
+                        let available = PSU_CAMPUS_GRAPH.toilets.filter(t => targetGender === 'all' || t.gender === 'all' || t.gender === targetGender);
+
+                        // 1. Приоритет: туалет в том же корпусе
+                        const sameBuilding = available.filter(t => t.building === start.building);
+                        if (sameBuilding.length > 0) {
+                            sameBuilding.sort((a, b) => Math.abs(a.floor - start.floor) - Math.abs(b.floor - start.floor));
+                            const best = sameBuilding[0];
+                            return { targetStr: `Туалет/${best.building}`, building: best.building, floor: best.floor, desc: best.desc };
+                        }
+
+                        // 2. Иначе берем туалет из соединенного переходом корпуса
+                        const connectedToilets = available.filter(t => findBridgeSequence(start.building, t.building) !== null);
+                        if (connectedToilets.length > 0) {
+                            connectedToilets.sort((a, b) => {
+                                const lenA = findBridgeSequence(start.building, a.building).length;
+                                const lenB = findBridgeSequence(start.building, b.building).length;
+                                return lenA - lenB;
+                            });
+                            const best = connectedToilets[0];
+                            return { targetStr: `Туалет/${best.building}`, building: best.building, floor: best.floor, desc: best.desc };
+                        }
+
+                        return { targetStr: "Туалет/2", building: 2, floor: 1, desc: "2 корпус (1 этаж)" };
+                    }
+
+                    // Рендер пошагового таймлайна
+                    function renderRouteTimelineHTML(route) {
+                        if (!route || !route.steps) return '';
+
+                        return `
+                            <div class="route-timeline-container" style="display: flex; flex-direction: column; margin-top: 0.8rem; position: relative;">
+                                ${route.steps.map((s, idx) => {
+                                    const isLast = idx === route.steps.length - 1;
+                                    const circleBorder = isLast ? 'var(--color-green)' : 'var(--color-accent)';
+                                    const circleColor = isLast ? 'var(--color-green)' : 'var(--color-accent)';
+
+                                    return `
+                                        <div class="route-step-row" style="position: relative; display: flex; align-items: flex-start; gap: 14px; padding-bottom: ${isLast ? '0' : '1.4rem'};">
+                                            ${!isLast ? `<div style="position: absolute; left: 16px; top: 34px; bottom: 0; width: 2px; background: var(--color-table-border); z-index: 1;"></div>` : ''}
+
+                                            <div style="width: 34px; height: 34px; border-radius: 50%; background: var(--color-card); border: 2px solid ${circleBorder}; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 800; font-size: 1.25rem; color: ${circleColor}; z-index: 2; box-shadow: var(--shadow-main); box-sizing: border-box;">
+                                                ${idx + 1}
+                                            </div>
+
+                                            <div style="flex: 1; background: var(--color-card); border: 1px solid var(--color-table-border); border-radius: var(--radius-medium); padding: 1.2rem 1.6rem; box-shadow: var(--shadow-main); display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                                                <span style="font-size: 1.35rem; font-weight: 600; color: var(--color-text-primary); line-height: 1.4;">${s.text}</span>
+                                                <span class="material-icons" style="font-size: 2rem; color: var(--color-accent); opacity: 0.85; flex-shrink: 0;">${s.icon}</span>
+                                            </div>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        `;
+                    }
+
+                    // Модальное окно для всех типов пар
                     function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr, rawPairNum, currentIndex, allRowsArray, currentNote, isExternal, isPureCustom) {
+                        // Безопасная инициализация названия предмета
+                        const cleanSubjectName = (dispSubject || origSubject || 'Занятие').replace(/edit$/i, '').trim();
+
                         let overlay = document.querySelector('.analytics-overlay.notes-overlay');
                         let modal = document.querySelector('.analytics-modal.notes-modal');
 
@@ -24219,16 +27759,14 @@
                             document.body.appendChild(modal);
                         }
 
-                        // Точное извлечение аудитории
                         const extractCleanLocation = (r) => {
                             const audEl = r.querySelector('.pair_info .aud');
                             if (!audEl) return '';
                             const clone = audEl.cloneNode(true);
-                            clone.querySelectorAll('.pair-teacher-wrap, .note-btn-wrapper, .material-icons').forEach(el => el.remove());
+                            clone.querySelectorAll('.pair-teacher-wrap, .note-btn-wrapper, .material-icons, a').forEach(el => el.remove());
                             return clone.textContent.trim();
                         };
 
-                        // Точное извлечение преподавателя из строки аудитории
                         const extractCleanTeacher = (r) => {
                             const tWrap = r.querySelector('.pair-teacher-wrap');
                             if (tWrap) {
@@ -24241,22 +27779,31 @@
                             return '';
                         };
 
+                        const formatEveryDayPhrase = (dName) => {
+                            if (!dName) return 'Каждую неделю';
+                            const clean = dName.trim().toLowerCase();
+                            const map = {
+                                'понедельник': 'Каждый понедельник',
+                                'вторник':     'Каждый вторник',
+                                'среда':       'Каждую среду',
+                                'четверг':     'Каждый четверг',
+                                'пятница':     'Каждую пятницу',
+                                'суббота':     'Каждую субботу',
+                                'воскресенье': 'Каждое воскресенье'
+                            };
+                            return map[clean] || `Каждый день (${dName})`;
+                        };
+
                         let currentLoc = "";
                         let currentTeacher = "";
                         let isSeries = false;
                         let currentType = '';
 
-                        // 1. Для кастомных пар и событий из объявлений считываем тип напрямую из памяти
                         const cpId = row.getAttribute('data-custom-id');
-                        if (cpId) {
-                            const cpList = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
-                            const foundCp = cpList.find(p => p.id === cpId);
-                            if (foundCp && foundCp.type) {
-                                currentType = foundCp.type;
-                            }
-                        }
+                        let customPairsList = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
+                        let foundCustomPair = cpId ? customPairsList.find(p => p.id === cpId) : null;
+                        if (foundCustomPair && foundCustomPair.type) currentType = foundCustomPair.type;
 
-                        // 2. Для остальных пар берем бейдж и очищаем от дочерних иконок/кнопок
                         if (!currentType) {
                             const badgeEl = row.querySelector('.pair-type-badge');
                             if (badgeEl) {
@@ -24266,8 +27813,6 @@
                             }
                         }
 
-                        if (currentType === 'лич') currentType = 'лич';
-
                         if (isExternal) {
                             origSubject = row.getAttribute('data-ext-orig-title') || origSubject;
                             currentLoc = row.getAttribute('data-ext-disp-loc') || '';
@@ -24275,8 +27820,8 @@
                             isSeries = row.getAttribute('data-ext-is-series') === 'true';
                             currentType = row.getAttribute('data-ext-disp-type') || 'лич';
                         } else if (isPureCustom) {
-                            currentLoc = extractCleanLocation(row);
-                            currentTeacher = extractCleanTeacher(row);
+                            currentLoc = foundCustomPair ? (foundCustomPair.aud || '') : extractCleanLocation(row);
+                            currentTeacher = foundCustomPair ? (foundCustomPair.teacher || '') : extractCleanTeacher(row);
                         } else {
                             currentLoc = extractCleanLocation(row);
                             currentTeacher = extractCleanTeacher(row);
@@ -24285,22 +27830,27 @@
                             if (overType !== null) currentType = overType;
                         }
 
-                        // Извлекаем время пары
                         const timeEl = row.querySelector('.pair_num .eval');
-                        const pairTimeStr = timeEl ? timeEl.textContent.trim() : '08:00';
-                        const cleanTitle = dispSubject.replace(/edit$/i, '').trim();
+                        const timeMatch = timeEl ? timeEl.textContent.match(/\d{1,2}:\d{2}/) : null;
+                        let startVal = foundCustomPair ? (foundCustomPair.startTime || '08:00') : (timeMatch ? timeMatch[0] : '08:00');
+                        let endVal = foundCustomPair ? (foundCustomPair.endTime || '') : (row.getAttribute('data-end-time') || '');
 
-                        const selectArrowSvg = "data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e";
+                        if (!endVal && startVal && startVal.includes(':')) {
+                            let [h, m] = startVal.split(':').map(Number);
+                            let total = (h || 0) * 60 + (m || 0) + 90;
+                            endVal = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+                        }
 
                         modal.innerHTML = `
                             <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
-                                <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${cleanTitle}</span>
+                                <span class="ui-dialog-title" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85%;">${cleanSubjectName}</span>
                                 <button class="close-notes" style="background:none; border:none; cursor:pointer; font-size:0;"><span class="material-icons" style="color:var(--color-text-secondary); font-size:24px;">close</span></button>
                             </div>
                             <div class="ui-dialog-content" style="padding: 2.4rem;">
                                 <div class="sync-tabs">
                                     <button class="sync-tab active" data-tab="notes">Заметка</button>
                                     <button class="sync-tab" data-tab="reminder">Напоминание</button>
+                                    <button class="sync-tab" data-tab="route" style="display: none !important;">Маршрут</button>
                                     <button class="sync-tab" data-tab="edit">Настройки</button>
                                 </div>
 
@@ -24309,9 +27859,9 @@
                                     <textarea class="note-modal-textarea" id="cp-notes-area" placeholder="Что нужно сделать?">${currentNote}</textarea>
                                     <div style="margin: 2rem 0;">
                                         <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-card) !important; border-radius: 16px; transition: var(--transition); box-shadow: var(--shadow-main) !important; border: 1px solid var(--color-table-border) !important;">
-                                            <div style="display:flex; flex-direction:column; gap:2px;">
+                                            <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
                                                 <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">На следующую пару</span>
-                                                <span style="font-size:1.1rem; color:var(--color-text-secondary);">Перенести заметку на следующую неделю</span>
+                                                <span style="font-size:1.1rem; color:var(--color-text-secondary);">Перенести заметку к следующему занятию</span>
                                             </div>
                                             <input type="checkbox" id="note-next-class-cb" class="tumbler-checkbox">
                                         </label>
@@ -24322,27 +27872,23 @@
                                     </div>
                                 </div>
 
-                                <!-- ВКЛАДКА 2: НАПОМИНАНИЕ -->
+                                <!-- ВКЛАДКА 2: Напоминание -->
                                 <div class="tab-content" id="tab-reminder">
                                     <div style="font-size: 1.25rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 1.6rem; text-align: left; padding: 0 4px;">
                                         Добавьте пару в календарь с точным временем, аудиторией и напоминанием.
                                     </div>
-
                                     <div class="ios-settings-group" style="margin-bottom: 2rem;">
-                                        <!-- Строка: Платформа -->
                                         <div class="ios-settings-row" style="cursor: default !important; padding: 1.2rem 1.6rem !important;">
                                             <span style="font-size: 1.4rem; font-weight: 600; color: var(--color-text-primary);">Платформа</span>
-                                            <select id="ics-platform" style="background: var(--color-input) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-small) !important; padding: 0.6rem 2.8rem 0.6rem 1.2rem !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; font-weight: 600; cursor: pointer; outline: none; appearance: none; background-image: url(&quot;${selectArrowSvg}&quot;) !important; background-repeat: no-repeat !important; background-position: right 1rem center !important; background-size: 1em !important;">
+                                            <select id="ics-platform" style="background: var(--color-input) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-small) !important; padding: 0.6rem 2.8rem 0.6rem 1.2rem !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; font-weight: 600; cursor: pointer; outline: none; appearance: none;">
                                                 <option value="apple_ics" selected>Apple / Файл (.ics)</option>
                                                 <option value="google">Google Календарь</option>
                                                 <option value="yandex">Яндекс Календарь</option>
                                             </select>
                                         </div>
-
-                                        <!-- Строка: Выбор времени -->
                                         <div class="ios-settings-row" style="cursor: default !important; padding: 1.2rem 1.6rem !important;">
                                             <span style="font-size: 1.4rem; font-weight: 600; color: var(--color-text-primary);">Напомнить за</span>
-                                            <select id="ics-alarm-offset" style="background: var(--color-input) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-small) !important; padding: 0.6rem 2.8rem 0.6rem 1.2rem !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; font-weight: 600; cursor: pointer; outline: none; appearance: none; background-image: url(&quot;${selectArrowSvg}&quot;) !important; background-repeat: no-repeat !important; background-position: right 1rem center !important; background-size: 1em !important;">
+                                            <select id="ics-alarm-offset" style="background: var(--color-input) !important; border: 1px solid var(--color-table-border) !important; border-radius: var(--radius-small) !important; padding: 0.6rem 2.8rem 0.6rem 1.2rem !important; color: var(--color-text-primary) !important; font-size: 1.3rem !important; font-weight: 600; cursor: pointer; outline: none; appearance: none;">
                                                 <option value="15">15 минут</option>
                                                 <option value="30">30 минут</option>
                                                 <option value="60" selected>1 час</option>
@@ -24351,8 +27897,6 @@
                                                 <option value="0">В момент начала</option>
                                             </select>
                                         </div>
-
-                                        <!-- Строка: Включить заметку (только если есть заметка) -->
                                         ${currentNote ? `
                                         <label style="cursor: pointer; padding: 1.2rem 1.6rem !important;">
                                             <div style="display: flex; flex-direction: column; gap: 2px; text-align: left;">
@@ -24360,30 +27904,63 @@
                                                 <span style="font-size: 1.1rem; color: var(--color-text-secondary);">Добавить текст ДЗ в описание события</span>
                                             </div>
                                             <input type="checkbox" id="ics-include-notes" class="tumbler-checkbox" checked>
-                                        </label>
-                                        ` : ''}
+                                        </label>` : ''}
                                     </div>
-
-                                    <!-- Единая кнопка Добавить -->
                                     <div style="display: flex; justify-content: flex-end; gap: 1rem;">
                                         <button class="answer-btn-custom submit-reminder-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important; display: inline-flex; align-items: center; gap: 8px;">
-                                            <span class="material-icons" style="font-size: 1.8rem;">event</span>
-                                            Добавить
+                                            <span class="material-icons" style="font-size: 1.8rem;">event</span>Добавить
                                         </button>
                                     </div>
                                 </div>
 
-                                <!-- ВКЛАДКА 3: НАСТРОЙКИ -->
-                                <div class="tab-content" id="tab-edit" style="padding: 6px 4px;">
-                                    ${(!isPureCustom) ? `<div style="margin-bottom: 1.5rem; color: var(--color-text-secondary); font-size: 1.2rem;">Оригинальное название: <b>${origSubject}</b></div>` : ''}
+                                <!-- ВКЛАДКА 3: Маршрут (скрыта) -->
+                                <div class="tab-content" id="tab-route" style="display: none !important;">
+                                    <input type="text" id="route-from-input" value="">
+                                    <input type="text" id="route-to-input" value="${currentLoc}">
+                                    <button id="route-swap-btn"></button>
+                                    <button id="build-route-btn"></button>
+                                    <div id="route-result-container"></div>
+                                </div>
 
+                                <!-- ВКЛАДКА 4: Настройки (Редактирование пары и времени) -->
+                                <div class="tab-content" id="tab-edit" style="padding: 6px 4px;">
+                                    ${(() => {
+                                        if (isPureCustom) return '';
+                                        const origTimeVal = row.getAttribute('data-orig-start-time') || '';
+                                        const isTitleChanged = origSubject && origSubject.trim().toLowerCase() !== cleanSubjectName.trim().toLowerCase();
+                                        const isTimeChanged = origTimeVal && startVal && origTimeVal !== startVal;
+
+                                        if (!isTitleChanged && !isTimeChanged) return '';
+
+                                        return `
+                                            <div class="ios-settings-group" style="margin-bottom: 1.4rem; padding: 1.4rem 1.6rem; background: var(--color-card) !important; border: 1px solid var(--color-table-border); box-shadow: var(--shadow-main); display:flex; flex-direction:column; gap:6px; text-align:left;">
+                                                ${isTitleChanged ? `<div style="font-size: 1.25rem; color: var(--color-text-secondary);">Оригинальное название: <b style="color: var(--color-text-primary);">${origSubject}</b></div>` : ''}
+                                                ${isTimeChanged ? `<div style="font-size: 1.25rem; color: var(--color-text-secondary);">Оригинальное время: <b style="color: var(--color-text-primary);">${origTimeVal}</b></div>` : ''}
+                                            </div>
+                                        `;
+                                    })()}
+
+                                    <!-- Название предмета -->
                                     <div class="custom-pair-input-group">
                                         <div class="cp-input-wrap">
                                             <span class="material-icons">menu_book</span>
-                                            <input type="text" id="cp-subject-edit" placeholder="Название предмета *" value="${dispSubject}">
+                                            <input type="text" id="cp-subject-edit" placeholder="Название предмета *" value="${cleanSubjectName}">
                                         </div>
                                     </div>
 
+                                    <!-- Время начала и окончания -->
+                                    <div class="custom-pair-input-group">
+                                        <div class="cp-input-wrap">
+                                            <span class="material-icons">schedule</span>
+                                            <input type="time" id="cp-start-edit" value="${startVal}" required title="Время начала">
+                                        </div>
+                                        <div class="cp-input-wrap">
+                                            <span class="material-icons">flag</span>
+                                            <input type="time" id="cp-end-edit" value="${endVal}" required title="Время окончания">
+                                        </div>
+                                    </div>
+
+                                    <!-- Тип пары и Преподаватель -->
                                     <div class="custom-pair-input-group">
                                         <div class="cp-input-wrap" style="flex: 0.85;">
                                             <span class="material-icons">category</span>
@@ -24402,6 +27979,8 @@
                                             <input type="text" id="cp-teacher-edit" placeholder="Преподаватель" value="${currentTeacher}">
                                         </div>
                                     </div>
+
+                                    <!-- Аудитория / Ссылка -->
                                     <div class="custom-pair-input-group">
                                         <div class="cp-input-wrap">
                                             <span class="material-icons">place</span>
@@ -24409,22 +27988,64 @@
                                         </div>
                                     </div>
 
-                                    ${!isPureCustom ? `
-                                    <div style="margin: 2rem 0;">
-                                        <label style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; padding: 12px 16px; background: var(--color-card) !important; border-radius: 16px; transition: var(--transition); box-shadow: var(--shadow-main) !important; border: 1px solid var(--color-table-border) !important;">
-                                            <div style="display:flex; flex-direction:column; gap:2px;">
-                                                <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Применить ко всем</span>
-                                                <span style="font-size:1.1rem; color:var(--color-text-secondary);">Ко всем парам с таким же оригинальным названием</span>
-                                            </div>
-                                            <input type="checkbox" id="ext-apply-all" class="tumbler-checkbox" ${isSeries ? 'checked' : ''}>
-                                        </label>
-                                    </div>
-                                    ` : ''}
+                                    ${!isPureCustom ? (() => {
+                                        const origTimeVal = row.getAttribute('data-orig-start-time') || startVal;
+                                        const currentDayName = row.closest('.day')?.getAttribute('data-orig-day-name') ||
+                                                               row.closest('.day')?.querySelector('.day-name')?.textContent.trim() || 'этот день';
 
-                                    <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 2rem;">
-                                        ${isPureCustom ? `<button class="answer-btn-custom delete-cp-btn-modal" style="background: var(--color-red) !important; color: #fff !important; border: none !important; box-shadow: none !important; padding: 10px 20px;">Удалить пару</button>` : ''}
-                                        ${!isPureCustom ? `<button class="answer-btn-custom reset-edit-btn" style="background: var(--color-highlight) !important; color: var(--color-red) !important; border: 1px solid rgba(255,59,48,0.3) !important; box-shadow: none !important;">Сбросить</button>` : ''}
-                                        <button class="answer-btn-custom save-edit-btn" style="background: var(--color-accent) !important; color: #fff !important; box-shadow: none !important;">Сохранить настройки</button>
+                                        const allOverrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
+                                        const thisSingleKey = `SINGLE_${dayDateStr}_${rawPairNum}_${origSubject}`;
+                                        const currentSingleData = allOverrides[thisSingleKey] || {};
+
+                                        // Восстановление сохранённых состояний тумблеров
+                                        const checkedAll = currentSingleData.applyAll === true || !!allOverrides[`SERIES_ALL_${origSubject}`];
+                                        const checkedTime = currentSingleData.applyTimeSeries === true || !!allOverrides[`SERIES_TIME_${origTimeVal}_${origSubject}`];
+                                        const checkedDayTime = currentSingleData.applyDayTimeSeries === true || !!allOverrides[`SERIES_DAY_TIME_${currentDayName}_${origTimeVal}_${origSubject}`];
+
+                                        return `
+                                        <div class="ios-settings-group" style="margin: 1.6rem 0;">
+                                            <!-- Тумблер 1: Ко всем парам предмета -->
+                                            <label>
+                                                <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+                                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Применить ко всем парам предмета</span>
+                                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Ко всем занятиям с названием «${origSubject}»</span>
+                                                </div>
+                                                <input type="checkbox" id="ext-apply-all" class="tumbler-checkbox" ${checkedAll ? 'checked' : ''}>
+                                            </label>
+
+                                            <!-- Тумблер 2: Ко всем в этот день и время -->
+                                            <label>
+                                                <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+                                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Применить ко всем в этот день и время</span>
+                                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">${formatEveryDayPhrase(currentDayName)} в исходные ${origTimeVal}</span>
+                                                </div>
+                                                <input type="checkbox" id="ext-apply-day-time-series" class="tumbler-checkbox" ${checkedDayTime ? 'checked' : ''}>
+                                            </label>
+
+                                            <!-- Тумблер 3: Ко всем парам в это исходное время -->
+                                            <label>
+                                                <div style="display:flex; flex-direction:column; gap:2px; text-align:left;">
+                                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary);">Применить ко всем в это время</span>
+                                                    <span style="font-size:1.1rem; color:var(--color-text-secondary);">Для всех дней недели в исходные ${origTimeVal}</span>
+                                                </div>
+                                                <input type="checkbox" id="ext-apply-time-series" class="tumbler-checkbox" ${checkedTime ? 'checked' : ''}>
+                                            </label>
+                                        </div>`;
+                                    })() : ''}
+
+                                    <div style="display: flex; justify-content: flex-end; align-items: center; gap: 1rem; margin-top: 2rem;">
+                                        ${isPureCustom ? `
+                                            <button type="button" class="delete-cp-btn-modal" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; background: var(--color-red) !important; color: #fff !important; border: none !important; border-radius: 50px !important; padding: 0.8rem 1.8rem !important; font-size: 1.35rem !important; font-weight: 700 !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(255,59,48,0.2) !important; transition: all 0.2s ease !important;">
+                                                Удалить пару
+                                            </button>
+                                        ` : `
+                                            <button type="button" class="reset-edit-btn" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; background: rgba(255, 59, 48, 0.12) !important; color: var(--color-red) !important; border: 1px solid rgba(255, 59, 48, 0.25) !important; border-radius: 50px !important; padding: 0.8rem 1.8rem !important; font-size: 1.35rem !important; font-weight: 700 !important; cursor: pointer !important; box-shadow: none !important; transition: all 0.2s ease !important;">
+                                                Сбросить
+                                            </button>
+                                        `}
+                                        <button type="button" class="save-edit-btn" style="display: inline-flex !important; align-items: center !important; justify-content: center !important; background: var(--bg-accent) !important; color: #fff !important; -webkit-text-fill-color: #fff !important; border: none !important; border-radius: 50px !important; padding: 0.8rem 2.2rem !important; font-size: 1.35rem !important; font-weight: 700 !important; cursor: pointer !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; transition: all 0.2s ease !important;">
+                                            Сохранить настройки
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -24440,7 +28061,6 @@
                         overlay.onclick = closeModal;
                         modal.querySelector('.close-notes').onclick = closeModal;
 
-                        // Переключение вкладок
                         const tabs = modal.querySelectorAll('.sync-tab');
                         const contents = modal.querySelectorAll('.tab-content');
                         tabs.forEach(tab => {
@@ -24452,62 +28072,16 @@
                             });
                         });
 
-                        // Обработчик кнопки «Добавить» во вкладке Напоминания
-                        const submitReminderBtn = modal.querySelector('.submit-reminder-btn');
-                        if (submitReminderBtn) {
-                            submitReminderBtn.onclick = (e) => {
-                                e.preventDefault();
-                                const platform = modal.querySelector('#ics-platform').value;
-                                const alarmOffset = parseInt(modal.querySelector('#ics-alarm-offset').value, 10);
-                                const notesCheckbox = modal.querySelector('#ics-include-notes');
-                                const includeNotes = notesCheckbox ? notesCheckbox.checked : false;
-
-                                const { startDate, endDate } = getPairDateTime(dayDateStr, pairTimeStr);
-
-                                // Описание для веб-календарей (Google/Яндекс)
-                                let webDescParts = [];
-                                if (currentTeacher) webDescParts.push(`Преподаватель: ${currentTeacher}`);
-                                if (includeNotes && currentNote) webDescParts.push(`Заметка:\n${currentNote}`);
-                                webDescParts.push('Расписание ЕТИС');
-
-                                // Описание для .ics (преподаватель вынесен в отдельную строку ORGANIZER, поэтому в описании оставляем только заметку)
-                                let icsDescParts = [];
-                                if (includeNotes && currentNote) icsDescParts.push(`Заметка:\n${currentNote}`);
-                                icsDescParts.push('Расписание ЕТИС');
-
-                                const eventData = {
-                                    title: cleanTitle,
-                                    location: currentLoc,
-                                    teacher: currentTeacher,
-                                    startDate,
-                                    endDate,
-                                    alarmMinutes: alarmOffset
-                                };
-
-                                if (platform === 'google') {
-                                    openGoogleCalendarWeb({ ...eventData, description: webDescParts.join('\n\n') });
-                                } else if (platform === 'yandex') {
-                                    openYandexCalendarWeb({ ...eventData, description: webDescParts.join('\n\n') });
-                                } else {
-                                    const icsContent = generatePairICS({ ...eventData, description: icsDescParts.join('\n\n') });
-                                    downloadICSFile(`${cleanTitle}.ics`, icsContent);
-                                    
-                                    if (window.showEtisPush) {
-                                        window.showEtisPush(
-                                            'Напоминание создано',
-                                            cleanTitle,
-                                            `Файл .ics сформирован с напоминанием за ${alarmOffset >= 60 ? (alarmOffset / 60) + ' ч.' : (alarmOffset === 0 ? 'момент начала' : alarmOffset + ' мин.')}`,
-                                            'success',
-                                            'alarm_on',
-                                            null,
-                                            null,
-                                            false
-                                        );
-                                    }
+                        const startEditInput = modal.querySelector('#cp-start-edit');
+                        const endEditInput = modal.querySelector('#cp-end-edit');
+                        if (startEditInput && endEditInput) {
+                            startEditInput.addEventListener('change', (e) => {
+                                if (e.target.value) {
+                                    let [hours, minutes] = e.target.value.split(':').map(Number);
+                                    let total = (hours || 0) * 60 + (minutes || 0) + 90;
+                                    endEditInput.value = `${String(Math.floor(total / 60) % 24).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
                                 }
-
-                                closeModal();
-                            };
+                            });
                         }
 
                         // Сохранение заметки
@@ -24527,7 +28101,7 @@
                                         const r = allRowsArray[i];
                                         const dCont = r.querySelector('.pair_info .dis');
                                         const tEl = dCont ? (dCont.querySelector('a') || dCont) : null;
-                                        if (tEl && tEl.textContent.trim() === dispSubject) {
+                                        if (tEl && tEl.textContent.trim() === cleanSubjectName) {
                                             const dD = r.closest('.day')?.querySelector('.day-date');
                                             const dStr = dD ? dD.textContent.trim() : 'UnknownDate';
                                             const nTd = r.querySelector('.pair_num');
@@ -24537,14 +28111,14 @@
                                                     if (n.nodeType === Node.TEXT_NODE && /пара/i.test(n.nodeValue)) rNum = n.nodeValue.trim();
                                                 });
                                             }
-                                            nextPairId = `${dStr}_${rNum}_${dispSubject}`;
+                                            nextPairId = `${dStr}_${rNum}_${cleanSubjectName}`;
                                             break;
                                         }
                                     }
                                     if (nextPairId) notesData.specific[nextPairId] = val;
                                     else {
                                         if (!notesData.next_unbound) notesData.next_unbound = {};
-                                        notesData.next_unbound[dispSubject] = { text: val, week: currentWeek };
+                                        notesData.next_unbound[cleanSubjectName] = { text: val, week: currentWeek };
                                     }
                                 } else {
                                     notesData.specific[pairId] = val;
@@ -24555,7 +28129,6 @@
                             renderNotes();
                         };
 
-                        // Очистка заметки
                         const clearNoteBtn = modal.querySelector('.clear-note-btn');
                         if (clearNoteBtn) {
                             clearNoteBtn.onclick = (e) => {
@@ -24569,25 +28142,25 @@
                         const deleteCpBtn = modal.querySelector('.delete-cp-btn-modal');
                         if (deleteCpBtn) {
                             deleteCpBtn.onclick = () => {
-                                if (confirm(`Удалить пару "${dispSubject}"?`)) {
-                                    const cpId = row.getAttribute('data-custom-id');
+                                if (confirm(`Удалить пару "${cleanSubjectName}"?`)) {
+                                    const customId = row.getAttribute('data-custom-id');
                                     let cp = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
-                                    cp = cp.filter(p => p.id !== cpId);
+                                    cp = cp.filter(p => p.id !== customId);
                                     saveSyncData('etis_custom_pairs_v1', JSON.stringify(cp));
                                     closeModal();
 
                                     if (window.location.href.includes('timetable')) {
                                         document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
                                         if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
-                                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                                         if (typeof window.renderNotes === 'function') window.renderNotes();
+                                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                                         if (typeof window.applyDimming === 'function') window.applyDimming();
                                     }
                                 }
                             };
                         }
 
-                        // Сохранение настроек пары
+                        // Сохранение настроек и времени
                         const saveEditBtn = modal.querySelector('.save-edit-btn');
                         if (saveEditBtn) {
                             saveEditBtn.onclick = () => {
@@ -24595,32 +28168,40 @@
                                 const newLoc = modal.querySelector('#cp-aud-edit').value.trim();
                                 const newTeacher = modal.querySelector('#cp-teacher-edit').value.trim();
                                 const newType = modal.querySelector('#cp-type-edit').value.trim();
-                                if (!newTitle) return alert('Введите название!');
+                                const newStartTime = modal.querySelector('#cp-start-edit')?.value.trim() || startVal;
+                                const newEndTime = modal.querySelector('#cp-end-edit')?.value.trim() || endVal;
+
+                                if (!newTitle) return alert('Введите название предмета!');
 
                                 if (isPureCustom) {
                                     let customPairs = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
-                                    const cpId = row.getAttribute('data-custom-id');
-                                    const cpIndex = customPairs.findIndex(p => p.id === cpId);
+                                    const customId = row.getAttribute('data-custom-id');
+                                    const cpIndex = customPairs.findIndex(p => p.id === customId);
                                     if (cpIndex > -1) {
                                         customPairs[cpIndex].subject = newTitle;
                                         customPairs[cpIndex].aud = newLoc;
                                         customPairs[cpIndex].teacher = newTeacher;
                                         customPairs[cpIndex].type = newType;
-                                        localStorage.setItem('etis_custom_pairs_v1', JSON.stringify(customPairs));
-                                        if (typeof triggerSilentCloudUpload === 'function') triggerSilentCloudUpload();
+                                        customPairs[cpIndex].startTime = newStartTime;
+                                        customPairs[cpIndex].endTime = newEndTime;
+                                        saveSyncData('etis_custom_pairs_v1', JSON.stringify(customPairs));
 
                                         closeModal();
 
-                                        if (window.location.href.includes('timetable')) {
+                                        if (window.location.href.includes('timetable') || (typeof isDemoActive !== 'undefined' && isDemoActive)) {
                                             document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
                                             if (typeof window.injectCustomPairs === 'function') window.injectCustomPairs();
-                                            if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                                             if (typeof window.renderNotes === 'function') window.renderNotes();
+                                            if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
                                             if (typeof window.applyDimming === 'function') window.applyDimming();
+                                            if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
                                         }
                                     }
                                 } else {
-                                    const applyAll = document.getElementById('ext-apply-all')?.checked;
+                                    const applyAll = document.getElementById('ext-apply-all')?.checked || false;
+                                    const applyDayTimeSeries = document.getElementById('ext-apply-day-time-series')?.checked || false;
+                                    const applyTimeSeries = document.getElementById('ext-apply-time-series')?.checked || false;
+
                                     let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
 
                                     let timeKey = rawPairNum;
@@ -24630,74 +28211,141 @@
                                         dateKey = row.getAttribute('data-ext-date');
                                     }
 
+                                    const origStartTime = row.getAttribute('data-orig-start-time') || startVal;
+                                    const origDayName = row.closest('.day')?.getAttribute('data-orig-day-name') ||
+                                                        row.closest('.day')?.querySelector('.day-name')?.textContent.trim() || '';
+
                                     const singleKey = `SINGLE_${dateKey}_${timeKey}_${origSubject}`;
                                     const seriesKey = `SERIES_ALL_${origSubject}`;
+                                    const timeSeriesKey = `SERIES_TIME_${origStartTime}_${origSubject}`;
+                                    const dayTimeSeriesKey = `SERIES_DAY_TIME_${origDayName}_${origStartTime}_${origSubject}`;
+
+                                    const overrideData = {
+                                        title: newTitle,
+                                        loc: newLoc,
+                                        teacher: newTeacher,
+                                        type: newType,
+                                        timeStart: newStartTime,
+                                        timeEnd: newEndTime
+                                    };
+
+                                    overrides[singleKey] = {
+                                        ...overrideData,
+                                        applyAll,
+                                        applyDayTimeSeries,
+                                        applyTimeSeries
+                                    };
 
                                     if (applyAll) {
-                                        overrides[seriesKey] = { title: newTitle };
-                                        overrides[singleKey] = { loc: newLoc, teacher: newTeacher, type: newType };
+                                        overrides[seriesKey] = {
+                                            title: newTitle,
+                                            loc: newLoc,
+                                            teacher: newTeacher,
+                                            type: newType
+                                        };
                                     } else {
-                                        overrides[singleKey] = { title: newTitle, loc: newLoc, teacher: newTeacher, type: newType };
+                                        delete overrides[seriesKey];
                                     }
-                                    localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
+
+                                    if (applyDayTimeSeries) {
+                                        overrides[dayTimeSeriesKey] = overrideData;
+                                    } else {
+                                        delete overrides[dayTimeSeriesKey];
+                                    }
+
+                                    if (applyTimeSeries) {
+                                        overrides[timeSeriesKey] = overrideData;
+                                    } else {
+                                        delete overrides[timeSeriesKey];
+                                    }
+
+                                    saveSyncData('etis_ext_overrides', JSON.stringify(overrides));
 
                                     closeModal();
-                                    window.location.reload();
+
+                                    // Мгновенное бесшовное обновление интерфейса без сбоя сети
+                                    if (window.location.href.includes('timetable') || (typeof isDemoActive !== 'undefined' && isDemoActive)) {
+                                        if (typeof window.renderNotes === 'function') window.renderNotes();
+                                        if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                                        if (typeof window.applyDimming === 'function') window.applyDimming();
+                                        if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
+                                    } else {
+                                        setTimeout(() => window.location.reload(), 150);
+                                    }
                                 }
                             };
                         }
 
-                        // Сброс настроек пары
+                        // Сброс настроек
                         const resetEditBtn = modal.querySelector('.reset-edit-btn');
                         if (resetEditBtn) {
                             resetEditBtn.onclick = () => {
                                 let overrides = JSON.parse(localStorage.getItem('etis_ext_overrides') || '{}');
                                 let timeKey = isExternal ? row.getAttribute('data-ext-time') : rawPairNum;
                                 let dateKey = isExternal ? row.getAttribute('data-ext-date') : dayDateStr;
+                                const origStartTime = row.getAttribute('data-orig-start-time') || startVal;
+                                const origDayName = row.closest('.day')?.getAttribute('data-orig-day-name') ||
+                                                    row.closest('.day')?.querySelector('.day-name')?.textContent.trim() || '';
+
                                 const singleKey = `SINGLE_${dateKey}_${timeKey}_${origSubject}`;
                                 const seriesKey = `SERIES_ALL_${origSubject}`;
+                                const timeSeriesKey = `SERIES_TIME_${origStartTime}_${origSubject}`;
+                                const dayTimeSeriesKey = `SERIES_DAY_TIME_${origDayName}_${origStartTime}_${origSubject}`;
 
                                 delete overrides[singleKey];
                                 delete overrides[seriesKey];
-                                localStorage.setItem('etis_ext_overrides', JSON.stringify(overrides));
+                                delete overrides[timeSeriesKey];
+                                delete overrides[dayTimeSeriesKey];
+
+                                saveSyncData('etis_ext_overrides', JSON.stringify(overrides));
                                 closeModal();
-                                window.location.reload();
+
+                                // Мгновенный пересчет и сброс вида без перезагрузки страницы
+                                if (typeof window.renderNotes === 'function') window.renderNotes();
+                                if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+                                if (typeof window.applyDimming === 'function') window.applyDimming();
+                                if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
                             };
                         }
 
                         overlay.classList.add('active');
                         modal.classList.add('active');
                         document.body.classList.add('modal-open-body');
-                        setTimeout(() => modal.querySelector('#cp-notes-area')?.focus(), 100);
                     }
 
-                    // --- МОБИЛЬНЫЕ СВАЙПЫ РАСПИСАНИЯ ---
+                   // --- МОБИЛЬНЫЕ СВАЙПЫ РАСПИСАНИЯ ---
                     function initMobileSwipes() {
-                        // Создаем индикатор
-                        const bubble = document.createElement('div');
-                        bubble.id = 'swipe-action-bubble';
-                        bubble.innerHTML = '<span class="material-icons"></span>';
-                        document.body.appendChild(bubble);
+                        let bubble = document.getElementById('swipe-action-bubble');
+                        if (!bubble) {
+                            bubble = document.createElement('div');
+                            bubble.id = 'swipe-action-bubble';
+                            bubble.innerHTML = '<span class="material-icons"></span>';
+                            document.body.appendChild(bubble);
+                        }
                         const iconEl = bubble.querySelector('.material-icons');
 
                         let startX = 0, startY = 0;
                         let currentTarget = null;
                         let targetElements = [];
-                        let originalRect = null; // Будем хранить изначальные границы элемента
+                        let originalRect = null;
                         let targetType = '';
                         let isSwiping = false;
                         let isScrollDetermined = false;
                         let swipeDir = '';
                         let hasEval = false;
                         let evalLink = null;
-                        const THRESHOLD = 70; // Порог срабатывания
+                        let clickPrevented = false;
+                        let lastDiffX = 0;
+                        const THRESHOLD = 65;
 
                         const span9El = document.querySelector('.span9');
                         if (!span9El) return;
 
                         span9El.addEventListener('touchstart', (e) => {
-                            // Если экран широкий (ПК) — отключаем скрипт
                             if (window.innerWidth > 960) return;
+
+                            // Игнорируем только системные элементы и внешние ссылки комнат
+                            if (e.target.closest('button, input, textarea, select, .subject-note-btn, .pair-important-btn, .share-day-btn, .add-custom-pair-btn, .delete-custom-pair-btn, a[href*="zoom"], a[href*="telemost"], a.btn-generic-online, .pair-online-link')) return;
 
                             const touch = e.touches[0];
                             startX = touch.clientX;
@@ -24705,43 +28353,49 @@
                             isSwiping = false;
                             isScrollDetermined = false;
                             swipeDir = '';
+                            lastDiffX = 0;
+                            clickPrevented = false;
                             currentTarget = null;
                             targetElements = [];
                             originalRect = null;
 
                             const row = e.target.closest('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)');
-                            const dayHeader = e.target.closest('.day h3');
+                            const dayCard = e.target.closest('.day');
 
-                            // Захватываем цель
                             if (row && !row.querySelector('th')) {
                                 currentTarget = row;
                                 targetElements = Array.from(row.querySelectorAll('td'));
                                 targetType = 'row';
-                                evalLink = row.querySelector('.pair_teacher .eval');
+                                evalLink = row.querySelector('a.eval');
                                 hasEval = !!evalLink;
-                            } else if (dayHeader) {
-                                currentTarget = dayHeader.closest('.day');
-                                targetElements = [currentTarget];
+
+                                const firstTd = targetElements[0].getBoundingClientRect();
+                                const lastTd = targetElements[targetElements.length - 1].getBoundingClientRect();
+                                originalRect = {
+                                    top: firstTd.top,
+                                    left: firstTd.left,
+                                    right: lastTd.right,
+                                    height: firstTd.height
+                                };
+                            } else if (dayCard) {
+                                currentTarget = dayCard;
+                                targetElements = [dayCard];
                                 targetType = 'day';
+
+                                // Вычисляем координаты от ВСЕЙ карточки дня для центрирования
+                                const dayRect = dayCard.getBoundingClientRect();
+                                originalRect = {
+                                    top: dayRect.top,
+                                    left: dayRect.left,
+                                    right: dayRect.right,
+                                    height: dayRect.height
+                                };
                             }
 
-                            // Фиксируем физические границы элемента ДО начала сдвига
                             if (currentTarget) {
-                                if (targetType === 'row') {
-                                    const firstTd = targetElements[0].getBoundingClientRect();
-                                    const lastTd = targetElements[targetElements.length - 1].getBoundingClientRect();
-                                    originalRect = {
-                                        top: firstTd.top,
-                                        left: firstTd.left,
-                                        right: lastTd.right,
-                                        height: firstTd.height
-                                    };
-                                } else {
-                                    originalRect = currentTarget.getBoundingClientRect();
-                                }
                                 targetElements.forEach(el => {
-                                    el.style.transition = 'none';
-                                    el.style.animation = 'none';
+                                    el.style.setProperty('transition', 'none', 'important');
+                                    el.style.setProperty('animation', 'none', 'important');
                                 });
                             }
                         }, { passive: true });
@@ -24751,22 +28405,24 @@
                             const touch = e.touches[0];
                             const diffX = touch.clientX - startX;
                             const diffY = touch.clientY - startY;
+                            lastDiffX = diffX;
 
-                            // Мертвая зона для определения (свайп или скролл вниз)
                             if (!isScrollDetermined) {
                                 if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) return;
                                 isScrollDetermined = true;
-                                if (Math.abs(diffY) > Math.abs(diffX)) {
+                                if (Math.abs(diffY) >= Math.abs(diffX)) {
                                     currentTarget = null;
                                     return;
                                 }
                                 isSwiping = true;
+                                clickPrevented = true;
                                 bubble.className = '';
                             }
 
                             if (isSwiping) {
+                                if (e.cancelable) e.preventDefault();
+
                                 if (diffX < 0) {
-                                    // Свайп влево
                                     swipeDir = 'left';
                                     if (targetType === 'day') {
                                         iconEl.textContent = 'ios_share';
@@ -24774,12 +28430,10 @@
                                         iconEl.textContent = 'edit';
                                     }
                                 } else if (diffX > 0) {
-                                    // Свайп вправо
                                     swipeDir = 'right';
                                     if (targetType === 'day') {
                                         iconEl.textContent = 'add';
                                     } else if (targetType === 'row') {
-                                        // ПРОВЕРКА НА ПРОШЕДШУЮ ПАРУ
                                         let isPassed = false;
                                         const dayDateEl = currentTarget.closest('.day')?.querySelector('.day-date');
                                         if (dayDateEl) {
@@ -24825,41 +28479,37 @@
                                             iconEl.textContent = 'star_rate';
                                             bubble.className = 'active-threshold action-eval';
                                         } else {
-                                            // Если пара прошла и кнопки оценки тоже нет — сбрасываем свайп
-                                            targetElements.forEach(el => el.style.transform = `translateX(0px)`);
+                                            targetElements.forEach(el => el.style.setProperty('transform', 'translateX(0px)', 'important'));
                                             bubble.style.opacity = '0';
                                             return;
                                         }
                                     }
-                                } else {
-                                    targetElements.forEach(el => el.style.transform = `translateX(0px)`);
-                                    bubble.style.opacity = '0';
-                                    return;
                                 }
 
-                                // Пружинистое сопротивление
                                 let moveX = diffX;
                                 if (Math.abs(moveX) > THRESHOLD) {
                                     moveX = (moveX > 0 ? 1 : -1) * (THRESHOLD + (Math.abs(moveX) - THRESHOLD) * 0.25);
                                 }
 
-                                // 1. Двигаем строку или день
-                                targetElements.forEach(el => el.style.transform = `translateX(${moveX}px)`);
+                                targetElements.forEach(el => el.style.setProperty('transform', `translateX(${moveX}px)`, 'important'));
 
-                                // 2. Иконка появляется ровно по центру образующейся пустоты
-                                const currentRect = targetElements[0].getBoundingClientRect();
-                                bubble.style.top = `${currentRect.top + currentRect.height / 2 - 12}px`;
-                                bubble.style.opacity = Math.min(Math.abs(diffX) / 30, 1).toString();
+                                // ВЫРАВНИВАНИЕ ПО ВЕРТИКАЛЬНОМУ ЦЕНТРУ:
+                                const rect = currentTarget.getBoundingClientRect();
+                                bubble.style.top = `${rect.top + (rect.height / 2) - 14}px`;
 
                                 if (swipeDir === 'left') {
-                                    // Пустота образуется СПРАВА
-                                    bubble.style.left = `${originalRect.right + (moveX / 2) - 12}px`;
+                                    bubble.style.left = `${originalRect.right + (moveX / 2) - 14}px`;
                                 } else {
-                                    // Пустота образуется СЛЕВА
-                                    bubble.style.left = `${originalRect.left + (moveX / 2) - 12}px`;
+                                    bubble.style.left = `${originalRect.left + (moveX / 2) - 14}px`;
                                 }
 
-                                // 3. Индикация прохождения порога (смена цвета)
+                                const absDiff = Math.abs(diffX);
+                                if (absDiff < 20) {
+                                    bubble.style.opacity = '0';
+                                } else {
+                                    bubble.style.opacity = Math.min((absDiff - 20) / 35, 1).toString();
+                                }
+
                                 if (Math.abs(diffX) >= THRESHOLD) {
                                     if (targetType === 'day') {
                                         if (swipeDir === 'left') {
@@ -24882,62 +28532,83 @@
                                     bubble.dataset.vibrated = '';
                                 }
                             }
-                        }, { passive: true });
+                        }, { passive: false });
 
-                        span9El.addEventListener('touchend', (e) => {
-                            if (!currentTarget || !isSwiping) return;
+                        const resetSwipe = (e) => {
+                            if (!currentTarget || !isSwiping) {
+                                currentTarget = null;
+                                isSwiping = false;
+                                return;
+                            }
 
-                            const diffX = e.changedTouches[0].clientX - startX;
+                            const endDiffX = (e.changedTouches && e.changedTouches.length > 0) ? (e.changedTouches[0].clientX - startX) : lastDiffX;
+                            const finalDiff = Math.abs(endDiffX) > Math.abs(lastDiffX) ? endDiffX : lastDiffX;
                             const target = currentTarget;
                             const tType = targetType;
                             const dir = swipeDir;
                             const el = evalLink;
-                            const bubbleClass = bubble.className;
 
-                            // Плавный возврат элемента на место
+                            // Запоминаем флаги действия до сброса классов пузыря
+                            const isImportant = bubble.classList.contains('action-important');
+                            const isEval = bubble.classList.contains('action-eval');
+
                             targetElements.forEach(elem => {
-                                elem.style.transition = 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
-                                elem.style.transform = 'translateX(0px)';
+                                elem.style.setProperty('transition', 'transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)', 'important');
+                                elem.style.setProperty('transform', 'translateX(0px)', 'important');
                             });
 
-                            // Иконка плавно затухает
                             bubble.style.opacity = '0';
                             bubble.classList.remove('active-threshold', 'action-add', 'action-note', 'action-eval', 'action-share', 'action-important');
                             bubble.dataset.vibrated = '';
 
-                            // Выполнение действия
-                            if (Math.abs(diffX) >= THRESHOLD) {
+                            // Блокируем случайное открытие ссылки под пальцем, но НЕ блокируем кнопки скрипта
+                            if (clickPrevented) {
+                                const preventClickCapture = (ev) => {
+                                    if (ev.target.closest('.subject-note-btn, .pair-important-btn, .share-day-btn, .add-custom-pair-btn')) return;
+                                    ev.preventDefault();
+                                    ev.stopPropagation();
+                                };
+                                window.addEventListener('click', preventClickCapture, true);
+                                setTimeout(() => window.removeEventListener('click', preventClickCapture, true), 200);
+                            }
+
+                            // АКТИВАЦИЯ ДЕЙСТВИЯ ПРИ ДОСТИЖЕНИИ ПОРОГА
+                            if (Math.abs(finalDiff) >= THRESHOLD) {
                                 setTimeout(() => {
                                     if (tType === 'day') {
                                         if (dir === 'left') {
                                             const shareBtn = target.querySelector('.share-day-btn');
-                                            if (shareBtn) shareBtn.click();
+                                            if (shareBtn) shareBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
                                         } else if (dir === 'right') {
                                             const dayNameEl = target.querySelector('.day-name');
-                                            if (dayNameEl) openCustomPairModal(dayNameEl.textContent.trim());
+                                            if (dayNameEl && typeof window.openCustomPairModal === 'function') {
+                                                window.openCustomPairModal(dayNameEl.textContent.trim());
+                                            }
                                         }
                                     } else if (tType === 'row') {
                                         if (dir === 'left') {
                                             const noteBtn = target.querySelector('.subject-note-btn');
-                                            if (noteBtn) noteBtn.click();
+                                            if (noteBtn) noteBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
                                         } else if (dir === 'right') {
-                                            if (bubbleClass.includes('action-important')) {
+                                            if (isImportant) {
                                                 const impBtn = target.querySelector('.pair-important-btn');
-                                                if (impBtn) impBtn.click();
-                                            } else if (bubbleClass.includes('action-eval')) {
-                                                if (el) {
-                                                    if (el.hasAttribute('href')) window.location.href = el.getAttribute('href');
-                                                    else el.click();
-                                                }
+                                                if (impBtn) impBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                                            } else if (isEval && el) {
+                                                if (el.hasAttribute('href')) window.location.href = el.getAttribute('href');
+                                                else el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
                                             }
                                         }
                                     }
-                                }, 150); // Небольшая задержка, чтобы строка успела вернуться визуально
+                                }, 50);
                             }
 
                             currentTarget = null;
                             isSwiping = false;
-                        });
+                            clickPrevented = false;
+                        };
+
+                        span9El.addEventListener('touchend', resetSwipe, { passive: true });
+                        span9El.addEventListener('touchcancel', resetSwipe, { passive: true });
                     }
 
                     // Вызываем инициализацию свайпов
@@ -25578,6 +29249,40 @@
                         clone.querySelectorAll('*').forEach(el => el.style.boxSizing = 'border-box');
                     };
 
+                    // Сохранение расписания в кэш для Оффлайн-режима
+                    if (!isDemoActive) {
+                        try {
+                            const timetableContainer = document.querySelector('.span9');
+                            if (timetableContainer) {
+                                const clone = timetableContainer.cloneNode(true);
+
+                                // 1. Удаляем динамические элементы скрипта
+                                clone.querySelectorAll('.custom-pair-row, .docx-consultation-row, .timetable-toolbar, #swipe-action-bubble, .timetable-gap-row').forEach(el => el.remove());
+
+                                // 2. Восстанавливаем оригинальные дни недели, если они были объединены
+                                clone.querySelectorAll('.merged-day-off-hidden').forEach(d => {
+                                    d.style.removeProperty('display');
+                                    d.classList.remove('merged-day-off-hidden');
+                                });
+
+                                // 3. Очищаем заголовки h3 обратно в чистый исходный формат ЕТИС: "Понедельник, 7 сентября"
+                                clone.querySelectorAll('.day').forEach(dayEl => {
+                                    const origName = dayEl.getAttribute('data-orig-day-name') || dayEl.querySelector('.day-name')?.textContent.trim();
+                                    const origDate = dayEl.getAttribute('data-orig-date') || dayEl.querySelector('.day-date')?.textContent.trim();
+
+                                    const h3 = dayEl.querySelector('h3');
+                                    if (h3 && origName) {
+                                        h3.className = '';
+                                        h3.removeAttribute('style');
+                                        h3.innerHTML = origDate ? `${origName}, ${origDate}` : origName;
+                                    }
+                                });
+
+                                localStorage.setItem('etis_offline_timetable_html', clone.innerHTML);
+                            }
+                        } catch(e) { console.error('[Offline Cache Error]', e); }
+                    }
+
                     // Запуск расчета индикаторов и затемнения сразу
                     updateLiveTimetable();
                     dimPastPairs();
@@ -25704,14 +29409,11 @@
                             break;
                         }
 
-                        // Удаляем точку уведомлений из сайдбара
-                        const activeLink = document.querySelector('.span3 > .nav.nav-tabs.nav-stacked > li.active > a');
-                        if (activeLink) {
-                            const dot = activeLink.querySelector('.badge-point');
-                            if (dot) dot.remove();
-                        }
+                        // Удаляем точку уведомлений из сайдбара и дока
+                        document.querySelectorAll('.span3 a[href*="stu_ann.announces"] .badge-point, .span3 li.active .badge-point').forEach(dot => dot.remove());
+                        if (window.updateFolderBadges) window.updateFolderBadges();
                         if (!document.querySelector('.span3 .badge-point')) {
-                            document.querySelector('.mobile-menu-btn')?.classList.remove('has-updates');
+                            document.querySelector('.mobile-dock-drawer-btn, .mobile-menu-btn')?.classList.remove('has-updates');
                         }
 
                         const container = document.createElement('div');
@@ -25732,30 +29434,6 @@
                             const isUnread = msg.classList.contains('answ');
                             const firstLi = msg.querySelector('li:first-child');
                             if (!firstLi) return;
-
-                            // Фиксация детального уведомления для каждого нового объявления
-                            if (isUnread) {
-                                const rawTitle = firstLi.querySelector('font[style*="font-weight:bold"], b')?.textContent.trim() || '';
-                                const rawAuthor = firstLi.querySelector('font[color="#808080"]')?.textContent.trim() || '';
-                                const annKey = 'ann_id_' + (rawTitle + '_' + rawAuthor).replace(/[^\wа-яА-ЯёЁ]/g, '_');
-
-                                let notifiedAnnounces = JSON.parse(localStorage.getItem('etis_notified_ann_list_v1') || '[]');
-                                if (!notifiedAnnounces.includes(annKey)) {
-                                    notifiedAnnounces.push(annKey);
-                                    if (notifiedAnnounces.length > 50) notifiedAnnounces = notifiedAnnounces.slice(-50);
-                                    localStorage.setItem('etis_notified_ann_list_v1', JSON.stringify(notifiedAnnounces));
-
-                                    addNotificationToHistory({
-                                        id: annKey,
-                                        title: 'Новое объявление',
-                                        subject: rawTitle || 'Объявление от разработчика',
-                                        body: 'Опубликовано новое объявление',
-                                        type: 'info',
-                                        icon: 'campaign',
-                                        targetUrl: 'stu_ann.announces'
-                                    });
-                                }
-                            }
 
                             const cloneContent = firstLi.cloneNode(true);
 
@@ -25802,10 +29480,10 @@
                                 <div class="msg-header">
                                     <div class="msg-sender">
                                         <span class="material-icons">campaign</span>${authorStr}
-                                        ${isUnread ? '<span style="display:inline-block; width:8px; height:8px; min-width:8px; background:var(--color-red); border-radius:50%; margin-left:8px; align-self:center; box-shadow: 0 0 6px rgba(255,59,48,0.5);"></span>' : ''}
                                     </div>
                                     <div class="msg-date msg-date-wrapper">
                                         <span class="msg-date-text">${dateStr}</span>
+                                        ${isUnread ? '<span class="msg-unread-dot"></span>' : ''}
                                         <div class="actions-msg-wrap">
                                             ${getAiBtnHtml(textForLength, attachments)}
                                             <div class="share-msg-wrap" style="display:inline-flex;">${softShareSVG}</div>
@@ -25940,6 +29618,18 @@
                         span9.appendChild(container);
                          // Инициализация свайпов для мобилок
                         initMessageSwipes(container, 'Объявление.png');
+
+                        // Плавное исчезновение точки у новых постов через 5 секунд
+                        if (container.querySelector('.msg-unread-dot')) {
+                            setTimeout(() => {
+                                container.querySelectorAll('.msg-unread-dot').forEach(dot => {
+                                    dot.style.opacity = '0';
+                                    dot.style.transform = 'scale(0)';
+                                    setTimeout(() => dot.remove(), 800);
+                                });
+                            }, 5000);
+                        }
+
                         break;
                     }
 
@@ -25961,14 +29651,11 @@
                             break;
                         }
 
-                        // Удаляем точку уведомлений из сайдбара
-                        const activeLink = document.querySelector('.span3 > .nav.nav-tabs.nav-stacked > li.active > a');
-                        if (activeLink) {
-                            const dot = activeLink.querySelector('.badge-point');
-                            if (dot) dot.remove();
-                        }
+                        // Удаляем точку уведомлений из сайдбара и дока
+                        document.querySelectorAll('.span3 a[href*="stu.teacher_notes"] .badge-point, .span3 li.active .badge-point').forEach(dot => dot.remove());
+                        if (window.updateFolderBadges) window.updateFolderBadges();
                         if (!document.querySelector('.span3 .badge-point')) {
-                            document.querySelector('.mobile-menu-btn')?.classList.remove('has-updates');
+                            document.querySelector('.mobile-dock-drawer-btn, .mobile-menu-btn')?.classList.remove('has-updates');
                         }
 
                         const container = document.createElement('div');
@@ -26022,10 +29709,10 @@
                                 <div class="msg-header">
                                     <div class="msg-sender">
                                         <span class="material-icons">person</span>${teacherName}
-                                        ${isUnread ? '<span style="display:inline-block; width:8px; height:8px; min-width:8px; background:var(--color-red); border-radius:50%; margin-left:8px; align-self:center; box-shadow: 0 0 6px rgba(255,59,48,0.5);"></span>' : ''}
                                     </div>
                                     <div class="msg-date msg-date-wrapper">
                                         <span class="msg-date-text">${dateStr}</span>
+                                        ${isUnread ? '<span class="msg-unread-dot"></span>' : ''}
                                         <div class="actions-msg-wrap">
                                             ${getAiBtnHtml(textForLength, attachments)}
                                             <div class="share-msg-wrap" style="display:inline-flex;">${softShareSVG}</div>
@@ -26086,6 +29773,18 @@
                         span9.prepend(searchWrapper);
                         searchWrapper.after(container);
                         if (pagesContainer) container.after(pagesContainer);
+
+                        // Плавное исчезновение точки у новых сообщений через 5 секунд
+                        if (container.querySelector('.msg-unread-dot')) {
+                            setTimeout(() => {
+                                container.querySelectorAll('.msg-unread-dot').forEach(dot => {
+                                    dot.style.opacity = '0';
+                                    dot.style.transform = 'scale(0)';
+                                    setTimeout(() => dot.remove(), 800);
+                                });
+                            }, 5000);
+                        }
+
                         break;
                     }
 
@@ -27365,181 +31064,204 @@
                                 const rows = Array.from(table.querySelectorAll('tr'));
                                 const totalRow = rows.find(r => r.textContent.toLowerCase().includes('всего:'));
 
+                                // Проверяем, есть ли реальные строки с оценками (не заголовки и не пустые заглушки)
+                                const dataRows = rows.filter(r => {
+                                    if (r === totalRow || r.querySelector('th')) return false;
+                                    const text = r.textContent.trim().toLowerCase();
+                                    if (text.includes('нет данных') || text.includes('не назначены') || text === '') return false;
+                                    return r.querySelectorAll('td').length >= 3;
+                                });
+
+                                const isEmptySubject = dataRows.length === 0;
+
                                 let calculatedCurrent = 0, calculatedMax = 0, hasAnyGrades = false;
                                 let isZachet = false;
 
-                                rows.forEach(r => {
-                                    if (r === totalRow) return;
+                                if (isEmptySubject) {
+                                    // 1. Удаляем все строки данных и строку "Всего"
+                                    table.querySelectorAll('tr:not(:has(th))').forEach(r => r.remove());
+                                    if (totalRow) totalRow.remove();
 
-                                    const cells = r.querySelectorAll('th, td');
-
-                                    // Логика определения типа предмета (Зачет)
-                                    if (cells.length >= 7 && cells[2]) {
-                                        if (cells[2].textContent.toLowerCase().includes('зачет') || cells[2].textContent.toLowerCase().includes('зачёт')) {
-                                            isZachet = true;
-                                        }
-                                    }
-
-                                    // === ЛОГИКА: КОМПАКТНЫЕ ОЦЕНКИ ===
-                                    if (generalConfig.compactGrades) {
-                                        const cfg = generalConfig.compactGradesConfig;
-
-                                        // 1. Вторая строка шапки ("текущий", "максимальный")
-                                        if (cells.length === 2 && cells[0].textContent.toLowerCase().includes('текущий')) {
-                                            if (!cfg.showRating) r.style.display = 'none';
-                                        }
-                                        // 2. Главная строка шапки
-                                        else if (r.querySelector('th') && cells.length >= 7) {
-                                            cells.forEach((cell) => {
-                                                const text = cell.textContent.toLowerCase();
-
-                                                if (text.includes('вид работы') && !cfg.showWorkType) cell.style.display = 'none';
-                                                if (text.includes('вид контроля') && !cfg.showControlType) cell.style.display = 'none';
-                                                if (text.includes('проходной') && !cfg.showPassScore) cell.style.display = 'none';
-                                                if (text.includes('в рейтинг') && !cfg.showRating) cell.style.display = 'none';
-                                                if (text.includes('дата') && !cfg.showDate) cell.style.display = 'none';
-                                                if (text.includes('преподаватель') && !cfg.showTeacher) cell.style.display = 'none';
-
-                                                if (!cfg.showRating) {
-                                                    cell.removeAttribute('rowspan');
-                                                    cell.removeAttribute('colspan');
+                                    // 2. В шапке оставляем ТОЛЬКО "Тема" и "Оценка", скрывая остальные столбцы и вторую строку
+                                    const headerRows = Array.from(table.querySelectorAll('tr:has(th)'));
+                                    headerRows.forEach((hRow, hIdx) => {
+                                        const ths = hRow.querySelectorAll('th');
+                                        if (hIdx === 0) {
+                                            let lastTh = null;
+                                            ths.forEach(th => {
+                                                const text = th.textContent.toLowerCase().trim();
+                                                if (text.includes('тема') || text.includes('оценка')) {
+                                                    th.style.display = '';
+                                                    th.removeAttribute('rowspan');
+                                                    th.removeAttribute('colspan');
+                                                    if (text.includes('оценка')) lastTh = th;
+                                                } else {
+                                                    th.style.display = 'none';
                                                 }
                                             });
+                                            if (lastTh) lastTh.classList.add('align-right-cell');
+                                        } else {
+                                            // Вторая строка шапки ("текущий / максимальный") скрывается
+                                            hRow.style.display = 'none';
                                         }
-                                        // 3. Обычные строки с оценками
-                                        else if (cells.length >= 7) {
-                                            cells.forEach((cell, idx) => {
-                                                // Индексы колонок ЕТИС:
-                                                // 0:Тема, 1:Работа, 2:Контроль, 3:Оценка, 4:Проходной, 5:БаллТек, 6:БаллМакс, 7:Дата, 8:Преподаватель
-                                                if (idx === 1 && !cfg.showWorkType) cell.style.display = 'none';
-                                                if (idx === 2 && !cfg.showControlType) cell.style.display = 'none';
-                                                if (idx === 4 && !cfg.showPassScore) cell.style.display = 'none';
-                                                if ((idx === 5 || idx === 6) && !cfg.showRating) cell.style.display = 'none';
-                                                if (idx === 7 && !cfg.showDate) cell.style.display = 'none';
-                                                if (idx === 8 && !cfg.showTeacher) cell.style.display = 'none';
-
-                                                // Заужаем колонку оценки
-                                                if (idx === 3) {
-                                                    cell.style.width = '1%';
-                                                    cell.style.whiteSpace = 'nowrap';
-                                                }
-                                            });
-                                        }
-                                    }
-                                    // ========================================
-
-                                    // НАХОДИМ ПОСЛЕДНЮЮ ВИДИМУЮ ЯЧЕЙКУ И ПРИЖИМАЕМ ВПРАВО
-                                    let lastVisibleCell = null;
-                                    cells.forEach(cell => {
-                                        if (cell.style.display !== 'none') lastVisibleCell = cell;
                                     });
-                                    if (lastVisibleCell) lastVisibleCell.classList.add('align-right-cell');
 
-                                    if (r.querySelector('th')) return;
+                                    const tbody = table.querySelector('tbody') || table;
 
-                                    // 1. Красиво оформляем "Вид работы" (лек, практ, лаб, сам)
-                                    if (cells.length > 1) {
-                                        let typeText = cells[1].textContent.trim().toLowerCase();
-                                        if (typeText) {
-                                            // Дефолтный стиль (серый)
-                                            let bg = 'var(--color-highlight)';
-                                            let color = 'var(--color-text-secondary)';
+                                    // 3. Добавляем строку-заглушку ровно под 2 колонки
+                                    const emptyTr = document.createElement('tr');
+                                    emptyTr.innerHTML = `
+                                        <td colspan="2" style="text-align: center !important; padding: 3.6rem 2rem !important; color: var(--color-text-secondary) !important; font-weight: 600 !important; font-size: 1.35rem !important; background: transparent !important; border: none !important;">
+                                            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;">
+                                                <span class="material-icons" style="font-size: 2.8rem; color: var(--color-text-secondary); opacity: 0.4;">hourglass_empty</span>
+                                                <span>Данных пока нет</span>
+                                            </div>
+                                        </td>
+                                    `;
+                                    tbody.appendChild(emptyTr);
+                                } else {
+                                    rows.forEach(r => {
+                                        if (r === totalRow) return;
 
-                                            // Настройка цветов
-                                            if (typeText === 'лек') {
-                                                bg = 'rgba(0, 122, 255, 0.1)';
-                                                color = 'var(--color-blue)';
-                                            }
-                                            else if (typeText === 'практ') {
-                                                bg = 'rgba(52, 199, 89, 0.1)';
-                                                color = 'var(--color-green)';
-                                            }
-                                            else if (typeText === 'лаб') {
-                                                bg = 'rgba(255, 149, 0, 0.1)';
-                                                color = 'var(--color-warning)';
-                                            }
-                                            else if (typeText === 'сам') {
-                                                bg = 'rgba(175, 82, 222, 0.15)';
-                                                color = '#AF52DE';
-                                            }
+                                        const cells = r.querySelectorAll('th, td');
 
-                                            cells[1].innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block;">${typeText}</span>`;
+                                        // Определение зачета
+                                        if (cells.length >= 7 && cells[2]) {
+                                            if (cells[2].textContent.toLowerCase().includes('зачет') || cells[2].textContent.toLowerCase().includes('зачёт')) {
+                                                isZachet = true;
+                                            }
                                         }
-                                    }
 
-                                    // 2. Сокращаем "контрольное мероприятие" до "КМ" и делаем аккуратным
-                                    if (cells.length > 2) {
-                                        let ctrlText = cells[2].textContent.trim();
-                                        if (ctrlText) {
-                                            ctrlText = ctrlText.replace(/контрольное мероприятие/ig, 'КМ');
-                                            // Делаем первую букву заглавной (например, "Письменное КМ")
-                                            ctrlText = ctrlText.charAt(0).toUpperCase() + ctrlText.slice(1);
-                                            cells[2].innerHTML = `<span style="color: var(--color-text-secondary); font-size: 1.25rem; font-weight: 500; white-space: nowrap;">${ctrlText}</span>`;
+                                        // Компактный режим
+                                        if (generalConfig.compactGrades) {
+                                            const cfg = generalConfig.compactGradesConfig;
+
+                                            if (cells.length === 2 && cells[0].textContent.toLowerCase().includes('текущий')) {
+                                                if (!cfg.showRating) r.style.display = 'none';
+                                            } else if (r.querySelector('th') && cells.length >= 7) {
+                                                cells.forEach((cell) => {
+                                                    const text = cell.textContent.toLowerCase();
+                                                    if (text.includes('вид работы') && !cfg.showWorkType) cell.style.display = 'none';
+                                                    if (text.includes('вид контроля') && !cfg.showControlType) cell.style.display = 'none';
+                                                    if (text.includes('проходной') && !cfg.showPassScore) cell.style.display = 'none';
+                                                    if (text.includes('в рейтинг') && !cfg.showRating) cell.style.display = 'none';
+                                                    if (text.includes('дата') && !cfg.showDate) cell.style.display = 'none';
+                                                    if (text.includes('преподаватель') && !cfg.showTeacher) cell.style.display = 'none';
+
+                                                    if (!cfg.showRating) {
+                                                        cell.removeAttribute('rowspan');
+                                                        cell.removeAttribute('colspan');
+                                                    }
+                                                });
+                                            } else if (cells.length >= 7) {
+                                                cells.forEach((cell, idx) => {
+                                                    if (idx === 1 && !cfg.showWorkType) cell.style.display = 'none';
+                                                    if (idx === 2 && !cfg.showControlType) cell.style.display = 'none';
+                                                    if (idx === 4 && !cfg.showPassScore) cell.style.display = 'none';
+                                                    if ((idx === 5 || idx === 6) && !cfg.showRating) cell.style.display = 'none';
+                                                    if (idx === 7 && !cfg.showDate) cell.style.display = 'none';
+                                                    if (idx === 8 && !cfg.showTeacher) cell.style.display = 'none';
+
+                                                    if (idx === 3) {
+                                                        cell.style.width = '1%';
+                                                        cell.style.whiteSpace = 'nowrap';
+                                                    }
+                                                });
+                                            }
                                         }
-                                    }
 
-                                    // 3. Расчет баллов (Оценка / Макс. рейтинг) и отрисовка капсул
-                                    if (cells.length >= 7) {
-                                        const gradeStr = cells[3].textContent.trim();
-                                        const maxStr = cells[6].textContent.trim();
+                                        let lastVisibleCell = null;
+                                        cells.forEach(cell => {
+                                            if (cell.style.display !== 'none') lastVisibleCell = cell;
+                                        });
+                                        if (lastVisibleCell) lastVisibleCell.classList.add('align-right-cell');
 
-                                        r.setAttribute('data-raw-grade', gradeStr);
-                                        r.setAttribute('data-raw-max', maxStr);
+                                        if (r.querySelector('th')) return;
 
-                                        const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
+                                        // Вид работы
+                                        if (cells.length > 1) {
+                                            let typeText = cells[1].textContent.trim().toLowerCase();
+                                            if (typeText) {
+                                                let bg = 'var(--color-highlight)', color = 'var(--color-text-secondary)';
+                                                if (typeText === 'лек') { bg = 'rgba(0, 122, 255, 0.1)'; color = 'var(--color-blue)'; }
+                                                else if (typeText === 'практ') { bg = 'rgba(52, 199, 89, 0.1)'; color = 'var(--color-green)'; }
+                                                else if (typeText === 'лаб') { bg = 'rgba(255, 149, 0, 0.1)'; color = 'var(--color-warning)'; }
+                                                else if (typeText === 'сам') { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; }
 
-                                        if (gradeStr !== '' && gradeStr !== '-' && gradeStr !== '—') {
-                                            hasAnyGrades = true;
+                                                cells[1].innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.4rem 0.8rem; border-radius: 50px; font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block;">${typeText}</span>`;
+                                            }
+                                        }
 
-                                            if (maxVal > 0) {
-                                                calculatedMax += maxVal;
-                                                if (gradeStr !== 'н') {
-                                                    calculatedCurrent += parseFloat(gradeStr.replace(',', '.')) || 0;
+                                        // Вид контроля
+                                        if (cells.length > 2) {
+                                            let ctrlText = cells[2].textContent.trim();
+                                            if (ctrlText) {
+                                                ctrlText = ctrlText.replace(/контрольное мероприятие/ig, 'КМ');
+                                                ctrlText = ctrlText.charAt(0).toUpperCase() + ctrlText.slice(1);
+                                                cells[2].innerHTML = `<span style="color: var(--color-text-secondary); font-size: 1.25rem; font-weight: 500; white-space: nowrap;">${ctrlText}</span>`;
+                                            }
+                                        }
+
+                                        // Расчет баллов
+                                        if (cells.length >= 7) {
+                                            const gradeStr = cells[3].textContent.trim();
+                                            const maxStr = cells[6].textContent.trim();
+
+                                            r.setAttribute('data-raw-grade', gradeStr);
+                                            r.setAttribute('data-raw-max', maxStr);
+
+                                            const maxVal = parseFloat(maxStr.replace(',', '.')) || 0;
+
+                                            if (gradeStr !== '' && gradeStr !== '-' && gradeStr !== '—') {
+                                                hasAnyGrades = true;
+
+                                                if (maxVal > 0) {
+                                                    calculatedMax += maxVal;
+                                                    if (gradeStr !== 'н') {
+                                                        calculatedCurrent += parseFloat(gradeStr.replace(',', '.')) || 0;
+                                                    }
                                                 }
-                                            }
 
-                                            if (gradeStr !== 'н') {
-                                                if (!cells[3].querySelector('.kt-score-capsule')) {
-                                                    let bg, color, mark = '';
-                                                    const gradeVal = parseFloat(gradeStr.replace(',', '.')) || 0;
+                                                if (gradeStr !== 'н') {
+                                                    if (!cells[3].querySelector('.kt-score-capsule')) {
+                                                        let bg, color, mark = '';
+                                                        const gradeVal = parseFloat(gradeStr.replace(',', '.')) || 0;
 
-                                                    if (maxVal > 0) {
-                                                        const p = (gradeVal / maxVal) * 100;
-                                                        if (p < 41) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; mark = '2'; }
-                                                        else if (p < 61) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; mark = '3'; }
-                                                        else if (p < 81) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; mark = '4'; }
-                                                        else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; mark = '5'; }
-                                                    } else {
-                                                        bg = 'rgba(142, 142, 147, 0.15)'; color = 'var(--color-text-secondary)';
+                                                        if (maxVal > 0) {
+                                                            const p = (gradeVal / maxVal) * 100;
+                                                            if (p < 41) { bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)'; mark = '2'; }
+                                                            else if (p < 61) { bg = 'rgba(255, 149, 0, 0.15)'; color = 'var(--color-warning)'; mark = '3'; }
+                                                            else if (p < 81) { bg = 'rgba(139, 195, 74, 0.15)'; color = '#8BC34A'; mark = '4'; }
+                                                            else { bg = 'rgba(52, 199, 89, 0.15)'; color = 'var(--color-green)'; mark = '5'; }
+                                                        } else {
+                                                            bg = 'rgba(142, 142, 147, 0.15)'; color = 'var(--color-text-secondary)';
+                                                        }
+
+                                                        let tooltipHtml = '';
+                                                        if (maxVal > 0) {
+                                                            tooltipHtml = `<div class="score-tooltip grade-cell-tooltip"><span style="color: ${color}; font-size: 1.4rem;">${mark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${gradeVal} из ${maxVal}</div>`;
+                                                        }
+
+                                                        const originalContent = cells[3].innerHTML;
+                                                        cells[3].innerHTML = `<span class="kt-score-capsule" style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; min-width: 24px;">${originalContent}${tooltipHtml}</span>`;
+
+                                                        const innerSpan = cells[3].querySelector('span span');
+                                                        if (innerSpan) innerSpan.style.borderBottom = 'none';
                                                     }
-
-                                                    let tooltipHtml = '';
-                                                    if (maxVal > 0) {
-                                                        tooltipHtml = `<div class="score-tooltip grade-cell-tooltip"><span style="color: ${color}; font-size: 1.4rem;">${mark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${gradeVal} из ${maxVal}</div>`;
+                                                } else {
+                                                    if (!cells[3].querySelector('.kt-score-capsule')) {
+                                                        cells[3].innerHTML = `<span class="kt-score-capsule" style="background: rgba(255, 59, 48, 0.15); color: var(--color-red); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-block; text-align: center; min-width: 24px;">н</span>`;
                                                     }
-
-                                                    const originalContent = cells[3].innerHTML;
-                                                    cells[3].innerHTML = `<span class="kt-score-capsule" style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; min-width: 24px;">${originalContent}${tooltipHtml}</span>`;
-
-                                                    const innerSpan = cells[3].querySelector('span span');
-                                                    if (innerSpan) innerSpan.style.borderBottom = 'none';
                                                 }
                                             } else {
                                                 if (!cells[3].querySelector('.kt-score-capsule')) {
-                                                    cells[3].innerHTML = `<span class="kt-score-capsule" style="background: rgba(255, 59, 48, 0.15); color: var(--color-red); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-block; text-align: center; min-width: 24px;">н</span>`;
+                                                    cells[3].innerHTML = `<span class="kt-score-capsule" style="background: rgba(142, 142, 147, 0.15); color: var(--color-text-secondary); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.15rem; display: inline-block; text-align: center; min-width: 24px; white-space: nowrap;">Неизвестно</span>`;
                                                 }
                                             }
-                                        } else {
-                                            // ФОЛБЭК: Если КМ еще не сдано или оценка не выставлена
-                                            if (!cells[3].querySelector('.kt-score-capsule')) {
-                                                cells[3].innerHTML = `<span class="kt-score-capsule" style="background: rgba(142, 142, 147, 0.15); color: var(--color-text-secondary); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.15rem; display: inline-block; text-align: center; min-width: 24px; white-space: nowrap;">Неизвестно</span>`;
-                                            }
                                         }
-                                    }
-                                });
+                                    });
 
-                                if (totalRow) {
-                                    totalRow.remove();
+                                    if (totalRow) totalRow.remove();
                                 }
 
                                 const subjectsReportType = JSON.parse(localStorage.getItem('etis_subjects_report_type_v1') || '{}');
@@ -27548,7 +31270,6 @@
                                 if (subjectsReportType[cleanSubjName] === 'зачет') {
                                     isZachet = true;
                                 } else {
-                                    // Пытаемся найти частичное совпадение
                                     for (const [savedSubj, type] of Object.entries(subjectsReportType)) {
                                         if (savedSubj === cleanSubjName || savedSubj.includes(cleanSubjName) || cleanSubjName.includes(savedSubj)) {
                                             if (type === 'зачет') isZachet = true;
@@ -27567,17 +31288,17 @@
                                 h3.parentNode.insertBefore(headerContainer, h3);
                                 headerContainer.appendChild(h3);
 
-                                // --- ПРИМЕНЕНИЕ ЛОГИКИ АБСОЛЮТНЫХ БАЛЛОВ ---
                                 const finalMax = generalConfig.absoluteScores ? 100 : calculatedMax;
 
                                 const capsule = document.createElement('div');
                                 capsule.className = 'subject-score-capsule';
-                                capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? finalMax : 0}`;
 
-                                if (!hasAnyGrades || finalMax === 0) {
+                                if (isEmptySubject || !hasAnyGrades || finalMax === 0) {
+                                    capsule.textContent = 'Нет оценок';
                                     capsule.style.background = 'var(--color-highlight)';
                                     capsule.style.color = 'var(--color-text-secondary)';
                                 } else {
+                                    capsule.textContent = `${calculatedCurrent} / ${finalMax}`;
                                     const p = (calculatedCurrent / finalMax) * 100;
                                     if (p < 41) capsule.style.background = 'var(--color-red)';
                                     else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
@@ -27586,8 +31307,8 @@
                                     if (p < 41 || p >= 61) capsule.style.color = '#fff';
                                 }
 
-                                // --- КАЛЬКУЛЯТОР БАЛЛОВ (Прогноз) ---
-                                if (finalMax > 0 && hasAnyGrades) {
+                                // Калькулятор баллов
+                                if (!isEmptySubject && finalMax > 0 && hasAnyGrades) {
                                     let tooltipText = '';
                                     let currentMark = '';
                                     let markColor = '';
@@ -27626,10 +31347,6 @@
                             });
 
                             // --- ЛОГИКА ФИЛЬТРАЦИИ И ДИНАМИЧЕСКОГО ПЕРЕСЧЕТА ---
-                            // Первоначальная проверка при пустом списке
-                            const initialTermGradesCount = document.querySelectorAll('.term-table-v6 tbody tr:not(:has(th))').length;
-                            updateEmptyState(span9, initialTermGradesCount > 0, '', 'grades');
-
                             const filterInput = searchContainer.querySelector('.term-local-input');
                             filterInput.addEventListener('input', (e) => {
                                 const val = e.target.value.toLowerCase().trim();
@@ -27650,8 +31367,14 @@
 
                                     rows.forEach(row => {
                                         if (row.querySelector('th')) {
-                                            // Восстанавливаем шапку, НО уважаем компактный режим
-                                            if (generalConfig.compactGrades && !generalConfig.compactGradesConfig.showRating) {
+                                            if (wrapper.querySelector('td[colspan]')) {
+                                                // Для пустых таблиц не отображаем вторую строку шапки
+                                                const hRowIdx = Array.from(wrapper.querySelectorAll('tr:has(th)')).indexOf(row);
+                                                if (hRowIdx > 0) {
+                                                    row.style.display = 'none';
+                                                    return;
+                                                }
+                                            } else if (generalConfig.compactGrades && !generalConfig.compactGradesConfig.showRating) {
                                                 const thCells = row.querySelectorAll('th');
                                                 if (thCells.length === 2 && thCells[0].textContent.toLowerCase().includes('текущий')) {
                                                     row.style.display = 'none';
@@ -27662,14 +31385,23 @@
                                             return;
                                         }
 
+                                        // Обработка строки-заглушки "Данных пока нет"
+                                        if (row.querySelector('td[colspan]')) {
+                                            if (val === "" || isSubjectMatch) {
+                                                row.style.display = '';
+                                                visibleRowsCount++;
+                                            } else {
+                                                row.style.display = 'none';
+                                            }
+                                            return;
+                                        }
+
                                         const rowContent = row.textContent.toLowerCase();
 
-                                        // Показываем строку, если совпал поиск или искали предмет целиком
                                         if (val === "" || isSubjectMatch || rowContent.includes(val)) {
                                             row.style.display = '';
                                             visibleRowsCount++;
 
-                                            // --- ПЕРЕСЧЕТ БАЛЛОВ НА ЛЕТУ ---
                                             const cells = row.querySelectorAll('td');
                                             if (cells.length >= 7) {
                                                 const rawGrade = (row.getAttribute('data-raw-grade') !== null 
@@ -27680,7 +31412,6 @@
                                                     : cells[6].textContent).trim();
 
                                                 const gt = rawGrade.toLowerCase();
-                                                // Проверяем, что оценка действительно выставлена (не пустая, не прочерк и не заглушка)
                                                 const isGradeEmpty = !gt || gt === '-' || gt === '—' || gt.includes('неизвестно') || gt.includes('нет');
 
                                                 if (!isGradeEmpty) {
@@ -27689,7 +31420,6 @@
 
                                                     if (maxVal > 0) {
                                                         calculatedMax += maxVal;
-
                                                         if (gt !== 'н') {
                                                             calculatedCurrent += parseFloat(rawGrade.replace(',', '.')) || 0;
                                                         }
@@ -27701,7 +31431,6 @@
                                         }
                                     });
 
-                                    // Скрываем или обновляем предмет
                                     if (val !== "" && !isSubjectMatch && visibleRowsCount === 0) {
                                         header.style.setProperty('display', 'none', 'important');
                                         wrapper.style.setProperty('display', 'none', 'important');
@@ -27709,25 +31438,23 @@
                                         header.style.setProperty('display', 'flex', 'important');
                                         wrapper.style.setProperty('display', 'block', 'important');
 
-                                        // --- ОБНОВЛЕНИЕ КАПСУЛЫ И ТУЛТИПА ---
                                         const capsule = header.querySelector('.subject-score-capsule');
                                         if (capsule) {
                                             wrapper.setAttribute('data-score-current', calculatedCurrent);
                                             wrapper.setAttribute('data-score-max', calculatedMax);
 
-                                            // Применяем логику "Из 100" только если по предмету реально есть баллы
                                             const finalMaxFiltered = generalConfig.absoluteScores 
                                                 ? (hasAnyGrades && calculatedMax > 0 ? 100 : 0) 
                                                 : calculatedMax;
 
-                                            capsule.textContent = `${hasAnyGrades ? calculatedCurrent : 0} / ${hasAnyGrades ? finalMaxFiltered : 0}`;
-
                                             if (!hasAnyGrades || finalMaxFiltered === 0) {
+                                                capsule.textContent = 'Нет оценок';
                                                 capsule.style.background = 'var(--color-highlight)';
                                                 capsule.style.color = 'var(--color-text-secondary)';
                                                 const oldTooltip = capsule.querySelector('.score-tooltip');
                                                 if (oldTooltip) oldTooltip.remove();
                                             } else {
+                                                capsule.textContent = `${calculatedCurrent} / ${finalMaxFiltered}`;
                                                 const p = (calculatedCurrent / finalMaxFiltered) * 100;
                                                 if (p < 41) capsule.style.background = 'var(--color-red)';
                                                 else if (p < 61) { capsule.style.background = 'var(--color-yellow)'; capsule.style.color = '#000'; }
@@ -27735,10 +31462,7 @@
                                                 else capsule.style.background = 'var(--color-green)';
 
                                                 if (p < 41 || p >= 61) capsule.style.color = '#fff';
-                                            }
 
-                                            // Динамический прогноз
-                                            if (finalMaxFiltered > 0 && hasAnyGrades) {
                                                 let tooltipText = '';
                                                 let currentMark = '';
                                                 let markColor = '';
@@ -27779,7 +31503,7 @@
                                         }
                                     }
                                 });
-                                // Определение общей видимости строк по всем предметам
+
                                 let totalVisible = 0;
                                 document.querySelectorAll('.term-subject-group').forEach(w => {
                                     if (w.style.display !== 'none') {
@@ -28531,6 +32255,64 @@
                         });
 
                         resTable.remove();
+                        break;
+                    }
+
+                    case 'cust.estimate_tt_form':
+                    case 'cust.estimate_tpr_form':
+                    case 'cust.est_plan_form_stu': {
+                        // 1. Кнопка "Назад" с полноценной поддержкой темы и эффекта стекла
+                        if (!span9.querySelector('.estimate-top-bar')) {
+                            const topBar = document.createElement('div');
+                            topBar.className = 'estimate-top-bar';
+                            topBar.style.cssText = 'display: flex; align-items: center; justify-content: flex-start; gap: 12px; margin-bottom: 2.4rem; width: 100%; box-sizing: border-box;';
+
+                            const backBtn = document.createElement('a');
+                            backBtn.href = 'javascript:window.history.back()';
+                            backBtn.className = 'answer-btn-custom';
+                            backBtn.style.cssText = 'display: inline-flex !important; align-items: center !important; gap: 8px !important; padding: 0.8rem 1.8rem !important; height: auto !important; border-radius: 50px !important; width: fit-content !important; cursor: pointer !important; text-decoration: none !important; border: none !important;';
+                            backBtn.innerHTML = '<span class="material-icons" style="font-size: 1.8rem;">arrow_back</span><span>Назад</span>';
+
+                            topBar.appendChild(backBtn);
+                            span9.prepend(topBar);
+                        }
+
+                        // 2. Бесшовный выбор дня недели
+                        span9.querySelectorAll('.question label select').forEach(sel => {
+                            const activateRadio = () => {
+                                const radio = sel.closest('label')?.querySelector('input[type="radio"]');
+                                if (radio) {
+                                    radio.checked = true;
+                                    if (window.$) $(radio).trigger('change');
+                                    else radio.dispatchEvent(new Event('change', { bubbles: true }));
+                                    
+                                    sel.closest('ul')?.querySelectorAll('label').forEach(l => l.classList.remove('checked'));
+                                    sel.closest('label')?.classList.add('checked');
+                                }
+                            };
+                            sel.addEventListener('change', activateRadio);
+                            sel.addEventListener('click', activateRadio);
+                        });
+
+                        // 3. Отправка через нативный скрипт ЕТИСа с уведомлением
+                        const form = span9.querySelector('form[name="estimate"], form.que_form');
+                        if (form) {
+                            const sendBtn = form.querySelector('#send_btn');
+                            if (sendBtn) {
+                                sendBtn.addEventListener('click', () => {
+                                    const queInput = form.querySelector('#p_que_str') || form.querySelector('input[name="p_que_str"]');
+                                    const checkedQ = Array.from(form.querySelectorAll('input[type="radio"][name^="q"]:checked'));
+                                    if (queInput && checkedQ.length > 0) {
+                                        queInput.value = checkedQ.map(r => encodeURIComponent(r.name) + '=' + encodeURIComponent(r.value)).join('&');
+                                    }
+
+                                    if (window.showEtisPush) {
+                                        window.showEtisPush('Отзыв отправлен', 'Спасибо за оценку!', 'Возвращаемся в расписание...', 'success', 'check_circle', null, null, false);
+                                    }
+                                });
+                            }
+                        }
+
                         break;
                     }
 
@@ -30819,6 +34601,31 @@
                     });
                 }
 
+                // Блокировка неактивных семестров во вкладке "Оценки в семестре"
+                if (page === 'stu.signs' && pageMode === 'current') {
+                    document.querySelectorAll('.submenu a[href*="p_term"]').forEach(link => {
+                        link.classList.add('demo-disabled-item');
+
+                        if (!link.querySelector('.demo-locked-overlay')) {
+                            const lockOverlay = document.createElement('div');
+                            lockOverlay.className = 'demo-locked-overlay';
+                            lockOverlay.innerHTML = '<span class="material-icons" style="font-size: 16px;">lock</span>';
+                            link.appendChild(lockOverlay);
+                        }
+
+                        const handleLockClick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            e.stopImmediatePropagation();
+                            link.classList.add('demo-tab-locked');
+                            setTimeout(() => link.classList.remove('demo-tab-locked'), 1500);
+                            if (navigator.vibrate) navigator.vibrate(12);
+                        };
+
+                        link.addEventListener('click', handleLockClick, true);
+                    });
+                }
+
                 // 4. Переключение поддерживаемых страниц
                 document.querySelectorAll('a[href*="stu.timetable"], a[href*="stu.signs"], a[href*="stu_ann.announces"], a[href*="stu.teacher_notes"], a[href*="stu.teach_plan"], a[href*="stu.logout"], .mobile-dock-item').forEach(link => {
                     link.addEventListener('click', (e) => {
@@ -30863,11 +34670,12 @@
                             }
                             window.location.reload();
                         } else if (href.includes('stu.logout')) {
-                            // Выход из демо-режима
+                            // Выход из оффлайн-режима
                             e.preventDefault();
+                            e.stopPropagation();
                             sessionStorage.removeItem('etis_demo_mode');
                             sessionStorage.removeItem('etis_demo_page');
-                            window.location.reload();
+                            window.location.href = 'stu.login';
                         }
                     });
                 });
