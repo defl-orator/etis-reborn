@@ -10719,7 +10719,7 @@
             opacity: 1 !important;
         }
 
-        /* --- КРАСНАЯ КНОПКА ВЫХОДА ИЗ ОФФЛАЙН-РЕЖИМА --- */
+        /* --- КРАСНАЯ КНОПКА ВЫХОДА ИЗ ОФФЛАЙН-РЕЖИМА И ДЕМО-РЕЖИМ --- */
         .span3 li>a.demo-logout-link,
         .span3 li>a.demo-logout-link *,
         .span3 li>a.demo-logout-link .sidebar-link-text,
@@ -10734,6 +10734,23 @@
         @media (hover: hover) and (pointer: fine) {
             .span3>.nav.nav-tabs.nav-stacked>li>a.demo-logout-link:hover {
                 background: rgba(255, 59, 48, 0.12) !important;
+            }
+        }
+
+        .span3 li>a.switch-to-pure-demo-link,
+        .span3 li>a.switch-to-pure-demo-link *,
+        .span3 li>a.switch-to-pure-demo-link .sidebar-link-text,
+        .span3 li>a.switch-to-pure-demo-link .material-icons {
+            color: var(--color-accent) !important;
+            font-weight: 700 !important;
+        }
+        .span3 li>a.switch-to-pure-demo-link .chevron {
+            color: var(--color-accent) !important;
+            opacity: 0.7 !important;
+        }
+        @media (hover: hover) and (pointer: fine) {
+            .span3>.nav.nav-tabs.nav-stacked>li>a.switch-to-pure-demo-link:hover {
+                background: var(--color-accent-active) !important;
             }
         }
 
@@ -14090,7 +14107,6 @@
             setTimeout(initAutoUpdateCheck, 1500);
             setTimeout(autoSyncOnLoad, 2000);
 
-            isSyncLocked = false;
         }
 
         if (document.readyState === 'loading') {
@@ -14337,6 +14353,7 @@
         const getIconForHref = (href) => {
             if (href === '#version-check') return 'system_update';
             if (href === '#appearance') return 'palette';
+            if (href.includes('pure_demo')) return 'account_box';
             if (href === '#report-bug') return 'bug_report';
             if (href === '#settings') return 'settings';
             if (href === '#profile') return 'account_circle';
@@ -16809,6 +16826,9 @@
 
                     let calsCount = typeof migrateExternalCals === 'function' ? migrateExternalCals().length : 0;
 
+                    const hasOfflineCache = !!localStorage.getItem('etis_offline_timetable_html');
+                    const offlineCacheStatus = hasOfflineCache ? 'Сохранён' : 'Пусто';
+
                     contentHTML = `
                     <div class="ios-settings-group" id="ql-sync-group" style="margin-bottom: 1rem !important;">
                         ${syncBlockHTML}
@@ -16828,6 +16848,7 @@
                         ${dataRow('Свои пары', cpCount, 'etis_custom_pairs_v1', 'cloud-val-cp', true, false, lastCloud.cp, true, 'details_custom_pairs')}
                         ${dataRow('Заметки и ДЗ', notesCount, 'etis_subject_notes_v2', 'cloud-val-notes', true, false, lastCloud.notes, true, 'details_subject_notes')}
                         ${dataRow('История оценок', gradesCount, 'etis_reborn_grades_snapshot_v3', 'cloud-val-grades', true, false, lastCloud.grades, false)}
+                        ${dataRow('Оффлайн-кэш', offlineCacheStatus, 'etis_offline_cache', '', false, false, '—', false)}
                         ${dataRow('Средний балл диплома', diplomaGpaVal, 'etis_diploma_gpa', 'cloud-val-gpa', true, false, lastCloud.gpa, false)}
                         ${dataRow('Центр уведомлений', notifsCount, 'etis_notifications_history_v1', 'cloud-val-notifs', true, false, lastCloud.notifs, true, 'notifications_modal_redirect')}
                         ${dataRow('Файлы консультаций', consCount, 'etis_consultation_files_v1', 'cloud-val-cons', true, false, lastCloud.cons, true, 'details_consultations')}
@@ -17381,6 +17402,28 @@
                         btn.onclick = () => {
                             const key = btn.getAttribute('data-key');
                             if (confirm('Очистить эти данные?')) {
+                                
+                                // ЛОГИКА ДЛЯ ОФФЛАЙН-КЭША
+                                if (key === 'etis_offline_cache') {
+                                    const offlineKeys = [
+                                        'etis_offline_timetable_html', 'etis_offline_signs_session_html', 'etis_offline_signs_current_html',
+                                        'etis_offline_signs_rating_html', 'etis_offline_signs_diplom_html', 'etis_offline_announces_html',
+                                        'etis_offline_notes_html', 'etis_offline_teach_plan_advanced_html', 'etis_offline_teach_plan_short_html',
+                                        'etis_offline_student_info_html'
+                                    ];
+                                    offlineKeys.forEach(k => localStorage.removeItem(k));
+                                    
+                                    // Если пользователь сейчас находится в оффлайн-режиме, мгновенно выбрасываем его на страницу входа
+                                    if (sessionStorage.getItem('etis_demo_mode') === 'true' && sessionStorage.getItem('etis_pure_demo_mode') !== 'true') {
+                                        sessionStorage.removeItem('etis_demo_mode');
+                                        sessionStorage.removeItem('etis_demo_page');
+                                        window.location.href = 'stu.login';
+                                        return;
+                                    }
+                                    renderView('data');
+                                    return;
+                                }
+
                                 const emptyValues = {
                                     'etis_custom_pairs_v1': '[]',
                                     'etis_subject_notes_v2': '{"specific":{},"next_unbound":{}}',
@@ -23489,26 +23532,20 @@
                         });
                     });
 
-                    // В демо-режиме гарантируем наличие кнопки выхода на всех подстраницах
                     if (isDemoActive) {
-                        const isPureDemo = sessionStorage.getItem('etis_pure_demo_mode') === 'true';
-                        if (!isPureDemo) {
-                            const demoLi = document.createElement('li');
-                            demoLi.innerHTML = `<a href="#" class="switch-to-pure-demo-link" style="color: var(--color-accent) !important;"><span class="material-icons">account_box</span><span class="sidebar-link-text">Перейти в Демо-режим</span></a>`;
-                            demoLi.onclick = (e) => {
-                                e.preventDefault();
-                                sessionStorage.setItem('etis_pure_demo_mode', 'true');
-                                sessionStorage.setItem('etis_demo_page', 'timetable');
-                                window.location.reload();
-                            };
-                            allListItems.push(demoLi);
-                        }
-
                         const hasLogout = allListItems.some(li => li.querySelector('a')?.getAttribute('href')?.includes('logout'));
                         if (!hasLogout) {
                             const logoutLi = document.createElement('li');
-                            logoutLi.innerHTML = `<a href="stu.logout" class="demo-logout-link">Выход из оффлайн-режима</a>`;
+                            logoutLi.innerHTML = `<a href="stu.logout">Выход из оффлайн-режима</a>`;
                             allListItems.push(logoutLi);
+                        }
+
+                        // Добавляем кнопку "Перейти в Демо-режим", если это кэш реального пользователя
+                        const isPureDemo = sessionStorage.getItem('etis_pure_demo_mode') === 'true';
+                        if (!isPureDemo) {
+                            const demoLi = document.createElement('li');
+                            demoLi.innerHTML = `<a href="#pure_demo">Перейти в Демо-режим</a>`;
+                            allListItems.push(demoLi);
                         }
                     }
 
@@ -23660,6 +23697,19 @@
                             };
                         }
 
+                        // Стилизация и обработчик для перехода в чистый демо-режим
+                        if (isDemoActive && href.includes('pure_demo')) {
+                            pureText = 'Перейти в Демо-режим';
+                            a.classList.add('switch-to-pure-demo-link');
+                            a.onclick = (e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                sessionStorage.setItem('etis_pure_demo_mode', 'true');
+                                sessionStorage.setItem('etis_demo_page', 'timetable');
+                                window.location.reload();
+                            };
+                        }
+
                         a.innerHTML = '';
 
                         const iconSpan = document.createElement('span');
@@ -23761,7 +23811,7 @@
                             id: 'group-account',
                             title: 'Аккаунт',
                             icon: 'manage_accounts',
-                            items: ['change_pass', 'change_email', 'change_pr_page', 'logout']
+                            items: ['change_pass', 'change_email', 'change_pr_page', 'logout', '#pure_demo']
                         }
                     ];
 
