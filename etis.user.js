@@ -1,8 +1,8 @@
-    // ==UserScript==
+// ==UserScript==
     // @name         ЕТИС REBORN
     // @namespace    http://tampermonkey.net/
-    // @version      3.0
-    // @changelog    Дневник с ДЗ и дедлайнами. Глобальный поиск. Обновлённый вид и функционал объявлений, учебного плана, расписания, оценок и скриншотов. Ночная тема. Улучшенная синхронизация.
+    // @version      3.01
+    // @changelog    Правки синхронизации, qr-кодов, кэша.
     // @description  Глобальное обновление ЕТИСа
     // @author       dya_dya
     // @icon         https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png
@@ -14,16 +14,142 @@
     // @grant        GM_getValue
     // @grant        GM_setValue
     // @grant        unsafeWindow
+    // @grant        GM_registerMenuCommand
     // @connect      raw.githubusercontent.com
-    // @connect      quickchart.io
+    // @connect      api.github.com
+    // @connect      cdn.jsdelivr.net
     // @connect      cdnjs.cloudflare.com
-    // @connect      *.firebasedatabase.app
+    // @connect      etisreborn-fab19-default-rtdb.europe-west1.firebasedatabase.app
     // @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
     // @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/refs/heads/main/etis.user.js
     // ==/UserScript==
 
     (function() {
         'use strict';
+
+        // ==========================================
+        // БАЗОВЫЕ УТИЛИТЫ БЕЗОПАСНОСТИ И ПАМЯТИ
+        // ==========================================
+
+        // Хеши SRI для внешних библиотек.
+        const SRI_HASHES = {
+            'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js': 
+                'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU',
+
+            'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js': 
+                'sha384-ZZ1pncU3bQe8y31yfZdMFdSpttDoPmOZg2wguVK9almUodir1PghgT0eY7Mrty8H',
+
+            'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js': 
+                'sha384-nFoSjZIoH3CCp8W639jJyQkuPHinJ2NHe7on1xvlUA7SuGfJAfvMldrsoAVm6ECz',
+
+            'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js': 
+                'sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG'
+        };
+        function applySri(scriptEl) {
+            const h = SRI_HASHES[scriptEl.src];
+            if (h) { scriptEl.integrity = h; scriptEl.crossOrigin = 'anonymous'; }
+        }
+
+        function escapeHTML(str) {
+            if (str === null || str === undefined) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        // Локальная генерация QR-кода на Canvas
+        function getLocalQRCodeDataURL(text, size = 128) {
+            return new Promise((resolve) => {
+                const renderQR = (QRClass) => {
+                    try {
+                        const tempDiv = document.createElement('div');
+                        new QRClass(tempDiv, {
+                            text: text,
+                            width: size,
+                            height: size,
+                            colorDark: "#000000",
+                            colorLight: "#ffffff",
+                            correctLevel: QRClass.CorrectLevel ? QRClass.CorrectLevel.M : 0
+                        });
+                        setTimeout(() => {
+                            const canvas = tempDiv.querySelector('canvas');
+                            if (canvas) return resolve(canvas.toDataURL('image/png'));
+                            const img = tempDiv.querySelector('img');
+                            if (img && img.src) return resolve(img.src);
+                            resolve(null);
+                        }, 25);
+                    } catch (e) {
+                        resolve(null);
+                    }
+                };
+
+                const existing = typeof QRCode !== 'undefined' ? QRCode : (window.QRCode || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.QRCode : null));
+                if (existing) return renderQR(existing);
+
+                // Загружаем компактную библиотеку без отправки данных пар
+                const script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js'; applySri(script);
+                script.onload = () => {
+                    const loaded = typeof QRCode !== 'undefined' ? QRCode : (window.QRCode || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.QRCode : null));
+                    if (loaded) renderQR(loaded);
+                    else resolve(null);
+                };
+                script.onerror = () => resolve(null);
+                (document.head || document.documentElement).appendChild(script);
+            });
+        }
+
+        // Безопасная очистка URL: блокирует javascript:, data: и экранирует кавычки
+        function sanitizeUrl(url) {
+            if (!url) return '';
+            const clean = String(url).trim();
+            // Разрешаем переход ТОЛЬКО по безопасным веб-протоколам http и https
+            if (/^https?:\/\//i.test(clean)) {
+                return escapeHTML(clean);
+            }
+            return '#';
+        }
+
+        // Защита от переполнения стека при шифровании больших объемов данных
+        function uint8ToBase64(bytes) {
+            let binary = '';
+            const len = bytes.byteLength;
+            const chunkSize = 0x8000; // 32 КБ
+            for (let i = 0; i < len; i += chunkSize) {
+                binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)));
+            }
+            return btoa(binary);
+        }
+
+        function base64ToUint8(base64) {
+            const binary = atob(base64);
+            const len = binary.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        // Аварийное снятие скрытия страницы (защита от белого экрана)
+        function revealPage() {
+            try {
+                if (document.body) {
+                    document.body.style.removeProperty('opacity');
+                    document.body.style.removeProperty('visibility');
+                    document.body.style.removeProperty('background-color');
+                    document.body.classList.add('etis-reborn-loaded');
+                }
+                document.documentElement.classList.add('etis-reborn-loaded');
+            } catch (e) {
+                console.error('[ETIS Reborn] Failsafe reveal error:', e);
+            }
+        }
+        // Сторожевой таймер: покажет страницу даже при критическом сбое скрипта
+        setTimeout(revealPage, 2500);
 
         const getSearchShortcutText = () => {
             const isApple = /Mac|iPhone|iPad|iPod/i.test(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent);
@@ -36,8 +162,8 @@
         const isDemoUser = () => {
             if (sessionStorage.getItem('etis_demo_mode') === 'true') return true;
             const infoText = (document.querySelector('.navbar-static-top .span12 > span')?.textContent ||
-                              document.querySelector('.sidebar-user-info')?.textContent || '').toLowerCase();
-            return infoText.includes('иванов иван иванович') && infoText.includes('программная инженерия');
+                            document.querySelector('.sidebar-user-info')?.textContent || '').toLowerCase();
+            return infoText.includes('иванов иван иванович') && infoText.includes('01.01.2000');
         };
 
         // ==========================================
@@ -64,7 +190,11 @@
             'etis_device_registered_in_cloud',
             'etis_theme_dark_variant',
             'etis_theme_mode',
-            'etis_recent_search_items_v1'
+            'etis_recent_search_items_v1',
+            'etis_general_config',
+            'etis_reborn_time_spent',
+            'etis_reborn_install_date',
+            'etis_vault_salt'
         ];
 
         function getStudentIdentityString() {
@@ -155,9 +285,9 @@
         // ==========================================
         // КОМАНДА ДЛЯ ОФФЛАЙН-РЕЖИМА И ГЛОБАЛЬНЫЙ ВЫХОД
         // ==========================================
-        const targetWindow = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+        const targetWindow = window; // песочница скрипта: страница (и чужие скрипты) эти функции не видят
 
-        targetWindow.e = targetWindow.etisDemo = (pageOrEnable = true) => {
+        targetWindow.etisDemo = (pageOrEnable = true) => {
             if (pageOrEnable === false) {
                 sessionStorage.removeItem('etis_demo_mode');
                 sessionStorage.removeItem('etis_demo_page');
@@ -181,25 +311,36 @@
             }
         };
 
-        targetWindow.ex = targetWindow.etisExitDemo = () => targetWindow.e(false);
+        targetWindow.etisExitDemo = () => targetWindow.etisDemo(false);
 
         document.addEventListener('click', (e) => {
             const logoutLink = e.target.closest('a[href*="stu.logout"], .demo-logout-link');
-            if (logoutLink && sessionStorage.getItem('etis_demo_mode') === 'true') {
-                e.preventDefault();
-                e.stopPropagation();
-                sessionStorage.removeItem('etis_demo_mode');
-                sessionStorage.removeItem('etis_demo_page');
-                window.location.href = 'stu.login';
+            if (logoutLink) {
+                // Очищаем приватный оффлайн-кэш, чтобы следующий студент за этим ПК не увидел чужие оценки
+                const offlineKeys = [
+                    'etis_offline_timetable_html', 'etis_offline_signs_session_html', 'etis_offline_signs_current_html',
+                    'etis_offline_signs_rating_html', 'etis_offline_signs_diplom_html', 'etis_offline_announces_html',
+                    'etis_offline_notes_html', 'etis_offline_teach_plan_advanced_html', 'etis_offline_teach_plan_short_html',
+                    'etis_offline_student_info_html'
+                ];
+                offlineKeys.forEach(k => localStorage.removeItem(k));
+
+                if (sessionStorage.getItem('etis_demo_mode') === 'true') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    sessionStorage.removeItem('etis_demo_mode');
+                    sessionStorage.removeItem('etis_demo_page');
+                    window.location.href = 'stu.login';
+                }
             }
         }, true);
 
         targetWindow.devBeta = targetWindow.etisDevBeta = (enable = true) => {
             if (enable) {
-                localStorage.setItem('etis_dev_beta_branch', 'true');
+                GM_setValue('etis_dev_beta_branch', true);
                 console.log('%c[ETIS Reborn] Режим тестирования активен. Проверка обновлений переключена на etis-test.user.js', 'color: #34C759; font-weight: bold;');
             } else {
-                localStorage.removeItem('etis_dev_beta_branch');
+                GM_setValue('etis_dev_beta_branch', false);
                 console.log('%c[ETIS Reborn] Режим тестирования отключен. Возврат на стабильную ветку etis.user.js', 'color: #FF3B30; font-weight: bold;');
             }
             initAutoUpdateCheck(true);
@@ -208,6 +349,13 @@
         // ==========================================
         // РЕГИСТРАЦИЯ И УПРАВЛЕНИЕ УСТРОЙСТВАМИ
         // ==========================================
+        if (typeof GM_registerMenuCommand === 'function') {
+            GM_registerMenuCommand('ЕТИС Reborn: демо-режим (вкл)', () => targetWindow.etisDemo(true));
+            GM_registerMenuCommand('ЕТИС Reborn: демо-режим (выкл)', () => targetWindow.etisExitDemo());
+            GM_registerMenuCommand('ЕТИС Reborn: тестовая ветка (вкл)', () => targetWindow.devBeta(true));
+            GM_registerMenuCommand('ЕТИС Reborn: тестовая ветка (выкл)', () => targetWindow.devBeta(false));
+        }
+
         const registerCurrentDevice = () => {
             let deviceId = localStorage.getItem('etis_device_id');
             if (!deviceId) {
@@ -365,6 +513,10 @@
             html:not(.etis-reborn-loaded) .span9 { display: none !important; }
         `;
         (document.head || document.documentElement).appendChild(foucStyle);
+
+        const a11yStyle = document.createElement('style');
+        a11yStyle.textContent = '@media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important;scroll-behavior:auto !important;}}';
+        (document.head || document.documentElement).appendChild(a11yStyle);
 
         const hideBody = () => {
             if (document.body) {
@@ -1944,7 +2096,7 @@
                 const checkBeta = generalConfig.betaUpdates === true;
 
                 // Проверяем тестовую ветку только если включен режим разработчика через консоль devBeta()
-                const isDevBeta = localStorage.getItem('etis_dev_beta_branch') === 'true';
+                const isDevBeta = GM_getValue('etis_dev_beta_branch', false) === true;
 
                 // 1. Загружаем релизную ветку
                 const releaseData = await fetchScriptMeta(RELEASE_URL);
@@ -12862,6 +13014,32 @@
             return isCapital ? (res.charAt(0).toUpperCase() + res.slice(1)) : res;
         }
 
+        // Реальные цвета акцента для текущей темы: при "раздельных темах" верхний уровень config.colors устарел,
+        // действуют config.light / config.dark (так же, как в applyAccentColor).
+        function getEffectiveAccent(config, modeOverride) {
+            config = config || {};
+            const mode = modeOverride || (document.documentElement.getAttribute('theme') === 'light' ? 'light' : 'dark');
+            const baseColors = (Array.isArray(config.colors) && config.colors.length) ? config.colors : ['blue', 'lightblue'];
+            const sub = (config.separateThemes && config[mode]) ? config[mode] : null;
+            const src = sub || config;
+            return {
+                isGradient: src.isGradient !== false,
+                isThreeColors: src.isThreeColors === true,
+                colors: (Array.isArray(src.colors) && src.colors.length) ? src.colors : baseColors,
+                isGlass: config.isGlass === true
+            };
+        }
+
+        // Подпись настроек темы (обе темы) — для честного сравнения «локально == в облаке»
+        function accentSignature(config) {
+            const one = (m) => {
+                const e = getEffectiveAccent(config, m);
+                const n = e.isGradient ? (e.isThreeColors ? 3 : 2) : 1;
+                return [e.isGradient, e.colors.slice(0, n)];
+            };
+            return JSON.stringify([one('light'), one('dark'), !!(config && config.isGlass === true)]);
+        }
+
         function applyAccentColor() {
             const config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, isThreeColors: false, colors: ['blue', 'lightblue'], isGlass: false };
             const isGlass = config.isGlass === true;
@@ -13743,7 +13921,7 @@
                 el.style.setProperty('-webkit-justify-content', 'flex-start', 'important');
             });
 
-            // 4. Генерация QR-кодов для онлайн-пар (Zoom, Телемост, онлайн-комнаты)
+            // 4. Локальная генерация QR-кодов для онлайн-пар
             if (!isMsg && generalConfig.generateQR) {
                 const qrPromises = [];
                 clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
@@ -13751,40 +13929,26 @@
                     const teacherCell = tr.querySelector('.pair_teacher');
                     
                     if (link && teacherCell && link.href && !link.closest('.pair-teacher-wrap')) {
-                        const qrUrl = `https://quickchart.io/qr?size=150&margin=1&text=${encodeURIComponent(link.href)}`;
-                        qrPromises.push(new Promise((resolve) => {
-                            GM_xmlhttpRequest({
-                                method: 'GET',
-                                url: qrUrl,
-                                responseType: 'blob',
-                                onload: function(res) {
-                                    if (res.status === 200) {
-                                        const reader = new FileReader();
-                                        reader.onloadend = function() {
-                                            const img = document.createElement('img');
-                                            img.src = reader.result;
-                                            img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; border-radius: 8px; background: #fff;';
-                                            const teacherText = teacherCell.innerHTML;
-                                            teacherCell.innerHTML = '';
-                                            const wrapper = document.createElement('div');
-                                            wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
-                                            const textWrapper = document.createElement('div');
-                                            textWrapper.innerHTML = teacherText;
-                                            textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
-                                            textWrapper.querySelectorAll('a').forEach(a => {
-                                                a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
-                                                a.style.setProperty('text-decoration', 'none', 'important');
-                                            });
-                                            wrapper.appendChild(img);
-                                            wrapper.appendChild(textWrapper);
-                                            teacherCell.appendChild(wrapper);
-                                            resolve();
-                                        };
-                                        reader.readAsDataURL(res.response);
-                                    } else resolve();
-                                },
-                                onerror: () => resolve()
+                        qrPromises.push(getLocalQRCodeDataURL(link.href, 128).then(qrDataUrl => {
+                            if (!qrDataUrl) return;
+                            const img = document.createElement('img');
+                            img.src = qrDataUrl;
+                            img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; border-radius: 8px; background: #fff;';
+
+                            const teacherText = teacherCell.innerHTML;
+                            teacherCell.innerHTML = '';
+                            const wrapper = document.createElement('div');
+                            wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
+                            const textWrapper = document.createElement('div');
+                            textWrapper.innerHTML = teacherText;
+                            textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
+                            textWrapper.querySelectorAll('a').forEach(a => {
+                                a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
+                                a.style.setProperty('text-decoration', 'none', 'important');
                             });
+                            wrapper.appendChild(img);
+                            wrapper.appendChild(textWrapper);
+                            teacherCell.appendChild(wrapper);
                         }));
                     }
                 });
@@ -13794,7 +13958,7 @@
             // 5. Очистка карточки объявления / сообщения
             if (isMsg) {
                 const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { colors: ['blue'] };
-                const currentAccentHex = ACCENT_COLORS[accConfig.colors[0]] || '#007AFF';
+                const currentAccentHex = ACCENT_COLORS[getEffectiveAccent(accConfig).colors[0]] || '#007AFF';
                 clone.querySelectorAll('.msg-sender, .msg-sender *, .teacher-name-link, .review-dis-link, .accent-stat, .file-attachment-link .material-icons').forEach(el => {
                     el.style.setProperty('background', 'none', 'important');
                     el.style.setProperty('-webkit-background-clip', 'unset', 'important');
@@ -13991,7 +14155,7 @@
             let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
             if (!h2cObj) {
                 const script = document.createElement('script');
-                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; applySri(script);
                 script.onload = renderImage;
                 safeAppend(script);
             } else {
@@ -14051,62 +14215,63 @@
 
         // Запускаем при загрузке документа
         function init() {
-            checkAndSwitchAccountProfile();
-            checkAndMigrateInsecureSync();
-            
-            if (!localStorage.getItem('etis_reborn_install_date')) {
-                localStorage.setItem('etis_reborn_install_date', Date.now());
-            }
-            setInterval(() => {
-                if (document.visibilityState === 'visible') {
-                    let timeSpent = parseInt(localStorage.getItem('etis_reborn_time_spent') || '0', 10);
-                    let unsynced = parseInt(localStorage.getItem('etis_unsynced_time_spent') || '0', 10);
-                    localStorage.setItem('etis_reborn_time_spent', (timeSpent + 10).toString());
-                    localStorage.setItem('etis_unsynced_time_spent', (unsynced + 10).toString());
+            try {
+                checkAndSwitchAccountProfile();
+                checkAndMigrateInsecureSync();
+                
+                if (!localStorage.getItem('etis_reborn_install_date')) {
+                    localStorage.setItem('etis_reborn_install_date', Date.now());
                 }
-            }, 10000);
+                setInterval(() => {
+                    if (document.visibilityState === 'visible') {
+                        let timeSpent = parseInt(localStorage.getItem('etis_reborn_time_spent') || '0', 10);
+                        let unsynced = parseInt(localStorage.getItem('etis_unsynced_time_spent') || '0', 10);
+                        localStorage.setItem('etis_reborn_time_spent', (timeSpent + 10).toString());
+                        localStorage.setItem('etis_unsynced_time_spent', (unsynced + 10).toString());
+                    }
+                }, 10000);
 
-            // 1. Проверяем, просмотрено ли обучение. Если нет — добавляем уведомление в колокольчик
-            if (localStorage.getItem('etis_guide_viewed_v1') !== 'true') {
-                let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
-                const hasGuideNotif = history.some(n => n.id === 'notif_guide_onboarding' || n.targetUrl === '#guide');
-                if (!hasGuideNotif) {
-                    history.unshift({
-                        id: 'notif_guide_onboarding',
-                        title: 'Новый раздел',
-                        subject: 'Вкладка «Обучение»',
-                        body: 'Познакомьтесь с подсказками, жестами и скрытыми возможностями ЕТИС Reborn',
-                        type: 'info',
-                        icon: 'auto_stories',
-                        timestamp: Date.now(),
-                        read: false,
-                        targetUrl: '#guide'
-                    });
-                    localStorage.setItem('etis_notifications_history_v1', JSON.stringify(history));
+                if (localStorage.getItem('etis_guide_viewed_v1') !== 'true') {
+                    let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
+                    const hasGuideNotif = history.some(n => n.id === 'notif_guide_onboarding' || n.targetUrl === '#guide');
+                    if (!hasGuideNotif) {
+                        history.unshift({
+                            id: 'notif_guide_onboarding',
+                            title: 'Новый раздел',
+                            subject: 'Вкладка «Обучение»',
+                            body: 'Познакомьтесь с подсказками, жестами и скрытыми возможностями ЕТИС Reborn',
+                            type: 'info',
+                            icon: 'auto_stories',
+                            timestamp: Date.now(),
+                            read: false,
+                            targetUrl: '#guide'
+                        });
+                        localStorage.setItem('etis_notifications_history_v1', JSON.stringify(history));
+                    }
                 }
+
+                addViewport();
+                setIcon();
+
+                // Безопасный вызов оформления с перехватом ошибок
+                try {
+                    stylePages();
+                } catch (e) {
+                    console.error('[ETIS Reborn] Ошибка при стилизации страницы:', e);
+                }
+                
+                updateBellCounter();
+                checkDiaryReminders();
+                setInterval(checkDiaryReminders, 30000);
+            } catch (err) {
+                console.error('[ETIS Reborn] Ошибка в процессе init():', err);
+            } finally {
+                // Всегда гарантированно снимаем скрытие экрана
+                revealPage();
             }
-
-            addViewport();
-            setIcon();
-            stylePages();
-            
-            // 2. Обновляем счетчик на колокольчике сразу после загрузки страницы
-            updateBellCounter();
-
-            checkDiaryReminders();
-            setInterval(checkDiaryReminders, 30000); // Проверка каждые 30 секунд
-
-            if (document.body) {
-                document.body.style.removeProperty('opacity');
-                document.body.style.removeProperty('visibility');
-                document.body.style.removeProperty('background-color');
-                document.body.classList.add('etis-reborn-loaded');
-            }
-            document.documentElement.classList.add('etis-reborn-loaded');
 
             setTimeout(initAutoUpdateCheck, 1500);
             setTimeout(autoSyncOnLoad, 2000);
-
         }
 
         if (document.readyState === 'loading') {
@@ -15045,20 +15210,9 @@
                     method: 'GET',
                     url: cdnUrl,
                     onload: (res) => {
-                        if (res.status === 200 && res.responseText) {
-                            try {
-                                const fn = new Function(res.responseText);
-                                fn.call(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);
-                                const inst = getMammothInstance();
-                                if (inst) return resolve(inst);
-                            } catch (e) {
-                                console.warn('[Mammoth Eval Fallback]', e);
-                            }
-                        }
-                        
                         // Фоллбек через тег <script>
                         const script = document.createElement('script');
-                        script.src = cdnUrl;
+                        script.src = cdnUrl; applySri(script);
                         script.onload = () => {
                             const inst = getMammothInstance();
                             if (inst) resolve(inst);
@@ -15070,7 +15224,7 @@
                     onerror: () => {
                         // Фоллбек при сбое прямого запроса
                         const script = document.createElement('script');
-                        script.src = cdnUrl;
+                        script.src = cdnUrl; applySri(script);
                         script.onload = () => {
                             const inst = getMammothInstance();
                             if (inst) resolve(inst);
@@ -15558,11 +15712,11 @@
                             const uniqueLinks = [...new Set((t.events || []).map(e => e.link).filter(Boolean))];
 
                             contentHtml += `
-                                <div class="cons-teacher-card" data-name="${(t.name || '').toLowerCase()}" style="background: var(--color-card); border: 1px solid var(--color-table-border); padding: 1.6rem; border-radius: var(--radius-large); opacity: ${cardOpacity}; transition: opacity 0.2s; position: relative;">
+                                <div class="cons-teacher-card" data-name="${escapeHTML((t.name || '').toLowerCase())}" style="background: var(--color-card); border: 1px solid var(--color-table-border); padding: 1.6rem; border-radius: var(--radius-large); opacity: ${cardOpacity}; transition: opacity 0.2s; position: relative;">
                                     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
                                         <div style="flex: 1; min-width: 0;">
-                                            <div style="font-size: 1.55rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.3;">${t.name}</div>
-                                            ${t.degree ? `<div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px; margin-bottom: 10px;">${t.degree}</div>` : '<div style="margin-bottom: 8px;"></div>'}
+                                            <div style="font-size: 1.55rem; font-weight: 800; color: var(--color-text-primary); line-height: 1.3;">${escapeHTML(t.name)}</div>
+                                            ${t.degree ? `<div style="font-size: 1.2rem; color: var(--color-text-secondary); margin-top: 4px; margin-bottom: 10px;">${escapeHTML(t.degree)}</div>` : '<div style="margin-bottom: 8px;"></div>'}
                                         </div>
                                         
                                         <!-- Панель действий карточки: редактировать, удалить, тумблер -->
@@ -15582,10 +15736,10 @@
                                     ${eventsHtml ? `<div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom: 8px;">${eventsHtml}</div>` : ''}
 
                                     <div style="display: flex; flex-direction: column; gap: 4px; font-size: 1.2rem; color: var(--color-text-secondary);">
-                                        ${uniqueAuds ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">place</span>${uniqueAuds}</div>` : ''}
-                                        ${t.email ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">email</span><span class="cons-email-copy" data-email="${t.email}">${t.email}</span></div>` : ''}
-                                        ${uniqueLinks.length > 0 ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">link</span><a href="${uniqueLinks[0]}" target="_blank" style="color: var(--color-text-link);">Ссылка на онлайн-комнату</a></div>` : ''}
-                                        ${t.notes ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--color-table-border);"><i>${t.notes}</i></div>` : ''}
+                                        ${uniqueAuds ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">place</span>${escapeHTML(uniqueAuds)}</div>` : ''}
+                                        ${t.email ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">email</span><span class="cons-email-copy" data-email="${escapeHTML(t.email)}">${escapeHTML(t.email)}</span></div>` : ''}
+                                        ${uniqueLinks.length > 0 && sanitizeUrl(uniqueLinks[0]) !== '#' ? `<div><span class="material-icons" style="font-size: 1.4rem; vertical-align: middle; margin-right: 4px;">link</span><a href="${sanitizeUrl(uniqueLinks[0])}" target="_blank" rel="noopener noreferrer" style="color: var(--color-text-link);">Ссылка на онлайн-комнату</a></div>` : ''}
+                                        ${t.notes ? `<div style="margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--color-table-border);"><i>${escapeHTML(t.notes)}</i></div>` : ''}
                                     </div>
                                 </div>
                             `;
@@ -15845,25 +15999,6 @@
 
         const FIREBASE_DB_URL = 'https://etisreborn-fab19-default-rtdb.europe-west1.firebasedatabase.app/';
 
-
-        // Вспомогательные функции для работы с облаком
-        const generateStudentUniqueCode = (fullName, direction) => {
-            const cleanName = fullName.replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim().toLowerCase();
-            const cleanDir = direction.replace(/[\s\xa0\u200B-\u200D\uFEFF]+/g, ' ').trim().toLowerCase();
-            const str = `${cleanName}_${cleanDir}`;
-
-            let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
-            for (let i = 0, ch; i < str.length; i++) {
-                ch = str.charCodeAt(i);
-                h1 = Math.imul(h1 ^ ch, 2654435761);
-                h2 = Math.imul(h2 ^ ch, 1597334903);
-            }
-            h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-            h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-            const hash = 4294967296 * (2097151 & h2) + (h1 >>> 0);
-            return hash.toString(36).toUpperCase().padStart(8, '0').slice(-8);
-        };
-
         // Вспомогательный метод безопасного чтения JSON, предотвращающий падение импорта
         const safeParseJSON = (val, fallback) => {
             if (!val) return fallback;
@@ -15926,7 +16061,7 @@
             // Секретный токен для права на запись в Firebase
             async getWriteToken(masterKey) {
                 const bits = await this.deriveKeyMaterial(masterKey, "global_write_guard", "token");
-                return btoa(String.fromCharCode(...new Uint8Array(bits)));
+                return uint8ToBase64(new Uint8Array(bits));
             },
 
             // 3. Вывод ключа AES-GCM с ДИНАМИЧЕСКОЙ солью хранилища
@@ -15970,15 +16105,13 @@
                 combined.set(iv, 0);
                 combined.set(new Uint8Array(cipher), iv.length);
 
-                return btoa(String.fromCharCode(...combined));
+                return uint8ToBase64(combined);
             },
 
             // Расшифровка с использованием соли хранилища
             async decrypt(cipherBase64, masterKey, dynamicSaltBytes) {
                 const key = await this.deriveAesKey(masterKey, dynamicSaltBytes);
-                const binary = atob(cipherBase64);
-                const combined = new Uint8Array(binary.length);
-                for (let i = 0; i < binary.length; i++) combined[i] = binary.charCodeAt(i);
+                const combined = base64ToUint8(cipherBase64);
 
                 const iv = combined.slice(0, 12);
                 const data = combined.slice(12);
@@ -15998,12 +16131,28 @@
 
         let syncDebounceTimer = null;
 
+        const MK_LEGACY = 'etis_master_recovery_key';
+        const mkName = () => MK_LEGACY + '_' + (localStorage.getItem('etis_active_profile_id') || 'default');
+
         const getMasterKey = () => {
-            return GM_getValue("etis_master_recovery_key", null);
+            const name = mkName();
+            let k = GM_getValue(name, null);
+            if (k) return k;
+            // Миграция: общий ключ старых версий (и ключ, сохранённый до определения профиля) -> текущий профиль
+            for (const old of [MK_LEGACY, MK_LEGACY + '_default']) {
+                if (old === name) continue;
+                const v = GM_getValue(old, null);
+                if (v) {
+                    GM_setValue(name, v);
+                    GM_setValue(old, null);
+                    return v;
+                }
+            }
+            return null;
         };
 
         const setMasterKey = (key) => {
-            GM_setValue("etis_master_recovery_key", key.toUpperCase().trim());
+            GM_setValue(mkName(), key.toUpperCase().trim());
         };
 
         const uploadDataToCloud = async (skipPreDownload = false) => {
@@ -16037,7 +16186,17 @@
                 writeToken: writeToken // Секретный токен для проверки правилами Firebase
             };
 
+            const UPLOAD_TOGGLE = {
+                custom_pairs: 'custom_pairs', ext_overrides: 'custom_pairs', subject_notes: 'subject_notes',
+                accent_config: 'accent_config', theme_dark_variant: 'accent_config', theme_mode: 'accent_config',
+                general_config: 'general_config', grades_snapshot: 'grades_snapshot',
+                consultation_files: 'consultation_files', weekly_pairs_history: 'weekly_pairs_history',
+                external_cals: 'external_cals'
+            };
+            const upToggles = getSyncToggles();
             const addEncryptedKey = async (cloudField, localKey) => {
+                const tName = UPLOAD_TOGGLE[cloudField];
+                if (tName && upToggles[tName] === false) return;
                 const val = localStorage.getItem(localKey);
                 if (val !== null && val !== undefined) {
                     try {
@@ -16135,7 +16294,20 @@
                 // Применяем расшифрованные данные в localStorage устройства
                 const toggles = getSyncToggles();
 
+                const isValidCloudValue = (cloudKey, v) => {
+                    if (typeof v !== 'string' || v.length > 3000000) return false;
+                    if (cloudKey === 'theme_mode') return ['system', 'schedule', 'none'].includes(v);
+                    if (cloudKey === 'theme_dark_variant') return ['dark', 'night'].includes(v);
+                    if (cloudKey === 'time_spent') return /^\d{1,16}$/.test(v);
+                    if (cloudKey === 'install_date') return /^[\d|]{1,48}$/.test(v);
+                    if (cloudKey === 'diploma_gpa') return v === 'none' || v === 'debts' || /^\d+(\.\d+)?$/.test(v);
+                    try { JSON.parse(v); return true; } catch (e) { return false; }
+                };
                 const applySyncKey = (cloudKey, localKey, toggleName) => {
+                    if (data[cloudKey] && !isValidCloudValue(cloudKey, data[cloudKey])) {
+                        console.warn('[Sync] Пропущено поле с неверным форматом:', cloudKey);
+                        return;
+                    }
                     if (data[cloudKey] && (toggleName === null || toggles[toggleName] !== false)) {
                         localStorage.setItem(localKey, data[cloudKey]);
                     }
@@ -16225,7 +16397,7 @@
             // Проверяем, была ли у пользователя включена старая синхронизация
             const oldSyncCode = localStorage.getItem('etis_sync_code');
             const oldSyncEnabled = typeof GM_getValue !== 'undefined' ? GM_getValue('etis_sync_enabled', true) : true;
-            const hasMasterKey = !!(typeof GM_getValue !== 'undefined' ? GM_getValue('etis_master_recovery_key') : null);
+            const hasMasterKey = !!(typeof GM_getValue !== 'undefined' ? getMasterKey() : null);
 
             // Если была старая синхронизация, но нового мастер-ключа еще нет
             if ((oldSyncCode || oldSyncEnabled) && !hasMasterKey && !isDemoUser()) {
@@ -16502,6 +16674,7 @@
 
                 const getColorsIndicator = (config) => {
                     if (!config || !config.colors || config.colors.length === 0) return '—';
+                    config = getEffectiveAccent(config);
                     let html = `<span style="display:inline-flex; align-items:center; gap:6px; vertical-align: middle;">`;
                     const isGrad = config.isGradient !== false && config.colors.length > 1;
                     const c1 = ACCENT_COLORS[config.colors[0]] || '#007AFF';
@@ -16516,7 +16689,7 @@
                         html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${c3}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Цвет 3"></span>`;
                     }
                     const activeTheme = localStorage.getItem('theme') || 'auto';
-                    let themeBg = activeTheme === 'dark' ? '#212325' : (activeTheme === 'light' ? '#EAECEE' : 'linear-gradient(90deg, #EAECEE 50%, #212325 50%)');
+                    let themeBg = activeTheme === 'night' ? '#000000' : (activeTheme === 'dark' ? '#212325' : (activeTheme === 'light' ? '#EAECEE' : 'linear-gradient(90deg, #EAECEE 50%, #212325 50%)'));
                     html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: ${themeBg}; border: 1px solid var(--color-table-border); box-shadow: 0 1px 3px rgba(0,0,0,0.15);" title="Тема"></span>`;
                     if (config.isGlass === true) {
                         html += `<span style="display:inline-block; width:14px; height:14px; border-radius:50%; background: rgba(255, 255, 255, 0.25); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); border: 1px dashed var(--color-text-secondary); box-shadow: 0 1px 3px rgba(0,0,0,0.1);" title="Стекло"></span>`;
@@ -16621,23 +16794,12 @@
                     };
 
                     // Функция генерации половинчатой иконки (Download + Cloud)
-                    const getHybridSyncIcon = (uniqueId = 'icon') => `
-                        <svg width="17" height="17" viewBox="0 0 24 24" style="flex-shrink:0; vertical-align:middle; display:inline-block;">
-                            <defs>
-                                <clipPath id="clip-left-${uniqueId}">
-                                    <rect x="0" y="0" width="11.5" height="24" />
-                                </clipPath>
-                                <clipPath id="clip-right-${uniqueId}">
-                                    <rect x="11.5" y="0" width="12.5" height="24" />
-                                </clipPath>
-                            </defs>
-                            <g clip-path="url(#clip-left-${uniqueId})" fill="var(--color-text-secondary)">
-                                <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
-                            </g>
-                            <g clip-path="url(#clip-right-${uniqueId})" fill="var(--color-accent)">
-                                <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
-                            </g>
-                        </svg>
+                    const getHybridSyncIcon = () => `
+                        <span style="display:inline-flex; align-items:center; gap:3px; flex-shrink:0;">
+                            <span class="material-icons" style="font-size: 1.6rem; color: var(--color-text-secondary);">download</span>
+                            <span style="font-size: 1.3rem; font-weight: 800; line-height: 1; color: var(--color-text-secondary);">+</span>
+                            <span class="material-icons" style="font-size: 1.6rem; color: var(--color-accent);">cloud</span>
+                        </span>
                     `;
 
                     const dataRow = (rowTitle, count, key, spanId = '', isSyncable = true, isHTML = false, cloudVal = '—', hasDetails = false, detailsView = '') => {
@@ -16657,7 +16819,10 @@
                         }
 
                         // Проверяем, равны ли данные на устройстве и в облаке
-                        const isSynced = (isSyncable && !isDemo && displayCloudVal !== '—' && String(count).trim() === String(displayCloudVal).trim());
+                        let isSynced = (isSyncable && !isDemo && displayCloudVal !== '—' && String(count).trim() === String(displayCloudVal).trim());
+                        if (key === 'etis_accent_config') {
+                            isSynced = !!(isSyncable && !isDemo && lastCloudRaw.themeSig && lastCloudRaw.themeSig === accentSignature(localAccent));
+                        }
 
                         let indicatorsHtml = '';
                         if (isSynced) {
@@ -16761,7 +16926,7 @@
                                     </div>
                                     <div style="display: flex; flex-direction: column; text-align: left; flex: 1;">
                                         <span style="font-size: 1.4rem; font-weight: 700; color: var(--color-text-primary);">Войти по ключу с другого устройства</span>
-                                        <span style="font-size: 1.15rem; color: var(--color-text-secondary); margin-top: 2px;">Ввести 16-значный ключ восстановления</span>
+                                        <span style="font-size: 1.15rem; color: var(--color-text-secondary); margin-top: 2px;">Ввести 25-значный мастер-ключ</span>
                                     </div>
                                     <span class="material-icons chevron" style="color: var(--color-text-secondary); opacity: 0.5;">chevron_right</span>
                                 </div>
@@ -16903,7 +17068,7 @@
                                     return `
                                         <div class="ios-settings-row" style="cursor:default !important; padding: 1.4rem 1.6rem !important;">
                                             <div style="text-align:left; flex:1; min-width:0; padding-right:12px;">
-                                                <div style="font-size:1.4rem; font-weight:700; color:var(--color-text-primary); line-height:1.3; margin-bottom:4px;">${p.subject}</div>
+                                                <div style="font-size:1.4rem; font-weight:700; color:var(--color-text-primary); line-height:1.3; margin-bottom:4px;">${escapeHTML(p.subject)}</div>
                                                 <div style="font-size:1.2rem; color:var(--color-text-secondary); line-height:1.4;">
                                                     <b style="color:var(--color-accent);">${dateStr}</b> • ${p.startTime || '00:00'} - ${p.endTime || '00:00'}
                                                     ${p.type ? ` • <span style="text-transform:uppercase; font-weight:700;">${p.type}</span>` : ''}
@@ -17012,14 +17177,6 @@
                             </div>
                         `;
                     }
-
-                    contentHTML = `
-                        <div class="ios-settings-group" style="padding: 2rem; background: var(--color-card) !important;">
-                            <div class="msg-body" style="text-align: left !important; font-size: 1.4rem; line-height: 1.6; color: var(--color-text-primary);">
-                                ${rawHtml}
-                            </div>
-                        </div>
-                    `;
                 } else if (currentView === 'sync_options') {
                     title = 'Настройки синхронизации';
                     backTarget = 'data';
@@ -17589,7 +17746,8 @@
                                             cals: cloudCalsCount,
                                             gpa: cloudGPA,
                                             notifs: cloudNotifs,
-                                            theme: cloudAccentObj ? 'ok' : '—'
+                                            theme: cloudAccentObj ? 'ok' : '—',
+                                            themeSig: cloudAccentObj ? accentSignature(cloudAccentObj) : undefined
                                         }));
 
                                         // Обновляем числа в открытом интерфейсе
@@ -17708,7 +17866,7 @@
                                     btn.style.pointerEvents = 'none';
                                     
                                     // Передаем true (skipPreDownload), чтобы не стягивать старый список из облака
-                                    await uploadDataToCloud(syncCode, true);
+                                    await uploadDataToCloud(true);
                                     renderView('sync_options');
                                 }
                             }
@@ -17726,9 +17884,7 @@
                                 meta.devices[id].name = newName;
                                 localStorage.setItem('etis_sync_meta', JSON.stringify(meta));
                                 localStorage.setItem('etis_device_name', newName);
-                                
-                                // Передаем true (skipPreDownload)
-                                await uploadDataToCloud(syncCode, true);
+                                await uploadDataToCloud(true);
                                 renderView('sync_options');
                             }
                         };
@@ -17773,8 +17929,8 @@
                 if (enterExistingBtn) {
                     enterExistingBtn.onclick = async (e) => {
                         e.preventDefault();
-                        const inputKey = prompt("Введите 16-значный ключ восстановления с другого устройства (XXXX-XXXX-XXXX-XXXX):");
-                        if (inputKey && inputKey.trim().length >= 16) {
+                        const inputKey = prompt("Введите 25-значный мастер-ключ (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX):");
+                        if (inputKey && inputKey.trim().replace(/[^A-Z0-9]/gi, '').length >= 25) {
                             setMasterKey(inputKey.trim());
                             const success = await downloadDataFromCloud();
                             if (success) {
@@ -17793,7 +17949,7 @@
                         e.preventDefault();
                         if (confirm("Отключить синхронизацию на этом устройстве? Все локальные пары и заметки сохранятся, но обмен с облаком прекратится.")) {
                             if (typeof GM_setValue !== 'undefined') {
-                                GM_setValue("etis_master_recovery_key", null);
+                                GM_setValue(mkName(), null);
                             }
                             renderView('data');
                         }
@@ -23031,9 +23187,15 @@
                     if (typeof GM_getValue !== 'undefined') {
                         raw = GM_getValue('ql_accounts_v2', '');
                     }
-                    if (!raw) {
-                        raw = localStorage.getItem('ql_accounts_v2') || '[]';
+                    // Миграция: если старая версия оставила пароли в localStorage страницы — переносим в хранилище скрипта и стираем
+                    const legacyQL = localStorage.getItem('ql_accounts_v2');
+                    if (legacyQL !== null) {
+                        if (!raw && typeof GM_setValue !== 'undefined') {
+                            try { GM_setValue('ql_accounts_v2', legacyQL); raw = legacyQL; } catch (e) {}
+                        }
+                        localStorage.removeItem('ql_accounts_v2');
                     }
+                    if (!raw) raw = '[]';
                     qlAccounts = JSON.parse(raw);
                 } catch (e) {
                     qlAccounts = [];
@@ -23052,7 +23214,7 @@
                         qlBtn.className = 'answer-btn-custom ql-login-btn';
                         qlBtn.setAttribute('data-idx', '0');
                         qlBtn.style.cssText = 'width: 100%; height: 48px; font-size: 1.5rem; font-weight: 700; border-radius: 24px; justify-content: center; cursor: pointer;';
-                        qlBtn.innerHTML = `<span class="material-symbols-rounded" style="margin-right: 8px; font-size: 20px;">flash_on</span> Войти как ${qlAccounts[0].name}`;
+                        qlBtn.innerHTML = `<span class="material-symbols-rounded" style="margin-right: 8px; font-size: 20px;">flash_on</span> Войти как ${escapeHTML(qlAccounts[0].name)}`;
                         qlBlock.appendChild(qlBtn);
                     } else {
                         const expanderBtn = document.createElement('button');
@@ -24555,7 +24717,7 @@
 
                             const a = document.createElement('a');
                             if (isActive) {
-                                a.innerHTML = `<span style="font-weight: 800;">${text}</span>&nbsp;<span style="font-weight: 800;">Неделя</span>`;
+                                a.innerHTML = `<span style="font-weight: 800;">${escapeHTML(text)}</span>&nbsp;<span style="font-weight: 800;">Неделя</span>`;
                             } else {
                                 a.textContent = text;
                             }
@@ -25025,7 +25187,7 @@
                             let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
                             if (!h2cObj) {
                                 const script = document.createElement('script');
-                                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; applySri(script);
                                 script.onload = () => handleScreenshot(targetEl, fileName, btnEl);
                                 script.onerror = () => {
                                     btnEl.textContent = 'error';
@@ -25856,7 +26018,7 @@
                                     capsule.style.boxShadow = 'none';
 
                                     const tpNumber = tpInfo.textContent.replace(/Учебный план/i, '').trim();
-                                    capsule.innerHTML = `<span class="material-icons" style="font-size:1.4rem; vertical-align: middle; margin-right:4px; opacity:0.7">info</span> План №${tpNumber}`;
+                                    capsule.innerHTML = `<span class="material-icons" style="font-size:1.4rem; vertical-align: middle; margin-right:4px; opacity:0.7">info</span> План №${escapeHTML(tpNumber)}`;
 
                                     targetH3.parentNode.insertBefore(headerFlex, targetH3);
                                     headerFlex.appendChild(targetH3);
@@ -25893,8 +26055,8 @@
                                             row.className = 'calendar-event';
                                             const txt = current.textContent.trim();
                                             const m = txt.match(/^(\d{2}\.\d{2}\.\d{4}\s-\s\d{2}\.\d{2}\.\d{4})(.*)/);
-                                            if (m) row.innerHTML = `<span class="date-range">${m[1]}</span><span class="event-desc">${m[2].trim()}</span>`;
-                                            else if (txt.length > 5) row.innerHTML = `<span class="event-desc">${txt}</span>`;
+                                            if (m) row.innerHTML = `<span class="date-range">${escapeHTML(m[1])}</span><span class="event-desc">${escapeHTML(m[2].trim())}</span>`;
+                                            else if (txt.length > 5) row.innerHTML = `<span class="event-desc">${escapeHTML(txt)}</span>`;
                                             card.appendChild(row);
                                             toRem.push(current);
                                         }
@@ -26067,7 +26229,7 @@
                                                 }
 
                                                 if (bg && !cell.querySelector('span')) {
-                                                    cell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; white-space: nowrap;">${cell.textContent.trim()}</span>`;
+                                                    cell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.4rem 1rem; border-radius: 50px; font-size: 1.1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; white-space: nowrap;">${escapeHTML(cell.textContent.trim())}</span>`;
                                                 }
                                             });
                                             tbody.appendChild(row);
@@ -27542,7 +27704,7 @@
                                         if (link) {
                                             link.className = 'file-attachment-link';
                                             link.style.cssText = 'display: inline-flex !important; align-items: center !important; gap: 8px !important; text-decoration: none !important; background: var(--color-highlight) !important; border: 1px solid var(--color-table-border) !important; padding: 1rem 1.6rem !important; border-radius: 50px !important; margin: 0.5rem 0 !important; font-weight: 600 !important; font-size: 1.3rem !important;';
-                                            link.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem;">description</span><span class="file-name">${link.textContent.trim()}</span>`;
+                                            link.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary); font-size: 2rem;">description</span><span class="file-name">${escapeHTML(link.textContent.trim())}</span>`;
                                         }
                                     });
                                 }
@@ -28291,7 +28453,7 @@
                         let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
                         if (!h2cObj) {
                             const script = document.createElement('script');
-                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; applySri(script);
                             script.onload = renderTimetable;
                             safeAppend(script);
                         } else {
@@ -28749,7 +28911,7 @@
                                             let pColor = "#AF52DE";
                                             if (ev.link.includes('zoom')) { pName = "Zoom"; pClass = "zoom-link"; pColor = "#2D8CFF"; }
                                             else if (ev.link.includes('telemost')) { pName = "Телемост"; pClass = "telemost-link"; pColor = "#FF9500"; }
-                                            audHtml += `<a href="${ev.link}" target="_blank" class="pair-online-link ${pClass}" style="color: ${pColor} !important;"><span class="material-icons" style="font-size: 1.5rem; color: ${pColor} !important;">public</span><span>${pName}</span></a>`;
+                                            audHtml += `<a href="${sanitizeUrl(ev.link)}" target="_blank" rel="noopener noreferrer" class="pair-online-link ${pClass}" style="color: ${pColor} !important;"><span class="material-icons" style="font-size: 1.5rem; color: ${pColor} !important;">public</span><span>${pName}</span></a>`;
                                         }
 
                                         const tr = document.createElement('tr');
@@ -32579,7 +32741,7 @@
                         });
 
                         // 3. ДОБАВЛЯЕМ QR-КОДЫ ДЛЯ ОНЛАЙН ПАР
-                        const qrPromises =[];
+                        const qrPromises = [];
 
                         if (generalConfig.generateQR) {
                             clone.querySelectorAll('.timetable-grid tr').forEach(tr => {
@@ -32587,54 +32749,34 @@
                                 const teacherCell = tr.querySelector('.pair_teacher');
 
                                 if (link && teacherCell && link.href) {
-                                    const qrUrl = `https://quickchart.io/qr?size=150&margin=1&text=${encodeURIComponent(link.href)}`;
+                                    qrPromises.push(getLocalQRCodeDataURL(link.href, 128).then(qrDataUrl => {
+                                        if (!qrDataUrl) return;
+                                        const img = document.createElement('img');
+                                        img.src = qrDataUrl;
+                                        img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; border-radius: 8px; background: #fff;';
 
-                                    const promise = new Promise((resolve) => {
-                                        GM_xmlhttpRequest({
-                                            method: 'GET',
-                                            url: qrUrl,
-                                            responseType: 'blob',
-                                            onload: function(res) {
-                                                if (res.status === 200) {
-                                                    const reader = new FileReader();
-                                                    reader.onloadend = function() {
-                                                        const img = document.createElement('img');
-                                                        img.src = reader.result;
-                                                        img.style.cssText = 'width: 64px; height: 64px; flex-shrink: 0; margin-right: 14px; display: block; border-radius: 8px; background: #fff;';
+                                        const teacherText = teacherCell.innerHTML;
+                                        teacherCell.innerHTML = '';
 
-                                                        const teacherText = teacherCell.innerHTML;
-                                                        teacherCell.innerHTML = '';
+                                        const wrapper = document.createElement('div');
+                                        wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
 
-                                                        const wrapper = document.createElement('div');
-                                                        wrapper.style.cssText = 'display: flex; align-items: center; justify-content: flex-end; width: 100%;';
+                                        const textWrapper = document.createElement('div');
+                                        textWrapper.innerHTML = teacherText;
+                                        textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
 
-                                                        const textWrapper = document.createElement('div');
-                                                        textWrapper.innerHTML = teacherText;
-                                                        textWrapper.style.cssText = 'text-align: right; display: flex; flex-direction: column; justify-content: center;';
-
-                                                        textWrapper.querySelectorAll('a').forEach(a => {
-                                                            a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
-                                                            a.style.setProperty('text-decoration', 'none', 'important');
-                                                        });
-
-                                                        wrapper.appendChild(img);
-                                                        wrapper.appendChild(textWrapper);
-                                                        teacherCell.appendChild(wrapper);
-                                                        resolve();
-                                                    };
-                                                    reader.readAsDataURL(res.response);
-                                                } else {
-                                                    resolve();
-                                                }
-                                            },
-                                            onerror: () => resolve()
+                                        textWrapper.querySelectorAll('a').forEach(a => {
+                                            a.style.setProperty('color', 'var(--color-text-secondary)', 'important');
+                                            a.style.setProperty('text-decoration', 'none', 'important');
                                         });
-                                    });
-                                    qrPromises.push(promise);
+
+                                        wrapper.appendChild(img);
+                                        wrapper.appendChild(textWrapper);
+                                        teacherCell.appendChild(wrapper);
+                                    }));
                                 }
                             });
 
-                            // Ждем, пока все QR-коды загрузятся
                             await Promise.all(qrPromises);
                         }
 
@@ -32740,7 +32882,7 @@
                                     if (h3 && origName) {
                                         h3.className = '';
                                         h3.removeAttribute('style');
-                                        h3.innerHTML = origDate ? `${origName}, ${origDate}` : origName;
+                                        h3.innerHTML = origDate ? `${escapeHTML(origName)}, ${escapeHTML(origDate)}` : escapeHTML(origName);
                                     }
                                 });
 
@@ -32903,12 +33045,6 @@
                             if (!allLis.length) return;
 
                             const firstLi = allLis[0];
-                            if (firstLi.hasAttribute('onclick')) {
-                                const clickFunc = firstLi.getAttribute('onclick');
-                                if (clickFunc.includes('ann_read') || clickFunc.includes('msg_read')) {
-                                    try { new Function(clickFunc)(); } catch(e) {}
-                                }
-                            }
 
                             let dateStr = '';
                             let titleStr = '';
@@ -33234,12 +33370,6 @@
                             if (!allLis.length) return;
 
                             const mainLi = allLis[0];
-                            if (mainLi.hasAttribute('onclick')) {
-                                const clickFunc = mainLi.getAttribute('onclick');
-                                if (clickFunc.includes('read')) {
-                                    try { new Function(clickFunc)(); } catch(e) {}
-                                }
-                            }
 
                             let teacherName = 'Преподаватель';
                             let rawDateStr = '';
@@ -33623,7 +33753,7 @@
                                     const card = document.createElement('a');
                                     card.className = 'advice-card';
                                     card.href = link.href;
-                                    card.innerHTML = `<span class="material-icons">add_circle_outline</span><span class="advice-label">${link.textContent.trim()}</span>`;
+                                    card.innerHTML = `<span class="material-icons">add_circle_outline</span><span class="advice-label">${escapeHTML(link.textContent.trim())}</span>`;
                                     container.appendChild(card);
                                 });
                                 span9.appendChild(container);
@@ -34398,7 +34528,7 @@
                                             const textColor = getComputedStyle(document.documentElement).getPropertyValue('--color-text-secondary').trim() || '#8E8E93';
                                             const gridColor = getComputedStyle(document.documentElement).getPropertyValue('--color-table-border').trim() || 'rgba(0,0,0,0.06)';
                                             const accConfig = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, colors: ['blue', 'lightblue'] };
-                                            const chartAccentColor = ACCENT_COLORS[accConfig.colors[0]] || '#007AFF';
+                                            const chartAccentColor = ACCENT_COLORS[getEffectiveAccent(accConfig).colors[0]] || '#007AFF';
 
                                             // Плавный градиент с затуханием к нижней скругленной границе
                                             const gradientFill = ctx.createLinearGradient(0, 0, 0, 190);
@@ -34568,7 +34698,7 @@
 
                                                     if (typeof html2canvas === 'undefined' && !window.html2canvas) {
                                                         const script = document.createElement('script');
-                                                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+                                                        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'; applySri(script);
                                                         script.onload = () => executeShare();
                                                         document.head.appendChild(script);
                                                     } else {
@@ -34594,7 +34724,7 @@
                                     btn.style.pointerEvents = 'none';
 
                                     const script = document.createElement('script');
-                                    script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+                                    script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js'; applySri(script);
                                     script.onload = () => {
                                         btn.innerHTML = origHtml;
                                         btn.style.pointerEvents = 'auto';
@@ -35565,7 +35695,7 @@
                                                     bg = 'rgba(255, 59, 48, 0.15)'; color = 'var(--color-red)';
                                                 }
 
-                                                gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">${gradeCell.textContent.trim()}</span>`;
+                                                gradeCell.innerHTML = `<span class="kt-score-capsule" style="background:${bg}; color:${color}; padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">${escapeHTML(gradeCell.textContent.trim())}</span>`;
                                             } else {
                                                 gradeCell.innerHTML = `<span class="kt-score-capsule" style="background: rgba(142, 142, 147, 0.15); color: var(--color-text-secondary); padding: 0.4rem 1rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-block; min-width: 24px; text-align: center; white-space: nowrap;">Неизвестно</span>`;
                                             }
@@ -37239,7 +37369,7 @@
                                 pdfCard.href = pdfLink.href;
                                 pdfCard.className = 'advice-card';
                                 pdfCard.style.cssText = 'display: inline-flex; margin-top: 3rem; width: fit-content; background: var(--color-highlight); border: 1px dashed var(--color-table-border); box-shadow: none;';
-                                pdfCard.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary);">picture_as_pdf</span><span class="advice-label">${pdfLink.textContent.trim()}</span>`;
+                                pdfCard.innerHTML = `<span class="material-icons" style="color: var(--color-text-secondary);">picture_as_pdf</span><span class="advice-label">${escapeHTML(pdfLink.textContent.trim())}</span>`;
 
                                 span9.appendChild(pdfCard);
                                 pdfLink.remove();
@@ -37626,7 +37756,7 @@
                                     </div>` : ''}
                                 `;
                             } else {
-                                infoCard.innerHTML = `<h3 style="margin:0">${h4.textContent}</h3>`;
+                                infoCard.innerHTML = `<h3 style="margin:0">${escapeHTML(h4.textContent)}</h3>`;
                             }
 
                             h4.parentNode.replaceChild(infoCard, h4);
@@ -37685,7 +37815,15 @@
                                     if (li.hasAttribute('onclick')) {
                                         const clickFunc = li.getAttribute('onclick');
                                         if (clickFunc.includes('read')) {
-                                            try { new Function(clickFunc)(); } catch(e) {}
+                                            try {
+                                                const mm = clickFunc.match(/^\s*(read[A-Za-z0-9_]*)\(\s*((?:'[^']*'|"[^"]*"|-?\d+)(?:\s*,\s*(?:'[^']*'|"[^"]*"|-?\d+))*)?\s*\)\s*;?\s*$/);
+                                                const pageWin = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+                                                if (mm && typeof pageWin[mm[1]] === 'function') {
+                                                    const args = [];
+                                                    (mm[2] || '').replace(/'([^']*)'|"([^"]*)"|(-?\d+)/g, (_, a, b, c) => { args.push(a !== undefined ? a : (b !== undefined ? b : Number(c))); return ''; });
+                                                    pageWin[mm[1]](...args);
+                                                }
+                                            } catch(e) {}
                                         }
                                     }
 
