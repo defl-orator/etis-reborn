@@ -35,8 +35,10 @@
     <meta name="twitter:image" content="https://etisreborn.ru/img/og-image.jpg">
 
     <!-- Google Material Symbols (Icons) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,600,1,0&icon_names=ads_click,assignment,auto_awesome,bar_chart,bolt,calendar_month,dark_mode,desktop_windows,edit_calendar,emoji_events,event_available,event_note,hourglass_bottom,ios_share,lock,manage_search,menu_open,military_tech,notifications,palette,rocket_launch,schedule,school,search,shield,show_chart,smartphone,star,swipe,sync,table_chart,trending_up,tune&display=block" />
 
     <!-- Микроразметка Schema.org (JSON-LD) -->
     <script type="application/ld+json">
@@ -102,6 +104,15 @@
             vertical-align: middle;
             line-height: 1;
             flex-shrink: 0;
+            width: 1em;
+            height: 1em;
+            overflow: hidden;
+            white-space: nowrap;
+            visibility: hidden;
+        }
+
+        html.icons-ready .material-symbols-rounded {
+            visibility: visible;
         }
 
         .title-icon {
@@ -2203,6 +2214,15 @@
 
 
     <script>
+        // --- ИКОНКИ: показываем только когда шрифт загружен ---
+        if (document.fonts && document.fonts.load) {
+            document.fonts.load("24px 'Material Symbols Rounded'", 'search')
+                .then(() => document.documentElement.classList.add('icons-ready'))
+                .catch(() => { });
+        } else {
+            document.documentElement.classList.add('icons-ready');
+        }
+
         // --- УПРАВЛЕНИЕ ТЕМОЙ ---
         const themeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
