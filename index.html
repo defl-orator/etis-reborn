@@ -34,11 +34,9 @@
         content="Полностью обновленный личный кабинет ЕТИС ПГНИУ: современный дизайн, тёмная тема, адаптация для смартфонов.">
     <meta name="twitter:image" content="https://etisreborn.ru/img/og-image.jpg">
 
-    <!-- Google Material Symbols (Icons) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,600,1,0&icon_names=ads_click,assignment,auto_awesome,bar_chart,bolt,calendar_month,dark_mode,desktop_windows,edit_calendar,emoji_events,event_available,event_note,hourglass_bottom,ios_share,lock,manage_search,menu_open,military_tech,notifications,palette,rocket_launch,schedule,school,search,shield,show_chart,smartphone,star,swipe,sync,table_chart,trending_up,tune&display=block" />
+    <!-- Phosphor Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/fill/style.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src/bold/style.css">
 
     <!-- Микроразметка Schema.org (JSON-LD) -->
     <script type="application/ld+json">
@@ -94,9 +92,8 @@
             --bg-gradient-end: rgba(22, 24, 26, 0);
         }
 
-        /* --- MATERIAL ICONS STYLE --- */
-        .material-symbols-rounded {
-            font-variation-settings: 'FILL' 1, 'wght' 600, 'GRAD' 0, 'opsz' 24;
+        /* --- PHOSPHOR ICONS STYLE --- */
+        .icon {
             font-size: 22px;
             display: inline-flex;
             align-items: center;
@@ -106,13 +103,6 @@
             flex-shrink: 0;
             width: 1em;
             height: 1em;
-            overflow: hidden;
-            white-space: nowrap;
-            visibility: hidden;
-        }
-
-        html.icons-ready .material-symbols-rounded {
-            visibility: visible;
         }
 
         .title-icon {
@@ -172,9 +162,9 @@
             box-shadow: 0 6px 20px rgba(52, 120, 246, 0.4);
         }
 
-        .btn svg {
-            width: 22px;
-            height: 22px;
+        .btn .icon-svg {
+            font-size: 22px;
+            flex-shrink: 0;
         }
 
         .btn-flow {
@@ -345,9 +335,8 @@
             gap: 5px;
         }
 
-        .stat-item svg {
-            width: 13px;
-            height: 13px;
+        .stat-item .icon-svg {
+            font-size: 13px;
             opacity: 0.85;
             flex-shrink: 0;
         }
@@ -1391,12 +1380,12 @@
         }
 
         /* Иконки в карточках */
-        .bf-title .material-symbols-rounded {
+        .bf-title .icon {
             transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
         }
 
         @media (hover: hover) {
-            .bf-item:hover .bf-title .material-symbols-rounded {
+            .bf-item:hover .bf-title .icon {
                 transform: scale(1.25) rotate(-8deg);
             }
         }
@@ -1591,12 +1580,7 @@
             <h1><span>Сделай ЕТИС великим снова</span></h1>
             <p>Преврати свой кабинет в современный сайт с мобильной адаптацией и новым функционалом</p>
             <button class="btn btn-flow" onclick="openModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
+                <i class="ph-bold ph-download-simple icon-svg"></i>
                 Установить
             </button>
         </section>
@@ -1645,20 +1629,20 @@
                     <!-- Показываются на ПК -->
                     <div class="mobile-feats">
                         <div class="bf-item">
-                            <div class="bf-title"><span class="material-symbols-rounded"
-                                    style="color: #3478F6;">smartphone</span> Адаптивная верстка</div>
+                            <div class="bf-title"><i class="ph-fill ph-device-mobile icon" style="color: #3478F6;"></i>
+                                Адаптивная верстка</div>
                             <div class="bf-desc">Весь интерфейс перестраивается под экраны смартфонов. Больше не нужно
                                 постоянно зумить страницу.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title"><span class="material-symbols-rounded"
-                                    style="color: #8b5cf6;">swipe</span> Свайпы</div>
+                            <div class="bf-title"><i class="ph-fill ph-hand-swipe-right icon"
+                                    style="color: #8b5cf6;"></i> Свайпы</div>
                             <div class="bf-desc">Управляй с помощью привычных свайпов — смахни влево для добавления
                                 заметки или шеринга, или вправо для добавления новой пары или оценки предмета.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title"><span class="material-symbols-rounded"
-                                    style="color: #ec4899;">menu_open</span> Шторка</div>
+                            <div class="bf-title"><i class="ph-fill ph-sidebar-simple icon" style="color: #ec4899;"></i>
+                                Шторка</div>
                             <div class="bf-desc">Все вкладки скрываются шторку, и открываются при нажатии на правую
                                 кнопку в панели навигации снизу.</div>
                         </div>
@@ -1667,19 +1651,19 @@
                     <!-- Показываются на мобилках -->
                     <div class="pc-feats">
                         <div class="bf-item">
-                            <div class="bf-title"><span class="material-symbols-rounded"
-                                    style="color: #3478F6;">desktop_windows</span> Широкоформатный вид</div>
+                            <div class="bf-title"><i class="ph-fill ph-desktop icon" style="color: #3478F6;"></i>
+                                Широкоформатный вид</div>
                             <div class="bf-desc">Переосмысление привычного вида ЕТИСа, с большим количеством "воздуха" и
                                 закруглений.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title"><span class="material-symbols-rounded"
-                                    style="color: #f59e0b;">ads_click</span> Быстрый доступ</div>
+                            <div class="bf-title"><i class="ph-fill ph-cursor-click icon" style="color: #f59e0b;"></i>
+                                Быстрый доступ</div>
                             <div class="bf-desc">Наведи на нужный блок, чтобы появились дополнительные функции.</div>
                         </div>
                         <div class="bf-item">
-                            <div class="bf-title"><span class="material-symbols-rounded"
-                                    style="color: #10b981;">table_chart</span> Удобство таблиц</div>
+                            <div class="bf-title"><i class="ph-fill ph-table icon" style="color: #10b981;"></i> Удобство
+                                таблиц</div>
                             <div class="bf-desc">Листай длинные таблицы по горизонтали.</div>
                         </div>
                     </div>
@@ -1705,66 +1689,66 @@
                 <!-- Фичи расписания -->
                 <div class="block-features">
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #10b981;">schedule</span> Умная индикация</div>
+                        <div class="bf-title"><i class="ph-fill ph-clock icon" style="color: #10b981;"></i> Умная
+                            индикация</div>
                         <div class="bf-desc">Визуально понятно когда пара начнётся или закончится.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #f59e0b;">hourglass_bottom</span> Авторасчет «окон»</div>
+                        <div class="bf-title"><i class="ph-fill ph-hourglass-low icon" style="color: #f59e0b;"></i>
+                            Авторасчет «окон»</div>
                         <div class="bf-desc">Система находит пустые промежутки между парами и отображает сколько «окон»
                             осталось до следующей пары.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #3b82f6;">calendar_month</span> Интеграция календарей</div>
+                        <div class="bf-title"><i class="ph-fill ph-calendar-dots icon" style="color: #3b82f6;"></i>
+                            Интеграция календарей</div>
                         <div class="bf-desc">Подключи свой Apple или Google календарь по ссылке. События из них
                             отобразятся прямо в расписании ЕТИСа.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #8b5cf6;">edit_calendar</span> Свои занятия</div>
+                        <div class="bf-title"><i class="ph-fill ph-calendar-plus icon" style="color: #8b5cf6;"></i> Свои
+                            занятия</div>
                         <div class="bf-desc">Вручную добавляй дополнительные занятия или встречи. Есть возможность
                             добавить их периодичность, например раз в день/неделю.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #06b6d4;">assignment</span> Заметки и ДЗ</div>
+                        <div class="bf-title"><i class="ph-fill ph-clipboard-text icon" style="color: #06b6d4;"></i>
+                            Заметки и ДЗ</div>
                         <div class="bf-desc">Добавляй список задач к конкретному занятию, с возможностью переноса к
                             следующему занятию.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #ec4899;">ios_share</span> Красивый экспорт</div>
+                        <div class="bf-title"><i class="ph-fill ph-export icon" style="color: #ec4899;"></i> Красивый
+                            экспорт</div>
                         <div class="bf-desc">Кнопка «Поделиться» создает аккуратный скриншот расписания для отправки
                             одногруппникам.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #6366f1;">school</span> Интеграция консультаций</div>
+                        <div class="bf-title"><i class="ph-fill ph-graduation-cap icon" style="color: #6366f1;"></i>
+                            Интеграция консультаций</div>
                         <div class="bf-desc">Загрузи файл с консультациями, чтобы они были у тебя под рукой и
                             отображались в расписании.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded" style="color: #eab308;">star</span>
+                        <div class="bf-title"><i class="ph-fill ph-star icon" style="color: #eab308;"></i>
                             Важные пары</div>
                         <div class="bf-desc">Пометь важные для себя пары, чтобы понимать на какие пары стоит идти.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #14b8a6;">bar_chart</span> Еженедельная сводка</div>
+                        <div class="bf-title"><i class="ph-fill ph-chart-bar icon" style="color: #14b8a6;"></i>
+                            Еженедельная сводка</div>
                         <div class="bf-desc">Статистика нагрузки на текущую неделю со сравнением со средней.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #ef4444;">event_note</span> Дневник</div>
-                        <div class="bf-desc">Все дедлайны и заданияв одном месте: добавляй сроки сдачи работ, отмечай
+                        <div class="bf-title"><i class="ph-fill ph-notebook icon" style="color: #ef4444;"></i> Дневник
+                        </div>
+                        <div class="bf-desc">Все дедлайны и задания в одном месте: добавляй сроки сдачи работ, отмечай
                             выполненное
                             и не пропускай важное.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #0ea5e9;">manage_search</span> Глобальный поиск</div>
+                        <div class="bf-title"><i class="ph-fill ph-list-magnifying-glass icon"
+                                style="color: #0ea5e9;"></i> Глобальный поиск</div>
                         <div class="bf-desc">Одна строка поиска по всему ЕТИСу: находи пары, заметки, оценки и
                             вкладки за секунду.</div>
                     </div>
@@ -1794,20 +1778,20 @@
 
                 <div class="block-features">
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #8b5cf6;">auto_awesome</span> Полный редизайн</div>
+                        <div class="bf-title"><i class="ph-fill ph-sparkle icon" style="color: #8b5cf6;"></i> Полный
+                            редизайн</div>
                         <div class="bf-desc">Интерфейс начала 2000-х заменен на актуальный для 2026-го года.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #6366f1;">dark_mode</span> Ночной режим</div>
+                        <div class="bf-title"><i class="ph-fill ph-moon icon" style="color: #6366f1;"></i> Ночной режим
+                        </div>
                         <div class="bf-desc">Полноценная поддержка тёмной темы, которая бережет зрение, заряд батареи, и
                             включается автоматически.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #f43f5e;">palette</span> Кастомизация</div>
-                        <div class="bf-desc">Выбери свой уникальный акцентный цвет среди 432.000 вариаций.</div>
+                        <div class="bf-title"><i class="ph-fill ph-palette icon" style="color: #f43f5e;"></i>
+                            Кастомизация</div>
+                        <div class="bf-desc">Выбери свой уникальный акцентный цвет среди 439.200 вариаций.</div>
                     </div>
                 </div>
             </div>
@@ -1830,18 +1814,18 @@
                 <!-- Фичи оценок -->
                 <div class="block-features">
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #10b981;">trending_up</span> Визуальный прогресс</div>
+                        <div class="bf-title"><i class="ph-fill ph-trend-up icon" style="color: #10b981;"></i>
+                            Визуальный прогресс</div>
                         <div class="bf-desc">Добавлены цветные «капсулы», позволяющие мгновенно понять успеваемость по
                             конкретному предмету.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #f59e0b;">notifications</span> Уведомления</div>
+                        <div class="bf-title"><i class="ph-fill ph-bell-ringing icon" style="color: #f59e0b;"></i>
+                            Уведомления</div>
                         <div class="bf-desc">Получай при входе уведомления, если преподаватель выставил баллы.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded" style="color: #3b82f6;">tune</span>
+                        <div class="bf-title"><i class="ph-fill ph-sliders-horizontal icon" style="color: #3b82f6;"></i>
                             Минимализм</div>
                         <div class="bf-desc">Скрой столбики, которые тебе не нужны, например баллы в рейтинг или вид
                             работы.</div>
@@ -1867,18 +1851,18 @@
                 <!-- Фичи объявлений -->
                 <div class="block-features">
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #3b82f6;">search</span> Поиск</div>
+                        <div class="bf-title"><i class="ph-fill ph-magnifying-glass icon" style="color: #3b82f6;"></i>
+                            Поиск</div>
                         <div class="bf-desc">Найди нужное объявление среди огромного списка.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #ef4444;">rocket_launch</span> Шеринг</div>
+                        <div class="bf-title"><i class="ph-fill ph-rocket-launch icon" style="color: #ef4444;"></i>
+                            Шеринг</div>
                         <div class="bf-desc">В один клик поделись нужным объявлением в виде красивой карточки.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #10b981;">event_available</span> Интеграция с расписанием</div>
+                        <div class="bf-title"><i class="ph-fill ph-calendar-check icon" style="color: #10b981;"></i>
+                            Интеграция с расписанием</div>
                         <div class="bf-desc">Скрипт находит даты в объявлениях и предлагает добавить их в расписание в
                             один клик.</div>
                     </div>
@@ -1906,20 +1890,20 @@
                 <!-- Фичи аналитики -->
                 <div class="block-features">
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #3b82f6;">show_chart</span> Графики сессий</div>
+                        <div class="bf-title"><i class="ph-fill ph-chart-line icon" style="color: #3b82f6;"></i> Графики
+                            сессий</div>
                         <div class="bf-desc">Наглядный линейный график изменения твоего среднего балла от периода к
                             периоду.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #f59e0b;">emoji_events</span> Топ предметов</div>
+                        <div class="bf-title"><i class="ph-fill ph-trophy icon" style="color: #f59e0b;"></i> Топ
+                            предметов</div>
                         <div class="bf-desc">Автоматический рейтинг твоих дисциплин в текущем периоде на основе
                             набранных баллов.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #eab308;">military_tech</span> Достижения</div>
+                        <div class="bf-title"><i class="ph-fill ph-medal icon" style="color: #eab308;"></i> Достижения
+                        </div>
                         <div class="bf-desc">Получай награды за успехи в учёбе — отличные оценки, закрытые сессии и
                             другие учебные победы.</div>
                     </div>
@@ -1928,24 +1912,24 @@
 
             <!-- 7. ТЕХНОЛОГИИ И БЕЗОПАСНОСТЬ -->
             <div class="comparison-block" id="block-security">
-                <h2 class="block-title"><span class="material-symbols-rounded title-icon"
-                        style="color: #10b981;">lock</span> Технологии и безопасность</h2>
+                <h2 class="block-title"><i class="ph-fill ph-lock icon title-icon" style="color: #10b981;"></i>
+                    Технологии и безопасность</h2>
                 <div class="block-features">
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded"
-                                style="color: #10b981;">shield</span> Local First</div>
+                        <div class="bf-title"><i class="ph-fill ph-shield-check icon" style="color: #10b981;"></i> Local
+                            First</div>
                         <div class="bf-desc">Все данные (заметки, кастомные пары) хранятся только в браузере. По
                             желанию, можешь активировать облачную синхронизацию данных скрипта между устройствами (но
                             пароль и логин остаются локальными).</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded" style="color: #3b82f6;">sync</span>
+                        <div class="bf-title"><i class="ph-fill ph-arrows-clockwise icon" style="color: #3b82f6;"></i>
                             Авто-обновление</div>
                         <div class="bf-desc">Встроенная система проверки новых версий — ты всегда будешь использовать
                             самый актуальный и исправленный код.</div>
                     </div>
                     <div class="bf-item">
-                        <div class="bf-title"><span class="material-symbols-rounded" style="color: #f59e0b;">bolt</span>
+                        <div class="bf-title"><i class="ph-fill ph-lightning icon" style="color: #f59e0b;"></i>
                             Оптимизация</div>
                         <div class="bf-desc">Скрипт написан так, чтобы не нагружать процессор и работать плавно даже на
                             старых устройствах.</div>
@@ -2041,12 +2025,7 @@
     <footer>
         <div class="container footer-content">
             <button class="btn btn-flow" onclick="openModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                    <polyline points="7 10 12 15 17 10" />
-                    <line x1="12" y1="15" x2="12" y2="3" />
-                </svg>
+                <i class="ph-bold ph-download-simple icon-svg"></i>
                 Установить
             </button>
 
@@ -2138,8 +2117,7 @@
 
             <div class="changelog-box" id="modal-changelog-box" style="display: none;">
                 <div class="changelog-title">
-                    <span class="material-symbols-rounded"
-                        style="font-size: 18px; color: var(--primary);">auto_awesome</span>
+                    <i class="ph-fill ph-sparkle icon" style="font-size: 18px; color: var(--primary);"></i>
                     <span>Что нового:</span>
                 </div>
                 <div class="changelog-text" id="modal-changelog-text"></div>
@@ -2147,22 +2125,12 @@
 
             <div class="modal-footer-stats">
                 <span class="stat-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path
-                            d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8 8a2 2 0 0 0 2.828 0l7.172-7.172a2 2 0 0 0 0-2.828l-8-8z" />
-                        <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
-                    </svg>
+                    <i class="ph-bold ph-tag icon-svg"></i>
                     <span id="script-version-info">...</span>
                 </span>
                 <span class="stats-divider">•</span>
                 <span class="stat-item">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                        <polyline points="7 10 12 15 17 10" />
-                        <line x1="12" y1="15" x2="12" y2="3" />
-                    </svg>
+                    <i class="ph-bold ph-download-simple icon-svg"></i>
                     <b id="install-counter">...</b>
                 </span>
             </div>
@@ -2190,21 +2158,13 @@
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <a href="https://t.me/perdyash" target="_blank" class="btn"
                     style="background-color: #24A1DE; box-shadow: 0 4px 15px rgba(36, 161, 222, 0.3);">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
+                    <i class="ph-bold ph-paper-plane-tilt icon-svg"></i>
                     Telegram: @perdyash
                 </a>
 
                 <a href="mailto:bdengerr@gmail.com" class="btn"
                     style="background-color: var(--primary); box-shadow: 0 4px 15px rgba(52, 120, 246, 0.3);">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                        <polyline points="22,6 12,13 2,6"></polyline>
-                    </svg>
+                    <i class="ph-bold ph-envelope-simple icon-svg"></i>
                     Email: bdengerr@gmail.com
                 </a>
             </div>
@@ -2214,15 +2174,6 @@
 
 
     <script>
-        // --- ИКОНКИ: показываем только когда шрифт загружен ---
-        if (document.fonts && document.fonts.load) {
-            document.fonts.load("24px 'Material Symbols Rounded'", 'search')
-                .then(() => document.documentElement.classList.add('icons-ready'))
-                .catch(() => { });
-        } else {
-            document.documentElement.classList.add('icons-ready');
-        }
-
         // --- УПРАВЛЕНИЕ ТЕМОЙ ---
         const themeQuery = window.matchMedia('(prefers-color-scheme: dark)');
 
