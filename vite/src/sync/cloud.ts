@@ -4,7 +4,6 @@ import { mergeSyncMeta, registerCurrentDevice, SyncMeta } from '../core/devices'
 import { loadGeneralConfig } from '../core/config';
 import { applyAccentColor } from '../core/accent';
 import { applyCurrentTheme } from '../core/theme-engine';
-import { targetWindow } from '../core/console-api';
 
 const DIRTY_KEYS_STORAGE = 'etis_sync_dirty_v1';
 const HEARTBEAT_STALE_MS = 60_000;
@@ -214,8 +213,8 @@ function applySyncedRuntimeUpdates(): void {
     } catch (e) {}
 
     try {
-        const win = targetWindow as any;
-        if (window.location.href.includes('timetable') && document.body) {
+        const win = window as any;
+        if ((window.location.href.includes('timetable') || document.querySelector('.timetable-grid')) && document.body) {
             document.querySelectorAll('.custom-pair-row').forEach(el => el.remove());
             if (typeof win.injectCustomPairs === 'function') win.injectCustomPairs();
             if (typeof win.injectConsultationPairs === 'function') win.injectConsultationPairs();

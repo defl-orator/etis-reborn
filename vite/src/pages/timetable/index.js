@@ -11,7 +11,7 @@ import { mergeConsecutiveDaysOff, unmergeDaysOff } from './days-off.js';
 import { dimPastPairs } from './dim-past-pairs.js';
 import { eventOccursOnDate, parseICS } from './external-calendar.js';
 import { initMobileSwipes } from './mobile-swipes.js';
-import { openPairModal } from './pair-modal.js';
+import { extractCleanLocation, extractCleanTeacher, openPairModal } from './pair-modal.js';
 import { openSummaryModal } from './summary-modal.js';
 import { triggerSilentCloudUpload } from '../../sync/cloud.js';
 import { safeParseJSON } from '../../sync/crypto.ts';
@@ -823,12 +823,6 @@ export function renderTimetablePage() {
         });
     }
     markLongRows();
-    // Также вызываем это при рендере заметок, так как карандаш тоже удлиняет строку
-    const oldRenderNotes = window.renderNotes;
-    window.renderNotes = function() {
-        oldRenderNotes();
-        markLongRows();
-    };
 
     // --- УМНЫЕ НАЗВАНИЯ НЕДЕЛЬ ---
     const weeksItems = pageCtx.span9.querySelectorAll('.weeks .week');
@@ -1501,7 +1495,7 @@ export function renderTimetablePage() {
                     if (imp.includes(pairId)) imp = imp.filter(id => id !== pairId);
                     else imp.push(pairId);
                     saveSyncData('etis_important_pairs_v1', JSON.stringify(imp));
-                    renderNotes();
+                    if (typeof window.renderNotes === 'function') window.renderNotes();
                 });
 
                 const typeBadge = numTd.querySelector('.pair-type-badge');
@@ -1553,13 +1547,14 @@ export function renderTimetablePage() {
                 targetContainer.appendChild(evalA);
             }
         });
+        markLongRows();
     };
 
     // Вызываем инициализацию свайпов
     initMobileSwipes();
 
     // Вызываем перерасчет сразу при загрузке расписания
-    recalculateTimetable();
+    if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
 
     // Запускаем отрисовку заметок при загрузке страницы
     if (window.renderNotes) window.renderNotes();
@@ -1818,8 +1813,8 @@ export function renderTimetablePage() {
         });
 
         if (injectedAnything) {
-            if (typeof recalculateTimetable === 'function') recalculateTimetable();
-            if (typeof renderNotes === 'function') renderNotes();
+            if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
+            if (typeof window.renderNotes === 'function') window.renderNotes();
             if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
             if (typeof dimPastPairs === 'function') dimPastPairs();
         }

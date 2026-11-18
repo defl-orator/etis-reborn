@@ -25,10 +25,10 @@ export const updateState: UpdateState = {
     details: ''
 };
 
-export function initAutoUpdateCheck(force = false): void {
+export function initAutoUpdateCheck(forceRelease = false): void {
     if (typeof GM_xmlhttpRequest === 'undefined') return;
 
-    const isBeta = generalConfig.betaUpdates === true;
+    const isBeta = !forceRelease && generalConfig.betaUpdates === true;
     const url = isBeta ? BETA_URL : RELEASE_URL;
     updateState.status = 'loading';
     updateState.isBeta = isBeta;
@@ -80,6 +80,11 @@ export function initAutoUpdateCheck(force = false): void {
         onerror: function() {
             updateState.status = 'error';
             updateState.details = 'Ошибка сети';
+            if (typeof refreshModalUI === 'function') refreshModalUI();
+        },
+        ontimeout: function() {
+            updateState.status = 'error';
+            updateState.details = 'Превышено время ожидания';
             if (typeof refreshModalUI === 'function') refreshModalUI();
         }
     });

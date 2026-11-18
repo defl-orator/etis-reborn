@@ -92,8 +92,8 @@ export function renderLibraryPage() {
     if (searchOpenBtn && searchCloseBtn && libInput) {
         searchOpenBtn.onclick = () => {
             controlsWrapper.classList.add('is-searching');
-            planInput.focus(); // Синхронный фокус
-            setTimeout(() => planInput.focus(), 150);
+            libInput.focus(); // Синхронный фокус
+            setTimeout(() => libInput.focus(), 150);
         };
         searchCloseBtn.onclick = () => {
             controlsWrapper.classList.remove('is-searching');

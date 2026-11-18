@@ -2,7 +2,7 @@
 // @name         ЕТИС REBORN
 // @namespace    http://tampermonkey.net/
 // @version      3.02
-// @changelog    Правка смены тем. Смена иконок
+// @changelog    Правка смены тем. Смена иконок. Фикс багов расписания, библиотеки, настроек и автообновления
 // @description  Глобальное обновление ЕТИСа
 // @author       dya_dya
 // @icon         https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png

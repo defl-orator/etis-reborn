@@ -1115,6 +1115,7 @@ export function openSettingsModal(view = 'main') {
                     lightBtn.classList.remove('active');
                     
                     // Включаем корректную тему предпросмотра (night или dark)
+                    const actualDarkTheme = localStorage.getItem('etis_theme_dark_variant') === 'night' ? 'night' : 'dark';
                     document.documentElement.setAttribute('theme', actualDarkTheme);
                     
                     syncTogglesWithActiveTheme();

@@ -1173,7 +1173,6 @@ export function openProfileModal(view = 'main') {
                             const emptyVal = emptyValues[key] !== undefined ? emptyValues[key] : '';
                             saveSyncData(key, emptyVal);
 
-                            if (key === 'etis_custom_pairs_v1') customPairs = [];
                             if (key === 'etis_consultation_files_v1') setConsultationsFiles([]);
                             if (key === 'etis_accent_config') {
                                 localStorage.removeItem('etis_accent_config');

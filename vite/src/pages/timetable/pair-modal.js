@@ -5,6 +5,26 @@ import { saveSyncData } from '../../sync/data.js';
 import { parseDayDateStrToISO } from '../../utils/dates.ts';
 import { isIOS, isMacSafari } from '../../utils/platform.ts';
 
+export const extractCleanLocation = (r) => {
+    const audEl = r.querySelector('.pair_info .aud');
+    if (!audEl) return '';
+    const clone = audEl.cloneNode(true);
+    clone.querySelectorAll('.pair-teacher-wrap, .note-btn-wrapper, .material-icons, a').forEach(el => el.remove());
+    return clone.textContent.trim();
+};
+
+export const extractCleanTeacher = (r) => {
+    const tWrap = r.querySelector('.pair-teacher-wrap');
+    if (tWrap) {
+        const clone = tWrap.cloneNode(true);
+        clone.querySelectorAll('.material-icons').forEach(el => el.remove());
+        return clone.textContent.trim();
+    }
+    const tEl = r.querySelector('.pair_teacher a:not(.eval)');
+    if (tEl) return tEl.textContent.trim();
+    return '';
+};
+
 // Модальное окно для всех типов пар
 export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr, rawPairNum, currentIndex, allRowsArray, currentNote, isExternal, isPureCustom) {
     // Безопасная инициализация названия предмета
@@ -22,26 +42,6 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
         modal.className = 'analytics-modal notes-modal';
         document.body.appendChild(modal);
     }
-
-    const extractCleanLocation = (r) => {
-        const audEl = r.querySelector('.pair_info .aud');
-        if (!audEl) return '';
-        const clone = audEl.cloneNode(true);
-        clone.querySelectorAll('.pair-teacher-wrap, .note-btn-wrapper, .material-icons, a').forEach(el => el.remove());
-        return clone.textContent.trim();
-    };
-
-    const extractCleanTeacher = (r) => {
-        const tWrap = r.querySelector('.pair-teacher-wrap');
-        if (tWrap) {
-            const clone = tWrap.cloneNode(true);
-            clone.querySelectorAll('.material-icons').forEach(el => el.remove());
-            return clone.textContent.trim();
-        }
-        const tEl = r.querySelector('.pair_teacher a:not(.eval)');
-        if (tEl) return tEl.textContent.trim();
-        return '';
-    };
 
     const formatEveryDayPhrase = (dName) => {
         if (!dName) return 'Каждую неделю';
@@ -552,7 +552,7 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
                     deadlineDate: `${startDate.getFullYear()}-${pad(startDate.getMonth() + 1)}-${pad(startDate.getDate())}`,
                     deadlineTime: startVal || '08:00',
                     week: currentWeek,
-                    dayName: dayContainer?.querySelector('.day-name')?.textContent.trim() || '',
+                    dayName: row.closest('.day')?.querySelector('.day-name')?.textContent.trim() || '',
                     isFloatingNext: false,
                     completed: false,
                     completedAt: null
@@ -562,7 +562,7 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
 
         saveSyncData('etis_diary_tasks_v1', JSON.stringify(diaryTasks));
         closeModal();
-        renderNotes();
+        if (typeof window.renderNotes === 'function') window.renderNotes();
     };
 
     // Обработчик кнопки «Удалить»
