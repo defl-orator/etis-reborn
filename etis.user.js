@@ -32150,6 +32150,7 @@ mark.search-highlight,
         };
 
         window.injectConsultationPairs = function() {
+            if (typeof unmergeDaysOff === 'function') unmergeDaysOff();
             // Принудительно читаем самые свежие данные перед рендером
             setConsultationsFiles(safeParseJSON(localStorage.getItem('etis_consultation_files_v1'), []));
 
@@ -32179,15 +32180,15 @@ mark.search-highlight,
                         if (ev.weekType === 'odd' && isEvenWeek) return;
 
                         days.forEach(day => {
-                            const dayNameEl = day.querySelector('.day-name');
-                            if (!dayNameEl || dayNameEl.textContent.trim().toLowerCase() !== ev.dayName.toLowerCase()) return;
+                            const origDayName = day.getAttribute('data-orig-day-name') || day.querySelector('.day-name')?.textContent.trim() || '';
+                            if (!origDayName || origDayName.toLowerCase() !== ev.dayName.toLowerCase()) return;
 
                             const table = day.querySelector('table');
                             if (!table) return;
                             const tbody = table.querySelector('tbody') || table;
 
                             Array.from(tbody.querySelectorAll('tr')).forEach(r => {
-                                if (r.textContent.includes('0 пар') || r.textContent.includes('Выходной')) r.remove();
+                                if (r.classList.contains('custom-no-pairs') || r.textContent.includes('0 пар') || r.textContent.includes('Выходной')) r.remove();
                             });
 
                             let audHtml = '';
@@ -32526,7 +32527,10 @@ mark.search-highlight,
                 table.querySelectorAll('.timetable-gap-row, .custom-no-pairs').forEach(r => r.remove());
 
                 const rows = Array.from(table.querySelectorAll('tr'));
-                if (rows.length === 1 && rows[0].textContent.includes('0 пар')) return;
+                if (rows.length === 1 && rows[0].textContent.includes('0 пар')) {
+                    rows[0].classList.add('custom-no-pairs');
+                    return;
+                }
 
                 // Отбираем только "занятые" строки
                 const occupiedRows = rows.filter(row => {
