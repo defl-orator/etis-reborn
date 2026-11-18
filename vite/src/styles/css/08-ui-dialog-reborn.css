@@ -1,0 +1,389 @@
+/* --- UI DIALOG REBORN --- */
+.ui-dialog {
+    background: var(--color-body) !important;
+    border: none !important;
+    border-radius: var(--radius-large) !important;
+    box-shadow: var(--shadow-dialog) !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    z-index: 1000002 !important;
+}
+.ui-widget-header {
+    background: var(--color-table-header) !important;
+    border: none !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    padding: 1.6rem 2.4rem !important;
+    border-radius: 0 !important;
+}
+.ui-dialog .ui-dialog-title {
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    margin: 0 !important;
+}
+.ui-dialog .ui-dialog-titlebar-close {
+    position: absolute !important;
+    right: 12px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    width: 30px !important;
+    height: 30px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    background: var(--color-highlight) !important;
+    border-radius: 50% !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: background 0.2s, transform 0.2s !important;
+}
+
+.ui-dialog .ui-dialog-titlebar-close span,
+.ui-dialog .ui-dialog-titlebar-close .ui-icon,
+.ui-dialog .ui-dialog-titlebar-close .ui-button-icon-primary {
+    display: none !important;
+}
+
+.ui-dialog .ui-dialog-titlebar-close::after {
+    content: '' !important;
+    width: 16px !important;
+    height: 16px !important;
+    display: block !important;
+    background-color: var(--color-text-secondary) !important;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66 194.34a8 8 0 0 1-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 0 1-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0 1 11.32-11.32L128 116.69l66.34-66.35a8 8 0 0 1 11.32 11.32L139.31 128Z'/%3E") center / contain no-repeat !important;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M205.66 194.34a8 8 0 0 1-11.32 11.32L128 139.31l-66.34 66.35a8 8 0 0 1-11.32-11.32L116.69 128 50.34 61.66a8 8 0 0 1 11.32-11.32L128 116.69l66.34-66.35a8 8 0 0 1 11.32 11.32L139.31 128Z'/%3E") center / contain no-repeat !important;
+}
+
+.ui-dialog .ui-dialog-titlebar-close:hover {
+    background: var(--color-accent-active) !important;
+}
+
+.ui-dialog .ui-dialog-titlebar-close:hover::after {
+    background-color: var(--color-accent) !important;
+}
+.ui-dialog .ui-dialog-titlebar-close * {
+    display: none !important;
+}
+.ui-dialog .ui-dialog-titlebar-close::before {
+    content: 'e5cd' !important;
+    font-family: 'Material Symbols Rounded' !important;
+    font-size: 20px !important;
+    color: var(--color-text-secondary) !important;
+    display: block !important;
+    visibility: visible !important;
+    line-height: 1 !important;
+}
+.ui-dialog .ui-dialog-titlebar-close:before {
+    content: 'close' !important;
+    font-family: 'Material Symbols Rounded' !important;
+    font-size: 2.2rem !important;
+    color: var(--color-text-secondary) !important;
+}
+.ui-dialog .ui-dialog-titlebar-close .ui-button-icon-primary,
+.ui-dialog .ui-dialog-titlebar-close .ui-icon {
+    display: none !important;
+}
+.ui-dialog .ui-dialog-titlebar-close:after {
+    content: 'close' !important;
+    font-family: 'Material Symbols Rounded' !important;
+    font-size: 20px !important;
+    color: var(--color-text-secondary) !important;
+    display: block !important;
+    text-indent: 0 !important;
+}
+.ui-dialog .ui-dialog-titlebar-close:hover::before {
+    color: var(--color-accent) !important;
+}
+.ui-dialog .ui-dialog-titlebar-close:active {
+    transform: translateY(-50%) scale(0.9) !important;
+}
+.ui-dialog .ui-dialog-titlebar-close:hover:after {
+    color: var(--color-accent) !important;
+}
+.ui-dialog .ui-dialog-content {
+    padding: 2.4rem !important;
+    background: var(--color-card) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.3rem !important;
+}
+#dialog form {
+    margin-top: 2rem !important;
+    padding-top: 2rem !important;
+    border-top: 1px solid var(--color-table-border) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.2rem !important;
+}
+#dialog p {
+    margin-bottom: 1rem !important;
+    color: var(--color-text-secondary) !important;
+}
+#dialog span {
+    font-weight: 600 !important;
+    color: var(--color-text-primary) !important;
+}
+.fileselect {
+    background: var(--color-input) !important;
+    padding: 1rem !important;
+    border-radius: var(--radius-small) !important;
+    border: 1px dashed var(--color-table-border) !important;
+    width: 100% !important;
+    font-size: 1.2rem !important;
+    cursor: pointer !important;
+}
+#dialog .btn {
+    background: var(--color-accent) !important;
+    color: var(--color-text-primary-invert) !important;
+    border: none !important;
+    border-radius: 50px !important;
+    padding: 1rem 2rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    align-self: flex-end !important;
+    transition: opacity 0.2s !important;
+}
+#dialog .btn:hover {
+    opacity: 0.9 !important;
+}
+.ui-widget-overlay {
+    background: rgba(0, 0, 0, 0.5) !important;
+    opacity: 1 !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+}
+#dialog table {
+    width: 100% !important;
+    box-shadow: none !important;
+    border: 1px solid var(--color-table-border) !important;
+}
+
+/* --- ДОГОВОРЫ --- */
+.contracts-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.2rem !important;
+    margin-top: 2.5rem !important;
+}
+.contract-card.instruction-footer {
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    box-shadow: none !important;
+    opacity: 0.8;
+}
+.contract-card.instruction-footer:hover {
+    opacity: 1;
+    background: var(--color-highlight) !important;
+}
+.span9>h2 {
+    margin-bottom: 1rem !important;
+}
+.contracts-container+.advice-card {
+    margin-top: 4rem !important;
+    background: var(--color-highlight) !important;
+    border: 1px dashed var(--color-table-border) !important;
+    box-shadow: none !important;
+}
+.contract-card {
+    display: flex !important;
+    align-items: center !important;
+    padding: 1.6rem 2rem !important;
+    background: var(--color-card) !important;
+    border-radius: var(--radius-medium) !important;
+    box-shadow: var(--shadow-main) !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    gap: 1.6rem !important;
+    border: 1px solid transparent !important;
+    position: relative !important;
+    overflow: hidden !important;
+}
+.contract-card:hover {
+    transform: translateY(-2px) !important;
+    background: var(--color-highlight) !important;
+}
+.contract-card .material-icons {
+    font-size: 2.4rem !important;
+    color: var(--color-accent) !important;
+    flex-shrink: 0 !important;
+}
+.contract-content {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.4rem !important;
+    flex-grow: 1 !important;
+}
+.contract-title {
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    line-height: 1.3 !important;
+}
+.contract-meta {
+    font-size: 1.2rem !important;
+    color: var(--color-text-secondary) !important;
+}
+.contract-status {
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    padding: 0.4rem 1rem !important;
+    border-radius: 2rem !important;
+    letter-spacing: 0.5px !important;
+}
+.contract-card.status-active {
+    border-left: 4px solid var(--color-green) !important;
+}
+.contract-card.status-active .contract-status {
+    background: rgba(52, 199, 89, 0.1) !important;
+    color: var(--color-green) !important;
+}
+.contract-card.status-terminated {
+    opacity: 0.7 !important;
+}
+.contract-card.status-terminated .contract-status {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-secondary) !important;
+}
+.instruction-card-wrapper {
+    margin-bottom: 3rem !important;
+}
+
+/* --- ПРИКАЗЫ --- */
+.orders-container {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.4rem !important;
+    margin-top: 2rem !important;
+}
+.order-card {
+    display: flex !important;
+    align-items: center !important;
+    padding: 1.6rem 2rem !important;
+    background: var(--color-card) !important;
+    border-radius: var(--radius-medium) !important;
+    box-shadow: var(--shadow-main) !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    gap: 1.8rem !important;
+    border: 1px solid transparent !important;
+}
+.order-card:hover {
+    transform: translateX(5px) !important;
+    background: var(--color-highlight) !important;
+    border-color: var(--color-accent-active) !important;
+}
+.order-icon-box {
+    width: 4.2rem !important;
+    height: 4.2rem !important;
+    background: var(--color-accent-active) !important;
+    border-radius: 1.2rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+.order-icon-box .material-icons {
+    color: var(--color-accent) !important;
+    font-size: 2.2rem !important;
+}
+.order-info {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.4rem !important;
+    flex-grow: 1 !important;
+}
+.order-meta {
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+.order-title {
+    font-size: 1.4rem !important;
+    font-weight: 500 !important;
+    color: var(--color-text-primary) !important;
+    line-height: 1.4 !important;
+}
+.order-card[data-type="благодарность"] .order-icon-box {
+    background: rgba(255, 204, 0, 0.15) !important;
+}
+.order-card[data-type="благодарность"] .order-icon-box .material-icons {
+    color: #FF9500 !important;
+}
+
+/* --- БЛАНКИ --- */
+.forms-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+    gap: 1.2rem !important;
+    margin: 1.6rem 0 3rem 0 !important;
+}
+.form-card {
+    background: var(--color-card) !important;
+    padding: 1.4rem 1.6rem !important;
+    border-radius: var(--radius-medium) !important;
+    box-shadow: var(--shadow-main) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.2rem !important;
+    text-decoration: none !important;
+    transition: all 0.2s ease !important;
+    border: 1px solid transparent !important;
+}
+.form-card:hover {
+    transform: translateY(-2px) !important;
+    background: var(--color-highlight) !important;
+    border-color: var(--color-accent-active) !important;
+}
+.form-icon-box {
+    width: 4rem !important;
+    height: 4rem !important;
+    border-radius: 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-shrink: 0 !important;
+}
+.form-name {
+    font-size: 1.3rem !important;
+    font-weight: 500 !important;
+    color: var(--color-text-primary) !important;
+    line-height: 1.4 !important;
+    flex-grow: 1 !important;
+}
+.form-badges {
+    display: flex !important;
+    gap: 0.4rem !important;
+    margin-left: auto !important;
+}
+.type-word {
+    background: rgba(43, 87, 154, 0.1) !important;
+    color: #2b579a !important;
+}
+.type-excel {
+    background: rgba(33, 115, 70, 0.1) !important;
+    color: #217346 !important;
+}
+.type-pdf {
+    background: rgba(244, 15, 2, 0.1) !important;
+    color: #f40f02 !important;
+}
+.badge-ext {
+    font-size: 0.9rem !important;
+    font-weight: 800 !important;
+    padding: 0.2rem 0.5rem !important;
+    border-radius: 0.5rem !important;
+    background: var(--color-body) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid var(--color-table-border) !important;
+}
+.span9>h3 {
+    margin-top: 3rem !important;
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+}
+

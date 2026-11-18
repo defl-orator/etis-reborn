@@ -1,0 +1,390 @@
+/* --- МОБИЛЬНАЯ ШТОРКА И ДОК --- */
+
+/* ========================================================= */
+@media (max-width: 960px) {
+    .mobile-menu-btn {
+        display: none !important;
+    }
+    .span3 .sidebar-bio-desktop,
+    .span3 .sidebar-footer-desktop {
+        display: none !important;
+    }
+    .span3 .sidebar-bio-mobile,
+    .span3 .sidebar-footer-mobile {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .mobile-nav-dock {
+        display: flex !important;
+        position: fixed !important;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 16px) !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 1000001 !important;
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        border-radius: 50px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+        padding: 4px !important;
+        align-items: center !important;
+        gap: 4px !important;
+        backdrop-filter: blur(16px) saturate(180%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease !important;
+    }
+    .mobile-nav-dock.dock-hidden {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: translateX(-50%) translateY(40px) !important;
+    }
+    html body .mobile-dock-item,
+    html body button.mobile-dock-item,
+    html body .mobile-dock-item:hover,
+    html body .mobile-dock-item:focus,
+    html body .mobile-dock-item:active,
+    html body .mobile-dock-item * {
+        text-decoration: none !important;
+        border-bottom: none !important;
+        outline: none !important;
+        box-shadow: none !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    html body .mobile-dock-item,
+    html body button.mobile-dock-item {
+        position: relative !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        width: 52px !important;
+        height: 42px !important;
+        border-radius: 21px !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        cursor: pointer !important;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    html body .mobile-dock-item .material-icons,
+    html body button.mobile-dock-item .material-icons {
+        font-size: 24px !important;
+        color: var(--color-text-secondary) !important;
+        margin: 0 !important;
+    }
+    html body .mobile-dock-item.active,
+    html body button.mobile-dock-item.active {
+        background: var(--bg-accent) !important;
+        border: none !important;
+        outline: none !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+    }
+    html body .mobile-dock-item.active .material-icons,
+    html body button.mobile-dock-item.active .material-icons {
+        color: var(--color-text-primary-invert) !important;
+        -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+        .span3 li.active>a .ph,
+        .mobile-dock-item.active .ph {
+            font-family: "Phosphor-Fill" !important;
+        }
+    }
+    .mobile-dock-item .mobile-notify-dot {
+        position: absolute !important;
+        top: 8px !important;
+        right: 14px !important;
+        left: auto !important;
+        transform: none !important;
+        width: 8px !important;
+        height: 8px !important;
+        background-color: #FF3B30 !important;
+        border-radius: 50% !important;
+        border: 2px solid var(--color-card) !important;
+        pointer-events: none !important;
+        opacity: 0;
+        display: block !important;
+        box-shadow: 0 0 6px rgba(255, 59, 48, 0.4) !important;
+        transition: opacity 0.25s ease !important;
+    }
+    .mobile-dock-item.has-updates .mobile-notify-dot {
+        opacity: 1 !important;
+    }
+    .span3 {
+        display: block !important;
+        position: fixed !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        top: auto !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: auto !important;
+        max-height: 85vh !important;
+        max-height: 85dvh !important;
+        margin: 0 !important;
+        padding: 24px 16px calc(env(safe-area-inset-bottom, 20px) + 24px) 16px !important;
+        background: var(--color-body) !important;
+        z-index: 1000010 !important;
+        transform: translateY(105%) !important;
+        transition: none !important;
+        overflow-y: auto !important;
+        overscroll-behavior: contain !important;
+        border-radius: 28px 28px 0 0 !important;
+        box-sizing: border-box !important;
+        box-shadow: none !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    .span3::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 10px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 40px !important;
+        height: 4px !important;
+        background: var(--color-scrollbar-thumb) !important;
+        border-radius: 4px !important;
+        z-index: 10 !important;
+    }
+    .span3.ready-to-animate {
+        transition: transform 0.35s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.35s ease, visibility 0.35s ease !important;
+    }
+    .span3.mobile-active {
+        transform: translateY(0) !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3) !important;
+    }
+    .span3 .sidebar-logo {
+        padding: 0.6rem 1.6rem 1.6rem 1.6rem !important;
+        margin: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        justify-content: flex-start !important;
+    }
+    .span3 .sidebar-logo img {
+        width: 24px !important;
+        height: 24px !important;
+        object-fit: contain !important;
+        margin: 0 !important;
+        flex-shrink: 0 !important;
+    }
+    .span3 .sidebar-logo .sidebar-logo-title {
+        font-size: 2.4rem !important;
+        font-weight: 800 !important;
+        color: var(--color-text-primary) !important;
+        line-height: 1 !important;
+    }
+    .span3 .sidebar-nav-group,
+    .span3 .sidebar-user-info,
+    .span3 .sidebar-footer {
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        border-radius: var(--radius-large) !important;
+        margin-bottom: 1.6rem !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-shadow: var(--shadow-main) !important;
+        padding: 0 !important;
+    }
+    .span3 .sidebar-nav-group.group-timetable {
+        display: none !important;
+    }
+    .span3 .sidebar-nav-group>li {
+        margin: 0 !important;
+        border-radius: 0 !important;
+        list-style: none !important;
+    }
+    .span3 .sidebar-nav-group>li>a,
+    .span3 .sidebar-card-row,
+    .sidebar-collapsible-sections .sidebar-folder-header {
+        margin: 0 !important;
+        border-radius: 0 !important;
+        padding: 1.3rem 1.6rem !important;
+        position: relative !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        text-align: left !important;
+        text-decoration: none !important;
+        gap: 12px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .span3 li>a .chevron,
+    .span3 .sidebar-card-row .chevron {
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: -4px !important;
+        color: var(--color-text-secondary) !important;
+        font-size: 20px !important;
+        width: auto !important;
+        opacity: 0.5;
+        flex-shrink: 0 !important;
+    }
+    .span3 .sidebar-divider {
+        display: none !important;
+    }
+    .span3 .sidebar-nav-group>li:not(:last-child)>a::after,
+    .span3 .sidebar-card-row:not(:last-child)::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 52px !important;
+        right: 16px !important;
+        height: 1px !important;
+        background: var(--color-table-border) !important;
+        display: block !important;
+    }
+    .span3 .sidebar-nav-group>li:last-child>a::after,
+    .span3 .sidebar-nav-group>li:not(:has(~ li:not(.sidebar-divider)))>a::after {
+        display: none !important;
+    }
+    .mobile-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        z-index: 1000008 !important;
+        opacity: 0;
+        visibility: hidden;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+    }
+    .mobile-overlay.ready-to-animate {
+        transition: opacity 0.3s ease, visibility 0.3s ease !important;
+    }
+    .mobile-overlay.active {
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+    .span3 .sidebar-user-info::before,
+    .span3 .sidebar-footer::before,
+    .sidebar-user-info::before,
+    .sidebar-footer::before {
+        display: none !important;
+    }
+    .span3 .sidebar-nav-group>li.active>a {
+        margin: 5px 6px !important;
+        padding: 1.1rem 1.4rem !important;
+        border-radius: 18px !important;
+        width: auto !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+    }
+    .span3 .sidebar-nav-group>li.active>a .material-icons {
+        .span3 li.active>a .ph,
+        .mobile-dock-item.active .ph {
+            font-family: "Phosphor-Fill" !important;
+        }
+    }
+    .span3 li.active>a .chevron,
+    .span3 .sidebar-nav-group>li.active>a .chevron {
+        display: none !important;
+    }
+    .span3 .sidebar-nav-group>li.active>a::after {
+        display: none !important;
+    }
+    .span3 .sidebar-nav-group>li:has(+ li.active)>a::after {
+        display: none !important;
+    }
+    html body .sidebar-tabs-container .settings-sidebar-btn.active,
+    html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn.active,
+    html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn.active {
+        margin: 5px 6px !important;
+        padding: 1.1rem 1.4rem !important;
+        border-radius: 18px !important;
+        width: auto !important;
+    }
+    html body .sidebar-tabs-container .settings-sidebar-btn.active .material-icons,
+    html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn.active .material-icons,
+    html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn.active .material-icons {
+        .span3 li.active>a .ph,
+        .mobile-dock-item.active .ph {
+            font-family: "Phosphor-Fill" !important;
+        }
+    }
+    html body .sidebar-tabs-container .settings-sidebar-btn.active::after,
+    html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn.active::after,
+    html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn.active::after,
+    html body .sidebar-tabs-container .settings-sidebar-btn:has(+ .active)::after,
+    html body #etis-settings-modal .sidebar-tabs-container .settings-sidebar-btn:has(+ .active)::after,
+    html body .analytics-modal .sidebar-tabs-container .settings-sidebar-btn:has(+ .active)::after {
+        display: none !important;
+    }
+}
+
+/* --- ДЕМО-РЕЖИМ: БЛОКИРОВКА НЕПОДДЕРЖИВАЕМЫХ ВКЛАДОК И ЭЛЕМЕНТОВ --- */
+.demo-disabled-item,
+.span3 li.demo-disabled-tab>a,
+.weeks .week.demo-disabled-item,
+.submenu a.demo-disabled-item {
+    position: relative !important;
+    cursor: not-allowed !important;
+}
+.span3 li.demo-disabled-tab>a {
+    overflow: hidden !important;
+}
+.demo-locked-overlay {
+    position: absolute !important;
+    inset: 0 !important;
+    background: rgba(22, 24, 26, 0.88) !important;
+    backdrop-filter: blur(4px) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    color: #ffffff !important;
+    font-size: 1.2rem !important;
+    font-weight: 700 !important;
+    border-radius: inherit !important;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease !important;
+    z-index: 100 !important;
+    box-sizing: border-box !important;
+    white-space: nowrap !important;
+}
+.demo-locked-overlay .material-icons {
+    font-size: 18px !important;
+    margin: 0 !important;
+    color: #ffffff !important;
+    line-height: 1 !important;
+}
+.demo-locked-overlay span {
+    color: #ffffff !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+}
+
+/* Для компактных кнопок недель скрываем текст, оставляя только замок */
+.weeks .week .demo-locked-overlay span:not(.material-icons) {
+    display: none !important;
+}
+.weeks .week .demo-locked-overlay .material-icons {
+    font-size: 16px !important;
+}
+
+/* Ховер на ПК */
+@media (hover: hover) and (pointer: fine) {
+    .demo-disabled-item:hover .demo-locked-overlay,
+    .span3 li.demo-disabled-tab>a:hover .demo-locked-overlay {
+        opacity: 1 !important;
+    }
+}
+
+/* Тап / Клик на смартфонах и ПК */
+.demo-disabled-item.demo-tab-locked .demo-locked-overlay,
+.demo-disabled-item:active .demo-locked-overlay,
+.span3 li.demo-disabled-tab>a.demo-tab-locked .demo-locked-overlay,
+.span3 li.demo-disabled-tab>a:active .demo-locked-overlay {
+    opacity: 1 !important;
+}
+

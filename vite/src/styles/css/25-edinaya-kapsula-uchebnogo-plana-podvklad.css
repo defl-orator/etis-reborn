@@ -1,0 +1,308 @@
+/* --- ЕДИНАЯ КАПСУЛА УЧЕБНОГО ПЛАНА (ПОДВКЛАДКИ + ПОИСК) --- */
+.plan-controls-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    position: relative !important;
+    width: 100% !important;
+    height: 4.6rem !important;
+    box-sizing: border-box !important;
+    border-radius: 50px !important;
+    background-color: var(--color-card) !important;
+    box-shadow: var(--shadow-main) !important;
+    border: 1px solid var(--color-table-border) !important;
+    padding: 4px !important;
+    margin-bottom: 2rem !important;
+    overflow: hidden !important;
+}
+.plan-default-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 100% !important;
+    gap: 8px !important;
+    transition: opacity 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+.plan-submenu-track {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    height: 3.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    background: var(--color-highlight) !important;
+    border-radius: 50px !important;
+    padding: 3px !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    gap: 0 !important;
+}
+.plan-submenu-track::-webkit-scrollbar {
+    display: none !important;
+}
+.plan-submenu-track a,
+.plan-submenu-track b {
+    flex: 1 0 auto !important;
+    min-width: max-content !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 3.2rem !important;
+    padding: 0 16px !important;
+    border-radius: 50px !important;
+    font-size: 1.3rem !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    transition: background 0.2s ease, color 0.2s ease !important;
+}
+.plan-submenu-track a {
+    color: var(--color-text-secondary) !important;
+    font-weight: 500 !important;
+    background: transparent !important;
+}
+.plan-submenu-track a:hover {
+    color: var(--color-text-primary) !important;
+}
+.plan-submenu-track b {
+    background: var(--bg-accent, var(--color-accent)) !important;
+    color: var(--color-text-primary-invert, #ffffff) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), inset 0 0 0 1px var(--color-table-border) !important;
+    border: none !important;
+}
+[theme="light"] .plan-submenu-track b {
+    backdrop-filter: blur(14px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+}
+[theme="dark"] .plan-submenu-track b {
+    backdrop-filter: blur(14px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(180%) !important;
+}
+
+/* Отсутствие обводки у карточек и блоков для темной и ночной тем */
+[theme="dark"] .day,
+[theme="night"] .day,
+[theme="dark"] .msg-card,
+[theme="night"] .msg-card,
+[theme="dark"] .teacher-card,
+[theme="night"] .teacher-card,
+[theme="dark"] .tpr-card,
+[theme="night"] .tpr-card,
+[theme="dark"] .about-card,
+[theme="night"] .about-card,
+[theme="dark"] .survey-card,
+[theme="night"] .survey-card,
+[theme="dark"] .review-card,
+[theme="night"] .review-card,
+[theme="dark"] .order-card,
+[theme="night"] .order-card,
+[theme="dark"] .contract-card,
+[theme="night"] .contract-card,
+[theme="dark"] .form-card,
+[theme="night"] .form-card,
+[theme="dark"] .jour-card,
+[theme="night"] .jour-card,
+[theme="dark"] .jour-info-card,
+[theme="night"] .jour-info-card,
+[theme="dark"] .wide-table-wrapper,
+[theme="night"] .wide-table-wrapper,
+[theme="dark"] .ios-settings-group,
+[theme="night"] .ios-settings-group,
+[theme="dark"] table:not(.timetable-grid):not(.wide-table-wrapper table),
+[theme="night"] table:not(.timetable-grid):not(.wide-table-wrapper table),
+[theme="dark"] form.form,
+[theme="night"] form.form,
+[theme="dark"] .cert-footer-card,
+[theme="night"] .cert-footer-card,
+[theme="dark"] .absence-stat,
+[theme="night"] .absence-stat,
+[theme="dark"] .stat-box,
+[theme="night"] .stat-box,
+[theme="dark"] .leaderboard-item,
+[theme="night"] .leaderboard-item,
+[theme="dark"] .sync-card,
+[theme="night"] .sync-card,
+[theme="dark"] .calendar-card,
+[theme="night"] .calendar-card,
+[theme="dark"] #bento-capture-area,
+[theme="night"] #bento-capture-area,
+[theme="dark"] #analytics-bento-capture,
+[theme="night"] #analytics-bento-capture,
+[theme="dark"] .sidebar-nav-group,
+[theme="night"] .sidebar-nav-group,
+[theme="dark"] .sidebar-user-info,
+[theme="night"] .sidebar-user-info,
+[theme="dark"] .sidebar-footer,
+[theme="night"] .sidebar-footer,
+[theme="dark"] .sidebar-collapsible-sections,
+[theme="night"] .sidebar-collapsible-sections,
+[theme="dark"] .week-select-wrapper,
+[theme="night"] .week-select-wrapper,
+[theme="dark"] .timetable-toolbar,
+[theme="night"] .timetable-toolbar,
+[theme="dark"] .term-controls-wrapper,
+[theme="night"] .term-controls-wrapper,
+[theme="dark"] .plan-controls-wrapper,
+[theme="night"] .plan-controls-wrapper,
+[theme="dark"] .etis-official-notice,
+[theme="night"] .etis-official-notice,
+[theme="dark"] .submenu,
+[theme="night"] .submenu,
+[theme="dark"] .sync-tabs,
+[theme="night"] .sync-tabs,
+[theme="dark"] .survey-intro-card,
+[theme="night"] .survey-intro-card,
+[theme="dark"] .warning-banner-card,
+[theme="night"] .warning-banner-card,
+[theme="dark"] .electr-description,
+[theme="night"] .electr-description {
+    border: none !important;
+}
+@media (min-width: 961px) {
+    [theme="dark"] .span3,
+    [theme="night"] .span3 {
+        border: none !important;
+    }
+    [theme="dark"] .sidebar-folder.is-open,
+    [theme="night"] .sidebar-folder.is-open {
+        border: 1px solid var(--color-table-border) !important;
+    }
+}
+.plan-submenu-track>*:not(:last-child):not(.eval-plan-link) {
+    position: relative !important;
+}
+.plan-submenu-track>*:not(:last-child):not(.eval-plan-link)::after {
+    content: '' !important;
+    position: absolute !important;
+    right: 0 !important;
+    top: 25% !important;
+    bottom: 25% !important;
+    width: 1px !important;
+    background-color: var(--color-table-border) !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+.plan-submenu-track>*:has(+ b)::after,
+.plan-submenu-track>b::after {
+    display: none !important;
+}
+.plan-search-circle-btn {
+    all: unset !important;
+    box-sizing: border-box !important;
+    width: 3.8rem !important;
+    height: 3.8rem !important;
+    min-width: 3.8rem !important;
+    max-width: 3.8rem !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--color-highlight) !important;
+    color: var(--color-text-secondary) !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
+}
+.plan-search-circle-btn:hover {
+    background: var(--color-highlight-light) !important;
+    color: var(--color-accent) !important;
+}
+.plan-search-circle-btn .material-icons {
+    font-size: 2rem !important;
+    line-height: 1 !important;
+}
+.plan-controls-wrapper.is-searching .plan-default-bar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(-8px) !important;
+}
+.plan-controls-wrapper.is-searching .term-search-bar {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateY(0) !important;
+}
+.subject-score-capsule,
+.weeks .week.current,
+.gpa-capsule,
+.plan-submenu-track b,
+.term-semesters-capsule b {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+.plan-semester-header {
+    font-size: 2.2rem !important;
+    font-weight: 800 !important;
+    color: var(--color-text-primary) !important;
+    margin-top: 3.6rem !important;
+    margin-bottom: 1.6rem !important;
+    letter-spacing: -0.3px !important;
+}
+#ql-sync-group.ios-settings-group>*::after,
+#ql-sync-group .ios-settings-row::after,
+.ios-settings-group>.sync-row-e2ee::after {
+    left: 70px !important;
+}
+.key-blurred {
+    filter: blur(6px);
+    user-select: none !important;
+    -webkit-user-select: none !important;
+    cursor: pointer;
+    transition: filter 0.2s ease, opacity 0.2s ease;
+    border-radius: 4px;
+}
+.key-blurred:hover {
+    opacity: 0.8;
+}
+.key-blurred.revealed {
+    filter: none !important;
+    user-select: text !important;
+    -webkit-user-select: text !important;
+}
+.sidebar-action-icon-btn,
+#sidebar-notifications-btn,
+#sidebar-search-btn {
+    position: relative !important;
+}
+.bell-counter-badge {
+    position: absolute !important;
+    top: -4px !important;
+    right: -4px !important;
+    z-index: 10 !important;
+}
+
+/* Очистка обводки */
+.sidebar-actions-capsule {
+    border: none !important;
+}
+.analytics-modal .ios-settings-group,
+.analytics-modal div[style*="border:1px solid var(--color-table-border)"] {
+    border: none !important;
+}
+.custom-pair-input-group input,
+.custom-pair-input-group select,
+.cp-input-wrap input,
+.cp-input-wrap select,
+#cp-smart-add {
+    border: none !important;
+}
+.cons-teacher-card,
+#cons-drop-zone,
+#cons-teachers-list>div {
+    border: none !important;
+}
+.search-capsule,
+.teacher-search-wrapper .search-capsule,
+.library-search-wrap,
+#ann-search,
+#msg-search {
+    border: none !important;
+}
+.search-modal-input-wrap,
+.search-result-row,
+.notif-history-item,
+#etis-globalsearch-modal .ui-widget-header,
+#etis-notifs-modal .ui-widget-header {
+    border: none !important;
+}

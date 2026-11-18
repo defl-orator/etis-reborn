@@ -1,0 +1,25 @@
+// ==UserScript==
+// @name         ЕТИС REBORN
+// @namespace    http://tampermonkey.net/
+// @version      3.02
+// @changelog    Правка смены тем. Смена иконок
+// @description  Глобальное обновление ЕТИСа
+// @author       dya_dya
+// @icon         https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png
+// @icon64       https://cdn.jsdelivr.net/gh/defl-orator/etis-reborn@main/img/logo.png
+// @match        https://student.psu.ru/*
+// @run-at       document-start
+// @grant        GM_xmlhttpRequest
+// @grant        GM_info
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        unsafeWindow
+// @grant        GM_registerMenuCommand
+// @connect      raw.githubusercontent.com
+// @connect      api.github.com
+// @connect      cdn.jsdelivr.net
+// @connect      cdnjs.cloudflare.com
+// @connect      etisreborn-fab19-default-rtdb.europe-west1.firebasedatabase.app
+// @updateURL    https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js
+// @downloadURL  https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js
+// ==/UserScript==

@@ -1,0 +1,503 @@
+/* --- ПРОПУЩЕННЫЕ ЗАНЯТИЯ --- */
+.absence-capsule {
+    display: inline-block !important;
+    padding: 0.4rem 1rem !important;
+    border-radius: 50px !important;
+    font-weight: 700 !important;
+    font-size: 1.2rem !important;
+    white-space: nowrap !important;
+    cursor: help !important;
+}
+.absence-capsule.valid {
+    background: rgba(52, 199, 89, 0.15) !important;
+    color: var(--color-green) !important;
+}
+.absence-capsule.invalid {
+    background: rgba(255, 59, 48, 0.15) !important;
+    color: var(--color-red) !important;
+}
+.absence-summary {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    gap: 1.6rem !important;
+    margin-top: 1.6rem !important;
+    margin-bottom: 2rem !important;
+}
+.absence-stat {
+    background: var(--color-card) !important;
+    border-radius: var(--radius-medium) !important;
+    padding: 1.6rem 2rem !important;
+    box-shadow: var(--shadow-main) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    text-align: left !important;
+    border: 1px solid var(--color-table-border) !important;
+}
+.absence-stat-val {
+    font-size: 2.6rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    margin-bottom: 0.6rem !important;
+    color: var(--color-text-primary) !important;
+}
+.absence-stat-label {
+    font-size: 1.2rem !important;
+    font-weight: 600 !important;
+    color: var(--color-text-secondary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+}
+.absence-stat.valid {
+    border-color: rgba(52, 199, 89, 0.3) !important;
+}
+.absence-stat.valid .absence-stat-val {
+    color: var(--color-green) !important;
+}
+.absence-stat.invalid {
+    border-color: rgba(255, 59, 48, 0.3) !important;
+}
+.absence-stat.invalid .absence-stat-val {
+    color: var(--color-red) !important;
+}
+
+/* --- STU.SIGNS (МОИ ОЦЕНКИ) --- */
+.gpa-container {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 1.2rem !important;
+    margin-bottom: 2.4rem !important;
+    font-size: 1.4rem !important;
+    font-weight: 600 !important;
+    color: var(--color-text-primary) !important;
+    background: var(--color-card) !important;
+    padding: 1.2rem 2rem !important;
+    border-radius: var(--radius-medium) !important;
+    box-shadow: var(--shadow-main) !important;
+}
+.gpa-capsule {
+    background: var(--color-accent) !important;
+    color: var(--color-text-primary-invert) !important;
+    padding: 0.4rem 1.6rem !important;
+    border-radius: 50px !important;
+    font-weight: 800 !important;
+    font-size: 1.5rem !important;
+}
+.subject-header-flex {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    margin-top: 3.2rem !important;
+    margin-bottom: 1.2rem !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.subject-header-flex h3 {
+    margin: 0 !important;
+    line-height: 1.4 !important;
+    flex-grow: 1 !important;
+}
+.subject-score-capsule {
+    padding: 0.6rem 1.4rem !important;
+    border-radius: 50px !important;
+    font-weight: 800 !important;
+    font-size: 1.4rem !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    margin-left: 1.5rem !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* --- ОБЩИЕ СТИЛИ ТАБЛИЦ --- */
+.wide-table-wrapper table td,
+.wide-table-wrapper table th,
+.span9 table.common td,
+.span9 table.common th {
+    border-left: none !important;
+    border-right: none !important;
+    vertical-align: middle !important;
+}
+
+/* Единая внешняя капсула */
+.term-controls-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    position: relative !important;
+    width: 100% !important;
+    height: 4.6rem !important;
+    box-sizing: border-box !important;
+    border-radius: 50px !important;
+    background-color: var(--color-card) !important;
+    box-shadow: var(--shadow-main) !important;
+    border: 1px solid var(--color-table-border) !important;
+    padding: 4px !important;
+    margin-top: 0 !important;
+    margin-bottom: 2rem !important;
+    overflow: hidden !important;
+}
+
+/* Обычное состояние: семестры + кнопки */
+.term-default-bar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    height: 100% !important;
+    gap: 8px !important;
+    transition: opacity 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* Внутренняя капсула с семестрами */
+.term-semesters-capsule {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    height: 3.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    background: var(--color-highlight) !important;
+    border-radius: 50px !important;
+    padding: 3px !important;
+    box-sizing: border-box !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    gap: 0 !important;
+}
+.term-semesters-capsule>*:not(:last-child) {
+    position: relative !important;
+}
+.term-semesters-capsule::-webkit-scrollbar {
+    display: none !important;
+}
+.term-semesters-capsule a,
+.term-semesters-capsule b {
+    all: unset !important;
+    flex: 1 0 auto !important;
+    min-width: max-content !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    height: 3.2rem !important;
+    padding: 0 16px !important;
+    border-radius: 50px !important;
+    font-size: 1.3rem !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    transition: background 0.2s ease, color 0.2s ease !important;
+}
+.term-semesters-capsule a {
+    color: var(--color-text-secondary) !important;
+    font-weight: 500 !important;
+}
+.term-semesters-capsule a:hover {
+    background: transparent !important;
+    color: var(--color-text-primary) !important;
+    transform: none !important;
+}
+
+/* Внутренняя капсула действий (поиск + топ) */
+.term-actions-capsule {
+    flex: 0 0 auto !important;
+    height: 3.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    background: var(--color-highlight) !important;
+    border-radius: 50px !important;
+    padding: 3px 6px !important;
+    box-sizing: border-box !important;
+    gap: 4px !important;
+}
+
+/* Разделитель между иконкой поиска и топа */
+.term-actions-divider {
+    width: 1px !important;
+    height: 16px !important;
+    background-color: var(--color-table-border) !important;
+    transition: opacity 0.15s ease !important;
+    flex-shrink: 0 !important;
+    pointer-events: none !important;
+}
+.term-semesters-capsule>*:not(:last-child)::after {
+    content: '' !important;
+    position: absolute !important;
+    right: 0 !important;
+    top: 25% !important;
+    bottom: 25% !important;
+    width: 1px !important;
+    background-color: var(--color-table-border) !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+.term-semesters-capsule>*:has(+ b)::after,
+.term-semesters-capsule>b::after {
+    display: none !important;
+}
+.term-actions-capsule:has(.term-action-btn:hover) .term-actions-divider {
+    opacity: 0 !important;
+}
+.term-action-btn {
+    all: unset !important;
+    box-sizing: border-box !important;
+    width: 3.2rem !important;
+    height: 3.2rem !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: var(--color-text-secondary) !important;
+    cursor: pointer !important;
+    transition: background 0.15s ease, color 0.15s ease !important;
+}
+.term-action-btn:hover {
+    background: var(--color-card) !important;
+    color: var(--color-accent) !important;
+}
+.term-action-btn .material-icons {
+    font-size: 1.9rem !important;
+    line-height: 1 !important;
+}
+
+/* Состояние активного поиска */
+.term-search-bar {
+    position: absolute !important;
+    top: 4px !important;
+    left: 4px !important;
+    right: 4px !important;
+    bottom: 4px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(8px) !important;
+    transition: opacity 0.25s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+.term-search-input-capsule {
+    flex: 1 1 auto !important;
+    height: 3.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    background: var(--color-highlight) !important;
+    border-radius: 50px !important;
+    padding: 0 16px !important;
+    gap: 10px !important;
+    box-sizing: border-box !important;
+}
+.term-search-input-capsule .material-icons {
+    font-size: 2rem !important;
+    color: var(--color-text-secondary) !important;
+    flex-shrink: 0 !important;
+}
+.term-search-input-capsule input,
+.term-search-input-capsule input:focus,
+input.term-local-input,
+input.term-local-input:focus {
+    all: unset !important;
+    flex: 1 1 auto !important;
+    font-size: 1.35rem !important;
+    color: var(--color-text-primary) !important;
+    font-weight: 500 !important;
+    width: 100% !important;
+    box-shadow: none !important;
+    border: none !important;
+    outline: none !important;
+}
+.term-search-close-capsule {
+    flex: 0 0 3.8rem !important;
+    height: 3.8rem !important;
+    width: 3.8rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--color-highlight) !important;
+    border-radius: 50% !important;
+    box-sizing: border-box !important;
+}
+.term-search-close-capsule .term-action-btn:hover {
+    color: var(--color-red) !important;
+}
+.term-controls-wrapper.is-searching .term-default-bar {
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(-8px) !important;
+}
+.term-controls-wrapper.is-searching .term-search-bar {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    transform: translateY(0) !important;
+}
+
+/* --- СТИЛИ ДЛЯ ПК --- */
+@media (min-width: 961px) {
+    .span9 div[style*="inline-block"] {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    .wide-table-wrapper {
+        overflow-x: auto !important;
+        border-radius: var(--radius-medium);
+    }
+    .wide-table-wrapper table,
+    .span9 table.common {
+        width: 100% !important;
+        border-collapse: separate !important;
+        border-spacing: 0 !important;
+        table-layout: auto !important;
+    }
+    .wide-table-wrapper table th,
+    .span9 table.common th {
+        white-space: normal !important;
+        vertical-align: bottom !important;
+        padding: 12px 16px !important;
+        font-size: 1.1rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        color: var(--color-text-secondary) !important;
+        border-bottom: 1px solid var(--color-table-border) !important;
+        background: var(--color-table-header) !important;
+        height: auto !important;
+    }
+    .wide-table-wrapper table td,
+    .span9 table.common td {
+        padding: 14px 16px !important;
+        font-size: 1.3rem !important;
+        line-height: 1.4 !important;
+        height: auto !important;
+        color: var(--color-text-primary) !important;
+    }
+
+    /* === УМНЫЕ КОЛОНКИ === */
+    .span9 table.common td,
+    .span9 table.common th {
+        padding: 1.2rem 1.6rem !important;
+        line-height: 1.4 !important;
+        vertical-align: middle !important;
+    }
+    .session-table-v6,
+    .term-table-v6 {
+        table-layout: fixed !important;
+        width: 100% !important;
+    }
+    .session-table-v6 td:not(:first-child):not(:last-child):not(.align-right-cell),
+    .term-table-v6 td:not(:first-child):not(:last-child):not(.align-right-cell) {
+        width: 1% !important;
+        white-space: nowrap !important;
+        min-width: 90px !important;
+        text-align: center !important;
+    }
+    .session-table-v6 td:first-child,
+    .term-table-v6 td:first-child {
+        width: auto !important;
+        white-space: normal !important;
+        font-weight: 600 !important;
+    }
+    .session-table-v6 th,
+    .term-table-v6 th {
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        hyphens: none !important;
+    }
+    .timetable-grid {
+        table-layout: fixed !important;
+        width: 100% !important;
+    }
+    .timetable-grid td {
+        white-space: normal !important;
+        word-wrap: break-word !important;
+    }
+    .timetable-grid td.pair_num {
+        width: 95px !important;
+        min-width: 95px !important;
+        text-align: center !important;
+    }
+    .timetable-grid td.pair_info {
+        width: auto !important;
+        text-align: left !important;
+        padding-left: 1rem !important;
+    }
+    .timetable-grid td.pair_teacher {
+        width: 160px !important;
+        min-width: 140px !important;
+        text-align: right !important;
+        color: var(--color-text-secondary) !important;
+    }
+    .session-table-v6 th:nth-child(1),
+    .session-table-v6 td:nth-child(1) {
+        width: 44% !important;
+        text-align: left !important;
+    }
+    .session-table-v6 th:nth-child(2),
+    .session-table-v6 td:nth-child(2) {
+        width: 18% !important;
+        text-align: center !important;
+    }
+    .session-table-v6 th:nth-child(3),
+    .session-table-v6 td:nth-child(3) {
+        width: 16% !important;
+        text-align: center !important;
+    }
+    .session-table-v6 th:nth-child(4),
+    .session-table-v6 td:nth-child(4) {
+        width: 22% !important;
+        text-align: right !important;
+    }
+}
+.span9 table.common.absence-table {
+    table-layout: auto !important;
+    width: 100% !important;
+    min-width: 700px !important;
+    border-collapse: separate !important;
+}
+.span9 table.common.absence-table tr>th,
+.span9 table.common.absence-table tr>td {
+    white-space: normal !important;
+    word-wrap: break-word !important;
+    vertical-align: middle !important;
+}
+.span9 table.common.absence-table tr>th:nth-child(1),
+.span9 table.common.absence-table tr>td:nth-child(1) {
+    width: 1% !important;
+    min-width: 40px !important;
+    white-space: nowrap !important;
+    text-align: center !important;
+    padding: 1.2rem 1rem !important;
+}
+.span9 table.common.absence-table tr>th:nth-child(2),
+.span9 table.common.absence-table tr>td:nth-child(2) {
+    width: 15% !important;
+    text-align: center !important;
+}
+.span9 table.common.absence-table tr>th:nth-child(3),
+.span9 table.common.absence-table tr>td:nth-child(3) {
+    width: 35% !important;
+    text-align: left !important;
+}
+.span9 table.common.absence-table tr>th:nth-child(4),
+.span9 table.common.absence-table tr>td:nth-child(4) {
+    width: 25% !important;
+    text-align: left !important;
+}
+.span9 table.common.absence-table tr>th:nth-child(5),
+.span9 table.common.absence-table tr>td:nth-child(5) {
+    width: 20% !important;
+    text-align: right !important;
+}
+.span9 h3 {
+    background: transparent !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+.resource-table .subheader {
+    background: var(--color-table-header) !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 1.1rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    font-weight: 700 !important;
+    padding: 1rem !important;
+}
+

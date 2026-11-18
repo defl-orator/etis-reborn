@@ -1,0 +1,406 @@
+/* --- ИНФО О СТУДЕНТЕ И ПАПКА АККАУНТА НА ПК --- */
+@media (min-width: 961px) {
+    .sidebar-account-info-desktop.sidebar-user-info {
+        position: static !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        display: flex !important;
+        flex-direction: column !important;
+        list-style: none !important;
+    }
+    .sidebar-account-info-desktop.sidebar-user-info::before {
+        display: none !important;
+        content: none !important;
+    }
+    .sidebar-account-info-desktop .sidebar-card-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 7px 10px !important;
+        margin: 2px 6px !important;
+        gap: 23px !important;
+        width: calc(100% - 12px) !important;
+        border-radius: var(--radius-small) !important;
+        box-sizing: border-box !important;
+        color: var(--color-text-primary) !important;
+        cursor: default !important;
+        user-select: text !important;
+        background: transparent !important;
+    }
+    .sidebar-account-info-desktop .sidebar-card-row .material-icons,
+    .sidebar-user-info-mobile .sidebar-card-row .material-icons {
+        font-size: 22px !important;
+        color: var(--color-text-primary) !important;
+        width: 24px !important;
+        text-align: center !important;
+        flex-shrink: 0 !important;
+        margin: 0 !important;
+    }
+    .sidebar-account-info-desktop .sidebar-card-text {
+        font-size: 1.35rem !important;
+        line-height: 1.35 !important;
+        color: var(--color-text-primary) !important;
+        white-space: normal !important;
+        word-break: break-word !important;
+    }
+    .sidebar-account-info-desktop .sidebar-card-text b {
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        color: var(--color-text-primary) !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-content li.sidebar-folder-divider {
+        display: block !important;
+        height: 1px !important;
+        background-color: var(--color-table-border) !important;
+        margin: 8px 12px !important;
+        padding: 0 !important;
+        list-style: none !important;
+        pointer-events: none !important;
+        border: none !important;
+        width: auto !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-content li>a .material-icons {
+        margin: 0 !important;
+        width: 24px !important;
+        text-align: center !important;
+        flex-shrink: 0 !important;
+        font-size: 22px !important;
+        color: var(--color-text-primary) !important;
+    }
+}
+@media (max-width: 960px) {
+    .sidebar-account-info-desktop,
+    .sidebar-folder-divider {
+        display: none !important;
+    }
+    .sidebar-user-info-mobile {
+        margin-bottom: 1.6rem !important;
+    }
+}
+@media (min-width: 961px) {
+    .span3 {
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .sidebar-mobile-main-view {
+        display: flex !important;
+        flex-direction: column !important;
+        flex: 1 1 auto !important;
+        min-height: 100% !important;
+    }
+    .span3 .sidebar-footer {
+        margin-top: auto !important;
+        padding: 1.6rem 2.6rem !important;
+    }
+}
+.span3 .sidebar-folder-content li.active {
+    position: static !important;
+    top: auto !important;
+    bottom: auto !important;
+}
+.sidebar-folder.is-open .sidebar-folder-content {
+    padding: 6px 0 6px 0 !important;
+}
+.sidebar-folder.is-open .sidebar-folder-content li.active>a,
+.sidebar-folder.is-open .sidebar-folder-content li>a {
+    margin: 2px 6px !important;
+    padding: 10px 14px !important;
+    border-radius: var(--radius-small) !important;
+    width: calc(100% - 12px) !important;
+    box-sizing: border-box !important;
+}
+
+/* --- ДНЕВНИК --- */
+@media (min-width: 961px) {
+    #etis-diary-modal {
+        top: 50% !important;
+        left: 50% !important;
+        transform: translate(-50%, -50%) scale(0.95) !important;
+        width: 90% !important;
+        max-width: 850px !important;
+        height: 60vh !important;
+        min-height: 520px !important;
+        background: var(--color-body) !important;
+        padding: 0.8rem !important;
+        box-sizing: border-box !important;
+        border-radius: 28px !important;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        overflow: hidden !important;
+    }
+    #etis-diary-modal.active {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translate(-50%, -50%) scale(1) !important;
+    }
+    #etis-diary-modal .settings-layout {
+        display: flex !important;
+        height: 100% !important;
+        width: 100% !important;
+        gap: 0.8rem !important;
+        min-height: 0 !important;
+        min-width: 0 !important;
+        align-items: stretch !important;
+    }
+    #etis-diary-modal .settings-sidebar {
+        width: 250px !important;
+        min-width: 250px !important;
+        max-width: 250px !important;
+        height: 100% !important;
+        background: var(--color-card) !important;
+        border-radius: var(--radius-large) !important;
+        box-shadow: var(--shadow-main) !important;
+        border: none !important;
+        padding: 1.2rem !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        overflow-y: auto !important;
+        box-sizing: border-box !important;
+        flex-shrink: 0 !important;
+        align-self: stretch !important;
+    }
+    #etis-diary-modal .settings-content-area {
+        flex: 1 1 auto !important;
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        min-width: 0 !important;
+        align-self: stretch !important;
+    }
+    #etis-diary-modal .settings-content-scroll {
+        overflow-y: auto !important;
+        height: 100% !important;
+        flex: 1 1 auto !important;
+        padding: 0 1.6rem 4rem 1.6rem !important;
+        box-sizing: border-box !important;
+    }
+}
+#etis-diary-modal .week-select-wrapper {
+    margin-bottom: 6px !important;
+}
+.diary-task-card {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+@media (hover: hover) and (pointer: fine) {
+    .diary-task-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--color-accent-active) !important;
+    }
+}
+.diary-task-card.is-completed {
+    opacity: 0.55 !important;
+}
+.diary-task-card.is-completed .task-card-title {
+    text-decoration: line-through !important;
+}
+.edit-diary-task-btn,
+.delete-diary-task-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 6px !important;
+    margin: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    transition: opacity 0.2s ease, transform 0.15s ease !important;
+}
+.edit-diary-task-btn .material-icons {
+    color: var(--color-text-secondary) !important;
+    font-size: 1.9rem !important;
+}
+.edit-diary-task-btn:hover {
+    background: transparent !important;
+    opacity: 0.8 !important;
+    transform: scale(1.1) !important;
+}
+.delete-diary-task-btn .material-icons {
+    color: var(--color-red) !important;
+    font-size: 1.9rem !important;
+}
+.delete-diary-task-btn:hover {
+    background: transparent !important;
+    opacity: 0.8 !important;
+    transform: scale(1.1) !important;
+}
+.weeks .week.current:hover {
+    filter: brightness(1.05) !important;
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* --- КАПСУЛА ПОИСКА И УВЕДОМЛЕНИЙ В САЙДБАРЕ --- */
+.sidebar-actions-capsule {
+    display: inline-flex !important;
+    align-items: center !important;
+    background: var(--color-card) !important;
+    border-radius: 50px !important;
+    box-shadow: var(--shadow-main) !important;
+    padding: 2px !important;
+    gap: 2px !important;
+    flex-shrink: 0 !important;
+    margin-left: auto !important;
+    margin-right: 2px !important;
+}
+.sidebar-action-icon-btn {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+    border-radius: 50% !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--color-text-secondary) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+}
+.sidebar-action-icon-btn:hover {
+    background: var(--color-highlight) !important;
+    color: var(--color-accent) !important;
+}
+.sidebar-action-icon-btn .material-icons {
+    font-size: 18px !important;
+    line-height: 1 !important;
+    margin: 0 !important;
+    color: inherit !important;
+}
+.sidebar-action-divider {
+    width: 1px !important;
+    height: 14px !important;
+    background: var(--color-table-border) !important;
+    flex-shrink: 0 !important;
+    pointer-events: none !important;
+    transition: opacity 0.15s ease !important;
+}
+
+/* При наведении на кнопки внутри капсулы - разделитель плавно исчезает */
+.sidebar-actions-capsule:has(.sidebar-action-icon-btn:hover) .sidebar-action-divider {
+    opacity: 0 !important;
+}
+
+/* --- МОДАЛЬНОЕ ОКНО ГЛОБАЛЬНОГО ПОИСКА --- */
+.search-modal-input-wrap {
+    display: flex !important;
+    align-items: center !important;
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    border-radius: 50px !important;
+    padding: 0 1.6rem 0 1.4rem !important;
+    height: 4.8rem !important;
+    gap: 12px !important;
+    margin-bottom: 1.6rem !important;
+    box-sizing: border-box !important;
+    box-shadow: var(--shadow-main) !important;
+}
+
+.search-modal-input-wrap input {
+    flex: 1 1 auto !important;
+    border: none !important;
+    outline: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    font-size: 1.55rem !important;
+    color: var(--color-text-primary) !important;
+    font-weight: 500 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+.search-result-row {
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.4rem !important;
+    padding: 1.2rem 1.6rem !important;
+    border-radius: var(--radius-medium) !important;
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    cursor: pointer !important;
+    transition: all 0.15s ease !important;
+    text-decoration: none !important;
+    box-shadow: var(--shadow-main) !important;
+}
+
+.search-result-row.is-selected {
+    background: var(--color-highlight) !important;
+    border-color: var(--color-accent) !important;
+    box-shadow: 0 0 0 1px var(--color-accent) !important;
+    transform: translateX(3px) !important;
+}
+
+.search-enter-hint {
+    display: none !important;
+    align-items: center !important;
+    gap: 4px !important;
+    color: var(--color-accent) !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    margin-left: auto !important;
+    margin-right: 8px !important;
+}
+
+.search-result-row.is-selected .search-enter-hint {
+    display: flex !important;
+}
+
+@media (max-width: 600px) {
+    .search-enter-hint span:not(.material-icons) {
+        display: none !important;
+    }
+}
+
+.search-result-row:hover {
+    background: var(--color-highlight) !important;
+    border-color: var(--color-accent) !important;
+    transform: translateX(3px) !important;
+}
+#global-search-field,
+#global-search-field:focus,
+.search-modal-input-wrap input,
+.search-modal-input-wrap input:focus {
+    box-shadow: none !important;
+    outline: none !important;
+    border: none !important;
+    border-bottom: none !important;
+}
+#global-search-clear {
+    display: none !important;
+}
+#global-search-clear.is-visible {
+    display: inline-flex !important;
+}
+mark.search-highlight,
+.search-highlight {
+    background-color: var(--color-accent-active) !important;
+    color: var(--color-accent) !important;
+    border-radius: 4px !important;
+    border: 1px solid var(--color-accent) !important;
+    box-shadow: none !important;
+    box-sizing: border-box !important;
+    padding: 1px 4px !important;
+    margin: 0 1px !important;
+    font-weight: 700 !important;
+    display: inline-block !important;
+    line-height: 1.2 !important;
+}
+.search-result-title-box {
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    line-height: 1.4 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    padding: 2px 2px !important;
+}
+

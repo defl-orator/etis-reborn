@@ -1,0 +1,565 @@
+/* --- PSEUDO PUSH NOTIFICATIONS --- */
+.push-container {
+    position: fixed;
+    z-index: 2000000;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    pointer-events: none;
+}
+@media (min-width: 961px) {
+    .push-container {
+        top: 2.5rem;
+        right: 2rem;
+        width: 380px;
+    }
+}
+@media (max-width: 960px) {
+    .push-container {
+        top: 1.5rem;
+        left: 1rem;
+        right: 1rem;
+    }
+    .submenu>*:not(:last-child):not(.answer-btn-custom)::after,
+    .weeks .week:not(:last-child)::after {
+        right: 0 !important;
+        transform: translateX(50%) !important;
+    }
+}
+.push-toast {
+    box-sizing: border-box !important;
+    backdrop-filter: blur(18px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+    background-color: rgba(var(--push-bg-rgb), 0.65) !important;
+    color: var(--color-text-primary);
+    padding: 1.6rem;
+    border-radius: 24px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    width: 100% !important;
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    opacity: 0;
+    transform: scale(0.9) translateY(-20px);
+    transition: all 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    pointer-events: auto;
+    cursor: pointer;
+}
+[theme="light"] .push-toast {
+    --push-bg-rgb: 255, 255, 255;
+    border-color: rgba(0, 0, 0, 0.05) !important;
+}
+[theme="dark"] .push-toast {
+    --push-bg-rgb: 28, 30, 32;
+}
+.push-toast.show {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+}
+.push-icon-wrap {
+    width: 4.4rem;
+    height: 4.4rem;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.05);
+}
+.push-icon-wrap .material-icons {
+    font-size: 2.4rem !important;
+}
+.push-toast.info .push-icon-wrap {
+    background: rgba(0, 122, 255, 0.25);
+    color: #007AFF;
+}
+.push-toast.success .push-icon-wrap {
+    background: rgba(52, 199, 89, 0.25);
+    color: #34C759;
+}
+.push-toast.warning .push-icon-wrap {
+    background: rgba(255, 149, 0, 0.25);
+    color: #FF9500;
+}
+.push-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+.push-toast-title {
+    font-weight: 800;
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-primary);
+    opacity: 0.5;
+}
+.push-subject {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--color-text-primary);
+}
+.push-detail {
+    font-size: 1.35rem;
+    color: var(--color-text-primary);
+    opacity: 0.7;
+}
+.push-toast:hover {
+    transform: translateY(-2px) scale(1.02);
+    background-color: rgba(var(--push-bg-rgb), 0.8) !important;
+}
+
+/* --- ПОЛЬЗОВАТЕЛЬСКИЕ ПАРЫ --- */
+.add-custom-pair-btn {
+    cursor: pointer !important;
+    color: var(--color-text-secondary) !important;
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.8) translateZ(0);
+    will-change: opacity, visibility, transform;
+    transition: all 0.2s ease !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+.span9 .day h3:hover .add-custom-pair-btn {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: scale(1) translateZ(0);
+}
+.add-custom-pair-btn:hover {
+    color: var(--color-accent) !important;
+    background: var(--color-highlight) !important;
+}
+.custom-pair-row .pair_info .dis a {
+    color: var(--color-accent) !important;
+    font-weight: 700 !important;
+}
+.delete-custom-pair-btn {
+    opacity: 0;
+    visibility: hidden;
+    transform: scale(0.8) translateZ(0);
+    will-change: opacity, visibility, transform;
+    cursor: pointer;
+    color: var(--color-red);
+    transition: all 0.2s ease;
+    margin-left: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    padding: 2px;
+    vertical-align: middle;
+}
+.custom-pair-row:hover .delete-custom-pair-btn {
+    opacity: 1;
+    visibility: visible;
+    transform: scale(1) translateZ(0);
+}
+.delete-custom-pair-btn:hover {
+    background: rgba(255, 59, 48, 0.1);
+}
+
+/* Обертки полей ввода с иконками слева */
+.custom-pair-input-group {
+    display: flex;
+    gap: 1.2rem;
+    margin-bottom: 1.2rem;
+}
+.cp-input-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+}
+.cp-input-wrap .material-icons,
+.route-input-wrap .material-icons {
+    position: absolute !important;
+    left: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 20px !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+}
+.custom-pair-input-group input,
+.custom-pair-input-group select,
+.cp-input-wrap input,
+.cp-input-wrap select {
+    flex: 1;
+    width: 100%;
+    min-width: 0 !important;
+    text-overflow: ellipsis !important;
+    padding: 1.2rem 1.6rem 1.2rem 42px !important;
+    border: 1px solid var(--color-table-border) !important;
+    background: var(--color-card) !important;
+    border-radius: var(--radius-medium) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.4rem !important;
+    box-shadow: var(--shadow-main) !important;
+    margin: 0 !important;
+    height: auto !important;
+    line-height: 1.4 !important;
+    box-sizing: border-box !important;
+}
+.custom-pair-input-group select,
+.cp-input-wrap select {
+    appearance: none !important;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='var(--color-text-secondary)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 1.2rem center !important;
+    background-size: 1.4rem !important;
+    padding-right: 3.6rem !important;
+    cursor: pointer;
+}
+.modal-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-table-border);
+    margin-bottom: 1.5rem;
+}
+.modal-tab {
+    flex: 1;
+    padding: 1rem;
+    background: transparent;
+    border: none;
+    border-bottom: 2px solid transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1.3rem;
+    transition: all 0.2s;
+}
+.modal-tab.active {
+    color: var(--color-accent);
+    border-bottom-color: var(--color-accent);
+}
+.tab-content {
+    display: none;
+    padding: 6px 4px;
+    box-sizing: border-box;
+}
+.tab-content.active {
+    display: block;
+}
+
+/* --- SUBMENU (ПОДВКЛАДКИ) --- */
+.submenu {
+    background-image: none !important;
+}
+[theme="dark"] .submenu,
+[theme="night"] .submenu {
+    background: var(--color-card) !important;
+}
+.submenu a:not(.answer-btn-custom) {
+    background: transparent !important;
+    color: var(--color-text-secondary) !important;
+}
+.submenu a:not(.answer-btn-custom):hover {
+    background: transparent !important;
+    color: var(--color-text-primary) !important;
+    transform: none !important;
+}
+.submenu>*:not(:last-child):not(.answer-btn-custom) {
+    position: relative !important;
+}
+.submenu>*:not(:last-child):not(.answer-btn-custom)::after {
+    content: '';
+    position: absolute !important;
+    right: -4.5px !important;
+    top: 25% !important;
+    bottom: 25% !important;
+    width: 1px !important;
+    background-color: var(--color-table-border) !important;
+    pointer-events: none !important;
+    z-index: 101 !important;
+}
+.submenu>*:has(+ b)::after,
+.submenu>b::after {
+    display: none !important;
+}
+
+/* --- WEEKS --- */
+.weeks {
+    background-image: none !important;
+}
+.weeks .week {
+    background-color: transparent !important;
+    color: var(--color-text-secondary) !important;
+    border-radius: 50px !important;
+    width: auto !important;
+    min-width: 3.8rem !important;
+    padding: 0 14px !important;
+}
+.weeks>.week>a {
+    border-radius: 50px !important;
+    color: var(--color-text-secondary) !important;
+}
+.weeks .week:not(.current):hover {
+    background-color: transparent !important;
+}
+.weeks .week:not(.current):hover>a {
+    color: var(--color-text-primary) !important;
+}
+.weeks .week:not(:last-child) {
+    position: relative !important;
+}
+.weeks .week:not(:last-child)::after {
+    content: '' !important;
+    position: absolute !important;
+    right: 0 !important;
+    transform: translateX(50%) !important;
+    top: 25% !important;
+    bottom: 25% !important;
+    width: 1px !important;
+    background-color: var(--color-table-border) !important;
+    pointer-events: none !important;
+    z-index: 101 !important;
+}
+.weeks .week:has(+ .current)::after,
+.weeks .week.current::after {
+    display: none !important;
+}
+.timetable-toolbar button.toolbar-item,
+button.analytics-btn {
+    box-shadow: none !important;
+}
+.mobile-menu-btn,
+.submenu a,
+.submenu b,
+.weeks .week a,
+.weeks .week {
+    -webkit-tap-highlight-color: transparent !important;
+}
+.timetable-toolbar .toolbar-item.is-active {
+    background: var(--color-accent) !important;
+    color: var(--color-text-primary-invert) !important;
+    font-weight: 600 !important;
+}
+.weeks .week.session:not(.current),
+.weeks .week.session:not(.current) a {
+    color: var(--color-red) !important;
+}
+.weeks .week.holiday:not(.current),
+.weeks .week.holiday:not(.current) a {
+    color: var(--color-green) !important;
+}
+@media (max-width: 960px) {
+    .subject-note-btn {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        transform: scale(0.8) !important;
+        transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+        pointer-events: none !important;
+    }
+    .timetable-grid tr:hover .subject-note-btn {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: scale(1) !important;
+        pointer-events: auto !important;
+    }
+    .pair_info .aud {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        gap: 6px !important;
+        max-width: none !important;
+    }
+    .pair_info .aud div {
+        white-space: nowrap !important;
+    }
+    html[theme] .timetable-grid td.pair_teacher {
+        width: 10px !important;
+        min-width: 10px !important;
+        padding-right: 1.2rem !important;
+        display: table-cell !important;
+    }
+    html[theme] .timetable-grid td.pair_teacher .eval {
+        position: static !important;
+        display: block !important;
+        width: auto !important;
+        text-align: right !important;
+        margin-top: 4px !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        overflow: hidden !important;
+        transform: translateY(5px) !important;
+        transition: all 0.2s ease !important;
+    }
+    html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval) {
+        transform: translateY(0) !important;
+        display: block !important;
+    }
+    html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
+        opacity: 1 !important;
+        visibility: visible !important;
+        height: auto !important;
+        transform: translateY(0) !important;
+    }
+    .span9 table.common,
+    .span9 table.teach_plan,
+    .wide-table-wrapper table {
+        border-top: none !important;
+    }
+    .span9 table.common thead tr:first-child th,
+    .span9 table.common tr:first-child th,
+    .span9 table.common tr:first-child td,
+    .span9 table.teach_plan tr:first-child th,
+    .span9 table.teach_plan tr:first-child td,
+    .wide-table-wrapper table thead tr:first-child th,
+    .wide-table-wrapper table tr:first-child th,
+    .wide-table-wrapper table tr:first-child td {
+        border-top: none !important;
+        border-top-width: 0 !important;
+    }
+    .span9 table.common tr:first-child th,
+    .span9 table.common tr:first-child td,
+    .span9 table.teach_plan tr:first-child th,
+    .span9 table.teach_plan tr:first-child td {
+        border-top: none !important;
+        border-top-width: 0 !important;
+    }
+    .submenu .eval-plan-link {
+        background: transparent !important;
+        color: var(--color-text-secondary) !important;
+        text-decoration: underline !important;
+        font-size: 1.2rem !important;
+        font-weight: 500 !important;
+        margin-left: auto !important;
+        padding-right: 15px !important;
+    }
+    .submenu .eval-plan-link:hover {
+        color: var(--color-accent) !important;
+        background: transparent !important;
+        transform: none !important;
+    }
+    .span9 table:not(.timetable-grid) tbody tr:not(:last-child),
+    .wide-table-wrapper table:not(.timetable-grid) tbody tr:not(:last-child),
+    .ui-dialog table tbody tr:not(:last-child) {
+        background-image: linear-gradient(to right, transparent 10px, var(--color-table-border) 10px, var(--color-table-border) calc(100% - 10px), transparent calc(100% - 10px)) !important;
+    }
+}
+.teacher-meta-row {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 1.2rem !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    padding-bottom: 1.2rem !important;
+    margin-bottom: 1.6rem !important;
+    width: 100% !important;
+}
+.teacher-badges-box {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    justify-content: flex-end !important;
+}
+@media (max-width: 600px) {
+    .teacher-meta-row {
+        flex-direction: column !important;
+        align-items: center !important;
+        text-align: center !important;
+        gap: 0.8rem !important;
+    }
+    .teacher-badges-box {
+        justify-content: center !important;
+        width: 100% !important;
+    }
+    .teacher-dept-link {
+        width: auto !important;
+        text-align: center !important;
+    }
+}
+#swipe-action-bubble {
+    position: fixed;
+    width: 28px;
+    height: 28px;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000 !important;
+    pointer-events: none;
+    opacity: 0;
+    transform: scale(0.8);
+    transition: color 0.2s, opacity 0.15s, transform 0.2s;
+}
+#swipe-action-bubble .material-icons {
+    font-size: 28px !important;
+}
+#swipe-action-bubble.active-threshold {
+    transform: scale(1.15);
+}
+#swipe-action-bubble.active-threshold.action-add {
+    color: var(--color-accent) !important;
+}
+#swipe-action-bubble.active-threshold.action-note {
+    color: var(--color-accent);
+}
+#swipe-action-bubble.active-threshold.action-eval {
+    color: var(--color-yellow);
+}
+
+/* БЛОКИРОВКА ХОВЕРОВ НА СМАРТФОНАХ */
+@media (hover: none), (pointer: coarse) {
+    .timetable-grid tr,
+    .day {
+        touch-action: pan-y;
+    }
+    html[theme] .timetable-grid tr:hover td.pair_teacher a:not(.eval),
+    html[theme] .timetable-grid tr:has(td.pair_teacher .eval).tr-needs-space:hover td.pair_teacher a:not(.eval),
+    html[theme] .timetable-grid tr:has(td.pair_teacher .eval):not(.tr-needs-space):hover td.pair_teacher a:not(.eval) {
+        transform: none !important;
+    }
+    html[theme] .timetable-grid tr:hover td.pair_teacher .eval,
+    html[theme] .timetable-grid td.pair_teacher .eval {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        height: 0 !important;
+        pointer-events: none !important;
+    }
+    .span3>.nav.nav-tabs.nav-stacked>li>a {
+        -webkit-tap-highlight-color: transparent !important;
+    }
+    .add-custom-pair-btn {
+        display: none !important;
+    }
+    .delete-custom-pair-btn {
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: scale(1) !important;
+        color: var(--color-text-secondary) !important;
+    }
+    .timetable-grid tr:hover .subject-note-btn:not(.has-note) {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+    }
+    .subject-note-btn.has-note {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+}
+

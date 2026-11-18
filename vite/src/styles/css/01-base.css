@@ -1,0 +1,366 @@
+
+:root {
+    --font-family: 'PT Sans Caption', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --radius-small: 12px;
+    --radius-medium: 16px;
+    --radius-large: 24px;
+    --width-aside: 26rem;
+    --width-page: 1120px;
+    --width-content-margin-left: 3rem;
+    --transition: 0.2s ease;
+}
+[theme="light"] {
+    --color-body: #F2F2F6;
+    --color-card: #FFFFFF;
+    --color-accent: #007AFF;
+    --color-accent-dark: #0056b3;
+    --color-accent-active: #E3F2FD;
+    --color-text-link: #007AFF;
+    --color-tooltip: #fff;
+    --color-highlight: #F2F2F7;
+    --color-highlight-light: #fff;
+    --color-input: #F2F2F7;
+    --color-input-highlight: #fff;
+    --color-scrollbar-thumb: #c1c1c1;
+    --color-scrollbar-thumb-highlight: #a8a8a8;
+    --color-table-border: rgba(0, 0, 0, 0.08);
+    --color-table-header: #F9F9F9;
+    --color-table-highlight: #F5F5F5;
+    --color-red: #FF3B30;
+    --color-green: #34C759;
+    --color-blue: #007AFF;
+    --color-yellow: #FFCC00;
+    --color-warning: #FF9500;
+    --color-white: #fff;
+    --color-error: #FF3B30;
+    --color-text-primary: #1C1C1E;
+    --color-text-secondary: #8E8E93;
+    --color-text-primary-invert: #fff;
+    --color-text-accent: #007AFF;
+    --shadow-main: 0 2px 6px rgba(0, 0, 0, 0.035);
+    --shadow-dialog: 0 10px 30px rgba(0, 0, 0, 0.2);
+    --border-input: 1px solid transparent;
+    --color-table-highlight: rgba(0, 0, 0, 0.03);
+    --color-table-border: rgba(0, 0, 0, 0.08);
+}
+[theme="dark"] {
+    --color-body: #16181A;
+    --color-card: #212325;
+    --color-accent: #4B89DC;
+    --color-accent-dark: #3565A8;
+    --color-accent-active: rgba(75, 137, 220, 0.15);
+    --color-text-link: #60A5FA;
+    --color-tooltip: #2A2C2F;
+    --color-highlight: #2A2C2F;
+    --color-highlight-light: #35383C;
+    --color-input: #2A2C2F;
+    --color-input-highlight: #16181A;
+    --color-scrollbar-thumb: #4A4D51;
+    --color-scrollbar-thumb-highlight: #606468;
+    --color-table-border: rgba(255, 255, 255, 0.12);
+    --color-table-header: #1A1C1E;
+    --color-table-highlight: #2A2C2F;
+    --color-red: #E06C65;
+    --color-green: #5BB974;
+    --color-blue: #4B89DC;
+    --color-yellow: #E2B953;
+    --color-warning: #E29953;
+    --color-white: #ffffff;
+    --color-error: #E06C65;
+    --color-text-primary: #EAECEE;
+    --color-text-secondary: #8E9499;
+    --color-text-primary-invert: #ffffff;
+    --color-text-accent: #60A5FA;
+    --shadow-main: 0 2px 6px rgba(0, 0, 0, 0.12);
+    --shadow-dialog: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --border-input: 1px solid #3A3D40;
+}
+[theme="night"] {
+    --color-body: #000000;
+    --color-card: #16181B;
+    --color-accent: #4B89DC;
+    --color-accent-dark: #3565A8;
+    --color-accent-active: rgba(75, 137, 220, 0.15);
+    --color-text-link: #60A5FA;
+    --color-tooltip: #1E2024;
+    --color-highlight: #212327;
+    --color-highlight-light: #2C2F34;
+    --color-input: #1F2125;
+    --color-input-highlight: #131416;
+    --color-scrollbar-thumb: #33363B;
+    --color-scrollbar-thumb-highlight: #464A50;
+    --color-table-border: rgba(255, 255, 255, 0.12);
+    --color-table-header: #101113;
+    --color-table-highlight: #1E2024;
+    --color-red: #E06C65;
+    --color-green: #5BB974;
+    --color-blue: #4B89DC;
+    --color-yellow: #E2B953;
+    --color-warning: #E29953;
+    --color-white: #ffffff;
+    --color-error: #E06C65;
+    --color-text-primary: #EAECEE;
+    --color-text-secondary: #7A8086;
+    --color-text-primary-invert: #ffffff;
+    --color-text-accent: #60A5FA;
+    --shadow-main: 0 2px 6px rgba(0, 0, 0, 0.4);
+    --shadow-dialog: 0 10px 30px rgba(0, 0, 0, 0.8);
+    --border-input: 1px solid #282A2F;
+}
+html {
+    font-size: 10px !important;
+    background-color: var(--color-body) !important;
+}
+body {
+    background: var(--color-body) !important;
+    color: var(--color-text-primary) !important;
+    font-family: var(--font-family) !important;
+    min-height: 100vh !important;
+    min-height: 100dvh !important;
+}
+html.mac-safari .share-day-btn,
+html.mac-safari .share-all-btn,
+html.mac-safari .share-week-btn,
+html.mac-safari .share-msg-wrap {
+    display: none !important;
+}
+@media (min-width: 961px) {
+    html,
+    body {
+        height: 100% !important;
+        overflow-y: auto !important;
+    }
+}
+.container {
+    padding: 0 !important;
+    max-width: var(--width-page) !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+}
+.container .row {
+    margin: 0 !important;
+    padding: 2rem 2rem 10rem !important;
+}
+.span9>br:first-child,
+.span9>script+br,
+.span9>style+br {
+    display: none !important;
+}
+.span9 {
+    width: auto !important;
+    margin-left: calc(var(--width-aside) + var(--width-content-margin-left)) !important;
+    float: none !important;
+}
+.span9>h3 {
+    margin-bottom: 1.4rem !important;
+}
+.submenu {
+    font-size: 1.2rem !important;
+}
+.submenu+.submenu {
+    margin-top: -0.8rem !important;
+}
+.warning {
+    margin: 0 !important;
+    width: auto !important;
+    margin-bottom: 2rem !important;
+    background: none !important;
+    color: var(--color-text-error) !important;
+    font-size: 1.2rem !important;
+}
+#tooltip {
+    color: var(--color-text-primary) !important;
+}
+.flex-row {
+    display: flex !important;
+    align-items: center !important;
+}
+*,
+*:before,
+*:after {
+    box-sizing: border-box !important;
+}
+::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+* {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+}
+@supports (-moz-appearance:none) {
+    .span3 {
+        padding-right: 0.4rem !important;
+    }
+}
+font[color="red"],
+tr[style="color:red;"],
+span[style="color:red;"],
+div[style="font-size:0.8em;color:red;"],
+font[style="color:red;font-weight:bold"],
+font[style="color:#d00;"] {
+    color: var(--color-red) !important;
+}
+span[style="color:green;"],
+font[color="green"],
+div[style="font-size:0.8em;color:green;"] {
+    color: var(--color-green) !important;
+}
+font[color="blue"],
+font[style="font-weight:bold;color:blue;cursor:pointer"],
+div[style="color:blue;font-size: 0.8em;"],
+span[style="color:blue;"] {
+    color: var(--color-blue) !important;
+}
+font[color="gray"],
+font[color="#808080"],
+font[style="font-size:10px;color:#808080"],
+div[style="font-size:0.8em;color:gray;"],
+span[style="color:#808080"],
+font[style="font-weight:bold;color:#333333;"],
+span[style="color:#333333"] {
+    color: var(--color-text-secondary) !important;
+}
+font[color="#6A0035"] {
+    color: var(--color-text-accent);
+}
+a {
+    color: var(--color-text-link) !important;
+}
+a.dashed {
+    color: var(--color-text-secondary) !important;
+}
+a.dashed:hover {
+    color: var(--color-text-highlight) !important;
+}
+.navbar-static-top {
+    display: none !important;
+}
+
+/* --- TABLES --- */
+table {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    border: none !important;
+    border-radius: var(--radius-medium) !important;
+    background: var(--color-card) !important;
+    box-shadow: var(--shadow-main) !important;
+    overflow: hidden !important;
+    margin-bottom: 2.4rem !important;
+    color: var(--color-text-primary) !important;
+}
+.day table {
+    margin-bottom: 0 !important;
+}
+table tr,
+table td,
+.common tr,
+.common td,
+.slimtab_nice tr,
+.slimtab_nice td {
+    background: transparent !important;
+    background-color: transparent !important;
+}
+table th,
+.common th,
+.slimtab_nice th {
+    background: var(--color-table-header) !important;
+    color: var(--color-text-secondary) !important;
+    font-weight: 600 !important;
+    font-size: 1.1rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    border: none !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    padding: 1.2rem 1.6rem !important;
+    vertical-align: middle !important;
+    text-align: center !important;
+}
+table td,
+.common td,
+.slimtab_nice td {
+    border: none !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    padding: 1.4rem 1.6rem !important;
+    vertical-align: middle !important;
+    font-size: 1.3rem !important;
+    color: var(--color-text-primary) !important;
+    text-align: center !important;
+}
+table th:first-child,
+table td:first-child,
+.common th:first-child,
+.common td:first-child {
+    text-align: left !important;
+}
+table tr:last-child td {
+    border-bottom: none !important;
+}
+table tbody tr:hover td {
+    background-color: var(--color-table-highlight) !important;
+}
+table tbody tr:hover th {
+    background-color: var(--color-table-header) !important;
+}
+table tbody tr:hover td[rowspan] {
+    background-color: var(--color-card) !important;
+}
+.span9 table:not(.timetable-grid) tbody tr:not(:last-child) td,
+.wide-table-wrapper table:not(.timetable-grid) tbody tr:not(:last-child) td,
+.ui-dialog table tbody tr:not(:last-child) td {
+    border-bottom: none !important;
+}
+.span9 table:not(.timetable-grid) tbody tr:not(:last-child),
+.wide-table-wrapper table:not(.timetable-grid) tbody tr:not(:last-child),
+.ui-dialog table tbody tr:not(:last-child) {
+    background-image: linear-gradient(to right, transparent 16px, var(--color-table-border) 16px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)) !important;
+    background-position: bottom !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 1px !important;
+}
+.span9 table:not(.timetable-grid) tbody tr:last-child,
+.span9 table:not(.timetable-grid) tbody tr.last-visible-row,
+.wide-table-wrapper table:not(.timetable-grid) tbody tr:last-child,
+.wide-table-wrapper table:not(.timetable-grid) tbody tr.last-visible-row {
+    background-image: none !important;
+}
+@media (hover: hover) and (pointer: fine) {
+    .span3 > .nav.nav-tabs.nav-stacked > li:not(.active) > a:hover {
+        background: var(--color-highlight) !important;
+        transition: background-color 0.25s ease, transform 0.25s ease !important;
+    }
+    .span3 > .nav.nav-tabs.nav-stacked > li > a:hover .sidebar-link-text,
+    .span3 > .nav.nav-tabs.nav-stacked > li > a:hover .material-icons,
+    .settings-sidebar-btn:hover .sidebar-btn-text,
+    .settings-sidebar-btn:hover .material-icons {
+        transform: none !important;
+    }
+}
+
+.slimtab_nice,
+.common,
+.teach_plan {
+    border: none !important;
+}
+.slimtab_nice:after,
+.common:after {
+    display: none !important;
+}
+font[color="green"],
+span[style*="color:green"] {
+    color: var(--color-green) !important;
+    font-weight: 600 !important;
+}
+font[color="red"],
+span[style*="color:red"] {
+    color: var(--color-red) !important;
+    font-weight: 600 !important;
+}
+font[color="blue"],
+span[style*="color:blue"] {
+    color: var(--color-blue) !important;
+    font-weight: 600 !important;
+}
+

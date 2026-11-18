@@ -1,0 +1,388 @@
+/* --- СТИЛИ ДЛЯ РАСКРЫВАЮЩИХСЯ ПАПОК / САЙДБАРА --- */
+.sidebar-folder-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 12px !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-family: inherit !important;
+    font-size: 1.35rem !important;
+    font-weight: 500 !important;
+    color: var(--color-text-primary) !important;
+    text-align: left !important;
+    box-sizing: border-box !important;
+    outline: none !important;
+    transition: background-color 0.15s ease, color 0.15s ease, transform 0.15s ease !important;
+    -webkit-tap-highlight-color: transparent !important;
+    box-shadow: none !important;
+}
+.sidebar-folder-header .folder-icon {
+    margin: 0 !important;
+    width: 24px !important;
+    text-align: center !important;
+    flex-shrink: 0 !important;
+    font-size: 22px !important;
+    color: var(--color-text-primary) !important;
+}
+.sidebar-folder-header .folder-title {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* Стрелка по умолчанию скрыта на ПК */
+.sidebar-folder-header .chevron,
+.span3 li>a .chevron {
+    margin-left: auto !important;
+    margin-right: -4px !important;
+    font-size: 20px !important;
+    color: var(--color-text-secondary) !important;
+    opacity: 0 !important;
+    transform: translateX(-4px) !important;
+    flex-shrink: 0 !important;
+    transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), color 0.2s ease !important;
+}
+
+/* Показываем стрелку при наведении на ПК */
+@media (hover: hover) and (pointer: fine) {
+    .sidebar-folder-header:hover .chevron,
+    .span3 li>a:hover .chevron {
+        opacity: 0.7 !important;
+        transform: translateX(0) !important;
+    }
+}
+
+/* Поворот стрелки вниз РАЗРЕШЁН ТОЛЬКО НА ПК при раскрытии */
+@media (min-width: 961px) {
+    .sidebar-folder.is-open .sidebar-folder-header .chevron {
+        opacity: 0.7 !important;
+        transform: rotate(90deg) !important;
+        color: var(--color-text-secondary) !important;
+    }
+}
+
+/* В раскрытой папке стрелка всегда видна, повернута и ОБЫЧНОГО цвета */
+.sidebar-folder.is-open .sidebar-folder-header .chevron {
+    opacity: 0.7 !important;
+    transform: rotate(90deg) !important;
+    color: var(--color-text-secondary) !important;
+}
+.sidebar-folder-header .badge-point {
+    display: none !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    min-height: 8px !important;
+    background-color: #FF3B30 !important;
+    border-radius: 50% !important;
+    margin-left: auto !important;
+    margin-right: 8px !important;
+    flex-shrink: 0 !important;
+    box-shadow: 0 0 4px rgba(255, 59, 48, 0.4) !important;
+}
+.sidebar-folder-header.has-unread-badge .badge-point {
+    display: block !important;
+}
+
+/* ДЕСКТОП (ПК) */
+@media (min-width: 961px) {
+    .sidebar-mobile-subview {
+        display: none !important;
+    }
+    .sidebar-collapsible-sections {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 2px !important;
+        width: 100% !important;
+    }
+    .sidebar-folder,
+    .sidebar-folder:not(.is-open) {
+        width: 100% !important;
+        margin: 0 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+        transition: all 0.25s ease !important;
+    }
+    .sidebar-folder:not(.is-open) .sidebar-folder-header:not(.active-header) {
+        width: calc(100% - 24px) !important;
+        margin: 2px 12px !important;
+        padding: 10px 14px !important;
+        gap: 23px !important;
+        border-radius: var(--radius-small) !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    .sidebar-folder-header.active-header,
+    .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header {
+        background: var(--bg-accent, var(--color-accent)) !important;
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        font-weight: 800 !important;
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+    }
+    @media (hover: hover) and (pointer: fine) {
+        .sidebar-folder:not(.is-open) .sidebar-folder-header:not(.active-header):hover {
+            background: var(--color-highlight) !important;
+        }
+    }
+    .sidebar-folder-content {
+        display: flex !important;
+        flex-direction: column !important;
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden !important;
+        transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        list-style: none !important;
+    }
+    .sidebar-folder.is-open {
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        border-radius: var(--radius-large) !important;
+        margin: 6px 12px 8px 12px !important;
+        overflow: hidden !important;
+        box-shadow: var(--shadow-main) !important;
+        width: calc(100% - 24px) !important;
+        padding: 0 0 6px 0 !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-header {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 11px 16px !important;
+        gap: 23px !important;
+        background: var(--color-table-header) !important;
+        border-bottom: 1px solid var(--color-table-border) !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+        position: relative !important;
+        font-weight: 700 !important;
+        transition: background-color 0.15s ease !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-header:hover {
+        background: var(--color-highlight) !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-header::after {
+        display: none !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-content {
+        max-height: 450px;
+        opacity: 1;
+        padding: 6px 0 0 0 !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-content li {
+        list-style: none !important;
+        margin: 0 !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-content li>a {
+        margin: 2px 6px !important;
+        padding: 10px 10px !important;
+        gap: 23px !important;
+        border-radius: var(--radius-small) !important;
+        width: calc(100% - 12px) !important;
+        box-sizing: border-box !important;
+    }
+    .sidebar-folder.is-open .sidebar-folder-content li:not(.active)>a:hover {
+        background: var(--color-highlight) !important;
+    }
+
+    /* Активная закрытая папка */
+    .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header {
+        width: calc(100% - 24px) !important;
+        margin: 2px 12px !important;
+        padding: 10px 14px !important;
+        gap: 23px !important;
+        border-radius: var(--radius-small) !important;
+        border: none !important;
+    }
+    .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .folder-icon,
+    .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .material-icons {
+        .span3 li.active>a .ph,
+        .mobile-dock-item.active .ph {
+            font-family: "Phosphor-Fill" !important;
+        }
+    }
+    .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header:hover {
+        filter: brightness(0.92) !important;
+        transform: none !important;
+    }
+    .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .folder-title,
+    .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .folder-icon,
+    .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header .chevron {
+        color: var(--color-text-primary-invert) !important;
+        -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+    }
+}
+
+/* МОБИЛЬНЫЕ УСТРОЙСТВА */
+@media (max-width: 960px) {
+    .sidebar-folder-content {
+        display: none !important;
+    }
+    .sidebar-folder-header .chevron,
+    .span3 li>a .chevron {
+        opacity: 0.5 !important;
+        transform: none !important;
+    }
+    .sidebar-collapsible-sections {
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        border-radius: var(--radius-large) !important;
+        margin-bottom: 1.6rem !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-shadow: var(--shadow-main) !important;
+        padding: 0 !important;
+    }
+    .sidebar-collapsible-sections .sidebar-folder {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+    }
+    .sidebar-collapsible-sections .sidebar-folder-header {
+        margin: 0 !important;
+        border-radius: 0 !important;
+        padding: 1.3rem 1.6rem !important;
+        position: relative !important;
+        background: transparent !important;
+        display: flex !important;
+        align-items: center !important;
+        text-align: left !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .sidebar-collapsible-sections .sidebar-folder:not(:last-child) .sidebar-folder-header::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 52px !important;
+        right: 16px !important;
+        height: 1px !important;
+        background: var(--color-table-border) !important;
+        display: block !important;
+    }
+    .sidebar-subview-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 12px !important;
+        padding: 0.6rem 0.8rem 1.6rem 0.8rem !important;
+        margin-bottom: 1.6rem !important;
+        border-bottom: none !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .sidebar-subview-back-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+        color: var(--color-text-secondary) !important;
+        font-size: 2.4rem !important;
+        cursor: pointer !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        line-height: 1 !important;
+    }
+    .sidebar-subview-back-btn .material-icons {
+        font-size: 22px !important;
+        color: var(--color-accent) !important;
+    }
+    .sidebar-subview-title {
+        font-size: 1.7rem !important;
+        font-weight: 800 !important;
+        color: var(--color-text-primary) !important;
+    }
+    .sidebar-subview-content .sidebar-nav-group {
+        background: var(--color-card) !important;
+        border: 1px solid var(--color-table-border) !important;
+        border-radius: var(--radius-large) !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-shadow: var(--shadow-main) !important;
+        margin-bottom: 1.6rem !important;
+        padding: 0 !important;
+    }
+
+    /* --- АКТИВНАЯ ВКЛАДКА НА МОБИЛЬНЫХ --- */
+    .sidebar-collapsible-sections .sidebar-folder {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header,
+    .sidebar-collapsible-sections .sidebar-folder-header.active-header {
+        margin: 5px 6px !important;
+        padding: 1.1rem 1.4rem !important;
+        border-radius: 18px !important;
+        width: calc(100% - 12px) !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 12px !important;
+        box-sizing: border-box !important;
+    }
+    .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header .folder-icon,
+    .sidebar-collapsible-sections .sidebar-folder-header.active-header .folder-icon,
+    .sidebar-collapsible-sections .sidebar-folder-header.active-header .material-icons:not(.chevron) {
+        .span3 li.active>a .ph,
+        .mobile-dock-item.active .ph {
+            font-family: "Phosphor-Fill" !important;
+        }
+        color: var(--color-text-primary-invert) !important;
+        -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+        margin: 0 !important;
+        width: 24px !important;
+        text-align: center !important;
+        flex-shrink: 0 !important;
+    }
+    .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header .folder-title,
+    .sidebar-collapsible-sections .sidebar-folder-header.active-header .folder-title {
+        color: var(--color-text-primary-invert) !important;
+        -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+        font-weight: 700 !important;
+        flex: 1 1 auto !important;
+        min-width: 0 !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        text-align: left !important;
+    }
+    .span3 .sidebar-collapsible-sections .sidebar-folder-header .chevron,
+    .sidebar-collapsible-sections .sidebar-folder-header .chevron {
+        display: block !important;
+        margin-left: auto !important;
+        margin-right: -4px !important;
+        font-size: 20px !important;
+        color: var(--color-text-secondary) !important;
+        opacity: 0.5 !important;
+        transform: none !important;
+        flex-shrink: 0 !important;
+    }
+    .span3 .sidebar-collapsible-sections .sidebar-folder-header.active-header .chevron,
+    .sidebar-collapsible-sections .sidebar-folder-header.active-header .chevron {
+        color: var(--color-text-primary-invert) !important;
+        -webkit-text-fill-color: var(--color-text-primary-invert) !important;
+        opacity: 0.8 !important;
+        transform: none !important;
+    }
+    .sidebar-collapsible-sections .sidebar-folder:has(.sidebar-folder-header.active-header) .sidebar-folder-header::after,
+    .sidebar-collapsible-sections .sidebar-folder:has(+ .sidebar-folder .sidebar-folder-header.active-header) .sidebar-folder-header::after {
+        display: none !important;
+    }
+}
+

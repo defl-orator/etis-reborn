@@ -1,0 +1,370 @@
+/* --- SUBMENU --- */
+.submenu {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    position: relative !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    border-radius: 50px !important;
+    background-color: var(--color-card) !important;
+    box-shadow: var(--shadow-main) !important;
+    padding: 4px !important;
+    gap: 8px !important;
+    margin-bottom: 1.6rem !important;
+    border-bottom: none !important;
+    background-position: left center, right center !important;
+    background-repeat: no-repeat !important;
+    background-size: 40px 100% !important;
+    background-attachment: scroll !important;
+}
+[theme="dark"] .submenu {
+    background: linear-gradient(to right, var(--color-card) 30%, rgba(255, 255, 255, 0)) left center / 40px 100% no-repeat local, linear-gradient(to left, var(--color-card) 30%, rgba(255, 255, 255, 0)) right center / 40px 100% no-repeat local, radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0)) left center / 15px 100% no-repeat scroll, radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0)) right center / 15px 100% no-repeat scroll !important;
+    background-color: var(--color-card) !important;
+}
+.submenu::-webkit-scrollbar {
+    display: none !important;
+}
+.submenu a:not(.answer-btn-custom),
+.submenu .answer-btn-custom,
+.submenu b {
+    flex: 1 0 auto !important;
+    min-width: max-content !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50px !important;
+    height: 3.8rem !important;
+    padding: 0 16px !important;
+    margin: 0 !important;
+    font-size: 1.3rem !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+    box-sizing: border-box !important;
+    text-decoration: none !important;
+}
+.submenu a:not(.answer-btn-custom),
+.submenu .answer-btn-custom {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-primary) !important;
+}
+.submenu .answer-btn-custom .material-icons {
+    color: var(--color-accent) !important;
+}
+.submenu b {
+    color: var(--color-text-primary-invert) !important;
+    font-weight: 600 !important;
+}
+.submenu a:hover,
+.submenu .answer-btn-custom:hover {
+    background: var(--color-highlight-light) !important;
+    transform: translateY(-1px);
+}
+
+/* UI Dialog */
+.ui-dialog .ui-dialog-content {
+    width: initial !important;
+    height: initial !important;
+}
+.ui-dialog .ui-dialog-content>form {
+    display: flex !important;
+    flex-direction: column !important;
+}
+.ui-dialog .ui-dialog-content>form>input {
+    margin-top: 6px !important;
+}
+.ui-dialog .ui-dialog-content>form>input.btn {
+    align-self: flex-end !important;
+}
+.ui-widget-content {
+    border: none !important;
+    background: var(--color-body) !important;
+    color: var(--color-text-primary) !important;
+}
+.ui-widget-header {
+    color: var(--color-text-primary) !important;
+}
+.ui-dialog .ui-dialog-titlebar-close>.ui-button-icon-primary {
+    display: none !important;
+}
+
+/* Inputs & Buttons */
+input,
+select,
+textarea,
+button {
+    font-family: inherit !important;
+}
+textarea {
+    width: 100% !important;
+}
+select,
+textarea {
+    background: var(--color-input) !important;
+    color: var(--color-text-primary) !important;
+    padding: 0.4rem 0.8rem !important;
+    border-radius: var(--radius-small) !important;
+    border: var(--border-input) !important;
+}
+select:hover {
+    background: var(--color-input-highlight) !important;
+}
+input[type="text"],
+input[type="password"],
+input[type="email"] {
+    background: transparent !important;
+    color: var(--color-text-primary) !important;
+    border: none !important;
+    box-shadow: inset 0 -1px 0 0 var(--color-text-secondary) !important;
+    width: 100% !important;
+    padding: 0.8rem 0 !important;
+    margin-bottom: 1.6rem !important;
+}
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus {
+    box-shadow: inset 0 -2px 0 0 var(--color-accent) !important;
+    outline: none !important;
+}
+input[type="checkbox"],
+input[type="radio"] {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 1rem !important;
+}
+input[type="checkbox"]:before {
+    width: 1.8rem !important;
+    height: 1.8rem !important;
+    background: var(--color-input) !important;
+    content: '' !important;
+    position: absolute !important;
+    border-radius: 0.2rem !important;
+    border: var(--border-input) !important;
+}
+input[type="checkbox"]:checked:after {
+    width: 0.8rem !important;
+    height: 0.8rem !important;
+    background: var(--color-accent) !important;
+    content: '' !important;
+    position: absolute !important;
+    border-radius: 0.1rem !important;
+    margin: 0.5rem !important;
+}
+input[type="radio"]:before {
+    width: 1.8rem !important;
+    height: 1.8rem !important;
+    background: var(--color-input) !important;
+    content: '' !important;
+    position: absolute !important;
+    border-radius: 50% !important;
+    border: var(--border-input) !important;
+}
+input[type="radio"]:checked:after {
+    width: 0.8rem !important;
+    height: 0.8rem !important;
+    background: var(--color-accent) !important;
+    content: '' !important;
+    position: absolute !important;
+    border-radius: 50% !important;
+    margin: 0.5rem !important;
+}
+button {
+    padding: 0.8rem 1.6rem !important;
+    color: var(--color-text-primary) !important;
+    background: var(--color-highlight) !important;
+    font-size: 1.4rem !important;
+    border: none !important;
+    border-radius: var(--radius-small) !important;
+    text-shadow: none !important;
+    box-shadow: var(--shadow-main) !important;
+    display: flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+}
+button:hover {
+    background: var(--color-highlight-light) !important;
+}
+.button_gray {
+    align-self: flex-end !important;
+    border: none !important;
+    background: none !important;
+}
+.button_gray button {
+    color: var(--color-text-primary-invert) !important;
+    background: var(--color-accent) !important;
+}
+.button.blue {
+    background: var(--color-accent) !important;
+}
+.icon-button {
+    display: flex !important;
+    align-items: center !important;
+    background: var(--color-card) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.2rem !important;
+    padding: 0.4rem 0.8rem !important;
+    border-radius: var(--radius-small) !important;
+    width: fit-content !important;
+    box-shadow: var(--shadow-main) !important;
+    text-decoration: none !important;
+}
+.icon-button2 {
+    margin-left: 0.4rem !important;
+    font-family: 'Material Symbols Rounded' !important;
+    font-size: 2rem !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    color: var(--color-text-secondary) !important;
+}
+.icon-button:before {
+    margin-right: 0.6rem !important;
+    font-family: 'Material Symbols Rounded' !important;
+    font-size: 1.8rem !important;
+}
+.icon-button.icon-feedback:before {
+    content: 'feedback' !important;
+}
+.icon-button.icon-analytics:before {
+    content: 'analytics' !important;
+}
+.icon-button.icon-today:before {
+    content: 'today' !important;
+}
+
+/* Page Specifics */
+.review {
+    padding-bottom: 3rem !important;
+    border-radius: var(--radius-medium) !important;
+    width: 100% !important;
+}
+.question {
+    margin: 0 0 1.6rem 0 !important;
+}
+.question li {
+    margin-left: 0.8rem !important;
+    margin-top: 0.4rem !important;
+}
+.question>.text {
+    color: var(--color-text-primary) !important;
+}
+.question label {
+    color: var(--color-text-secondary) !important;
+    display: flex !important;
+    align-items: center !important;
+}
+.comment>label {
+    color: var(--color-text-primary) !important;
+    margin-bottom: 0.4rem !important;
+}
+.comment>textarea {
+    width: 100% !important;
+    height: 20rem !important;
+    padding: 0.8rem 1.2rem !important;
+    resize: none !important;
+}
+form.que_form {
+    margin-top: 1rem !important;
+}
+.question_table {
+    margin: 1.4rem 0 3rem !important;
+}
+.question_table .text,
+.question_table tr:first-child {
+    background: var(--color-table-header) !important;
+}
+.cgrldatarow:hover {
+    background: var(--color-table-highlight) !important;
+}
+.span3>.nav.nav-tabs.nav-stacked {
+    border-radius: var(--radius-medium) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+}
+.span3>.nav.nav-tabs.nav-stacked:last-child {
+    margin-bottom: 4rem !important;
+}
+.span3>.nav.nav-tabs.nav-stacked:last-child>li>a {
+    justify-content: flex-start !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li>a {
+    padding: 1.1rem 1.4rem !important;
+    background: var(--color-card) !important;
+    color: var(--color-text-primary) !important;
+    border: none !important;
+    gap: 12px !important;
+    text-align: left !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li>a>.badge {
+    background-color: var(--color-accent) !important;
+    padding: 0.2rem 0 !important;
+    color: var(--color-text-primary-invert) !important;
+    border-radius: var(--radius-small) !important;
+    margin: -1.2rem 0 !important;
+    width: 2.4rem !important;
+    font-weight: normal !important;
+}
+.material-icons {
+    font-family: 'Material Symbols Rounded' !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    font-size: 24px !important;
+    line-height: 1 !important;
+    letter-spacing: normal !important;
+    text-transform: none !important;
+    display: inline-block !important;
+    white-space: nowrap !important;
+    word-wrap: normal !important;
+    direction: ltr !important;
+    -webkit-font-smoothing: antialiased !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li>a>.material-icons {
+    margin-right: 12px !important;
+    width: 24px !important;
+    text-align: center !important;
+    flex-shrink: 0 !important;
+}
+.material-icons.icon-load-doc-new {
+    pointer-events: auto !important;
+}
+.themes .hour,
+.ctl_hours,
+.book_list .pages,
+.link_list .descr {
+    color: var(--color-text-secondary) !important;
+}
+.tpr_part {
+    line-height: 1.5 !important;
+}
+.ses_part {
+    line-height: 1.5 !important;
+}
+
+/* Базовые стили для Phosphor */
+.ph,
+[class^="ph-"],
+[class*=" ph-"] {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    vertical-align: middle !important;
+}
+
+.material-icons {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 2.2rem !important;
+    line-height: 1 !important;
+}
+

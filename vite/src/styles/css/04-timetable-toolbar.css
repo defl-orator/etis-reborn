@@ -1,0 +1,568 @@
+/* --- TIMETABLE TOOLBAR --- */
+.timetable-toolbar {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    position: relative !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    width: 100% !important;
+    border-radius: 50px !important;
+    background-color: var(--color-card) !important;
+    box-shadow: var(--shadow-main) !important;
+    padding: 4px !important;
+    gap: 8px !important;
+    background-image: linear-gradient(to right, var(--color-card) 20%, rgba(255, 255, 255, 0) 100%), linear-gradient(to left, var(--color-card) 20%, rgba(255, 255, 255, 0) 100%) !important;
+    background-position: left center, right center !important;
+    background-repeat: no-repeat !important;
+    background-size: 40px 100% !important;
+    background-attachment: scroll !important;
+}
+.timetable-toolbar::-webkit-scrollbar {
+    display: none;
+}
+.timetable-toolbar>* {
+    flex: 1 0 auto !important;
+    min-width: max-content !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50px !important;
+    padding: 8px 16px !important;
+    margin: 0 !important;
+    font-size: 1.3rem !important;
+    font-weight: 500 !important;
+    background: var(--color-highlight) !important;
+    color: var(--color-text-primary) !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+}
+@media (max-width: 600px) {
+    .timetable-toolbar>* {
+        flex: 0 0 auto !important;
+    }
+}
+.timetable-toolbar>*:hover {
+    background: var(--color-highlight-light) !important;
+}
+.timetable-toolbar .toolbar-item {
+    display: flex !important;
+    align-items: center !important;
+    color: var(--color-text-primary) !important;
+    cursor: pointer !important;
+    text-decoration: none !important;
+    font-size: 1.3rem !important;
+    white-space: nowrap !important;
+    background: var(--color-highlight) !important;
+    padding: 0.8rem 1.4rem !important;
+    border-radius: var(--radius-small) !important;
+    border: none !important;
+    gap: 0.6rem !important;
+    font-weight: 500 !important;
+    transition: background 0.2s !important;
+}
+.timetable-toolbar .toolbar-item,
+.timetable-toolbar .sync-btn,
+.timetable-toolbar label.toolbar-item {
+    flex: 1 1 0 !important;
+    min-width: max-content !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 50px !important;
+    padding: 8px 16px !important;
+    margin: 0 !important;
+    font-size: 1.3rem !important;
+    font-weight: 500 !important;
+    background: var(--color-highlight) !important;
+    color: var(--color-text-primary) !important;
+    border: none !important;
+    transition: all 0.2s ease !important;
+    gap: 8px !important;
+}
+.timetable-toolbar .toolbar-item:hover {
+    background: var(--color-highlight-light) !important;
+}
+
+/* --- УНИВЕРСАЛЬНЫЙ ТУМБЛЕР --- */
+html body input[type="checkbox"].tumbler-checkbox {
+    position: relative !important;
+    width: 5rem !important;
+    min-width: 5rem !important;
+    height: 2.5rem !important;
+    appearance: none !important;
+    -moz-appearance: none !important;
+    background: rgba(142, 142, 147, 0.25) !important;
+    border-radius: 1.25rem !important;
+    border: none !important;
+    padding: 0 !important;
+    font-size: 0 !important;
+    box-sizing: border-box !important;
+    cursor: pointer !important;
+    transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: inline-flex !important;
+    flex-shrink: 0 !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+html body input[type="checkbox"].tumbler-checkbox:before {
+    display: none !important;
+}
+html body input[type="checkbox"].tumbler-checkbox:after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0.2rem !important;
+    left: 0.2rem !important;
+    width: 3rem !important;
+    height: 2.1rem !important;
+    background: #fff !important;
+    border-radius: 1.05rem !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+html body input[type="checkbox"].tumbler-checkbox:active:after {
+    width: 3.6rem !important;
+}
+html body input[type="checkbox"].tumbler-checkbox:checked {
+    background: var(--color-accent) !important;
+}
+html body input[type="checkbox"].tumbler-checkbox:checked:after {
+    transform: translateX(1.6rem) !important;
+}
+html body input[type="checkbox"].tumbler-checkbox:checked:active:after {
+    width: 3.6rem !important;
+    transform: translateX(1rem) !important;
+}
+
+/* --- СТИЛИ ДЛЯ ВКЛАДОК И ГРУПП НАСТРОЕК --- */
+.ios-settings-group {
+    background: var(--color-card) !important;
+    border-radius: var(--radius-large) !important;
+    margin-bottom: 2rem !important;
+    border: none !important;
+    box-shadow: var(--shadow-main) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+.ios-settings-group>label,
+.ios-settings-group>.ios-settings-row {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 1.4rem 1.6rem !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s ease !important;
+    text-decoration: none !important;
+    border: none !important;
+    box-sizing: border-box !important;
+}
+.ios-settings-row .chevron,
+.settings-sidebar-btn .chevron {
+    margin-right: -4px !important;
+    margin-left: auto !important;
+    font-size: 20px !important;
+    color: var(--color-text-secondary) !important;
+    flex-shrink: 0 !important;
+    opacity: 0.5 !important;
+}
+.ios-settings-group>*::after {
+    content: '' !important;
+    position: absolute !important;
+    bottom: 0 !important;
+    left: 1.6rem !important;
+    right: 1.6rem !important;
+    height: 1px !important;
+    background-color: var(--color-table-border) !important;
+    display: none !important;
+}
+.ios-settings-group>*:has(> div > .material-icons)::after {
+    left: 5.2rem !important;
+}
+.ios-settings-group>[style*="padding-left: 2.4rem"]::after {
+    left: 6.0rem !important;
+}
+.ios-settings-group>*:has(~ *:not([style*="display: none"]):not([style*="display:none"]))::after {
+    display: block !important;
+}
+.ios-settings-group>* {
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+.ios-settings-group>*:first-child {
+    border-top-left-radius: var(--radius-large) !important;
+    border-top-right-radius: var(--radius-large) !important;
+}
+.ios-settings-group>*:not([style*="display: none"]):not([style*="display:none"]):not(:has(~ *:not([style*="display: none"]):not([style*="display:none"]))) {
+    border-bottom-left-radius: var(--radius-large) !important;
+    border-bottom-right-radius: var(--radius-large) !important;
+}
+.timetable-toolbar label.toolbar-item {
+    padding-left: 0.65rem !important;
+    padding-right: 1.5rem !important;
+    gap: 0.8rem !important;
+}
+
+/* --- CAPSULE SEARCH BAR --- */
+.timetable-toolbar .capsule-search-item {
+    flex: 1 1 0 !important;
+    min-width: 150px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    background: var(--color-input) !important;
+    border-radius: 50px !important;
+    height: 3.8rem !important;
+    overflow: hidden !important;
+}
+.timetable-toolbar .capsule-search-item:hover {
+    background: var(--color-input) !important;
+}
+.timetable-toolbar .capsule-search-item .material-icons {
+    margin-left: 16px !important;
+    color: var(--color-text-secondary) !important;
+}
+.timetable-toolbar .capsule-search-item input {
+    flex: 1 !important;
+    height: 100% !important;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 16px 0 8px !important;
+    margin: 0 !important;
+    font-size: 1.4rem !important;
+    color: var(--color-text-primary) !important;
+    outline: none !important;
+}
+.timetable-toolbar .capsule-search-item input:focus {
+    box-shadow: none !important;
+}
+@media (max-width: 960px) {
+    .timetable-toolbar .capsule-search-item {
+        flex: 1 1 auto !important;
+        min-width: 140px !important;
+    }
+}
+
+/* --- MOBILE ADAPTATION --- */
+@media (max-width: 960px) {
+    html,
+    body {
+        overflow-x: hidden !important;
+        position: relative !important;
+        height: auto !important;
+    }
+    .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+    .span9 {
+        margin-left: 0 !important;
+        margin-top: 2rem !important;
+        padding: 0 1.2rem 16rem !important;
+        width: 100% !important;
+        max-width: 100vw !important;
+        overflow: visible !important;
+        float: none !important;
+        box-sizing: border-box !important;
+    }
+    .span9>div[style*="float: right"] {
+        float: none !important;
+        width: 100% !important;
+        text-align: left !important;
+        margin-bottom: 1rem !important;
+    }
+    .span3 {
+        display: block !important;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: 280px !important;
+        max-width: 85% !important;
+        height: 100dvh !important;
+        margin: 0 !important;
+        padding-top: 60px !important;
+        padding-bottom: calc(env(safe-area-inset-bottom, 40px) + 100px) !important;
+        background: var(--color-card) !important;
+        z-index: 1000000 !important;
+        transform: translateX(-105%) !important;
+        transition: none !important;
+        overflow-y: auto !important;
+        border-radius: 0 24px 24px 0 !important;
+        visibility: visible !important;
+        overscroll-behavior: contain !important;
+    }
+    .span3.ready-to-animate {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .span3.mobile-active {
+        transform: translateX(0) !important;
+        box-shadow: 100px 0 100px rgba(0, 0, 0, 0.5) !important;
+    }
+    .mobile-menu-btn {
+        display: block !important;
+        position: fixed !important;
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 20px) !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        z-index: 1000001 !important;
+        width: 120px !important;
+        height: 48px !important;
+        background: var(--color-accent) !important;
+        color: var(--color-text-primary-invert) !important;
+        border-radius: 24px !important;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .mobile-menu-btn.open {
+        left: calc(100vw - 41px) !important;
+        width: 52px !important;
+        height: 52px !important;
+        border-radius: 50% !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    }
+    .menu-btn-content {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        gap: 8px !important;
+        transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .menu-closed {
+        opacity: 1 !important;
+        transform: scale(1) !important;
+    }
+    .menu-open {
+        opacity: 0 !important;
+        transform: scale(0.5) rotate(-90deg) !important;
+    }
+    .mobile-menu-btn.open .menu-closed {
+        opacity: 0 !important;
+        transform: scale(0.5) !important;
+    }
+    .mobile-menu-btn.open .menu-open {
+        opacity: 1 !important;
+        transform: scale(1) rotate(0) !important;
+    }
+    .mobile-menu-btn .material-icons {
+        font-size: 20px !important;
+    }
+    .mobile-menu-btn.open .material-icons {
+        font-size: 24px !important;
+    }
+    .mobile-overlay {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        background: rgba(0, 0, 0, 0.6) !important;
+        z-index: 999999 !important;
+        opacity: 0;
+        visibility: hidden;
+        transition: none !important;
+        backdrop-filter: blur(4px) !important;
+        -webkit-backdrop-filter: blur(4px) !important;
+    }
+    .mobile-overlay.ready-to-animate {
+        transition: opacity 0.3s ease, visibility 0.3s ease !important;
+    }
+    .mobile-overlay.active {
+        opacity: 1;
+        visibility: visible;
+    }
+    .teach_plan,
+    .slimtab_nice {
+        display: block !important;
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    .common td,
+    .common th,
+    .teach_plan td,
+    .teach_plan th,
+    .slimtab_nice td,
+    .slimtab_nice th {
+        white-space: nowrap !important;
+        max-width: none !important;
+    }
+    .timetable {
+        display: table !important;
+        width: 100% !important;
+        table-layout: auto !important;
+    }
+    .timetable td {
+        white-space: normal !important;
+        word-wrap: break-word !important;
+    }
+    .pair_num {
+        width: 8.1rem !important;
+        min-width: 8.1rem !important;
+        padding-right: 1rem !important;
+        padding-left: 1.6rem !important;
+    }
+    .pair_teacher {
+        width: 35% !important;
+        padding-left: 0.5rem !important;
+        padding-right: 1.6rem !important;
+    }
+    .timetable-toolbar {
+        display: flex !important;
+        flex-direction: row !important;
+        justify-content: flex-start !important;
+        flex-wrap: nowrap !important;
+        align-items: center !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        width: 100% !important;
+        border-radius: 50px !important;
+        padding: 4px !important;
+        gap: 6px !important;
+        background-color: var(--color-card) !important;
+        background-image: linear-gradient(to right, var(--color-card) 10%, rgba(255, 255, 255, 0) 100%), linear-gradient(to left, var(--color-card) 10%, rgba(255, 255, 255, 0) 100%) !important;
+        background-position: left center, right center !important;
+        background-repeat: no-repeat !important;
+        background-size: 40px 100% !important;
+        background-attachment: scroll !important;
+    }
+    [theme="dark"] .timetable-toolbar,
+    [theme="night"] .timetable-toolbar {
+        background: linear-gradient(to right, var(--color-card) 30%, rgba(255, 255, 255, 0)) left center / 40px 100% no-repeat local, linear-gradient(to left, var(--color-card) 30%, rgba(255, 255, 255, 0)) right center / 40px 100% no-repeat local, radial-gradient(farthest-side at 0 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0)) left center / 15px 100% no-repeat scroll, radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0)) right center / 15px 100% no-repeat scroll !important;
+        background-color: var(--color-card) !important;
+    }
+    .timetable-toolbar::-webkit-scrollbar {
+        display: none;
+    }
+    .timetable-toolbar>* {
+        flex: 0 0 auto !important;
+        min-width: max-content !important;
+        white-space: nowrap !important;
+        display: inline-flex !important;
+    }
+    .timetable-toolbar .toolbar-item,
+    .timetable-toolbar .sync-btn {
+        flex: 0 0 auto !important;
+        min-width: max-content !important;
+        border-radius: 50px !important;
+        padding: 8px 12px !important;
+        font-size: 13px !important;
+    }
+    .sync-btn,
+    .toolbar-item {
+        padding: 0.8rem 1rem !important;
+        background: var(--color-highlight) !important;
+        border-radius: var(--radius-small) !important;
+    }
+    .span9 div[style*="inline-block"] {
+        display: block !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+    .submenu {
+        padding: 4px !important;
+        gap: 6px !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+    .submenu a:not(.answer-btn-custom),
+    .submenu b {
+        padding: 0 14px !important;
+    }
+    .wide-table-wrapper {
+        width: 100% !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        margin-bottom: 2rem !important;
+        display: block !important;
+    }
+    .term-table-v6,
+    .session-table-v6 {
+        display: table !important;
+        width: 100% !important;
+        min-width: 100% !important;
+        margin-bottom: 0 !important;
+        table-layout: auto !important;
+    }
+    .container,
+    .container .row {
+        overflow-x: clip !important;
+    }
+}
+.span3>.nav.nav-tabs.nav-stacked>li>a,
+.span3>.nav.nav-tabs.nav-stacked>li>a * {
+    color: var(--color-text-primary) !important;
+    font-weight: normal !important;
+    background: transparent !important;
+    border: none !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li.active>a {
+    color: var(--color-text-primary-invert) !important;
+    font-weight: 600 !important;
+    margin: 2px 12px !important;
+    border-radius: var(--radius-small) !important;
+    width: auto !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li.active>a,
+.span3>.nav.nav-tabs.nav-stacked>li.active>a:hover {
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+    margin: 2px 12px !important;
+    border-radius: var(--radius-small) !important;
+    width: auto !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li.active>a .material-icons {
+    color: var(--color-text-primary-invert) !important;
+    opacity: 1 !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>.active:before {
+    display: none !important;
+}
+@media (hover: hover) {
+    .span3>.nav.nav-tabs.nav-stacked>li:not(.active)>a:hover {
+        background: var(--color-highlight) !important;
+        margin: 2px 12px !important;
+        border-radius: var(--radius-small) !important;
+        width: auto !important;
+    }
+    .timetable-toolbar .toolbar-item:hover,
+    .submenu a:hover,
+    button:hover,
+    .cgrldatarow:hover,
+    table tbody tr:hover td {
+        background-color: var(--color-highlight) !important;
+    }
+}
+.mobile-menu-btn {
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li>a>.badge {
+    display: none !important;
+}
+.span3 li.warn_menu,
+.span3 li.warn_menu a {
+    background: transparent !important;
+    color: var(--color-text-primary) !important;
+}
+

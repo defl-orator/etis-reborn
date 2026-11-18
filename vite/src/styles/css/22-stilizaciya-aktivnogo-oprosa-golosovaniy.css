@@ -1,0 +1,352 @@
+/* --- СТИЛИЗАЦИЯ АКТИВНОГО ОПРОСА / ГОЛОСОВАНИЯ --- */
+.warning-banner-card {
+    background: rgba(255, 59, 48, 0.12) !important;
+    border: 1px solid rgba(255, 59, 48, 0.3) !important;
+    border-radius: var(--radius-large) !important;
+    padding: 1.6rem 2rem !important;
+    margin-bottom: 2.4rem !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 1.4rem !important;
+    color: var(--color-text-primary) !important;
+    box-shadow: var(--shadow-main) !important;
+    font-size: 1.35rem !important;
+    font-weight: 600 !important;
+    line-height: 1.5 !important;
+    box-sizing: border-box !important;
+}
+.warning-banner-card .material-icons {
+    font-size: 2.6rem !important;
+    color: var(--color-red) !important;
+    flex-shrink: 0 !important;
+}
+.survey-intro-card {
+    background: var(--color-card) !important;
+    border-radius: var(--radius-large) !important;
+    box-shadow: var(--shadow-main) !important;
+    border: 1px solid var(--color-table-border) !important;
+    padding: 2.4rem !important;
+    margin-bottom: 2.4rem !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.35rem !important;
+    line-height: 1.6 !important;
+    box-sizing: border-box !important;
+}
+.survey-intro-card h4 {
+    margin: 0 0 1rem 0 !important;
+    font-size: 1.6rem !important;
+    font-weight: 800 !important;
+    color: var(--color-text-primary) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+.survey-intro-card p {
+    margin: 0 0 1rem 0 !important;
+    color: var(--color-text-secondary) !important;
+}
+.survey-intro-card p:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Вопросы и варианты ответов */
+.survey-card .review .form {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+}
+.survey-card .review form[name^="estimate_"] {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 1.6rem !important;
+    margin-top: 0 !important;
+}
+.survey-card .review .question {
+    background: var(--color-highlight) !important;
+    border-radius: var(--radius-medium) !important;
+    padding: 2rem !important;
+    border: 1px solid var(--color-table-border) !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+}
+.survey-card .review .question>.text {
+    font-size: 1.45rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    line-height: 1.4 !important;
+    margin-bottom: 1.4rem !important;
+}
+.survey-card .review .question ul {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.8rem !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+}
+.survey-card .review .question li {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.survey-card .review .question label {
+    display: flex !important;
+    align-items: center !important;
+    padding: 1.2rem 1.6rem !important;
+    background: var(--color-card) !important;
+    border-radius: var(--radius-small) !important;
+    border: 1px solid var(--color-table-border) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.3rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+}
+.survey-card .review .question label:hover {
+    border-color: var(--color-accent) !important;
+    background: var(--color-card) !important;
+    transform: translateX(3px) !important;
+}
+.survey-card .review .question label:has(input:checked) {
+    border-color: var(--color-accent) !important;
+    background: var(--color-accent-active) !important;
+    color: var(--color-text-primary) !important;
+    font-weight: 600 !important;
+}
+
+/* Кнопки действий (Отправить / Ответить позже) */
+.survey-action-buttons {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    gap: 1.2rem !important;
+    margin-top: 2rem !important;
+}
+.survey-action-buttons .button_gray {
+    width: auto !important;
+    margin: 0 !important;
+}
+.survey-action-buttons button[id^="send_btn_"] {
+    background: var(--color-accent) !important;
+    color: #ffffff !important;
+    border-radius: 50px !important;
+    padding: 1.2rem 2.4rem !important;
+    font-size: 1.4rem !important;
+    font-weight: 700 !important;
+    border: none !important;
+    cursor: pointer !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+.survey-action-buttons button[id^="send_btn_"]:disabled {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-secondary) !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    opacity: 0.7 !important;
+}
+.survey-action-buttons button[id^="reject_send_btn_"] {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-secondary) !important;
+    border-radius: 50px !important;
+    padding: 1.2rem 2.2rem !important;
+    font-size: 1.4rem !important;
+    font-weight: 600 !important;
+    border: 1px solid var(--color-table-border) !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+.survey-action-buttons button[id^="reject_send_btn_"]:hover {
+    background: var(--color-highlight-light) !important;
+    color: var(--color-text-primary) !important;
+}
+
+/* --- СТИЛИ ДЛЯ МАРШРУТИЗАТОРА И ТАЙМЛАЙНА --- */
+.route-input-wrap input[type="text"],
+#route-from-input,
+#route-to-input,
+#router-modal-from,
+#router-modal-to {
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    border-radius: var(--radius-medium) !important;
+    box-shadow: var(--shadow-main) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.4rem !important;
+    padding: 1.2rem 1.6rem 1.2rem 42px !important;
+    outline: none !important;
+    margin: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.route-input-wrap input[type="text"]:focus,
+#route-from-input:focus,
+#route-to-input:focus,
+#router-modal-from:focus,
+#router-modal-to:focus {
+    box-shadow: var(--shadow-main) !important;
+    border-color: var(--color-table-border) !important;
+    outline: none !important;
+}
+.route-swap-btn {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+    border-radius: 50% !important;
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    color: var(--color-text-secondary) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: var(--shadow-main) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+    transition: all 0.2s ease !important;
+}
+.route-swap-btn:hover {
+    background: var(--color-highlight) !important;
+    color: var(--color-accent) !important;
+    transform: scale(1.08) !important;
+}
+.route-summary-card {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    border-radius: var(--radius-large) !important;
+    box-shadow: var(--shadow-main) !important;
+    padding: 1.4rem 1.8rem !important;
+    margin-bottom: 1.6rem !important;
+    box-sizing: border-box !important;
+}
+.route-quick-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 0.7rem 1.4rem !important;
+    border-radius: 50px !important;
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    color: var(--color-text-primary) !important;
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    box-shadow: var(--shadow-main) !important;
+    transition: all 0.2s ease !important;
+}
+.route-quick-chip:hover {
+    background: var(--color-highlight) !important;
+    border-color: var(--color-accent) !important;
+    color: var(--color-accent) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* Переключатель режимов маршрута (По переходам / Через улицу) */
+.route-mode-switch {
+    display: none !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    background: var(--color-input) !important;
+    border-radius: 50px !important;
+    padding: 4px !important;
+    gap: 8px !important;
+    margin-bottom: 1.4rem !important;
+    border: 1px solid var(--color-table-border) !important;
+    box-sizing: border-box !important;
+    width: 100% !important;
+    min-height: 42px !important;
+}
+.route-mode-tabs {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+}
+.route-mode-buttons-group {
+    display: flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    flex-shrink: 0 !important;
+}
+.route-mode-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    padding: 0.6rem 1.2rem !important;
+    border-radius: 50px !important;
+    background: transparent !important;
+    border: none !important;
+    color: var(--color-text-secondary) !important;
+    font-size: 1.25rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    box-shadow: none !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+}
+.route-mode-btn.active {
+    background: var(--color-card) !important;
+    color: var(--color-text-primary) !important;
+    box-shadow: var(--shadow-main) !important;
+}
+.route-mode-meta {
+    margin-left: auto !important;
+    padding: 0 1.2rem 0 0 !important;
+    font-size: 1.25rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-primary) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    white-space: nowrap !important;
+}
+.route-mode-meta .meta-time {
+    color: var(--color-accent) !important;
+    font-weight: 800 !important;
+}
+.route-mode-meta .meta-steps {
+    color: var(--color-text-secondary) !important;
+    font-weight: 600 !important;
+}
+@media (max-width: 600px) {
+    .route-mode-switch {
+        padding: 4px 8px !important;
+        border-radius: 20px !important;
+    }
+    .route-mode-btn {
+        padding: 0.5rem 0.8rem !important;
+        font-size: 1.15rem !important;
+    }
+    .route-mode-meta {
+        padding: 0 0.4rem 0 0 !important;
+        font-size: 1.15rem !important;
+    }
+}
+.build-route-action-btn:disabled {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-secondary) !important;
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+    box-shadow: none !important;
+    pointer-events: none !important;
+}
+.route-mode-btn:disabled {
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}
+

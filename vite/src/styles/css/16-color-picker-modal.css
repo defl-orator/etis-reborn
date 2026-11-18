@@ -1,0 +1,358 @@
+/* --- COLOR PICKER MODAL --- */
+.color-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(10, 36px);
+    gap: 1rem;
+    margin-top: 1rem;
+    justify-content: space-between;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+.color-picker-circle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #fff;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.color-picker-circle:hover {
+    transform: scale(1.15);
+}
+.color-picker-circle.selected {
+    transform: scale(1.2);
+    color: var(--color-text-primary);
+    text-shadow: 0 0 6px var(--color-card), 0 0 2px var(--color-card);
+}
+.color-picker-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0.8rem 1.6rem;
+    border-radius: 50px;
+    transition: background 0.4s ease;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    height: 42px;
+}
+.color-picker-toggle-wrap span {
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #fff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+.color-picker-random-btn {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    flex-shrink: 0 !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: var(--color-card) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid var(--color-table-border) !important;
+    cursor: pointer !important;
+    box-shadow: var(--shadow-main) !important;
+    transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s, background 0.2s !important;
+}
+@media (hover: hover) and (pointer: fine) {
+    .color-picker-random-btn:hover {
+        color: var(--color-accent) !important;
+        transform: scale(1.15) !important;
+    }
+}
+.color-picker-random-btn:active,
+.color-picker-random-btn.clicked {
+    transform: scale(0.9) !important;
+    transition: transform 0.1s ease !important;
+}
+.color-picker-random-btn .material-icons {
+    font-size: 22px !important;
+    margin: 0 !important;
+}
+
+/* --- THEME SELECTOR --- */
+.theme-selector-group {
+    display: inline-flex;
+    background: var(--color-card);
+    border: 1px solid var(--color-table-border);
+    border-radius: 50px;
+    padding: 4px;
+    gap: 4px;
+    height: 42px;
+    align-items: center;
+    box-shadow: var(--shadow-main);
+}
+.theme-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent !important;
+    border: none !important;
+    color: var(--color-text-secondary) !important;
+    border-radius: 50px !important;
+    cursor: pointer;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    width: 48px;
+    height: 34px;
+    padding: 0 !important;
+}
+.theme-btn .material-icons {
+    font-size: 22px !important;
+    margin: 0 !important;
+}
+@media (hover: hover) and (pointer: fine) {
+    .theme-btn:hover {
+        color: var(--color-text-primary) !important;
+        background: var(--color-highlight) !important;
+    }
+}
+.theme-btn.active {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-primary) !important;
+    box-shadow: inset 0 0 0 1px var(--color-table-border) !important;
+}
+
+/* --- СТИЛИ ДЛЯ УМНЫХ ДАТ --- */
+.msg-event-link {
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-style: dashed;
+    text-decoration-color: var(--color-text-secondary);
+    color: var(--color-text-primary);
+    font-weight: 700;
+    transition: color 0.2s ease, text-decoration-color 0.2s ease, background 0.2s ease;
+    padding: 2px 4px;
+    border-radius: 6px;
+    margin: 0 2px;
+}
+.msg-event-link:hover {
+    color: var(--color-accent) !important;
+    text-decoration-color: var(--color-accent) !important;
+    background: var(--color-accent-active);
+}
+.msg-event-link.added {
+    color: var(--color-accent) !important;
+    text-decoration: none !important;
+    background: var(--color-accent-active);
+    pointer-events: auto;
+}
+.msg-event-link.added:hover {
+    color: var(--color-red) !important;
+    background: rgba(255, 59, 48, 0.15) !important;
+    text-decoration: line-through !important;
+}
+
+/* --- ВКЛАДКИ СИНХРОНИЗАЦИИ --- */
+.sync-tabs {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    scrollbar-width: none !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    border-radius: 50px !important;
+    padding: 4px !important;
+    margin-bottom: 2rem !important;
+    gap: 4px !important;
+}
+.sync-tabs::-webkit-scrollbar {
+    display: none !important;
+}
+button.sync-tab {
+    flex: 1 0 auto !important;
+    min-width: max-content !important;
+    white-space: nowrap !important;
+    padding: 0.8rem 1.4rem !important;
+    background: transparent !important;
+    border: none !important;
+    border-radius: 50px !important;
+    box-shadow: none !important;
+    color: var(--color-text-secondary) !important;
+    cursor: pointer !important;
+    font-weight: 600 !important;
+    font-size: 1.3rem !important;
+    transition: all 0.2s !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+@media (max-width: 600px) {
+    button.sync-tab {
+        padding: 0.7rem 1.1rem !important;
+        font-size: 1.25rem !important;
+    }
+}
+button.sync-tab.active,
+.sync-tab.active {
+    background: var(--bg-accent, var(--color-accent)) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-weight: 800 !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+}
+
+[theme="dark"] button.sync-tab.active,
+[theme="night"] button.sync-tab.active {
+    background: var(--bg-accent, var(--color-accent)) !important;
+}
+.sync-tab-content {
+    display: none;
+}
+.sync-tab-content.active {
+    display: block;
+    animation: fadeIn 0.2s ease;
+}
+.type-badge-cons {
+    color: var(--color-text-secondary) !important;
+}
+.timetable-toolbar .toolbar-item.is-active:hover {
+    filter: brightness(0.85) !important;
+}
+.delete-cal-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+}
+.delete-cal-btn:hover {
+    background: rgba(255, 59, 48, 0.12) !important;
+    color: var(--color-red) !important;
+}
+#tooltip {
+    max-width: 500px !important;
+    width: auto !important;
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-table-border) !important;
+    border-radius: var(--radius-medium) !important;
+    box-shadow: var(--shadow-dialog) !important;
+    padding: 12px !important;
+    z-index: 1000000 !important;
+    pointer-events: none !important;
+}
+#tooltip table.common {
+    margin: 0 !important;
+    box-shadow: none !important;
+    width: 100% !important;
+    background: transparent !important;
+}
+#tooltip table.common th {
+    font-size: 1rem !important;
+    padding: 6px !important;
+    background: var(--color-table-header) !important;
+    color: var(--color-text-secondary) !important;
+}
+#tooltip table.common td {
+    font-size: 1.1rem !important;
+    padding: 6px !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    background: transparent !important;
+}
+
+/* --- ВАЖНЫЕ ПАРЫ --- */
+.timetable-grid tr.is-important .pair-type-badge {
+    background: transparent !important;
+    color: var(--color-red) !important;
+}
+.pair-badge-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-bottom: 2px !important;
+}
+.pair-type-badge {
+    display: inline-block !important;
+    margin-bottom: 0 !important;
+    white-space: nowrap !important;
+}
+.pair-important-btn {
+    position: relative !important;
+    width: 0 !important;
+    margin-right: 0 !important;
+    cursor: pointer !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--color-text-secondary) !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    overflow: hidden !important;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+.pair-important-btn .material-icons {
+    font-size: 1.4rem !important;
+}
+.timetable-grid tr:hover .pair-important-btn,
+.pair-important-btn.is-active {
+    opacity: 1 !important;
+    visibility: visible !important;
+    width: 16px !important;
+    margin-right: 4px !important;
+    pointer-events: auto !important;
+}
+.pair-important-btn.is-active {
+    color: var(--color-red) !important;
+    animation: pulse-important-bell 2s infinite;
+}
+.pair-important-btn:hover {
+    color: var(--color-red) !important;
+    transform: scale(1.15) !important;
+}
+@keyframes pulse-important-bell {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(0.85);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+#swipe-action-bubble.active-threshold.action-important {
+    color: var(--color-red) !important;
+}
+@media (hover: none), (pointer: coarse) {
+    .timetable-grid tr:hover .pair-important-btn:not(.is-active) {
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        margin-right: 0 !important;
+    }
+    .pair-important-btn.is-active {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        width: 16px !important;
+        margin-right: 4px !important;
+    }
+}
+

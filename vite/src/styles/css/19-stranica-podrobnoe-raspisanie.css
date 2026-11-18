@@ -1,0 +1,421 @@
+/* --- СТРАНИЦА "ПОДРОБНОЕ РАСПИСАНИЕ" --- */
+table.distr {
+    min-width: 900px !important;
+}
+table.distr td,
+table.distr th {
+    vertical-align: middle !important;
+}
+table.distr td:first-child,
+table.distr th:first-child {
+    min-width: 300px !important;
+    padding-right: 2rem !important;
+}
+.distr .pair {
+    width: 14px !important;
+    height: 14px !important;
+    border-radius: 50% !important;
+    margin: 6px auto !important;
+    color: transparent !important;
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.1) !important;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    cursor: help !important;
+}
+.distr .pair:hover {
+    transform: scale(1.5) !important;
+}
+.distr .lec {
+    background: var(--color-blue) !important;
+}
+.distr .pract {
+    background: var(--color-green) !important;
+}
+.distr .lab {
+    background: var(--color-warning) !important;
+}
+table.question_table tbody tr:hover td {
+    background-color: transparent !important;
+}
+table.question_table tr.cgrldatarow:hover {
+    background-color: var(--color-accent-active) !important;
+}
+table.question_table td.answer_cell {
+    padding: 0 !important;
+    transition: background 0.2s;
+}
+table.question_table td.answer_cell:hover {
+    background-color: rgba(0, 122, 255, 0.1) !important;
+}
+table.question_table td.answer_cell label {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 100% !important;
+    height: 60px !important;
+    margin: 0 !important;
+    cursor: pointer !important;
+}
+table.question_table input[type="radio"] {
+    transform: scale(1.2);
+}
+table.question_table tbody tr:not(:last-child) td {
+    border-bottom: none !important;
+}
+table.question_table tbody tr:not(:last-child) {
+    background-image: linear-gradient(to right, transparent 16px, var(--color-table-border) 16px, var(--color-table-border) calc(100% - 16px), transparent calc(100% - 16px)) !important;
+    background-position: bottom !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 1px !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li>a,
+.span3>.nav.nav-tabs.nav-stacked>li.active>a {
+    margin: 2px 12px !important;
+    transition: background-color 0.15s ease, color 0.15s ease !important;
+    transform: none !important;
+}
+
+/* --- УМНАЯ АКТИВНАЯ ВКЛАДКА --- */
+.span3 .nav.nav-tabs.nav-stacked {
+    position: relative !important;
+}
+@media (min-width: 961px) {
+    html.smart-sidebar-enabled .span3 li.active {
+        position: sticky !important;
+        z-index: 100 !important;
+        background-color: transparent !important;
+        padding: 0 !important;
+        margin: 0 !important;
+        top: 8px !important;
+        bottom: 8px !important;
+    }
+    html:not(.smart-sidebar-enabled) .span3 li.active {
+        position: relative !important;
+        top: auto !important;
+        bottom: auto !important;
+        z-index: 1 !important;
+    }
+}
+@media (max-width: 960px) {
+    .span3>.nav.nav-tabs.nav-stacked>li.active {
+        position: relative !important;
+        top: auto !important;
+        bottom: auto !important;
+        z-index: 1 !important;
+    }
+    .pc-only-setting {
+        display: none !important;
+    }
+}
+.submenu b,
+.submenu b:hover,
+.weeks .week.current>a,
+.weeks .week.current>a:hover,
+.span3>.nav.nav-tabs.nav-stacked>li.active>a,
+.span3>.nav.nav-tabs.nav-stacked>li.active>a:hover {
+    transform: none !important;
+}
+html body table th:last-child,
+html body table td:last-child,
+html body .common th:last-child,
+html body .common td:last-child,
+html body .slimtab_nice th:last-child,
+html body .slimtab_nice td:last-child {
+    text-align: right !important;
+    padding-right: 16px !important;
+}
+@media (max-width: 768px) {
+    html body table th:last-child,
+    html body table td:last-child,
+    html body .common th:last-child,
+    html body .common td:last-child,
+    html body .slimtab_nice th:last-child,
+    html body .slimtab_nice td:last-child {
+        padding-right: 8px !important;
+    }
+}
+.sync-tabs {
+    background: var(--color-card) !important;
+    box-shadow: var(--shadow-main) !important;
+    border: 1px solid var(--color-table-border) !important;
+}
+
+/* --- РАЗДЕЛИТЕЛИ МЕЖДУ НЕАКТИВНЫМИ ВКЛАДКАМИ --- */
+.sync-tabs>button.sync-tab {
+    position: relative !important;
+}
+.sync-tabs>button.sync-tab:not(:last-child)::after {
+    content: '' !important;
+    position: absolute !important;
+    right: -2.5px !important;
+    top: 25% !important;
+    bottom: 25% !important;
+    width: 1px !important;
+    background-color: var(--color-table-border) !important;
+    pointer-events: none !important;
+}
+
+/* Скрываем разделитель около активной вкладки */
+.sync-tabs>button.sync-tab:has(+ .active)::after,
+.sync-tabs>button.sync-tab.active::after {
+    display: none !important;
+}
+.sync-tabs>button.sync-tab[style*="display: none"]::after,
+.sync-tabs>button.sync-tab[style*="display:none"]::after,
+.sync-tabs>button.sync-tab:has(+ [style*="display: none"] + .active)::after,
+.sync-tabs>button.sync-tab:has(+ [style*="display:none"] + .active)::after {
+    display: none !important;
+}
+.actions-msg-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: max-width 0.3s ease, opacity 0.3s ease, margin-left 0.3s ease, transform 0.3s ease;
+    overflow: hidden;
+}
+@media (hover: hover) and (pointer: fine) {
+    .actions-msg-wrap {
+        max-width: 0;
+        opacity: 0;
+        margin-left: 0;
+        transform: translateX(10px);
+        pointer-events: none;
+    }
+    .msg-card:hover .actions-msg-wrap {
+        max-width: 60px;
+        opacity: 1;
+        margin-left: 8px;
+        transform: translateX(0);
+        pointer-events: auto;
+    }
+}
+@media (hover: none), (pointer: coarse) {
+    .actions-msg-wrap {
+        max-width: 60px;
+        opacity: 1;
+        margin-left: 8px;
+        transform: none;
+    }
+}
+html.mac-safari .share-day-btn,
+html.mac-safari .share-all-btn,
+html.mac-safari .share-week-btn,
+html.mac-safari .share-msg-wrap,
+html.mac-safari .share-msg-btn {
+    display: none !important;
+}
+.error_message {
+    position: fixed !important;
+    top: 2.5rem !important;
+    left: 50% !important;
+    transform: translateX(-50%) translateY(-100%) !important;
+    width: 90% !important;
+    max-width: 420px !important;
+    z-index: 2000002 !important;
+    background: var(--color-card) !important;
+    border: 1px solid var(--color-red) !important;
+    color: var(--color-text-primary) !important;
+    border-radius: var(--radius-medium) !important;
+    padding: 1.4rem 2rem !important;
+    font-size: 1.35rem !important;
+    font-weight: 700 !important;
+    box-shadow: var(--shadow-dialog) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    box-sizing: border-box !important;
+    opacity: 0 !important;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease !important;
+}
+.error_message.show {
+    transform: translateX(-50%) translateY(0) !important;
+    opacity: 1 !important;
+}
+
+/* ========================================================= */
+
+/* --- БАЗОВЫЕ СТИЛИ САЙДБАРА --- */
+
+/* ========================================================= */
+.mobile-nav-dock {
+    display: none !important;
+}
+.span3 .nav.nav-tabs.nav-stacked {
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+.span3 li>a,
+.span3 li>a .sidebar-link-text,
+.span3 .sidebar-card-row,
+.span3 .sidebar-card-text {
+    color: var(--color-text-primary) !important;
+    font-weight: 500 !important;
+    font-size: 1.35rem !important;
+    text-decoration: none !important;
+    background: transparent !important;
+    border: none !important;
+}
+.span3 li.active>a,
+.span3 li.active>a .sidebar-link-text {
+    font-weight: 700 !important;
+}
+.span3 li>a .material-icons,
+.span3 .sidebar-card-row .material-icons {
+    color: var(--color-text-primary) !important;
+    font-size: 22px !important;
+    margin: 0 !important;
+    width: 24px !important;
+    text-align: center !important;
+    flex-shrink: 0 !important;
+}
+.span3 li>a,
+.span3 .sidebar-card-row {
+    gap: 12px !important;
+}
+.span3 li>a .badge-point {
+    display: block !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    min-height: 8px !important;
+    background-color: #FF3B30 !important;
+    border-radius: 50% !important;
+    margin-left: auto !important;
+    margin-right: 8px !important;
+    flex-shrink: 0 !important;
+    align-self: center !important;
+    box-shadow: 0 0 4px rgba(255, 59, 48, 0.4) !important;
+    font-size: 0 !important;
+    color: transparent !important;
+}
+.span3 .badge {
+    display: none !important;
+}
+
+/* ========================================================= */
+
+/* --- ДЕСКТОПНЫЙ САЙДБАР (ПК) --- */
+
+/* ========================================================= */
+@media (min-width: 961px) {
+    .span3 {
+        position: fixed !important;
+        top: 2rem !important;
+        bottom: 2rem !important;
+        width: var(--width-aside) !important;
+        margin: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0.5rem !important;
+        overflow-x: hidden !important;
+        overflow-y: auto !important;
+        float: none !important;
+        background: var(--color-card) !important;
+        border-radius: var(--radius-large) !important;
+        z-index: 100 !important;
+        box-shadow: var(--shadow-main) !important;
+    }
+    .span3 .sidebar-nav-group {
+        display: contents !important;
+    }
+    .span3 .sidebar-nav-group:not(:last-child) .sidebar-divider {
+        display: block !important;
+        height: 1px !important;
+        background-color: var(--color-table-border) !important;
+        margin: 0.8rem 12px !important;
+        padding: 0 !important;
+        list-style: none !important;
+        pointer-events: none !important;
+        border: none !important;
+    }
+    .span3 .sidebar-nav-group:last-child .sidebar-divider,
+    .span3 .sidebar-divider {
+        display: block !important;
+        height: 1px !important;
+        background-color: var(--color-table-border) !important;
+        margin: 0.8rem 12px !important;
+        padding: 0 !important;
+        list-style: none !important;
+        pointer-events: none !important;
+        border: none !important;
+    }
+    .span3 .sidebar-divider:last-child,
+    .span3 .sidebar-nav-group:last-child+.sidebar-divider {
+        display: none !important;
+    }
+    .span3 li>a {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        padding: 1rem 1.4rem !important;
+        margin: 2px 12px !important;
+        border-radius: var(--radius-small) !important;
+        gap: 23px !important;
+        text-align: left !important;
+    }
+    .span3 li>a .chevron {
+        display: none !important;
+    }
+    .span3 li:not(.active)>a:hover {
+        background: var(--color-highlight) !important;
+    }
+    .span3 li.active>a {
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
+    }
+    .span3 li.active>a .material-icons {
+        .span3 li.active>a .ph,
+        .mobile-dock-item.active .ph {
+            font-family: "Phosphor-Fill" !important;
+        }
+    }
+    .span3 .sidebar-bio-mobile,
+    .span3 .sidebar-footer-mobile {
+        display: none !important;
+    }
+    .span3 .sidebar-bio-desktop,
+    .span3 .sidebar-footer-desktop {
+        display: block !important;
+    }
+    .span3 .sidebar-user-info,
+    .span3 .sidebar-footer {
+        position: relative !important;
+        padding: 1.6rem 2.6rem !important;
+        font-size: 1.1rem !important;
+        line-height: 1.5 !important;
+        color: var(--color-text-secondary) !important;
+    }
+    .span3 .sidebar-user-info::before,
+    .span3 .sidebar-footer::before {
+        content: '' !important;
+        position: absolute !important;
+        top: 0 !important;
+        left: 12px !important;
+        right: 12px !important;
+        height: 1px !important;
+        background: var(--color-table-border) !important;
+    }
+    .span3 .sidebar-bio-desktop b {
+        color: var(--color-text-primary) !important;
+        display: block !important;
+        margin-bottom: 4px !important;
+        font-size: 1.2rem !important;
+    }
+    .span3 .sidebar-bio-desktop span {
+        display: block !important;
+        margin-left: 0 !important;
+    }
+    .span3 .sidebar-footer-desktop a {
+        color: var(--color-text-secondary) !important;
+        text-decoration: none !important;
+    }
+    .span3 .sidebar-footer-desktop a:hover {
+        color: var(--color-accent) !important;
+    }
+}
+
+/* ========================================================= */
+

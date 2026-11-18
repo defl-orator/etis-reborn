@@ -1,0 +1,28 @@
+import { foucBoot1, foucBoot2 } from './core/fouc';
+import { consoleApiBoot } from './core/console-api';
+import { devicesBoot } from './core/devices';
+import { themeEngineBoot } from './core/theme-engine';
+import { platformBoot } from './utils/platform';
+import { injectBoot } from './styles/inject';
+import { configBoot } from './core/config';
+import { accentBoot } from './core/accent';
+import { initBoot } from './core/init';
+import { stateBoot } from './features/consultations/state';
+import { consultationsBoot } from './modals/consultations';
+import { cloudBoot } from './sync/cloud';
+import { iconsBoot } from './ui/icons';
+
+foucBoot1();
+consoleApiBoot();
+devicesBoot();
+themeEngineBoot();
+foucBoot2();
+platformBoot();
+injectBoot();
+iconsBoot();
+configBoot();
+accentBoot();
+initBoot();
+stateBoot();
+consultationsBoot();
+cloudBoot();

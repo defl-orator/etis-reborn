@@ -1,0 +1,381 @@
+/* --- LIBRARY CATALOG SEARCH --- */
+.search-flex-container {
+    display: flex !important;
+    gap: 1.2rem !important;
+    align-items: stretch !important;
+    width: 100% !important;
+}
+.width_setter {
+    position: static !important;
+    margin: 0 !important;
+    flex: 1 !important;
+}
+.search-flex-container input[type="text"] {
+    position: static !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 1.2rem 1.6rem !important;
+    border-radius: var(--radius-small) !important;
+    background: var(--color-input) !important;
+    border: 1px solid var(--color-table-border) !important;
+    box-shadow: none !important;
+    font-size: 1.4rem !important;
+}
+.search-flex-container .answer-btn-custom {
+    padding: 0 2.4rem !important;
+    height: auto !important;
+    flex-shrink: 0 !important;
+}
+#record_list {
+    margin-top: 2.4rem !important;
+}
+#record_list img {
+    vertical-align: middle !important;
+    margin-right: 10px !important;
+}
+
+/* --- ТАБЛИЦА РАСПИСАНИЯ --- */
+html[theme] table.timetable-grid,
+html[theme] .span9 table.common.timetable-grid {
+    table-layout: fixed !important;
+    width: 100% !important;
+    border-spacing: 0 !important;
+    border-collapse: collapse !important;
+}
+html[theme] .timetable-grid td {
+    padding: 1.2rem 0 !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+html[theme] .timetable-grid td.pair_num {
+    width: 90px !important;
+    min-width: 90px !important;
+    text-align: center !important;
+    font-weight: 500 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+}
+html[theme] .timetable-grid td.pair_info {
+    overflow: visible !important;
+    vertical-align: middle !important;
+}
+html[theme] .timetable-grid td.pair_teacher {
+    width: 130px !important;
+    min-width: 110px !important;
+    text-align: right !important;
+    padding-right: 2rem !important;
+    position: relative !important;
+    vertical-align: middle !important;
+}
+html[theme] .timetable-grid td.pair_teacher br {
+    display: none !important;
+}
+html[theme] .timetable-grid td.pair_teacher a:not(.eval) {
+    display: inline-block !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative !important;
+    z-index: 2 !important;
+    line-height: 1.2 !important;
+}
+html[theme] .timetable-grid tr:has(td.pair_teacher .eval).tr-needs-space:hover td.pair_teacher a:not(.eval) {
+    transform: translateY(-12px) !important;
+}
+html[theme] .timetable-grid tr:has(td.pair_teacher .eval):not(.tr-needs-space):hover td.pair_teacher a:not(.eval) {
+    transform: translateY(-8px) !important;
+}
+html[theme] .timetable-grid td.pair_teacher .eval {
+    position: absolute !important;
+    right: 2rem !important;
+    top: 50% !important;
+    transform: translateY(-50%) scale(0.9) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: all 0.2s ease !important;
+    font-size: 1.15rem !important;
+    color: var(--color-text-secondary) !important;
+    text-decoration: underline !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    cursor: pointer !important;
+}
+html[theme] .timetable-grid tr:not(.tr-needs-space):hover td.pair_teacher .eval {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(6px) scale(1) !important;
+}
+html[theme] .timetable-grid tr.tr-needs-space:hover td.pair_teacher .eval {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(4px) scale(1) !important;
+}
+html[theme] .timetable-grid tr:hover td.pair_teacher .eval {
+    opacity: 1 !important;
+    visibility: visible !important;
+    transform: translateY(-50%) scale(1) !important;
+}
+html[theme] .timetable-grid tr:not(:last-child) {
+    background-image: linear-gradient(to right, transparent 90px, var(--color-table-border) 90px, var(--color-table-border) calc(100% - 1.6rem), transparent calc(100% - 1.6rem)) !important;
+    background-position: bottom !important;
+    background-repeat: no-repeat !important;
+    background-size: 100% 1px !important;
+}
+html[theme] .timetable-grid tr:hover td {
+    background: transparent !important;
+}
+html[theme] .timetable-grid tr.timetable-gap-row td {
+    padding-top: 1rem !important;
+    padding-bottom: 1rem !important;
+}
+.pair-type-badge {
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    line-height: 1 !important;
+}
+.type-badge-lek {
+    color: var(--color-blue) !important;
+}
+.type-badge-pract {
+    color: var(--color-green) !important;
+}
+.type-badge-lab {
+    color: var(--color-warning) !important;
+}
+.type-badge-exam {
+    color: var(--color-red) !important;
+}
+.type-badge-holiday {
+    color: #00BFA5 !important;
+}
+@keyframes cellScaleIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.95) translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+@keyframes cellScaleOut {
+    0% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: scale(0.95) translateY(-10px);
+    }
+}
+.timetable-gap-row td {
+    animation: cellScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+.row-animating-in td {
+    animation: cellScaleIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+.row-animating-out td {
+    animation: cellScaleOut 0.25s ease forwards;
+}
+
+/* --- РАСПИСАНИЕ ДЛЯ МОБИЛЬНЫХ --- */
+@media (max-width: 960px) {
+    .span9 .day h3 {
+        padding: 1.2rem 1.4rem !important;
+        font-size: 1.4rem !important;
+        flex-wrap: nowrap !important;
+    }
+    .span9 .day h3 .day-name {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+    }
+    .span9 .day h3 .day-date {
+        padding: 0 !important;
+        background: transparent !important;
+        font-size: 1.3rem !important;
+    }
+    html[theme] .timetable-grid {
+        table-layout: fixed !important;
+        width: 100% !important;
+    }
+    html[theme] .timetable-grid td.pair_num {
+        width: 75px !important;
+        min-width: 75px !important;
+        padding-left: 1rem !important;
+        padding-right: 0.5rem !important;
+        font-size: 1.1rem !important;
+    }
+    html[theme] .timetable-grid td.pair_info {
+        width: auto !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    html[theme] .timetable-grid td.pair_teacher .eval {
+        right: 1.4rem !important;
+        top: 3.8rem !important;
+    }
+    html[theme] .timetable-grid tr:not(:last-child) {
+        background-image: linear-gradient(to right, transparent calc(75px + 0.5rem), var(--color-table-border) calc(75px + 0.5rem), var(--color-table-border) calc(100% - 1.6rem), transparent calc(100% - 1.6rem)) !important;
+    }
+    .msg-card .share-msg-wrap,
+    .message-card .share-msg-wrap {
+        display: none !important;
+    }
+}
+
+/* ========================================================= */
+
+/* --- УЧЕБНО-МЕТОДИЧЕСКИЙ КОМПЛЕКС (stu.tpr / stu.theme) --- */
+
+/* ========================================================= */
+.tpr-card {
+    background: var(--color-card) !important;
+    border-radius: var(--radius-large) !important;
+    padding: 2.4rem !important;
+    box-shadow: var(--shadow-main) !important;
+    margin-bottom: 2rem !important;
+    border: 1px solid var(--color-table-border) !important;
+    box-sizing: border-box !important;
+    overflow: hidden !important;
+    width: 100% !important;
+}
+.tpr-card-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    margin-bottom: 1.8rem !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    padding-bottom: 1.4rem !important;
+    gap: 1.2rem !important;
+}
+.tpr-card-title {
+    font-size: 1.5rem !important;
+    font-weight: 800 !important;
+    color: var(--color-text-primary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 !important;
+    line-height: 1.3 !important;
+}
+.tpr-card-title .material-icons {
+    color: var(--color-accent) !important;
+    font-size: 2.2rem !important;
+    flex-shrink: 0 !important;
+}
+.themes-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.theme-item {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 1.2rem 0 !important;
+    border-bottom: 1px solid var(--color-table-border) !important;
+    gap: 1.2rem !important;
+    background: transparent !important;
+}
+.theme-item:last-child {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+}
+.theme-item:first-child {
+    padding-top: 0 !important;
+}
+.theme-item.module-header {
+    background: var(--color-highlight) !important;
+    padding: 1.2rem 1.6rem !important;
+    border-radius: var(--radius-small) !important;
+    margin: 1.6rem 0 0.8rem 0 !important;
+    border: 1px solid var(--color-table-border) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 1.2rem !important;
+}
+.theme-item.module-header:first-child {
+    margin-top: 0 !important;
+}
+.theme-title-link {
+    font-size: 1.4rem !important;
+    font-weight: 600 !important;
+    color: var(--color-text-primary) !important;
+    text-decoration: none !important;
+    line-height: 1.4 !important;
+    transition: color 0.2s ease !important;
+    flex: 1 1 auto !important;
+}
+.theme-title-link:hover {
+    color: var(--color-accent) !important;
+    text-decoration: underline !important;
+}
+.theme-meta-pills {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex-shrink: 0 !important;
+}
+.theme-hour-pill {
+    background: var(--color-highlight) !important;
+    color: var(--color-text-secondary) !important;
+    border: 1px solid var(--color-table-border) !important;
+    padding: 0.4rem 0.9rem !important;
+    border-radius: 50px !important;
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    white-space: nowrap !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+}
+.badge.ctl {
+    background: rgba(0, 122, 255, 0.12) !important;
+    color: var(--color-blue) !important;
+    border: 1px solid rgba(0, 122, 255, 0.3) !important;
+    padding: 0.4rem 0.9rem !important;
+    border-radius: 50px !important;
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+.tpr-card table,
+.tpr-card .wide-table-wrapper {
+    margin-bottom: 0 !important;
+}
+.tpr-card .wide-table-wrapper {
+    margin-top: 1.4rem !important;
+    box-shadow: none !important;
+    border: 1px solid var(--color-table-border) !important;
+    border-radius: var(--radius-medium) !important;
+}
+.tpr-card .wide-table-wrapper table {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+@media (max-width: 600px) {
+    .tpr-card {
+        padding: 1.8rem 1.6rem !important;
+    }
+    .theme-item {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 8px !important;
+    }
+    .theme-meta-pills {
+        align-self: flex-start !important;
+    }
+}
+

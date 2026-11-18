@@ -1,0 +1,428 @@
+/* --- КРАСНАЯ КНОПКА ВЫХОДА ИЗ ОФФЛАЙН-РЕЖИМА И ДЕМО-РЕЖИМ --- */
+.span3 li>a.demo-logout-link,
+.span3 li>a.demo-logout-link *,
+.span3 li>a.demo-logout-link .sidebar-link-text,
+.span3 li>a.demo-logout-link .material-icons {
+    color: var(--color-red) !important;
+    font-weight: 700 !important;
+}
+.span3 li>a.demo-logout-link .chevron {
+    color: var(--color-red) !important;
+    opacity: 0.7 !important;
+}
+@media (hover: hover) and (pointer: fine) {
+    .span3>.nav.nav-tabs.nav-stacked>li>a.demo-logout-link:hover {
+        background: rgba(255, 59, 48, 0.12) !important;
+    }
+}
+
+.span3 li>a.switch-to-pure-demo-link,
+.span3 li>a.switch-to-pure-demo-link *,
+.span3 li>a.switch-to-pure-demo-link .sidebar-link-text,
+.span3 li>a.switch-to-pure-demo-link .material-icons {
+    color: var(--color-accent) !important;
+    font-weight: 700 !important;
+}
+.span3 li>a.switch-to-pure-demo-link .chevron {
+    color: var(--color-accent) !important;
+    opacity: 0.7 !important;
+}
+@media (hover: hover) and (pointer: fine) {
+    .span3>.nav.nav-tabs.nav-stacked>li>a.switch-to-pure-demo-link:hover {
+        background: var(--color-accent-active) !important;
+    }
+}
+
+/* --- ВЫДЕЛЕНИЕ ПАПКИ АККАУНТ В ОФФЛАЙН-РЕЖИМЕ --- */
+.sidebar-folder.offline-account-folder:not(.is-open) .sidebar-folder-header,
+.sidebar-collapsible-sections .sidebar-folder.offline-account-folder .sidebar-folder-header {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+.sidebar-folder.offline-account-folder .sidebar-folder-header .folder-icon,
+.sidebar-folder.offline-account-folder .sidebar-folder-header .folder-title,
+.sidebar-folder.offline-account-folder .sidebar-folder-header .chevron {
+    color: var(--color-red) !important;
+    -webkit-text-fill-color: var(--color-red) !important;
+    font-weight: 700 !important;
+}
+@media (hover: hover) and (pointer: fine) {
+    .sidebar-folder.offline-account-folder:not(.is-open) .sidebar-folder-header:hover {
+        background: var(--color-highlight) !important;
+    }
+}
+
+/* Когда папка раскрыта на ПК */
+@media (min-width: 961px) {
+    .sidebar-folder.offline-account-folder.is-open {
+        border-color: var(--color-table-border) !important;
+    }
+    .sidebar-folder.offline-account-folder.is-open .sidebar-folder-header {
+        background: var(--color-table-header) !important;
+        border-bottom-color: var(--color-table-border) !important;
+    }
+}
+
+/* ШАПКА САЙДБАРА (ПК И МОБИЛЬНЫЕ) */
+.sidebar-logo,
+.span3 .sidebar-logo {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 1.2rem 12px 0.8rem 12px !important;
+    margin-bottom: 1.6rem !important;
+    position: relative !important;
+}
+.sidebar-logo-brand {
+    display: flex !important;
+    align-items: center !important;
+    padding-left: 8px !important;
+    gap: 17px !important;
+    cursor: pointer !important;
+    flex-shrink: 0 !important;
+    min-width: 0 !important;
+}
+.sidebar-logo img {
+    width: 35px !important;
+    height: 35px !important;
+    flex-shrink: 0 !important;
+    object-fit: contain !important;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+.sidebar-logo .sidebar-logo-title {
+    font-size: 3rem !important;
+    font-weight: 800 !important;
+    color: var(--color-text-primary) !important;
+    letter-spacing: -0.4px !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+
+/* Мобильная адаптация шапки */
+@media (max-width: 960px) {
+    .sidebar-logo,
+    .span3 .sidebar-logo {
+        padding: 1.2rem 0rem 1.2rem 1.6rem !important;
+        margin: 0 0 1.2rem 0 !important;
+        justify-content: space-between !important;
+        gap: 8px !important;
+    }
+    .sidebar-actions-capsule {
+        margin-right: 0 !important;
+    }
+    .sidebar-logo-brand {
+        padding-left: 0 !important;
+        gap: 12px !important;
+    }
+    .sidebar-logo .sidebar-logo-title {
+        font-size: 2.6rem !important;
+    }
+    .sidebar-logo img {
+        height: 30px !important;
+        width: 30px !important;
+        margin-left: 0 !important;
+        backface-visibility: hidden !important;
+        -webkit-backface-visibility: hidden !important;
+    }
+    [theme="dark"] .sidebar-logo img {
+        filter: invert(1) brightness(2) !important;
+        -webkit-filter: invert(1) brightness(2) !important;
+        will-change: filter, transform !important;
+    }
+}
+@media (min-width: 961px) {
+    .back-to-drawer-btn {
+        display: none !important;
+    }
+}
+
+/* --- КНОПКА-КОЛОКОЛЬЧИК И ИКОНКА --- */
+.sidebar-bell-btn {
+    position: relative !important;
+    width: 36px !important;
+    height: 36px !important;
+    min-width: 36px !important;
+    min-height: 36px !important;
+    border-radius: 50% !important;
+    background: var(--color-card) !important;
+    border: none !important;
+    color: var(--color-text-secondary) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: var(--shadow-main) !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    margin-left: auto !important;
+    flex-shrink: 0 !important;
+    transition: all 0.2s ease !important;
+}
+.sidebar-bell-btn:hover {
+    background: var(--color-highlight) !important;
+    color: var(--color-accent) !important;
+    transform: scale(1.08) !important;
+}
+
+/* Принудительно тонкая и аккуратная иконка на всех устройствах */
+.sidebar-bell-btn .bell-icon,
+.sidebar-bell-btn .material-icons {
+    font-family: 'Material Symbols Rounded' !important;
+    font-size: 20px !important;
+    font-weight: normal !important;
+    font-style: normal !important;
+    line-height: 1 !important;
+    color: inherit !important;
+    margin: 0 !important;
+    display: inline-block !important;
+    -webkit-font-smoothing: antialiased !important;
+}
+.bell-counter-badge {
+    display: none;
+    background: #FF3B30 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    font-size: 1.1rem !important;
+    font-weight: 800 !important;
+    height: 18px !important;
+    min-width: 18px !important;
+    padding: 0 5px !important;
+    border-radius: 9px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 2px 6px rgba(255, 59, 48, 0.4) !important;
+    border: 2px solid var(--color-card) !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+    pointer-events: none !important;
+    font-family: var(--font-family) !important;
+}
+.bell-counter-badge.has-unread {
+    display: flex !important;
+}
+.span3>.nav.nav-tabs.nav-stacked>li>a .badge-point {
+    display: block !important;
+    width: 8px !important;
+    height: 8px !important;
+    min-width: 8px !important;
+    min-height: 8px !important;
+    background-color: #FF3B30 !important;
+    border-radius: 50% !important;
+    margin-left: auto !important;
+    margin-right: 8px !important;
+    flex-shrink: 0 !important;
+    align-self: center !important;
+    border: none !important;
+    box-shadow: 0 0 4px rgba(255, 59, 48, 0.4) !important;
+}
+.span3 li>a .chevron,
+.span3 .sidebar-card-row .chevron {
+    margin-left: 0 !important;
+    margin-right: -4px !important;
+}
+.span3 li>a:not(:has(.badge-point)) .chevron,
+.span3 .sidebar-card-row:not(:has(.badge-point)) .chevron {
+    margin-left: auto !important;
+}
+#theme-subtab-capsule {
+    position: relative !important;
+}
+#theme-subtab-capsule::after {
+    display: none !important;
+}
+.msg-card {
+    touch-action: pan-y !important;
+    position: relative !important;
+    -webkit-user-select: none !important;
+    user-select: none !important;
+}
+html.mac-safari .actions-msg-wrap:not(:has(.ai-summary-btn)) {
+    display: none !important;
+}
+html.mac-safari .msg-card:hover .actions-msg-wrap:has(.ai-summary-btn) {
+    max-width: 24px !important;
+    margin-left: 8px !important;
+}
+html.mac-safari .msg-card:hover .actions-msg-wrap:not(:has(.ai-summary-btn)) {
+    max-width: 0 !important;
+    margin-left: 0 !important;
+}
+
+/* Фикс свайпов на мобильных */
+.msg-card-wrapper {
+    position: relative !important;
+    overflow: hidden !important;
+    border-radius: var(--radius-large) !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    background: transparent !important;
+    touch-action: pan-y !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.msg-card-wrapper .msg-card,
+.msg-card {
+    position: relative !important;
+    z-index: 2 !important;
+    margin: 0 !important;
+    margin-bottom: 0 !important;
+    margin-top: 0 !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    background: var(--color-card) !important;
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+}
+.msg-swipe-actions {
+    position: absolute !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 1 !important;
+    overflow: hidden !important;
+    width: 0px;
+    box-sizing: border-box !important;
+    pointer-events: auto !important;
+}
+.msg-swipe-actions.right-actions {
+    right: 0 !important;
+    left: auto !important;
+}
+.msg-swipe-actions.left-actions {
+    left: 0 !important;
+    right: auto !important;
+}
+.msg-action-btn {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 10px !important;
+    margin: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 6px !important;
+    cursor: pointer !important;
+    width: auto !important;
+    height: 100% !important;
+    opacity: 0;
+    transform: scale(0.6);
+    transition: opacity 0.15s ease, transform 0.15s ease !important;
+    -webkit-tap-highlight-color: transparent !important;
+}
+.msg-action-icon-circle {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 50% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06) !important;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+}
+.msg-action-btn:active .msg-action-icon-circle {
+    transform: scale(0.9) !important;
+}
+.msg-action-icon-circle .material-icons {
+    font-size: 22px !important;
+    color: #ffffff !important;
+    margin: 0 !important;
+}
+.msg-action-label {
+    font-size: 1.15rem !important;
+    font-weight: 700 !important;
+    color: var(--color-text-secondary) !important;
+    line-height: 1 !important;
+    white-space: nowrap !important;
+}
+@keyframes spin {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* На мобильных устройствах шапка видна во всех модальных окнах */
+@media (max-width: 960px) {
+    html body .analytics-modal:not(:has(.settings-layout)) .ui-widget-header {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 1.6rem 2.4rem !important;
+        background: var(--color-table-header) !important;
+        border-bottom: 1px solid var(--color-table-border) !important;
+        border-top-left-radius: inherit !important;
+        border-top-right-radius: inherit !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        box-sizing: border-box !important;
+    }
+    html body .analytics-modal:not(:has(.settings-layout)) .close-analytics,
+    html body .analytics-modal:not(:has(.settings-layout)) .close-modal,
+    html body .analytics-modal:not(:has(.settings-layout)) .close-notes {
+        display: flex !important;
+    }
+}
+@media (min-width: 961px) {
+
+    /* Скрываем шапку только у простых всплывающих окон без бокового меню (сводка, топ предметов, добавление пар, заметки) */
+    .analytics-modal:not(:has(.settings-layout)):not(#etis-analytics-modal):not(:has(#gradesChart)) .ui-widget-header {
+        display: none !important;
+    }
+
+    /* Всегда показываем шапку в контентной части больших окон с боковым меню (Профиль, Обучение, Консультации, Синхронизация, Настройки) */
+    .settings-layout .ui-widget-header,
+    .settings-content-area .ui-widget-header,
+    .settings-content-scroll .ui-widget-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        background: transparent !important;
+        border-bottom: none !important;
+        padding: 1.2rem 1.6rem 0 1.6rem !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Шапка для отдельного окна Аналитики успеваемости */
+    #etis-analytics-modal .ui-widget-header,
+    .analytics-modal:has(#gradesChart) .ui-widget-header {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        padding: 1.6rem 2.4rem !important;
+        background: var(--color-table-header) !important;
+        border-bottom: 1px solid var(--color-table-border) !important;
+        border-top-left-radius: inherit !important;
+        border-top-right-radius: inherit !important;
+        box-sizing: border-box !important;
+    }
+    #etis-analytics-modal .close-analytics,
+    .analytics-modal:has(#gradesChart) .close-analytics {
+        display: flex !important;
+    }
+}
+
+/* На ПК для окон с боковым меню (Профиль, Настройки, Обучение, Консультации, Синхронизация) */
+@media (min-width: 961px) {
+    .settings-layout .ui-widget-header,
+    .settings-content-area .ui-widget-header,
+    .settings-content-scroll .ui-widget-header {
+        background: transparent !important;
+        border-bottom: none !important;
+        padding: 1.2rem 1.6rem 0 1.6rem !important;
+        box-sizing: border-box !important;
+    }
+    .settings-layout .close-modal-btn,
+    .settings-layout .close-modal,
+    .settings-layout .settings-mobile-header {
+        display: none !important;
+    }
+}
+
