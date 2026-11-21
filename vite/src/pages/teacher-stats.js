@@ -1,6 +1,7 @@
 import { pageCtx } from '../app/context.js';
 import { updateEmptyState } from '../ui/empty-state.js';
 
+// Оформляет страницу статистики преподавателей и сноски под таблицей
 export function renderTeacherStatsPage() {
     const table = pageCtx.span9.querySelector('table.common');
     // Таблица считается пустой, если в ней нет строк с ячейками данных (td), только заголовки (th)
@@ -34,7 +35,6 @@ export function renderTeacherStatsPage() {
     } else {
         if (table) table.remove();
 
-        // Удаляем текстовые сноски внизу страницы ("** - если средний балл...")
         Array.from(pageCtx.span9.childNodes).forEach(node => {
             if (node.nodeType === Node.TEXT_NODE && node.textContent.includes('средний балл')) {
                 node.textContent = '';
@@ -45,7 +45,6 @@ export function renderTeacherStatsPage() {
         });
     }
 
-    // Вызываем проверку пустого состояния
     updateEmptyState(pageCtx.span9, hasData, '', 'teacher_stats');
     return;
 }

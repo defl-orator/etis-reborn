@@ -17,9 +17,11 @@ import { isMacSafari } from '../utils/platform.ts';
 import { escapeHTML } from '../utils/security.ts';
 import { getTermWord } from '../utils/term-system.ts';
 
+// Открывает модальное окно профиля, достижений и синхронизации данных
 export function openProfileModal(view = 'main') {
     registerCurrentDevice();
 
+    // Возвращает сохранённый идентификатор пользователя из кэша или шапки страницы
     const getSavedLoginId = () => {
         if (typeof GM_getValue === 'undefined') return '';
         let identity = GM_getValue('etis_secure_identity_cache', '');
@@ -54,6 +56,7 @@ export function openProfileModal(view = 'main') {
     };
     overlay.onclick = closeAll;
 
+    // Отрисовывает выбранную вкладку профиля и привязывает обработчики
     const renderView = (currentView) => {
         if (currentView === 'menu' && window.innerWidth > 960) currentView = 'main';
         let cpCount = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]').length;
@@ -142,7 +145,7 @@ export function openProfileModal(view = 'main') {
         const totalSeconds = parseInt(localStorage.getItem('etis_reborn_time_spent') || '0', 10);
         const minsPerDay = Math.max(1, Math.round((totalSeconds / 60) / daysPassed));
 
-        // --- ГЕНЕРАЦИЯ СПИСКА ДОСТИЖЕНИЙ ---
+        // Формирует список достижений и проверяет условия их разблокировки
         const getAchievementsList = () => {
             const baseStatuses = [
                 { id: 'novice', level: 1, text: 'Новичок', emoji: '🌱', desc: 'Первый вход в личный кабинет ЕТИС', cond: () => true },
@@ -204,7 +207,7 @@ export function openProfileModal(view = 'main') {
 
         const topAchievements = allUnlocked.slice(0, 3);
 
-        // Формирование текста внутри карточек ("Я ...", "...", "и ...")
+        // Формирует подпись для карточки достижения в бенто-сетке
         const getCardLabel = (item, idx, total) => {
             if (total === 1) return `Я ${item.text}`;
             if (idx === 0) return `Я ${item.text}`;
@@ -234,12 +237,14 @@ export function openProfileModal(view = 'main') {
         const badge = badgeStatus.text;
         const badgeEmoji = badgeStatus.emoji;
 
+        // Склоняет слово «день» в зависимости от числа
         const getDaysWord = (n) => {
             const absN = Math.abs(n) % 100; const lastDigit = absN % 10;
             if (absN > 10 && absN < 20) return 'дней';
             if (lastDigit > 1 && lastDigit < 5) return 'дня';
             if (lastDigit === 1) return 'день'; return 'дней';
         };
+        // Склоняет слово «минута» в зависимости от числа
         const getMinsWord = (n) => {
             const absN = Math.abs(n) % 100; const lastDigit = absN % 10;
             if (absN > 10 && absN < 20) return 'минут';
@@ -247,6 +252,7 @@ export function openProfileModal(view = 'main') {
             if (lastDigit === 1) return 'минуте'; return 'минут';
         };
 
+        // Генерирует HTML-индикатор текущей цветовой палитры и темы
         const getColorsIndicator = (config) => {
             if (!config || !config.colors || config.colors.length === 0) return '—';
             config = getEffectiveAccent(config);
@@ -368,7 +374,7 @@ export function openProfileModal(view = 'main') {
                 notifs: !isDemo && lastCloudRaw.notifs !== undefined ? lastCloudRaw.notifs : '—'
             };
 
-            // Функция генерации половинчатой иконки (Download + Cloud)
+            // Генерирует комбинированную иконку локального и облачного хранения
             const getHybridSyncIcon = () => `
                         <span style="display:inline-flex; align-items:center; gap:3px; flex-shrink:0;">
                             <span class="material-icons" style="font-size: 1.6rem; color: var(--color-text-secondary);">download</span>
@@ -377,6 +383,7 @@ export function openProfileModal(view = 'main') {
                         </span>
                     `;
 
+            // Генерирует строку статистики и управления разделом данных
             const dataRow = (rowTitle, count, key, spanId = '', isSyncable = true, isHTML = false, cloudVal = '—', hasDetails = false, detailsView = '') => {
                 const localSpanId = `local-val-${key.replace(/_/g, '-')}`;
                 const displayCloudVal = isDemo ? '—' : cloudVal;
@@ -447,7 +454,6 @@ export function openProfileModal(view = 'main') {
                         `;
             };
 
-            // --- ФОРМИРОВАНИЕ БЛОКА СИНХРОНИЗАЦИИ ---
             const masterKey = getMasterKey();
 
             let syncBlockHTML = '';
@@ -467,7 +473,6 @@ export function openProfileModal(view = 'main') {
                             </div>
                         `;
             } else if (!masterKey) {
-                // --- СОСТОЯНИЕ: НЕ НАСТРОЕНО ---
                 syncBlockHTML = `
                             <div class="ios-settings-row sync-row-e2ee" style="cursor: default !important; padding: 1.4rem 1.6rem !important;">
                                 <div style="display: flex; align-items: center; gap: 14px; width: 100%;">
@@ -508,7 +513,6 @@ export function openProfileModal(view = 'main') {
                             </div>
                         `;
             } else {
-                // --- СОСТОЯНИЕ: СИНХРОНИЗАЦИЯ АКТИВНА ---
                 const syncMetaForBtn = safeParseJSON(localStorage.getItem('etis_sync_meta'), {});
                 const connectedDevicesCount = Object.keys(syncMetaForBtn.devices || {}).length;
                 syncBlockHTML = `
@@ -606,7 +610,7 @@ export function openProfileModal(view = 'main') {
             backTarget = 'data';
             let pairs = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
 
-            // Хелпер вычисления даты пары по дню недели и номеру недели
+            // Вычисляет дату пользовательской пары и метку повторения
             const getPairDateFormatted = (p) => {
                 const daysMap = { 'воскресенье': 0, 'понедельник': 1, 'вторник': 2, 'среда': 3, 'четверг': 4, 'пятница': 5, 'суббота': 6 };
                 const monthsArr = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
@@ -835,6 +839,7 @@ export function openProfileModal(view = 'main') {
             const unlockDates = JSON.parse(localStorage.getItem('etis_statuses_unlocked_dates_v1') || '{}');
             const statusesList = getAchievementsList();
 
+            // Сокращает год в дате до двух цифр
             const formatShortDate = (dateStr) => {
                 if (!dateStr) return '';
                 const parts = dateStr.split('.');
@@ -939,7 +944,6 @@ export function openProfileModal(view = 'main') {
         });
 
         if (currentView === 'main') {
-            // Кнопка открытия всех достижений
             const allAchBtn = modal.querySelector('#view-all-achievements-btn');
             if (allAchBtn) {
                 allAchBtn.onclick = (e) => {
@@ -948,7 +952,7 @@ export function openProfileModal(view = 'main') {
                 };
             }
 
-            // --- ЛОГИКА ПЕРЕМЕЩЕНИЯ КАРТОЧЕК (СВАЙПЫ / DRAG & DROP) ---
+            // Меняет порядок карточек достижений и сохраняет его
             const swapAchievements = (fromIdx, toIdx) => {
                 if (fromIdx === toIdx || fromIdx < 0 || toIdx < 0 || fromIdx >= topAchievements.length || toIdx >= topAchievements.length) return;
 
@@ -1133,7 +1137,6 @@ export function openProfileModal(view = 'main') {
                     const key = btn.getAttribute('data-key');
                     if (confirm('Очистить эти данные?')) {
                         
-                        // ЛОГИКА ДЛЯ ОФФЛАЙН-КЭША
                         if (key === 'etis_offline_cache') {
                             const offlineKeys = [
                                 'etis_offline_timetable_html', 'etis_offline_signs_session_html', 'etis_offline_signs_current_html',
@@ -1222,7 +1225,6 @@ export function openProfileModal(view = 'main') {
                                     }
                                 }
 
-                                // 3. Данные успешно расшифрованы
                                 const cloudCP = safeParseJSON(data.custom_pairs, []).length;
                                 const parsedNotes = safeParseJSON(data.subject_notes, {specific:{}, next_unbound:{}});
                                 const cloudNotes = Object.keys(parsedNotes.specific || {}).length + Object.keys(parsedNotes.next_unbound || {}).length;
@@ -1276,7 +1278,7 @@ export function openProfileModal(view = 'main') {
                                     themeSig: cloudAccentObj ? accentSignature(cloudAccentObj) : undefined
                                 }));
 
-                                // Обновляем числа в открытом интерфейсе
+                                // Обновляет текстовое содержимое элемента статистики по ID
                                 const updateEl = (id, val) => {
                                     const el = modal.querySelector(`#${id}`);
                                     if (el) el.textContent = val;
@@ -1312,7 +1314,6 @@ export function openProfileModal(view = 'main') {
 
         }
 
-        // Обработчики деталей: Свои пары
         if (currentView === 'details_custom_pairs') {
             modal.querySelectorAll('.delete-single-cp-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -1325,7 +1326,6 @@ export function openProfileModal(view = 'main') {
             });
         }
 
-        // Обработчики деталей: Заметки
         if (currentView === 'details_subject_notes') {
             modal.querySelectorAll('.delete-single-note-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -1340,7 +1340,6 @@ export function openProfileModal(view = 'main') {
             });
         }
 
-        // Обработчики деталей: Консультации
         if (currentView === 'details_consultations') {
             modal.querySelectorAll('.delete-single-cons-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -1354,7 +1353,6 @@ export function openProfileModal(view = 'main') {
             });
         }
 
-        // Обработчики деталей: Внешние календари
         if (currentView === 'details_external_cals') {
             modal.querySelectorAll('.delete-single-cal-btn').forEach(btn => {
                 btn.onclick = () => {
@@ -1378,7 +1376,6 @@ export function openProfileModal(view = 'main') {
                 };
             });
 
-            // Обработчик удаления устройства
             modal.querySelectorAll('.delete-device-btn').forEach(btn => {
                 btn.onclick = async (e) => {
                     e.preventDefault();
@@ -1401,7 +1398,6 @@ export function openProfileModal(view = 'main') {
                 };
             });
 
-            // Обработчик переименования устройства
             modal.querySelectorAll('.device-rename-input').forEach(input => {
                 input.onchange = async () => {
                     const id = input.getAttribute('data-id');
@@ -1435,7 +1431,6 @@ export function openProfileModal(view = 'main') {
             }
         }
 
-        // Копирование мастер-ключа
         const copyKeyBtn = modal.querySelector('#copy-master-key-btn');
         if (copyKeyBtn) {
             copyKeyBtn.onclick = (e) => {
@@ -1453,7 +1448,6 @@ export function openProfileModal(view = 'main') {
             };
         }
 
-        // Создание нового ключа
         const setupNewBtn = modal.querySelector('#setup-new-sync-btn');
         if (setupNewBtn) {
             setupNewBtn.onclick = async (e) => {
@@ -1469,7 +1463,6 @@ export function openProfileModal(view = 'main') {
             };
         }
 
-        // Вход по существующему ключу с другого устройства
         const enterExistingBtn = modal.querySelector('#enter-existing-sync-btn');
         if (enterExistingBtn) {
             enterExistingBtn.onclick = async (e) => {
@@ -1502,7 +1495,6 @@ export function openProfileModal(view = 'main') {
             };
         }
 
-        // Переход в детальные настройки синхронизации (устройства, галочки)
         const syncSettingsBtn = modal.querySelector('#sync-settings-btn');
         if (syncSettingsBtn) {
             syncSettingsBtn.onclick = (e) => {

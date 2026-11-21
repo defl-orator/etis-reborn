@@ -1,3 +1,4 @@
+// Сопоставление имён иконок Material Icons с иконками Phosphor
 export const ICON_MAP = {
     // Навигация и базовые действия
     close: 'x', clear: 'x', x: 'x',

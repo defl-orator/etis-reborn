@@ -1,7 +1,9 @@
 import { getCalculatedTheme } from './theme-engine';
 
+// ID временного элемента стиля для предотвращения мигания неоформленной страницы (FOUC)
 const FOUC_GUARD_ID = 'etis-fouc-guard';
 
+// Устанавливает тему и скрывает body до завершения стилизации страницы
 export function foucBoot1(): void {
     const effectiveTheme = getCalculatedTheme();
     document.documentElement.setAttribute('theme', effectiveTheme);
@@ -19,6 +21,7 @@ export function foucBoot1(): void {
     }
 }
 
+// Показывает страницу и удаляет временный FOUC-экран
 export function revealPage(): void {
     const mainStyle = document.getElementById('etis-reborn-styles');
     if (mainStyle && document.head && mainStyle.parentNode !== document.head) {
@@ -32,6 +35,7 @@ export function revealPage(): void {
     if (guard) guard.remove();
 }
 
+// Запускает страховочный таймер показа страницы на случай задержки DOMContentLoaded
 export function foucBoot2(): void {
     window.setTimeout(revealPage, 1500);
 }

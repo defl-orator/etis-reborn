@@ -2,15 +2,14 @@ import { pageCtx } from '../app/context.js';
 import { generalConfig } from '../core/config.js';
 import { escapeHTML } from '../utils/security.js';
 
+// Оформляет страницу входа, восстановления пароля и быстрого входа
 export function renderLoginPage() {
     document.body.innerHTML = '<div class="login-container">' + document.body.innerHTML + '</div>';
     
-    // Находим актуальные ссылки на элементы в пересозданном DOM
     const loginContainer = document.querySelector('div.login-container');
     const loginForm = document.getElementById('form');
     const activeLoginDiv = loginContainer.querySelector('.login');
 
-    // Определение типов страниц авторизации
     const isRecoveryPage = pageCtx.page === 'stu_email_pkg.send_r_email' || window.location.href.includes('send_r_email');
     const isChangePwdPage = pageCtx.page === 'stu_email_pkg.change_pwd' || window.location.href.includes('change_pwd') || !!loginForm?.querySelector('input[name="p_vkey"]');
     const isAuthSubPage = isRecoveryPage || isChangePwdPage;
@@ -42,7 +41,6 @@ export function renderLoginPage() {
 
     if (!loginItems && allItemsBlocks.length > 0) loginItems = allItemsBlocks[0];
 
-    // Логотип и динамический заголовок
     const chooseDiv = document.querySelector('div.choose');
     if (chooseDiv) chooseDiv.remove();
 
@@ -96,7 +94,6 @@ export function renderLoginPage() {
     loginActions.className = 'login-actions';
     loginItems.appendChild(loginActions);
 
-    // Нижние действия: ссылка "Забыли пароль?" или "Назад ко входу"
     if (!isAuthSubPage) {
         let el = loginItems.querySelector('a');
         if (el) {
@@ -117,7 +114,6 @@ export function renderLoginPage() {
         loginActions.appendChild(sbmt);
     }
 
-    // Стилизация элементов формы и сообщений
     const items = loginItems.querySelectorAll('div.item');
     items.forEach(item => {
         const errorMessage = item.querySelector('div.error_message');
@@ -149,7 +145,6 @@ export function renderLoginPage() {
             return;
         }
 
-        // Оформление информационных блоков с текстом (письмо отправлено / правила пароля)
         const paragraphs = item.querySelectorAll('p');
         if (paragraphs.length > 0) {
             item.style.cssText = 'background: var(--color-highlight); border: 1px solid var(--color-table-border); border-radius: var(--radius-medium); padding: 1.4rem 1.6rem; margin-bottom: 1.6rem; text-align: left;';
@@ -163,7 +158,6 @@ export function renderLoginPage() {
             if (lastP) lastP.style.marginBottom = '0';
         }
 
-        // Оформление полей ввода и плейсхолдеров
         let input = item.querySelector('input');
         let label = item.querySelector('label');
         if (input) {
@@ -193,7 +187,6 @@ export function renderLoginPage() {
         });
     }
 
-    // БЫСТРЫЙ ВХОД (Показывается ТОЛЬКО на странице обычного входа)
     const qlEnabled = generalConfig.quickLoginEnabled;
     let qlAccounts = [];
     try {
@@ -298,7 +291,6 @@ export function renderLoginPage() {
             if (loginActions) loginActions.style.setProperty('display', 'flex', 'important');
         };
     }
-// --- КНОПКА СПРАВКИ И ОФФЛАЙН-РЕЖИМА В ПРАВОМ ВЕРХНЕМ УГЛУ ---
     const helpWrap = document.createElement('div');
     helpWrap.className = 'login-help-wrap';
 

@@ -1,6 +1,7 @@
 import { pageCtx } from '../app/context.js';
 import { updateEmptyState } from '../ui/empty-state.js';
 
+// Оформляет страницу пропусков занятий и сводную статистику
 export function renderAbsencePage() {
     while (pageCtx.span9.firstChild && (pageCtx.span9.firstChild.tagName === 'BR' || (pageCtx.span9.firstChild.nodeType === Node.TEXT_NODE && !pageCtx.span9.firstChild.textContent.trim()))) {
         pageCtx.span9.firstChild.remove();
@@ -94,10 +95,8 @@ export function renderAbsencePage() {
             pageCtx.span9.appendChild(summaryDiv);
         }
     } else {
-        // Если пропусков за период нет, полностью удаляем пустую таблицу
         if (table) table.remove();
 
-        // Чистим текстовую и блочную статистику в корне span9
         Array.from(pageCtx.span9.childNodes).forEach(node => {
             if (node.nodeType === Node.TEXT_NODE) {
                 const text = node.textContent;
@@ -113,7 +112,6 @@ export function renderAbsencePage() {
         });
     }
 
-    // Вызываем проверку пустого состояния для пропусков
     updateEmptyState(pageCtx.span9, hasData, '', 'absence');
     return;
 }

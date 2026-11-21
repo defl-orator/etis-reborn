@@ -1,5 +1,6 @@
 import { pageCtx } from '../app/context.js';
 
+// Преобразует список приказов в карточки с иконками по типу приказа
 export function renderOrdersPage() {
     pageCtx.span9.querySelectorAll('h3').forEach(h => h.remove());
     const ordersList = pageCtx.span9.querySelector('ul.orders');

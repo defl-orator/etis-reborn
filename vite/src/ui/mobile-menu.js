@@ -1,4 +1,4 @@
-// Функция иконок
+// Возвращает имя иконки Material Icons по URL-адресу пункта меню
 export const getIconForHref = (href) => {
     if (href === '#version-check') return 'system_update';
     if (href === '#appearance') return 'palette';
@@ -43,6 +43,7 @@ export const getIconForHref = (href) => {
     return 'widgets';
 };
 
+// Инициализирует нижний мобильный док и выдвижную боковую шторку
 export function initMobileMenu() {
     if (document.querySelector('.mobile-nav-dock') || document.querySelector('.login')) return;
 
@@ -115,6 +116,7 @@ export function initMobileMenu() {
 
     const drawerBtn = dock.querySelector('.mobile-dock-drawer-btn');
 
+    // Открывает или закрывает мобильную боковую панель навигации
     function toggleMenu(show) {
         if (show) {
             // Возвращаем мобильную шторку в главное меню

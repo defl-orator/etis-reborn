@@ -1,5 +1,6 @@
 import { isDemoUser } from '../core/demo-mode.js';
 
+// Типы падежных форм и системы учебных периодов (семестр/триместр)
 export type TermDeclensionForm =
     | 'nom_sg'
     | 'gen_sg'
@@ -13,6 +14,7 @@ export type TermDeclensionForm =
 
 export type TermSystemType = 'semester' | 'trimester';
 
+// Определяет текущую систему обучения (семестр или триместр) по тексту страницы
 function getTermSystem(): TermSystemType {
     if (isDemoUser()) return 'semester';
     
@@ -31,6 +33,7 @@ function getTermSystem(): TermSystemType {
     return saved || 'semester';
 }
 
+// Возвращает слово «семестр» или «триместр» в нужном падеже
 export function getTermWord(form: TermDeclensionForm = 'nom_sg', isCapital = false): string {
     const isSem = getTermSystem() === 'semester';
     const forms: Record<TermDeclensionForm, string> = {

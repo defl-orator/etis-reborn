@@ -1,3 +1,4 @@
+// Инициализирует плавное появление карточек и блоков при прокрутке
 export function initFadeAnimations() {
     const animatedSelectors =[
         '.day', '.teacher-card', '.msg-card', '.advice-card', '.order-card', '.jour-card',
@@ -19,7 +20,6 @@ export function initFadeAnimations() {
         return true;
     });
 
-    // Назначаем начальный класс (скрываем их)
     topLevelElements.forEach(el => el.classList.add('anim-fade-up'));
 
     // Используем IntersectionObserver: элемент анимируется только когда появляется на экране
@@ -33,7 +33,7 @@ export function initFadeAnimations() {
                     el.classList.add('is-visible');
                 }, delayCounter * 40);
                 delayCounter++;
-                observer.unobserve(el); // Отключаем наблюдение (анимируем только 1 раз)
+                observer.unobserve(el);
             }
         });
     }, {

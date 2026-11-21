@@ -1,6 +1,7 @@
 import { RELEASE_URL, updateState } from '../core/updater.js';
 import { isIOS } from '../utils/platform.ts';
 
+// Отображение индикаторов доступного обновления в сайдбаре, доке и настройках
 export function triggerUpdateIndicators() {
     // 1. Точка в главном сайдбаре
     const settingsLink = document.querySelector('a[href="#settings"]');
@@ -29,6 +30,7 @@ export function triggerUpdateIndicators() {
     }
 }
 
+// Загрузка и отрисовка истории версий скрипта из коммитов GitHub
 export function loadVersionHistory() {
     const container = document.getElementById('version-history-list');
     if (!container) return;
@@ -121,6 +123,7 @@ export function loadVersionHistory() {
     });
 }
 
+// Генерация HTML-разметки блока проверки обновлений для окна настроек
 export function getUpdateHTML() {
     const cur = GM_info.script.version;
 

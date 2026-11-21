@@ -5,6 +5,54 @@ import { openGlobalSearchModal } from '../modals/global-search.js';
 import { openProfileModal } from '../modals/profile.js';
 import { openSettingsModal } from '../modals/settings.js';
 
+// Поиск и фокусировка поля поиска в активном модальном окне или на странице
+function focusAddedSearch() {
+    const focusInput = (input) => {
+        if (!input) return false;
+        input.focus();
+        if (typeof input.select === 'function') input.select();
+        return true;
+    };
+
+    const activeModal = document.querySelector('.analytics-modal.active, #etis-settings-modal.active');
+    if (activeModal) {
+        const modalInputs = activeModal.querySelectorAll('#global-search-field, #cons-search-input, .search-input, input[type="search"]');
+        for (const input of modalInputs) {
+            if (input.offsetParent !== null) {
+                return focusInput(input);
+            }
+        }
+        return false;
+    }
+
+    const collapsiblePairs = [
+        ['#plan-search-open-btn', '.plan-local-input'],
+        ['#lib-search-open-btn', '.lib-unified-input'],
+        ['#term-search-open-btn', '.term-local-input'],
+        ['#session-search-open-btn', '.signs-local-input']
+    ];
+
+    for (const [openBtnSel, inputSel] of collapsiblePairs) {
+        const input = document.querySelector(inputSel);
+        if (!input) continue;
+        const openBtn = document.querySelector(openBtnSel);
+        if (openBtn && !input.closest('.is-searching')) {
+            openBtn.click();
+        }
+        return focusInput(input);
+    }
+
+    const pageInputs = document.querySelectorAll('#msg-search, #ann-search, .span9 .search-input, .span9 input[type="search"]');
+    for (const input of pageInputs) {
+        if (input.offsetParent !== null) {
+            return focusInput(input);
+        }
+    }
+
+    return false;
+}
+
+// Инициализация глобальных горячих клавиш навигации и поиска
 export function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         // 1. Закрытие окон и снятие блюра по нажатию Escape
@@ -38,6 +86,14 @@ export function initKeyboardShortcuts() {
             return;
         }
 
+        // 2.5. Перехват Ctrl + F / Cmd + F на страницах и в окнах с добавленным поиском
+        if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyF') {
+            if (focusAddedSearch()) {
+                e.preventDefault();
+                return;
+            }
+        }
+
         // Блокируем горячие клавиши, если фокус находится в поле ввода или текста
         const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
         if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select' || document.activeElement?.isContentEditable) {
@@ -59,10 +115,6 @@ export function initKeyboardShortcuts() {
                     e.preventDefault();
                     if (typeof openProfileModal === 'function') openProfileModal(window.innerWidth <= 960 ? 'menu' : 'main');
                     break;
-                // case 'KeyR': // Alt + Shift + R -> Маршрутизатор
-                    // e.preventDefault();
-                    // if (typeof openRouterModal === 'function') openRouterModal();
-                    // break;
                 case 'KeyC': // Alt + Shift + C -> Консультации
                     e.preventDefault();
                     if (typeof openConsultationsModal === 'function') openConsultationsModal();
@@ -98,10 +150,6 @@ export function initKeyboardShortcuts() {
                     e.preventDefault();
                     if (typeof openConsultationsModal === 'function') openConsultationsModal();
                     break;
-                // case 'Digit5': // Alt + 5 -> Маршрутизатор
-                    // e.preventDefault();
-                    // if (typeof openRouterModal === 'function') openRouterModal();
-                    // break;
                 case 'Digit6': // Alt + 6 -> Профиль
                     e.preventDefault();
                     if (typeof openProfileModal === 'function') openProfileModal(window.innerWidth <= 960 ? 'menu' : 'main');

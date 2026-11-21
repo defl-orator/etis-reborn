@@ -1,8 +1,9 @@
 import { saveSyncData } from '../sync/data.js';
 
-// --- ПАРСЕР ДАТ И УМНОЕ ДОБАВЛЕНИЕ В РАСПИСАНИЕ ---
+// Словарь месяцев в родительном падеже для парсинга дат
 const monthsDict = { 'января':0, 'февраля':1, 'марта':2, 'апреля':3, 'мая':4, 'июня':5, 'июля':6, 'августа':7, 'сентября':8, 'октября':9, 'ноября':10, 'декабря':11 };
 
+// Подсветка дат и событий в HTML объявления для быстрого добавления
 export function highlightDatesInHTML(html, msgTitle) {
     const temp = document.createElement('div');
     temp.innerHTML = html;
@@ -115,6 +116,7 @@ export function highlightDatesInHTML(html, msgTitle) {
     return temp.innerHTML;
 }
 
+// Формирование HTML-тега события с очищенным заголовком и метаданными
 function createEventTag(match, d, m, hr, min, title, aud, endHr, endMin) {
     let cleanTitle = (title || 'Объявление');
 
@@ -145,6 +147,7 @@ function createEventTag(match, d, m, hr, min, title, aud, endHr, endMin) {
     return `<span class="msg-event-link" data-hash="${hash}" data-d="${d}" data-m="${m}" data-hr="${startH}" data-min="${startM}" ${endH ? `data-endhr="${endH}" data-endmin="${endM}"` : ''} data-title="${cleanTitle}" data-aud="${cleanAud}">${match}</span>`;
 }
 
+// Инициализация кликов по выделенным событиям для добавления в расписание или дневник
 export function initEventLinks() {
     document.querySelectorAll('.msg-event-link').forEach(el => {
         const hash = el.getAttribute('data-hash');
@@ -204,7 +207,6 @@ export function initEventLinks() {
             const isInTimetable = cp.some(p => p.msgHash === hash);
             const isInDiary = diaryTasks.some(t => t.id === 'diary_' + hash);
 
-            // Создаем модальное окно выбора
             let overlay = document.getElementById('etis-event-choice-overlay');
             let modal = document.getElementById('etis-event-choice-modal');
 
@@ -281,7 +283,6 @@ export function initEventLinks() {
 
             modal.querySelector('.close-choice-btn').onclick = closeModal;
 
-            // Обработчик: Добавить / Удалить из расписания
             modal.querySelector('#add-to-timetable-action').onclick = () => {
                 closeModal();
                 let currentCP = JSON.parse(localStorage.getItem('etis_custom_pairs_v1') || '[]');
@@ -327,7 +328,6 @@ export function initEventLinks() {
                 localStorage.setItem('etis_added_msg_events', JSON.stringify(currentAdded));
             };
 
-            // Обработчик: Добавить / Удалить из дневника
             modal.querySelector('#add-to-diary-action').onclick = () => {
                 closeModal();
                 let currentDiary = JSON.parse(localStorage.getItem('etis_diary_tasks_v1') || '[]');

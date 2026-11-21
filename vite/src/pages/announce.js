@@ -8,19 +8,18 @@ import { updateEmptyState } from '../ui/empty-state.js';
 import { highlightSearchTerm } from '../ui/search-highlight.js';
 import { formatEtisDate, formatEtisDateShort } from '../utils/etis-dates.js';
 
+// Оформляет страницу объявлений с поиском, импортом консультаций и свайпами
 export function renderAnnouncePage() {
     pageCtx.span9.querySelectorAll('br, h2, h3').forEach((el, i) => { if(i < 2) el.remove(); });
     const announceMessages = pageCtx.span9.querySelectorAll('ul.nav.msg, ul.nav.answ');
     if (!announceMessages.length) return;
 
-    // Если объявлений изначально нет на сервере
     if (!announceMessages.length) {
         pageCtx.span9.innerHTML = '';
         updateEmptyState(pageCtx.span9, false, '', 'announces');
         return;
     }
 
-    // Удаляем точку уведомлений из сайдбара и дока
     document.querySelectorAll('.span3 a[href*="stu_ann.announces"] .badge-point, .span3 li.active .badge-point').forEach(dot => dot.remove());
     if (window.updateFolderBadges) window.updateFolderBadges();
     if (!document.querySelector('.span3 .badge-point')) {
@@ -30,7 +29,6 @@ export function renderAnnouncePage() {
     const container = document.createElement('div');
     container.className = 'msg-container';
 
-    // --- СОЗДАНИЕ ПОИСКА ---
     const searchWrapper = document.createElement('div');
     searchWrapper.className = 'teacher-search-wrapper';
     searchWrapper.style.marginTop = '0';
@@ -54,7 +52,6 @@ export function renderAnnouncePage() {
         let rawDateStr = '';
         const bodyParts = [];
 
-        // 1. Собираем текст со ВСЕХ li объявления, отсеивая только системные файлы
         allLis.forEach((li, idx) => {
             const textLower = li.textContent.trim().toLowerCase();
             if (textLower.startsWith('прикрепл') && textLower.includes('файл')) return;
@@ -76,7 +73,6 @@ export function renderAnnouncePage() {
                 }
             }
 
-            // 2. Разворачиваем теги font, сохраняя весь текст и ссылки внутри целыми
             liClone.querySelectorAll('font').forEach(n => n.replaceWith(...n.childNodes));
 
             const html = liClone.innerHTML.replace(/^(<br\s*\/?>|\s)+/, '').replace(/(<br\s*\/?>|\s)+$/, '');
@@ -91,17 +87,13 @@ export function renderAnnouncePage() {
         let rawHtml = bodyParts.join('<br><br>');
         let authorStr = 'Администрация / Деканат';
 
-        // 3. Умное распознавание автора в конце объявления (ФИО или подразделение)
         const authorFioRegex = /(?:<br\s*\/?>|<\/p>|<\/div>|\n|\s|^)([А-ЯЁ][а-яё]+(?:\s+[А-ЯЁ]\.\s*[А-ЯЁ]\.|\s+[А-ЯЁ]\.|\s+[А-ЯЁ][а-яё]+))\s*(?:<\/?(?:p|div|span|font|br)\s*\/?>|\s)*$/;
         const fioMatch = rawHtml.match(authorFioRegex);
 
         if (fioMatch) {
-            // Найдено стандартное ФИО (например, "Нечаева И. Ю." или "Смирнов Д. А.")
             authorStr = fioMatch[1].replace(/\s+/g, ' ').trim();
-            // Аккуратно вырезаем подпись из конца текста, чтобы она не дублировалась внизу
             rawHtml = rawHtml.substring(0, fioMatch.index).trim();
         } else {
-            // Фоллбэк для подписей без инициалов (например, "Деканат", "Дирекция РИНО")
             const parts = rawHtml.split(/<br\s*\/?>|<\/p>|<\/div>/i).map(p => p.trim()).filter(Boolean);
             if (parts.length > 1) {
                 const lastPartClean = parts[parts.length - 1].replace(/<[^>]+>/g, '').trim();
@@ -185,7 +177,6 @@ export function renderAnnouncePage() {
         }
     });
 
-    // Функция импорта консультаций
     container.querySelectorAll('.import-cons-icon-btn').forEach(btn => {
         if (btn.classList.contains('added')) return;
 
@@ -260,18 +251,15 @@ export function renderAnnouncePage() {
         }
     });
 
-    // Автозаполнение поиска, если перешли по ссылке из Расписания
     const urlParamsSearch = new URLSearchParams(window.location.search);
     if (urlParamsSearch.has('search')) {
         const input = searchWrapper.querySelector('#ann-search');
         if (input) {
             input.value = urlParamsSearch.get('search');
-            // Инициируем фильтрацию
             setTimeout(() => input.dispatchEvent(new Event('input')), 50);
         }
     }
 
-    // Логика фильтрации
     const annCounter = searchWrapper.querySelector('#ann-search-counter');
     searchWrapper.querySelector('#ann-search').addEventListener('input', (e) => {
         const val = e.target.value.toLowerCase().trim();
@@ -302,7 +290,6 @@ export function renderAnnouncePage() {
     pageCtx.span9.appendChild(container);
     initMessageSwipes(container, 'Объявление.png');
 
-    // Плавное исчезновение точки у новых постов через 5 секунд
     if (container.querySelector('.msg-unread-dot')) {
         setTimeout(() => {
             container.querySelectorAll('.msg-unread-dot').forEach(dot => {
@@ -313,7 +300,6 @@ export function renderAnnouncePage() {
         }, 5000);
     }
 
-    // Активируем плавное затухание файлов и авто-подгонку шапки
     container.querySelectorAll('.msg-attachments').forEach(initAttachmentsScrollFade);
     container.querySelectorAll('.msg-header').forEach(adjustHeaderLayout);
 

@@ -3,6 +3,7 @@ import { consultationsFiles, saveConsultationsState, setConsultationsFiles } fro
 import { updateLiveTimetable } from '../features/live-timetable.js';
 import { escapeHTML, sanitizeUrl } from '../utils/security.ts';
 
+// Открывает модальное окно управления консультациями
 export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main_menu' : 'system_etis', initialSearch = '') {
     let overlay = document.getElementById('etis-cons-overlay');
     let modal = document.getElementById('etis-cons-modal');
@@ -28,7 +29,7 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
     };
     overlay.onclick = closeAll;
 
-    // Вспомогательное модальное окно добавления/редактирования преподавателя
+    // Открывает вложенное окно добавления или редактирования преподавателя
     const openTeacherEditorModal = (fileId, teacherIndex = null, onSaved = null) => {
         const targetFile = consultationsFiles.find(f => f.id === fileId);
         if (!targetFile) return;
@@ -43,7 +44,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             events: []
         };
 
-        // Берём данные первого события (или пустые)
         const firstEvent = (teacher.events && teacher.events[0]) ? teacher.events[0] : {
             dayName: 'Понедельник',
             startTime: '15:15',
@@ -221,6 +221,7 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
         });
     };
 
+    // Отрисовывает выбранную вкладку консультаций и привязывает обработчики
     const renderView = (activeFileId, autoFilterQuery = '') => {
          if (activeFileId === 'main_menu' && window.innerWidth > 960) activeFileId = 'system_etis';
         const isMainMobile = activeFileId === 'main_menu';
@@ -458,7 +459,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             btn.onclick = () => renderView(btn.getAttribute('data-file-id'));
         });
 
-        // 1. Создание нового пустого списка вручную
         const createManualBtn = modal.querySelector('#create-manual-cons-list-btn');
         if (createManualBtn) {
             createManualBtn.onclick = () => {
@@ -478,7 +478,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             };
         }
 
-        // 2. Переименование текущей вкладки
         const renameBtn = modal.querySelector('.rename-cons-file-btn');
         if (renameBtn) {
             renameBtn.onclick = () => {
@@ -495,7 +494,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             };
         }
 
-        // 3. Добавление преподавателя в текущую вкладку
         const addTeacherBtn = modal.querySelector('.add-teacher-to-file-btn');
         if (addTeacherBtn) {
             addTeacherBtn.onclick = () => {
@@ -504,7 +502,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             };
         }
 
-        // 4. Редактирование преподавателя
         modal.querySelectorAll('.edit-teacher-btn').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
@@ -514,7 +511,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             };
         });
 
-        // 5. Удаление преподавателя
         modal.querySelectorAll('.delete-teacher-btn').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
@@ -534,7 +530,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             };
         });
 
-        // Поиск по карточкам преподавателей
         const searchInput = modal.querySelector('#cons-search-input');
         if (searchInput) {
             // Если передан преподаватель из глобального поиска — вписываем и сразу фильтруем
@@ -556,7 +551,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             });
         }
 
-        // Drag & Drop и файловый выбор DOCX
         const dropZone = modal.querySelector('#cons-drop-zone');
         const fileInput = modal.querySelector('#upload-cons-docx');
         if (dropZone && fileInput) {
@@ -571,6 +565,7 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
                 if (e.target.files.length > 0) handleFile(e.target.files[0]);
             };
 
+            // Запускает парсинг загруженного DOCX-файла и обновляет расписание
             function handleFile(file) {
                 dropZone.innerHTML = '<span class="material-icons" style="font-size:4rem; color:var(--color-accent); animation:spin 1s linear infinite;">sync</span><div style="margin-top:1rem; font-size:1.4rem; font-weight:700;">Анализ файла...</div>';
                 dropZone.style.pointerEvents = 'none';
@@ -591,7 +586,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             }
         }
 
-        // Тумблеры системных консультаций
         const sysToggle = modal.querySelector('#system-cons-toggle');
         if (sysToggle) {
             sysToggle.onchange = (e) => {
@@ -610,7 +604,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             };
         }
 
-        // Тумблер преподавателя
         modal.querySelectorAll('.toggle-cons-teacher').forEach(box => {
             box.onchange = (e) => {
                 const fId = e.target.getAttribute('data-file-id');
@@ -631,7 +624,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             };
         });
 
-        // Тумблер всего файла
         modal.querySelectorAll('.toggle-cons-file').forEach(box => {
             box.onchange = (e) => {
                 const fId = box.getAttribute('data-id');
@@ -650,7 +642,6 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
             };
         });
 
-        // Удаление файла
         const delBtn = modal.querySelector('.delete-cons-file');
         if (delBtn) {
             delBtn.onclick = () => {
@@ -678,6 +669,7 @@ export function openConsultationsModal(viewId = window.innerWidth <= 960 ? 'main
     });
 }
 
+// Инициализирует глобальный обработчик копирования email преподавателей
 export function consultationsBoot() {
     document.addEventListener('click', (e) => {
         if (e.target.classList.contains('cons-email-copy')) {

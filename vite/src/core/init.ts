@@ -3,6 +3,7 @@ import { stylePages } from '../app/stylePages.js';
 import { checkDiaryReminders } from '../features/diary-reminders.js';
 import { revealPage } from './fouc';
 
+// Инициализирует основную стилизацию страницы и периодическую проверку напоминаний дневника
 export function initBoot(): void {
     addViewport();
 

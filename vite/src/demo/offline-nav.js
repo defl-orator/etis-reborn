@@ -1,5 +1,6 @@
 import { pageCtx } from '../app/context.js';
 
+// Инициализация навигации и блокировки неподдерживаемых разделов в оффлайн-режиме
 export function initOfflineNavigation() {
     if (pageCtx.isDemoActive) {
         const supportedDemoHrefs = [

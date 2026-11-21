@@ -1,5 +1,6 @@
 import { getTermWord } from '../utils/term-system.ts';
 
+// Отображает или скрывает заглушку пустого состояния в контейнере
 export function updateEmptyState(container, hasResults, query = '', type = 'default') {
     let emptyEl = container.querySelector('.etis-empty-state');
 

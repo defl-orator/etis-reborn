@@ -1,6 +1,7 @@
 import { saveSyncData } from '../sync/data.js';
 import { returnToDrawer } from '../ui/drawer.js';
 
+// Открывает модальное окно дневника с заданиями и дедлайнами
 export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : 'tasks') {
     let overlay = document.getElementById('etis-diary-overlay');
     let modal = document.getElementById('etis-diary-modal');
@@ -40,6 +41,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
     const actualWeekNum = parseInt(localStorage.getItem('etis_actual_week') || (currentWeekEl ? currentWeekEl.textContent.replace(/\D/g, '').trim() : '1'), 10);
     let selectedWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.replace(/\D/g, '').trim(), 10) : actualWeekNum;
 
+    // Определяет общее количество недель в расписании
     const getTotalWeeks = () => {
         const weekEls = document.querySelectorAll('.weeks .week');
         if (weekEls.length > 0) {
@@ -57,7 +59,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
     let editingTask = null;
     let editorOrigin = 'tasks';
 
-    // Собираем предметы
+    // Собирает список доступных дисциплин из DOM, кэша и пользовательских данных
     const getAvailableSubjects = () => {
         const subjs = new Map();
 
@@ -145,6 +147,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
         return Array.from(subjs.values()).sort();
     };
 
+    // Вычисляет оставшееся или просроченное время до дедлайна
     const getDeadlineCountdown = (dateStr, timeStr) => {
         const target = new Date(`${dateStr}T${timeStr || '23:59'}:00`);
         const diffMs = target - new Date();
@@ -158,6 +161,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
         return { text: isOverdue ? 'Срок истек' : 'Меньше часа', isOverdue };
     };
 
+    // Вычисляет дату в формате YYYY-MM-DD по номеру недели и дню недели
     const getDateForWeekAndDay = (weekNum, dayName) => {
         const daysOrder = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
         const targetDayIdx = daysOrder.indexOf(dayName);
@@ -173,7 +177,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
         return `${yyyy}-${mm}-${dd}`;
     };
 
-    // Генератор карточки задачи
+    // Генерирует HTML-разметку карточки задания
     const generateTaskCardHtml = (t, viewMode = 'tasks') => {
         let footerInfoHtml = '';
         let footerIcon = 'event';
@@ -251,6 +255,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
                 `;
     };
 
+    // Отрисовывает выбранную вкладку дневника и привязывает обработчики
     const renderView = (currentView, skipScroll = false) => {
         if (currentView === 'menu' && window.innerWidth > 960) currentView = 'tasks';
 
@@ -547,14 +552,14 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
             modal.querySelectorAll('.weeks .week[data-week]').forEach(wEl => {
                 wEl.onclick = () => {
                     selectedWeek = parseInt(wEl.getAttribute('data-week'), 10);
-                    renderView('tasks', false); // Здесь скролл нужен, так как сменили неделю
+                    renderView('tasks', false);
                 };
             });
 
             modal.querySelectorAll('.sync-tab[data-day]').forEach(btn => {
                 btn.onclick = () => {
                     selectedDay = btn.getAttribute('data-day');
-                    renderView('tasks', true); // skipScroll = true
+                    renderView('tasks', true);
                 };
             });
 
@@ -578,6 +583,18 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
                     item.completed = e.target.checked;
                     item.completedAt = e.target.checked ? Date.now() : null;
                     saveSyncData('etis_diary_tasks_v1', JSON.stringify(allTasks));
+
+                    if (item.pairId) {
+                        let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+                        if (!notesData.specific) notesData.specific = {};
+                        if (item.completed) {
+                            delete notesData.specific[item.pairId];
+                        } else if (item.title) {
+                            notesData.specific[item.pairId] = item.title;
+                        }
+                        saveSyncData('etis_subject_notes_v2', JSON.stringify(notesData));
+                        if (typeof window.renderNotes === 'function') window.renderNotes();
+                    }
                     renderView(currentView, true);
                 }
             };
@@ -600,7 +617,6 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
         modal.querySelectorAll('.delete-diary-task-btn').forEach(btn => {
             btn.onclick = (e) => {
                 e.stopPropagation();
-                // Заменяем красный цвет при наведении с помощью CSS, убрав inline hover если он был, или просто стилизуем.
                 if (confirm('Удалить это задание?')) {
                     const id = btn.getAttribute('data-id');
                     let allTasks = JSON.parse(localStorage.getItem('etis_diary_tasks_v1') || '[]');
@@ -619,12 +635,10 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
             };
         });
         
-        // Стиль для красной кнопки удаления при наведении
         modal.querySelectorAll('.delete-diary-task-btn').forEach(btn => {
             btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(255, 59, 48, 0.1)'; });
             btn.addEventListener('mouseleave', () => { btn.style.background = 'transparent'; });
         });
-        // Стиль для кнопки редактирования при наведении
         modal.querySelectorAll('.edit-diary-task-btn').forEach(btn => {
             btn.addEventListener('mouseenter', () => { btn.style.background = 'var(--color-highlight-light)'; btn.style.color = 'var(--color-text-primary)'; });
             btn.addEventListener('mouseleave', () => { btn.style.background = 'transparent'; btn.style.color = 'var(--color-text-secondary)'; });
@@ -645,7 +659,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
 
             const subjectsList = getAvailableSubjects();
 
-            // --- ФУНКЦИЯ ДИНАМИЧЕСКОГО РАСЧЕТА НАПОМИНАНИЙ ---
+            // Динамически формирует доступные опции напоминания до дедлайна
             const updateReminderOptions = () => {
                 if (!reminderSelect) return;
 
@@ -688,7 +702,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
             if (dDateInput) dDateInput.addEventListener('input', updateReminderOptions);
             if (dTimeInput) dTimeInput.addEventListener('input', updateReminderOptions);
 
-            // --- ИНТЕЛЛЕКТУАЛЬНЫЙ ПОДБОР БЛИЖАЙШЕЙ ПАРЫ ---
+            // Подбирает ближайшие пары по выбранному предмету на 3 недели вперёд
             const updatePairSelect = (subjectName) => {
                 if (!subjectName) {
                     pairSelectGroup.style.display = 'none';
@@ -893,8 +907,8 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
                 }
             };
 
-            // Слушатели автокомплита
             if (subjInput && subjList) {
+                // Отрисовывает выпадающий список автодополнения предметов
                 const populateList = (val) => {
                     const filtered = subjectsList.filter(s => s.toLowerCase().includes(val.toLowerCase()));
                     if (filtered.length === 0 || !val) {
@@ -940,7 +954,7 @@ export function openDiaryModal(startView = window.innerWidth <= 960 ? 'menu' : '
                 }
             }
 
-            // --- СОХРАНЕНИЕ ЗАДАНИЯ И ПРИВЯЗКА К СЕТКЕ РАСПИСАНИЯ ---
+            // Сохранение задания и синхронизация заметки в расписании
             const saveBtn = modal.querySelector('#save-task-submit-btn');
             if (saveBtn) {
                 saveBtn.onclick = () => {

@@ -3,8 +3,9 @@ import { cleanTimetableForExport } from './export-clean.js';
 import { safeAppend } from '../../styles/inject.js';
 import { applySri } from '../../utils/security.ts';
 
-// Функция создания скриншота недели (Поделиться)
+// Генерирует PNG-изображение расписания недели и скачивает или отправляет его.
 const triggerShareWeek = () => {
+    // Собирает контейнер расписания и рендерит его через html2canvas.
     const renderTimetable = async () => {
         let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
         if (!h2c) return;

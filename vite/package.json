@@ -1,6 +1,6 @@
 {
   "name": "etis-reborn",
-  "version": "3.02.0",
+  "version": "3.03.0",
   "private": true,
   "type": "module",
   "description": "ЕТИС REBORN — userscript, собираемый Vite в один файл etis.user.js",

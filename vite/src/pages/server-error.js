@@ -1,8 +1,6 @@
 import { LOGO_DATA_URI } from '../assets/logo.js';
 
-// ==========================================
-// ОФОРМЛЕНИЕ СТРАНИЦЫ ОШИБКИ СЕРВЕРА (502 / 503 / 504)
-// ==========================================
+// Проверяет наличие ошибки сервера (502/503/504) и отображает экран восстановления
 export function checkAndRenderServerError() {
     const bodyText = document.body ? (document.body.innerText || document.body.textContent) : '';
     const pageTitle = document.title || '';
@@ -53,7 +51,6 @@ export function checkAndRenderServerError() {
                 </div>
             `;
 
-    // Обработчик "Повторить попытку"
     const retryBtn = document.getElementById('retry-502-btn');
     if (retryBtn) {
         retryBtn.onclick = (e) => {
@@ -64,7 +61,6 @@ export function checkAndRenderServerError() {
         };
     }
 
-    // Обработчик "Открыть Демо-режим"
     const demoBtn = document.getElementById('demo-502-btn');
     if (demoBtn) {
         demoBtn.onclick = (e) => {

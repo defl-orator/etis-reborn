@@ -5,6 +5,7 @@ import { adjustHeaderLayout, initAttachmentsScrollFade, updateAttachmentsScrollM
 import { updateEmptyState } from '../ui/empty-state.js';
 import { formatEtisDate, formatEtisDateShort } from '../utils/etis-dates.js';
 
+// Оформляет страницу сообщений от преподавателей с поиском, вложениями и свайпами
 export function renderTeacherNotesPage() {
     const pagesContainer = pageCtx.span9.querySelector('.weeks');
     if (pagesContainer) {
@@ -15,7 +16,6 @@ export function renderTeacherNotesPage() {
 
     const messages = pageCtx.span9.querySelectorAll('ul.nav.msg, ul.nav.answ');
 
-    // Если папка входящих сообщений изначально пуста
     if (!messages.length) {
         pageCtx.span9.querySelectorAll('ul.nav.msg, ul.nav.answ').forEach(m => m.remove());
         const oldH2 = pageCtx.span9.querySelector('h2'); if (oldH2) oldH2.remove();
@@ -23,7 +23,6 @@ export function renderTeacherNotesPage() {
         return;
     }
 
-    // Удаляем точку уведомлений из сайдбара и дока
     document.querySelectorAll('.span3 a[href*="stu.teacher_notes"] .badge-point, .span3 li.active .badge-point').forEach(dot => dot.remove());
     if (window.updateFolderBadges) window.updateFolderBadges();
     if (!document.querySelector('.span3 .badge-point')) {
@@ -33,7 +32,6 @@ export function renderTeacherNotesPage() {
     const container = document.createElement('div');
     container.className = 'msg-container';
 
-    // --- СОЗДАНИЕ ПОИСКА ---
     const searchWrapper = document.createElement('div');
     searchWrapper.className = 'teacher-search-wrapper';
     searchWrapper.style.marginTop = '0';
@@ -108,7 +106,6 @@ export function renderTeacherNotesPage() {
         const fullDate = formatEtisDate(rawDateStr);
         const shortDate = formatEtisDateShort(rawDateStr);
 
-        // Вложения
         const attachments = [];
         msg.querySelectorAll('a[href*="file_download"]').forEach(link => {
             attachments.push({ name: link.textContent.trim(), href: link.href });
@@ -116,7 +113,6 @@ export function renderTeacherNotesPage() {
 
         const textForLength = bodyParts.map(p => p.replace(/<[^>]+>/g, ' ')).join(' ');
 
-        // Кнопка и форма ответа
         const replyBtn = msg.querySelector('input[type="button"][id^="btn_"], button[id^="btn_"]');
         const replyFrm = msg.querySelector('div[id^="frm_"]');
 
@@ -186,7 +182,6 @@ export function renderTeacherNotesPage() {
         container.appendChild(card);
     });
 
-    // Активируем затухание для файлов и адаптивность шапок сообщений
     container.querySelectorAll('.msg-attachments').forEach(initAttachmentsScrollFade);
     container.querySelectorAll('.msg-header').forEach(adjustHeaderLayout);
 
@@ -209,10 +204,8 @@ export function renderTeacherNotesPage() {
         }
     });
 
-    // Инициализация свайпов для мобилок
     initMessageSwipes(container, 'Сообщение.png');
 
-    // Логика фильтрации
     searchWrapper.querySelector('#msg-search').addEventListener('input', (e) => {
         const val = e.target.value.toLowerCase().trim();
         let visibleCount = 0;
@@ -221,7 +214,6 @@ export function renderTeacherNotesPage() {
             card.style.display = isMatch ? '' : 'none';
             if (isMatch) visibleCount++;
         });
-        // Вызов умного пустого состояния для поиска
         updateEmptyState(container, visibleCount > 0, val, 'messages');
     });
 
@@ -232,7 +224,6 @@ export function renderTeacherNotesPage() {
     searchWrapper.after(container);
     if (pagesContainer) container.after(pagesContainer);
 
-    // Плавное исчезновение точки у новых сообщений через 5 секунд
     if (container.querySelector('.msg-unread-dot')) {
         setTimeout(() => {
             container.querySelectorAll('.msg-unread-dot').forEach(dot => {

@@ -2,6 +2,7 @@ import { pageCtx } from '../../app/context.js';
 import { saveSyncData } from '../../sync/data.js';
 import { escapeHTML } from '../../utils/security.ts';
 
+// Оформляет страницу оценок к диплому, вычисляет средний балл и сохраняет его в синхронизацию.
 export function renderDiplomSigns() {
     const activeSubmenu = pageCtx.span9.querySelector('.submenu b');
     const isDiplom = pageCtx.pageMode === 'diplom';
@@ -21,7 +22,6 @@ export function renderDiplomSigns() {
             const rows = table.querySelectorAll('tr');
             const dataRows = Array.from(table.querySelectorAll('tbody tr:not(:has(th)), tr:has(td)'));
 
-            // Если в таблице диплома нет строк с предметами
             if (dataRows.length === 0) {
                 const tbody = table.querySelector('tbody') || table;
                 

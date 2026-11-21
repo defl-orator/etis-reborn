@@ -1,3 +1,4 @@
+// Преобразует старую разметку подменю и центрирует активную вкладку на мобильных
 export function initSubmenus() {
     const submenus = document.querySelectorAll('.submenu');
     submenus.forEach(menu => {

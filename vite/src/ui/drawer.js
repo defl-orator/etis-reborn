@@ -1,3 +1,4 @@
+// Закрывает текущую модалку и возвращает пользователя в мобильное боковое меню
 export const returnToDrawer = (currentModal, currentOverlay) => {
     if (currentModal) currentModal.classList.remove('active');
     if (currentOverlay) currentOverlay.classList.remove('active');

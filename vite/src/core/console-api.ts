@@ -1,7 +1,7 @@
-// src/core/console-api.ts
-
+// Глобальный объект окна с учётом песочницы Tampermonkey
 export const targetWindow: any = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
 
+// Регистрирует отладочные функции в глобальном окне (демо-режим и бета-функции)
 export function consoleApiBoot(): void {
     targetWindow.etisDemo = (enable = true) => {
         if (enable) {

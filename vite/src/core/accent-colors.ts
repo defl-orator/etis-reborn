@@ -1,3 +1,4 @@
+// Палитра доступных акцентных цветов интерфейса
 export const ACCENT_COLORS: Record<string, string> = {
     // Красные / Розовые / Малиновые
     red: '#FF3B30', crimson: '#DC143C', ruby: '#C2185B', darkred: '#800000', berry: '#880E4F',
@@ -23,6 +24,7 @@ export const ACCENT_COLORS: Record<string, string> = {
     graphite: '#333333', black: '#212121'
 };
 
+// Порядок отображения цветов в палитре настроек
 export const COLOR_ORDER: string[] = [
     'red', 'crimson', 'ruby', 'darkred', 'berry', 'pink', 'fuchsia', 'rose', 'magenta', 'peach',
     'purple', 'deepviolet', 'plum', 'violet', 'indigo', 'lilac', 'lightpurple', 'lavender',

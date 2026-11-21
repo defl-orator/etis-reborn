@@ -1,6 +1,4 @@
-// ==========================================
-// ПРОВЕРКА ОФФЛАЙН-РЕЖИМА И ФИКТИВНОГО СТУДЕНТА
-// ==========================================
+// Проверяет, активен ли демо-режим или фиктивный профиль студента
 export const isDemoUser = (): boolean => {
     if (sessionStorage.getItem('etis_demo_mode') === 'true') return true;
     const infoText = (document.querySelector('.navbar-static-top .span12 > span')?.textContent ||

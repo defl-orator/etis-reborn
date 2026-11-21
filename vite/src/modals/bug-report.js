@@ -3,6 +3,7 @@ import { initAutoUpdateCheck } from '../core/updater.js';
 import { getUpdateHTML } from '../features/update-ui.js';
 import { openSettingsModal } from './settings.js';
 
+// Открывает модальное окно обратной связи
 export function openUserscriptBugModal() {
     let overlay = document.getElementById('etis-bug-overlay');
     let modal = document.getElementById('etis-bug-modal');
@@ -76,6 +77,7 @@ export function openUserscriptBugModal() {
     });
 }
 
+// Обновляет интерфейс блока обновлений в окне настроек
 export function refreshModalUI() {
     const modal = document.getElementById('etis-settings-modal');
     if (modal) {

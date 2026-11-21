@@ -12,7 +12,7 @@ export const safeAppend = (element) => {
 // Неблокирующее подключение шрифтов и иконок
 const fontLink = document.createElement('link');
 
-// Внедряем стили
+// Внедрение таблицы стилей скрипта в документ
 const injectStyles = (css) => {
     const style = document.createElement('style');
     style.id = 'etis-reborn-styles';
@@ -20,6 +20,7 @@ const injectStyles = (css) => {
     safeAppend(style);
 };
 
+// Подключение иконочных шрифтов Phosphor и основных стилей при загрузке
 export function injectBoot() {
     const PH = 'https://cdn.jsdelivr.net/npm/@phosphor-icons/web@2.1.1/src';
     ['regular', 'fill'].forEach(w => {

@@ -1,6 +1,7 @@
 import { GeneralConfig } from '../types';
 import { saveSyncData } from '../sync/data';
 
+// Настройки по умолчанию и текущая конфигурация приложения
 const DEFAULT_CONFIG: GeneralConfig = {
     dimPastPairs: true,
     shortAudFormat: true,
@@ -10,12 +11,14 @@ const DEFAULT_CONFIG: GeneralConfig = {
     absoluteScores: false,
     compactGrades: false,
     gradeNotifications: true,
+    timetableNotifications: true,
     watermark: true,
     datesLeft: false,
     generateQR: true,
     showGaps: true,
     showGapsCustom: true,
     showBigBreak: true,
+    liveTimer: true,
     smartSidebar: true,
     quickLoginEnabled: false,
     betaFeaturesEnabled: false,
@@ -35,6 +38,7 @@ const DEFAULT_CONFIG: GeneralConfig = {
 
 export let generalConfig: GeneralConfig = { ...DEFAULT_CONFIG };
 
+// Загружает общую конфигурацию из localStorage с объединением с дефолтами
 export function loadGeneralConfig(): void {
     try {
         const saved = localStorage.getItem('etis_general_config');
@@ -52,10 +56,12 @@ export function loadGeneralConfig(): void {
     }
 }
 
+// Сохраняет общую конфигурацию локально и в облачную синхронизацию
 export function saveGeneralConfig(): void {
     saveSyncData('etis_general_config', JSON.stringify(generalConfig));
 }
 
+// Инициализирует конфигурацию и применяет базовые классы при старте
 export function configBoot(): void {
     loadGeneralConfig();
     if (generalConfig.smartSidebar) {

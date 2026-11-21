@@ -5,14 +5,17 @@ import { loadGeneralConfig } from '../core/config';
 import { applyAccentColor } from '../core/accent';
 import { applyCurrentTheme } from '../core/theme-engine';
 
+// Ключ очереди локальных изменений и интервалы фонового heartbeat синхронизации
 const DIRTY_KEYS_STORAGE = 'etis_sync_dirty_v1';
 const HEARTBEAT_STALE_MS = 60_000;
 const HEARTBEAT_INTERVAL_MS = 120_000;
 
+// Возвращает имя ключа для хранения мастер-ключа синхронизации
 export function mkName(): string {
     return 'etis_sync_master_key_v2';
 }
 
+// Читает мастер-ключ синхронизации из GM-хранилища или localStorage
 export function getMasterKey(): string {
     if (typeof GM_getValue !== 'undefined') {
         const key = GM_getValue(mkName(), '');
@@ -21,6 +24,7 @@ export function getMasterKey(): string {
     return localStorage.getItem(mkName()) || '';
 }
 
+// Сохраняет мастер-ключ синхронизации в GM-хранилище и localStorage
 export function setMasterKey(key: string): void {
     if (typeof GM_setValue !== 'undefined') {
         GM_setValue(mkName(), key);
@@ -28,6 +32,7 @@ export function setMasterKey(key: string): void {
     localStorage.setItem(mkName(), key);
 }
 
+// Удаляет мастер-ключ синхронизации из всех хранилищ
 export function clearMasterKey(): void {
     if (typeof GM_setValue !== 'undefined') {
         GM_setValue(mkName(), '');
@@ -35,6 +40,7 @@ export function clearMasterKey(): void {
     localStorage.removeItem(mkName());
 }
 
+// Возвращает существующий мастер-ключ или автоматически генерирует новый
 export async function getAutomaticSyncCode(): Promise<string> {
     let key = getMasterKey();
     if (!key) {
@@ -44,6 +50,7 @@ export async function getAutomaticSyncCode(): Promise<string> {
     return key;
 }
 
+// Соответствие полей облачного хранилища ключам localStorage и список обязательных полей
 const SYNC_KEYS_MAP: Record<string, string> = {
     sync_meta: 'etis_sync_meta',
     custom_pairs: 'etis_custom_pairs_v1',
@@ -82,10 +89,12 @@ const ALWAYS_SYNCED_FIELDS = new Set([
     'recent_search_items'
 ]);
 
+// Возвращает карту несинхронизированных локальных ключей с временем изменения
 function getDirtyMap(): Record<string, number> {
     return safeParseJSON<Record<string, number>>(localStorage.getItem(DIRTY_KEYS_STORAGE), {});
 }
 
+// Сохраняет или очищает карту несинхронизированных локальных ключей
 function setDirtyMap(map: Record<string, number>): void {
     if (Object.keys(map).length === 0) {
         localStorage.removeItem(DIRTY_KEYS_STORAGE);
@@ -94,6 +103,7 @@ function setDirtyMap(map: Record<string, number>): void {
     }
 }
 
+// Помечает локальный ключ как изменённый для приоритетной отправки в облако
 export function markLocalKeyDirty(localKey: string): void {
     const cloudField = LOCAL_TO_CLOUD_KEY[localKey];
     if (!cloudField) return;
@@ -102,6 +112,7 @@ export function markLocalKeyDirty(localKey: string): void {
     setDirtyMap(map);
 }
 
+// Проверяет, включена ли синхронизация для указанного облачного поля
 function isSyncFieldEnabled(cloudField: string): boolean {
     if (ALWAYS_SYNCED_FIELDS.has(cloudField)) return true;
     const toggles = safeParseJSON<Record<string, boolean>>(localStorage.getItem('etis_sync_toggles'), {});
@@ -117,14 +128,17 @@ function isSyncFieldEnabled(cloudField: string): boolean {
     return toggles[cloudField] !== false;
 }
 
+// Последовательная очередь операций синхронизации для исключения гонок
 let syncQueue: Promise<any> = Promise.resolve();
 
+// Добавляет задачу синхронизации в последовательную очередь
 function enqueueSync<T>(task: () => Promise<T>): Promise<T> {
     const next = syncQueue.then(task, task);
     syncQueue = next.catch(() => {});
     return next;
 }
 
+// Загружает зашифрованное хранилище пользователя из Firebase
 function fetchCloudVault(vaultId: string): Promise<Record<string, any> | null> {
     return new Promise((resolve) => {
         GM_xmlhttpRequest({
@@ -145,6 +159,7 @@ function fetchCloudVault(vaultId: string): Promise<Record<string, any> | null> {
     });
 }
 
+// Отправляет зашифрованный снимок данных в Firebase
 function putCloudVault(vaultId: string, payload: Record<string, any>): Promise<boolean> {
     return new Promise((resolve) => {
         GM_xmlhttpRequest({
@@ -165,6 +180,7 @@ function putCloudVault(vaultId: string, payload: Record<string, any>): Promise<b
     });
 }
 
+// Объединяет локальную и облачную историю уведомлений с сохранением статуса прочтения
 function mergeNotificationsHistory(localJson: string | null, cloudJson: string): string {
     const localList = safeParseJSON<any[]>(localJson, []);
     const cloudList = safeParseJSON<any[]>(cloudJson, []);
@@ -191,6 +207,7 @@ function mergeNotificationsHistory(localJson: string | null, cloudJson: string):
     return JSON.stringify(merged.slice(0, 40));
 }
 
+// Обновляет счётчики непрочитанных уведомлений в интерфейсе
 function updateNotificationBadges(mergedJson: string): void {
     const merged = safeParseJSON<any[]>(mergedJson, []);
     const badgeCount = merged.filter(n => !n.read).length;
@@ -205,6 +222,7 @@ function updateNotificationBadges(mergedJson: string): void {
     });
 }
 
+// Применяет загруженные из облака настройки и перерисовывает активное расписание
 function applySyncedRuntimeUpdates(): void {
     try {
         loadGeneralConfig();
@@ -229,6 +247,7 @@ function applySyncedRuntimeUpdates(): void {
     } catch (e) {}
 }
 
+// Шифрует и выгружает локальные данные в облачное хранилище
 export function uploadDataToCloud(skipPreDownload = false): Promise<boolean> {
     const masterKey = getMasterKey();
     if (!masterKey || isDemoUser()) return Promise.resolve(false);
@@ -313,6 +332,7 @@ export function uploadDataToCloud(skipPreDownload = false): Promise<boolean> {
     });
 }
 
+// Скачивает, расшифровывает и применяет данные из облачного хранилища
 export function downloadDataFromCloud(customKey?: string): Promise<boolean> {
     const masterKey = customKey || getMasterKey();
     if (!masterKey || isDemoUser()) return Promise.resolve(false);
@@ -376,7 +396,10 @@ export function downloadDataFromCloud(customKey?: string): Promise<boolean> {
     });
 }
 
+// Таймер отложенной фоновой выгрузки в облако
 let uploadTimer: any = null;
+
+// Запускает отложенную тихую выгрузку изменений в облако (debounce 500 мс)
 export function triggerSilentCloudUpload(): void {
     if (uploadTimer) clearTimeout(uploadTimer);
     uploadTimer = setTimeout(() => {
@@ -384,7 +407,10 @@ export function triggerSilentCloudUpload(): void {
     }, 500);
 }
 
+// Флаг однократной инициализации фонового heartbeat синхронизации
 let heartbeatInitialized = false;
+
+// Инициализирует облачную синхронизацию и периодический heartbeat при старте
 export function cloudBoot(): void {
     const key = getMasterKey();
     if (key && !isDemoUser()) {

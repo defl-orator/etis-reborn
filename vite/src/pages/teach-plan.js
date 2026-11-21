@@ -3,6 +3,7 @@ import { updateEmptyState } from '../ui/empty-state.js';
 import { highlightSearchTerm } from '../ui/search-highlight.js';
 import { escapeHTML } from '../utils/security.ts';
 
+// Оформляет страницу учебного плана, факультативов, элективов и выбора дисциплин
 export function renderTeachPlanPage() {
     const params = new URLSearchParams(window.location.search);
     const currentMode = params.get('p_mode');
@@ -17,7 +18,6 @@ export function renderTeachPlanPage() {
         planEvalBtn.innerHTML = 'Оценить учебный план';
     }
 
-    // 1. Создаем меню: единая капсула с круглой кнопкой поиска для краткого плана
     if (isShortPlan) {
         const controlsWrapper = document.createElement('div');
         controlsWrapper.className = 'plan-controls-wrapper';
@@ -240,7 +240,6 @@ export function renderTeachPlanPage() {
         div.style.width = '100%';
     });
 
-    // === СБОР ДАННЫХ ОБ ОТЧЕТНОСТИ (ЗАЧЕТ/ЭКЗАМЕН) ===
     let subjectsReportType = JSON.parse(localStorage.getItem('etis_subjects_report_type_v1') || '{}');
     let reportDataUpdated = false;
     pageCtx.span9.querySelectorAll('table.teach_plan, table.common').forEach(table => {
@@ -277,7 +276,6 @@ export function renderTeachPlanPage() {
         localStorage.setItem('etis_subjects_report_type_v1', JSON.stringify(subjectsReportType));
     }
 
-    // --- СТИЛИЗАЦИЯ КОНТЕНТА УЧЕБНОГО ПЛАНА ---
     if (pageCtx.page === 'stu.teach_plan') {
         if (isChooseDis) {
             const tpInfo = Array.from(pageCtx.span9.querySelectorAll('div')).find(d =>
@@ -309,7 +307,6 @@ export function renderTeachPlanPage() {
 
         pageCtx.span9.querySelectorAll('br').forEach((br, i) => { if(i < 3) br.remove(); });
 
-        // ПОДРОБНЫЙ ВИД
         if (isAdvanced) {
             const calendarGrid = document.createElement('div');
             calendarGrid.className = 'calendar-grid';
@@ -357,16 +354,13 @@ export function renderTeachPlanPage() {
             });
         }
 
-        // КРАТКИЙ ВИД (РАЗБИЕНИЕ ТАБЛИЦ ПО РАЗДЕЛАМ И ОДНОЭТАЖНАЯ ШАПКА)
         if (!isAdvanced && !isChooseDis) {
-            // 1. Увеличиваем шрифт заголовков семестров
             pageCtx.span9.querySelectorAll('h3').forEach(h3 => {
                 if (/семестр|триместр/i.test(h3.textContent)) {
                     h3.classList.add('plan-semester-header');
                 }
             });
 
-            // 2. Разбиваем каждую таблицу семестра на отдельные таблицы по секциям
             const originalTables = Array.from(pageCtx.span9.querySelectorAll('table.teach_plan, table.common'));
 
             originalTables.forEach(table => {
@@ -409,13 +403,11 @@ export function renderTeachPlanPage() {
                             sections.push(currentSection);
                         }
                     } else {
-                        // --- УДАЛЕНИЕ СТАРОЙ ФИГУРНОЙ СКОБКИ "{" И ВЫРАВНИВАНИЕ ЭЛЕКТИВОВ ---
                         const braceCell = row.querySelector('td[rowspan]');
                         if (braceCell && braceCell.textContent.trim() === '{') {
                             braceCell.remove();
                         }
 
-                        // Гарантируем colspan="2" и строгое выравнивание по левому краю для первой ячейки
                         const firstTd = row.querySelector('td');
                         if (firstTd) {
                             firstTd.setAttribute('colspan', '2');
@@ -449,22 +441,18 @@ export function renderTeachPlanPage() {
                     newTable.className = 'common';
                     newTable.style.width = '100%';
 
-                    // --- ОДНОЭТАЖНАЯ ШАПКА БЕЗ СТРОКИ "ТРУДОЕМКОСТЬ, Ч" ---
                     const thead = document.createElement('thead');
                     const singleHeaderTr = document.createElement('tr');
 
-                    // 1. Название категории (вместо "Дисциплина")
                     const thTitle = document.createElement('th');
                     thTitle.setAttribute('colspan', '2');
                     thTitle.textContent = section.title;
                     singleHeaderTr.appendChild(thTitle);
 
-                    // 2. Колонка "Отчетность"
                     const thReport = document.createElement('th');
                     thReport.textContent = 'Отчетность';
                     singleHeaderTr.appendChild(thReport);
 
-                    // 3. Колонки часов без слипания слов + добавление ", ч"
                     if (headerRows.length >= 2) {
                         const row2Ths = headerRows[1].querySelectorAll('th');
                         row2Ths.forEach(th => {
@@ -485,7 +473,6 @@ export function renderTeachPlanPage() {
                     }
 
                     thead.appendChild(singleHeaderTr);
-                    // Принудительно убираем любые верхние и боковые разделители у шапки
                     singleHeaderTr.querySelectorAll('th').forEach(th => {
                         th.style.setProperty('border-top', 'none', 'important');
                         th.style.setProperty('border-left', 'none', 'important');
@@ -493,7 +480,6 @@ export function renderTeachPlanPage() {
                     });
                     newTable.appendChild(thead);
 
-                    // Наполняем tbody строками и раскрашиваем капсулы экзаменов/зачетов
                     const tbody = document.createElement('tbody');
                     section.rows.forEach(row => {
                         row.querySelectorAll('td').forEach(cell => {
@@ -523,7 +509,6 @@ export function renderTeachPlanPage() {
                 table.replaceWith(containerFragment);
             });
 
-            // 3. Логика фильтрации поиска в реальном времени
             const planInput = pageCtx.span9.querySelector('.plan-local-input');
             if (planInput) {
                 planInput.addEventListener('input', (e) => {
@@ -552,11 +537,10 @@ export function renderTeachPlanPage() {
                                         visibleRows.push(row);
                                     } else {
                                         row.style.display = 'none';
-                                        highlightSearchTerm(row, ''); // сброс подсветки у скрытых строк
+                                        highlightSearchTerm(row, '');
                                     }
                                 });
 
-                                // У последней видимой строки убираем нижнюю разделительную линию
                                 if (visibleRows.length > 0) {
                                     visibleRows[visibleRows.length - 1].classList.add('last-visible-row');
                                 }
@@ -600,9 +584,6 @@ export function renderTeachPlanPage() {
         }
     }
 
-    // =========================================================
-    // --- СПЕЦИАЛЬНОЕ ОФОРМЛЕНИЕ ДЛЯ СТРАНИЦЫ ЭЛЕКТИВОВ ---
-    // =========================================================
     if (pageCtx.page === 'stu.ebl_choice' || pageCtx.page === 'ebl_stu.ebl_choice') {
         let noticeText = '';
         const boldNotice = Array.from(pageCtx.span9.querySelectorAll('b')).find(b => 

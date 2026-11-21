@@ -2,9 +2,11 @@ import { triggerUpdateIndicators } from '../features/update-ui';
 import { refreshModalUI } from '../modals/bug-report';
 import { generalConfig } from './config';
 
+// URL-адреса релизной и бета-веток скрипта для проверки обновлений
 export const RELEASE_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/main/etis.user.js';
 export const BETA_URL = 'https://raw.githubusercontent.com/defl-orator/etis-reborn/beta/etis.user.js';
 
+// Состояние проверки обновлений и метаданные найденной версии
 export interface UpdateState {
     status: 'idle' | 'loading' | 'error' | 'done';
     hasUpdate: boolean;
@@ -15,6 +17,7 @@ export interface UpdateState {
     details: string;
 }
 
+// Текущее глобальное состояние проверки обновлений
 export const updateState: UpdateState = {
     status: 'idle',
     hasUpdate: false,
@@ -25,6 +28,7 @@ export const updateState: UpdateState = {
     details: ''
 };
 
+// Запускает проверку обновлений скрипта с GitHub
 export function initAutoUpdateCheck(forceRelease = false): void {
     if (typeof GM_xmlhttpRequest === 'undefined') return;
 
@@ -55,7 +59,7 @@ export function initAutoUpdateCheck(forceRelease = false): void {
 
                 if (verMatch) {
                     const remoteVer = verMatch[1].trim();
-                    const currentVer = typeof GM_info !== 'undefined' ? GM_info.script.version : '3.02';
+                    const currentVer = typeof GM_info !== 'undefined' ? GM_info.script.version : '3.03';
 
                     updateState.remoteVer = remoteVer;
                     updateState.remoteLog = logMatch ? logMatch[1].trim() : '';
@@ -90,6 +94,7 @@ export function initAutoUpdateCheck(forceRelease = false): void {
     });
 }
 
+// Сравнивает две строковые версии формата X.Y.Z
 function isNewerVersion(remote: string, current: string): boolean {
     const rParts = remote.split('.').map(Number);
     const cParts = current.split('.').map(Number);

@@ -31,7 +31,7 @@ const isAllowedNotification = (n) => {
     return false;
 };
 
-// --- ЦЕНТР УВЕДОМЛЕНИЙ ---
+// Добавление уведомления в историю с дедупликацией и синхронизацией
 export function addNotificationToHistory({ title, subject, body, type = 'info', icon = 'notifications', targetUrl = null, id = null }) {
     const isGrade = title.includes('баллы') || title.includes('оценка') || title.includes('Сессия:') || title.includes('Обновление успеваемости') || (targetUrl && targetUrl.includes('stu.signs'));
 
@@ -75,6 +75,7 @@ export function addNotificationToHistory({ title, subject, body, type = 'info', 
     return newNotif;
 }
 
+// Обновление счётчика непрочитанных уведомлений на иконке колокольчика
 export function updateBellCounter() {
     let history = JSON.parse(localStorage.getItem('etis_notifications_history_v1') || '[]');
     history = history.filter(isAllowedNotification);
@@ -92,6 +93,7 @@ export function updateBellCounter() {
     });
 }
 
+// Открытие модального окна центра уведомлений
 export function openNotificationsModal() {
     let overlay = document.getElementById('etis-notifs-overlay');
     let modal = document.getElementById('etis-notifs-modal');

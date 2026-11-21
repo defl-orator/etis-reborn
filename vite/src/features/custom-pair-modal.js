@@ -471,6 +471,7 @@ export function openCustomPairModal(dayName, isFromToolbar = false, existingPair
     if (!existingPair) setTimeout(() => smartInput.focus(), 100);
 }
 
+// Экспорт функции открытия модального окна пары в глобальную область
 export function exposeCustomPairModal() {
     window.openCustomPairModal = openCustomPairModal;
 }

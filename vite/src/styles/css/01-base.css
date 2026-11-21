@@ -9,6 +9,16 @@
     --width-content-margin-left: 3rem;
     --transition: 0.2s ease;
 }
+@media (min-width: 1800px) {
+    :root {
+        --width-page: 1280px;
+    }
+}
+@media (min-width: 2200px) {
+    :root {
+        --width-page: 1400px;
+    }
+}
 [theme="light"] {
     --color-body: #F2F2F6;
     --color-card: #FFFFFF;

@@ -1,17 +1,19 @@
 import { triggerSilentCloudUpload } from '../../sync/cloud.js';
 import { deduplicateConsultations, saveSyncData } from '../../sync/data.js';
 
-// --- ЛОГИКА ФАЙЛОВ КОНСУЛЬТАЦИЙ ---
+// Ключ хранения и дедуплицированный список файлов консультаций
 const CONSULTATIONS_KEY = 'etis_consultation_files_v1';
 
 let consultationsFilesRaw = JSON.parse(localStorage.getItem(CONSULTATIONS_KEY) || '[]');
 
 export let consultationsFiles = deduplicateConsultations(consultationsFilesRaw);
 
+// Обновление списка файлов консультаций в памяти
 export function setConsultationsFiles(value) {
     consultationsFiles = value;
 }
 
+// Сохранение состояния файлов консультаций и запуск облачной синхронизации
 export function saveConsultationsState() {
     if (typeof saveSyncData === 'function') {
         saveSyncData(CONSULTATIONS_KEY, JSON.stringify(consultationsFiles));
@@ -21,14 +23,14 @@ export function saveConsultationsState() {
     }
 }
 
+// Извлечение почты, времени, аудиторий, ссылок и примечаний из текста консультации
 export function parseConsultationInfo(rawText, rawHtml) {
     const info = { email: '', events:[], notes: '' };
 
-    // 1. Почта
     const emailMatch = rawText.match(/[\w.-]+@[\w.-]+\.\w+/);
     if (emailMatch) info.email = emailMatch[0];
 
-    // 2. Строковые исходники для регулярных выражений (защита от багов Safari и lastIndex)
+    // Строковые исходники для регулярных выражений (защита от багов Safari и lastIndex)
     const audRegexStr = 'кабинет\\s+декана\\s*№?\\s*\\d+\\s*корп\\.?\\s*\\d+|ауд\\.?\\s*\\d+[а-яa-z]*\\s*[\\/\\\\]\\s*\\d+[а-яa-z]*|ауд\\.?\\s*\\d+[а-яa-z]*';
     const daysRegexStr = 'понедельник|вторник|среда|четверг|пятница|суббота|воскресенье';
     const timeRegexStr = '(?:с\\s+)?(\\d{1,2}[:.]\\d{2})(?:\\s*(?:[-–]|до)\\s*(\\d{1,2}[:.]\\d{2}))?';
@@ -201,6 +203,7 @@ export function parseConsultationInfo(rawText, rawHtml) {
     return info;
 }
 
+// Очистка дубликатов файлов консультаций при инициализации
 export function stateBoot() {
     // Если локально были обнаружены и убраны дубликаты, сразу перезаписываем и синхронизируем чистую версию
     if (consultationsFiles.length !== consultationsFilesRaw.length) {

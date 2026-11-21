@@ -2,6 +2,7 @@ import { pageCtx } from '../app/context.js';
 import { updateEmptyState } from '../ui/empty-state.js';
 import { highlightSearchTerm } from '../ui/search-highlight.js';
 
+// Оформляет список преподавателей, извлекает ссылки на расписание и добавляет поиск
 export function renderTeachersPage() {
     const statsLink = pageCtx.span9.querySelector('a[href="stu.dis_stat"]');
 
@@ -13,10 +14,8 @@ export function renderTeachersPage() {
         pTerm = scriptMatch[2];
     }
 
-    // Чистим span9 от мусора ЕТИСа
     pageCtx.span9.querySelectorAll('br, script, style').forEach(el => el.remove());
 
-    // 2. Создаем капсулу поиска
     const searchWrapper = document.createElement('div');
     searchWrapper.className = 'teacher-search-wrapper';
     searchWrapper.innerHTML = `
@@ -27,12 +26,10 @@ export function renderTeachersPage() {
                         `;
     pageCtx.span9.prepend(searchWrapper);
 
-    // 3. Создаем контейнер для списка
     const listContainer = document.createElement('div');
     listContainer.className = 'teachers-list';
     pageCtx.span9.appendChild(listContainer);
 
-    // 4. Переносим таблицы в карточки внутри списка
     const tables = pageCtx.span9.querySelectorAll('table.teacher_info');
     tables.forEach(table => {
         const img = table.querySelector('.teacher_photo img');
@@ -43,7 +40,6 @@ export function renderTeachersPage() {
         const nameText = nameDiv ? nameDiv.textContent.trim() : '';
         const chairText = chairDiv ? chairDiv.textContent.trim() : '';
 
-        // === ПРАВИЛЬНЫЙ ПАРСИНГ ССЫЛОК ИЗ ФУНКЦИИ get_tt ===
         let nameUrl = '#';
         let chairUrl = '#';
 
@@ -55,9 +51,7 @@ export function renderTeachersPage() {
             const match = chairDiv.innerHTML.match(/get_tt\(\s*'?\d*'?\s*,\s*'?(\d+)'?\s*\)/i);
             if (match) chairUrl = `tt_pkg.show_prep?P_TY_ID=${pTyId}&P_TERM=${pTerm}&P_PEO_ID=&P_SDIV_ID=${match[1]}&p_print=y`;
         }
-        // =================================================
 
-        // --- ПАРСИНГ ПРЕДМЕТОВ И ВЫДЕЛЕНИЕ МЕТОК ---
         let subjectsHtml = '';
         let rawSubjectsText = '';
         let uniqueTypes = new Set();
@@ -81,7 +75,6 @@ export function renderTeachersPage() {
             });
         }
 
-        // --- ГЕНЕРАЦИЯ ЦВЕТНЫХ КАПСУЛ ---
         let badgesHtml = '';
         const orderedTypes =['экзамен', 'зачет', 'зачёт', 'лек', 'практ', 'лаб'];
         const foundTypes = Array.from(uniqueTypes);
@@ -148,7 +141,6 @@ export function renderTeachersPage() {
         pageCtx.span9.appendChild(statsLink);
     }
 
-    // Первоначальная проверка при пустом списке на сервере
     const initialCardsCount = listContainer.querySelectorAll('.teacher-card').length;
     updateEmptyState(listContainer, initialCardsCount > 0, '', 'teachers');
 
@@ -167,9 +159,17 @@ export function renderTeachersPage() {
             }
         });
 
-        // Использование умного плейсхолдера вместо простого текста
         updateEmptyState(listContainer, foundCount > 0, term, 'teachers');
     });
+
+    try {
+        const prefill = sessionStorage.getItem('etis_teachers_prefill_search');
+        if (prefill) {
+            sessionStorage.removeItem('etis_teachers_prefill_search');
+            input.value = prefill;
+            input.dispatchEvent(new Event('input'));
+        }
+    } catch (e) {}
 
     return;
 }

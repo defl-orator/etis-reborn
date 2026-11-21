@@ -1,6 +1,4 @@
-// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ICS И НАПОМИНАНИЙ ---
-
-// 1. Определение точной даты и времени пары
+// Определяет точные объекты Date начала и окончания пары по строке даты и времени.
 export function getPairDateTime(dayDateStr, timeStr) {
     const now = new Date();
     let year = now.getFullYear();
@@ -46,13 +44,13 @@ export function getPairDateTime(dayDateStr, timeStr) {
     return { startDate, endDate };
 }
 
-// 2. Форматирование даты в стандарт iCalendar
+// Форматирует объект Date в строку даты стандарта iCalendar.
 function formatDateToICS(d) {
     const pad = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
 }
 
-// Функция правильного экранирования текста для iCalendar (RFC 5545)
+// Экранирует текст для формата iCalendar (RFC 5545).
 function escapeICalText(str) {
     if (!str) return '';
     return str
@@ -62,7 +60,7 @@ function escapeICalText(str) {
         .replace(/\r?\n/g, '\\n');
 }
 
-// 3. Сборка тела ICS-файла
+// Собирает содержимое ICS-файла для одной пары с опциональным напоминанием.
 export function generatePairICS({ title, location, teacher, description, startDate, endDate, alarmMinutes }) {
     const dtStamp = formatDateToICS(new Date()) + 'Z';
     const dtStart = formatDateToICS(startDate);
@@ -113,7 +111,7 @@ export function generatePairICS({ title, location, teacher, description, startDa
     ].filter(Boolean).join('\r\n');
 }
 
-// 4. Скачивание / открытие файла пользователем
+// Скачивает сгенерированный ICS-файл на устройство пользователя.
 export function downloadICSFile(filename, content) {
     const safeFilename = (filename || 'Пара.ics').replace(/[\\/:*?"<>|]/g, '_');
     const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
@@ -130,7 +128,7 @@ export function downloadICSFile(filename, content) {
     setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
-// 5. Прямое открытие в приложении «Календарь» (Apple / macOS / iOS) БЕЗ сохранения файла на диск
+// Открывает событие напрямую в приложении «Календарь» (Apple/macOS/iOS) без сохранения файла.
 export function openDirectAppleCalendar(icsContent) {
     const dataUri = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(icsContent);
     const link = document.createElement('a');
@@ -142,7 +140,7 @@ export function openDirectAppleCalendar(icsContent) {
     document.body.removeChild(link);
 }
 
-// 6. Открытие события в Google Календаре в 1 клик (без файлов)
+// Открывает шаблон создания события в Google Календаре в новой вкладке.
 export function openGoogleCalendarWeb({ title, location, description, startDate, endDate }) {
     const pad = (n) => String(n).padStart(2, '0');
     const formatGDate = (d) => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
@@ -157,7 +155,7 @@ export function openGoogleCalendarWeb({ title, location, description, startDate,
     window.open(url.toString(), '_blank');
 }
 
-// 7. Открытие события в Яндекс Календаре (без файлов)
+// Открывает шаблон создания события в Яндекс Календаре в новой вкладке.
 export function openYandexCalendarWeb({ title, location, description, startDate, endDate }) {
     const pad = (n) => String(n).padStart(2, '0');
     const formatYDate = (d) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;

@@ -2,20 +2,18 @@ import { pageCtx } from '../app/context.js';
 import { updateEmptyState } from '../ui/empty-state.js';
 import { formatEtisDate } from '../utils/etis-dates.js';
 
+// Оформляет страницу отзывов, комментариев и рейтинга кафедр
 export function renderFeedbackListPage() {
     const feedbackMsgs = pageCtx.span9.querySelectorAll('ul.nav.msg');
     const ratingTable = document.getElementById('rating');
     const submenu = pageCtx.span9.querySelector('.submenu');
 
-    // Определяем активную вкладку по тегу <b> (активный элемент меню)
     const activeSubmenuItem = submenu ? submenu.querySelector('b') : null;
     const activeTabName = activeSubmenuItem ? activeSubmenuItem.textContent.toLowerCase() : '';
 
-    // Разделяем вкладки взаимно исключающим образом
     const isCommentsTab = activeTabName.includes('комментари') || (!ratingTable && !pageCtx.span9.querySelector('form') && !activeTabName);
     const isRatingTab = activeTabName.includes('рейтинг') || (!!ratingTable && !activeTabName);
 
-    // Логика вкладки "Мои комментарии"
     if (isCommentsTab) {
         if (feedbackMsgs.length > 0) {
             const container = document.createElement('div');
@@ -90,15 +88,12 @@ export function renderFeedbackListPage() {
             else pageCtx.span9.appendChild(container);
         }
 
-        // Вызов заглушки для комментариев
         updateEmptyState(pageCtx.span9, feedbackMsgs.length > 0, '', 'comments');
     }
 
-    // Логика вкладки "Рейтинг факультетов и кафедр"
     if (isRatingTab) {
         const ratingH4 = pageCtx.span9.querySelector('h4');
 
-        // Проверяем, есть ли реальные числовые оценки в таблице (хотя бы одна строка с colspan или > 1 ячейкой)
         let hasRatingData = false;
         if (ratingTable) {
             const rows = ratingTable.querySelectorAll('tr.lvl1, tr.lvl2');
@@ -111,7 +106,6 @@ export function renderFeedbackListPage() {
         }
 
         if (hasRatingData) {
-            // Оформляем заголовок и памятку "Как читать таблицы?" только если данные есть
             if (ratingH4 && ratingH4.textContent.includes('Индекс удовлетворенности')) {
                 const newTitle = document.createElement('h3');
                 newTitle.textContent = ratingH4.textContent;
@@ -303,7 +297,6 @@ export function renderFeedbackListPage() {
                 }
             }
         } else {
-            // Если данных нет, полностью очищаем оригинальный заголовок, пустую таблицу и лишние BR
             if (ratingH4) ratingH4.remove();
             if (ratingTable) ratingTable.remove();
 
@@ -312,7 +305,6 @@ export function renderFeedbackListPage() {
             });
         }
 
-        // Вызываем проверку пустого состояния
         updateEmptyState(pageCtx.span9, hasRatingData, '', 'rating');
     }
     return;

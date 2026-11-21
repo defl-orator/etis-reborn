@@ -1,5 +1,16 @@
+import { generalConfig } from '../core/config.ts';
 import { saveSyncData } from '../sync/data.ts';
 
+// Форматирует оставшееся количество минут в компактный вид для таймера пары
+function formatTimerDuration(mins) {
+    if (mins <= 0) return '< 1 мин';
+    if (mins < 60) return `${mins} мин`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m === 0 ? `${h} ч` : `${h}ч ${m}м`;
+}
+
+// Обновление индикаторов текущих, скорых и завершающихся пар в расписании
 export function updateLiveTimetable() {
     const actualWeek = localStorage.getItem('etis_actual_week');
 
@@ -26,8 +37,14 @@ export function updateLiveTimetable() {
         const dayHeaderName = dayBlock.querySelector('.day-name');
         if (!dayHeaderName) return;
 
-        // Очищаем ВСЕ старые точки и иконки статуса в этом дне
-        dayBlock.querySelectorAll('.live-dot, .day-status-icon').forEach(dot => dot.remove());
+        // Очищаем ВСЕ старые точки, таймеры и иконки статуса в этом дне и восстанавливаем исходное время
+        dayBlock.querySelectorAll('.live-dot, .live-timer-badge, .day-status-icon').forEach(dot => dot.remove());
+        dayBlock.querySelectorAll('.pair_num .eval[data-orig-time]').forEach(el => {
+            el.textContent = el.getAttribute('data-orig-time');
+            el.removeAttribute('data-orig-time');
+            el.style.color = '';
+            el.style.fontWeight = '';
+        });
 
         const mergedDaysAttr = dayBlock.getAttribute('data-merged-days');
         const isToday = (dayHeaderName.textContent.trim() === todayName) ||
@@ -52,7 +69,8 @@ export function updateLiveTimetable() {
                 } else {
                     const timeEl = row.querySelector('.eval');
                     if (timeEl) {
-                        const match = timeEl.textContent.match(/\d{1,2}:\d{2}/);
+                        const rawTime = timeEl.getAttribute('data-orig-time') || timeEl.textContent;
+                        const match = rawTime.match(/\d{1,2}:\d{2}/);
                         if (match) startTimeStr = match[0];
                     }
                 }
@@ -81,7 +99,7 @@ export function updateLiveTimetable() {
                     type = 'soon';
                 }
 
-                // --- АВТО-СБРОС ВАЖНОЙ ПАРЫ ПРИ ЕЁ НАЧАЛЕ ---
+                // Автоматический сброс пометки важной пары при её начале
                 if (currentTime >= startMins) {
                     const disContainer = row.querySelector('.pair_info .dis');
                     const numTd = row.querySelector('.pair_num');
@@ -110,7 +128,6 @@ export function updateLiveTimetable() {
                             imp = imp.filter(id => id !== pairId);
                             saveSyncData('etis_important_pairs_v1', JSON.stringify(imp));
 
-                            // Мгновенно убираем стили
                             row.classList.remove('is-important');
                             const impBtn = numTd.querySelector('.pair-important-btn');
                             if (impBtn) {
@@ -130,6 +147,19 @@ export function updateLiveTimetable() {
                     } else {
                         const timeElInner = row.querySelector('.pair_num .eval');
                         if (timeElInner) {
+                            if (generalConfig.liveTimer !== false) {
+                                const origTime = timeElInner.textContent.trim();
+                                timeElInner.setAttribute('data-orig-time', origTime);
+                                const timerColor = type === 'soon'
+                                    ? 'var(--color-warning)'
+                                    : (type === 'ending' ? 'var(--color-red)' : 'var(--color-green)');
+                                const timerText = type === 'soon'
+                                    ? `через ${formatTimerDuration(startMins - currentTime)}`
+                                    : `ещё ${formatTimerDuration(endMins - currentTime)}`;
+                                timeElInner.textContent = timerText;
+                                timeElInner.style.color = timerColor;
+                                timeElInner.style.fontWeight = '700';
+                            }
                             timeElInner.appendChild(dot);
                         } else {
                             row.querySelector('.pair_num')?.appendChild(dot);
@@ -138,7 +168,7 @@ export function updateLiveTimetable() {
                 }
             });
 
-            // --- Умная индикация для заголовка текущего дня ---
+            // Индикация общего статуса текущего дня в заголовке
 
             // 1. Всегда добавляем статичный зеленый кружок
             const dayDot = document.createElement('span');

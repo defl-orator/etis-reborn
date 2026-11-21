@@ -2,14 +2,11 @@ import { applyAccentColor } from './accent';
 import { safeAppend } from '../styles/inject.js';
 import { ActiveTheme, DarkVariant, ThemeMode } from '../types/index.js';
 
-// ==========================================
-// ЕДИНЫЙ УМНЫЙ ДВИЖОК ТЕМ (СИСТЕМА / РАСПИСАНИЕ / OLED)
-// Мгновенная реакция без задержек и лагов перерисовки
-// ==========================================
-
+// Таймер расписания тем и слушатель системной цветовой схемы
 let scheduleTimer: number | null = null;
 let mediaQueryList: MediaQueryList | null = null;
 
+// Вычисляет активную тему с учётом режима (система, расписание, ручной выбор) и варианта OLED
 export function getCalculatedTheme(): ActiveTheme {
     let mode = (localStorage.getItem('etis_theme_mode') || '') as ThemeMode;
     if (!mode) {
@@ -48,6 +45,7 @@ export function getCalculatedTheme(): ActiveTheme {
     }
 }
 
+// Обновляет цвет системной панели браузера (meta theme-color) под текущую тему
 export function updateBrowserNavColor(): void {
     const theme = document.documentElement.getAttribute('theme');
     const color = (theme === 'night') ? '#000000' : (theme === 'dark' ? '#16181A' : '#F2F2F6');
@@ -136,6 +134,7 @@ export function detectTheme(): void {
     applyCurrentTheme();
 }
 
+// Инициализирует движок тем и подписки на системные и оконные события
 export function themeEngineBoot(): void {
     // 1. Моментальная реакция на системное переключение темы (Dark Mode в OS/браузере)
     if (window.matchMedia) {

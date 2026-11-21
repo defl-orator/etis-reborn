@@ -125,7 +125,6 @@
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
         font-weight: 800 !important;
-        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08) !important;
     }
     @media (hover: hover) and (pointer: fine) {
         .sidebar-folder:not(.is-open) .sidebar-folder-header:not(.active-header):hover {

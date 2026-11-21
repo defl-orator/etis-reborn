@@ -1,5 +1,6 @@
 import { pageCtx } from '../app/context.js';
 
+// Группирует бланки заявлений по разделам в сетку карточек
 export function renderBlankFormsPage() {
     const sections = Array.from(pageCtx.span9.querySelectorAll('h3'));
     const pageTitle = pageCtx.span9.querySelector('h2');

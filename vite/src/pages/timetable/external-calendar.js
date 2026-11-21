@@ -1,3 +1,4 @@
+// Разбирает текст iCalendar (.ics) в массив событий.
 export function parseICS(icsString) {
     const unfolded = icsString.replace(/\r?\n[ \t]/g, '');
     const lines = unfolded.split(/\r?\n/);
@@ -36,6 +37,7 @@ export function parseICS(icsString) {
     return events;
 }
 
+// Преобразует строку даты формата iCalendar в объект Date.
 function parseICalDate(str) {
     if (!str) return null;
     if (str.includes(':')) str = str.split(':')[1];
@@ -66,6 +68,7 @@ function parseICalDate(str) {
     return null;
 }
 
+// Проверяет, попадает ли событие (с учетом RRULE и EXDATE) на указанную дату.
 export function eventOccursOnDate(ev, targetDateObj) {
     if (!ev.start) return false;
     const evStartZero = new Date(ev.start.getFullYear(), ev.start.getMonth(), ev.start.getDate());

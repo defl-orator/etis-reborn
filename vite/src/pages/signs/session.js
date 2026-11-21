@@ -7,6 +7,7 @@ import { highlightSearchTerm } from '../../ui/search-highlight.js';
 import { applySri } from '../../utils/security.ts';
 import { getTermWord } from '../../utils/term-system.ts';
 
+// Оформляет страницу оценок за сессии, добавляет поиск, модальное окно аналитики и экспорт карточки.
 export function renderSessionSigns() {
     if (pageCtx.pageMode === 'session') {
 
@@ -69,7 +70,6 @@ export function renderSessionSigns() {
                 pageCtx.span9.prepend(searchContainer);
             }
 
-            // Обработчики открытия/закрытия поиска
             const searchOpenBtn = searchContainer.querySelector('#session-search-open-btn');
             const searchCloseBtn = searchContainer.querySelector('#session-search-close-btn');
             const sessionInput = searchContainer.querySelector('.signs-local-input');
@@ -137,27 +137,22 @@ export function renderSessionSigns() {
                         const gt = gradeCell.textContent.trim().toLowerCase();
                         let displayText = gradeCell.textContent.trim();
 
-                        // 1. Проверяем долги, двойки и незачеты
                         if (gt.includes('незач') || gt.includes('неуд') || gt === '2' || gt === 'н') {
                             bg = 'rgba(255, 59, 48, 0.15)';
                             color = 'var(--color-red)';
                         }
-                        // 2. Зачеты и пятерки
                         else if (gt.includes('отлич') || gt === '5' || (gt.includes('зач') && !gt.includes('незач'))) {
                             bg = 'rgba(52, 199, 89, 0.15)';
                             color = 'var(--color-green)';
                         }
-                        // 3. Четверки
                         else if (gt.includes('хор') || gt === '4') {
                             bg = 'rgba(0, 122, 255, 0.15)';
                             color = 'var(--color-blue)';
                         }
-                        // 4. Тройки
                         else if (gt.includes('удовл') || gt === '3') {
                             bg = 'rgba(255, 149, 0, 0.15)';
                             color = 'var(--color-warning)';
                         }
-                        // 5. ФОЛБЭК: Если оценка еще не выставлена / пустая ячейка / прочерк
                         else if (!gt || gt === '-' || gt === '—' || gt.includes('нет') || gt.includes('неизвестно')) {
                             displayText = 'Неизвестно';
                             bg = 'rgba(142, 142, 147, 0.15)';
@@ -174,7 +169,6 @@ export function renderSessionSigns() {
 
                 const avg = count > 0 ? Math.round((sum / count) * 100) / 100 : 0;
 
-                // Парсинг (Только Номер, Тип периода и Курс)
                 const trimM = block.headerRaw.match(/(\d+)\s+(триместр|семестр)/i);
                 const courseM = block.headerRaw.match(/(\d+)\s+курс/i);
 
@@ -183,18 +177,15 @@ export function renderSessionSigns() {
                 const coursePart = courseM ? `${courseM[1]} КУРС` : "";
                 const combinedInfo = [`${numPart} ${typePart}`, coursePart].filter(x => x.trim()).join(', ');
 
-                // Контейнер заголовков
                 const headerContainer = document.createElement('div');
                 headerContainer.className = 'subject-header-flex session-term-header-group';
                 headerContainer.style.cssText = 'display: flex !important; justify-content: space-between !important; align-items: center !important; margin-top: 4rem; margin-bottom: 1.5rem; padding: 0 !important; margin-left: 0 !important; width: 100%; box-sizing: border-box;';
 
-                // Левый блок
                 const leftText = document.createElement('div');
                 leftText.style.cssText = 'font-size: 1.3rem; font-weight: 800; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 1px; display: flex; align-items: center;';
                 leftText.textContent = combinedInfo;
                 headerContainer.appendChild(leftText);
 
-                // Правая капсула (GPA)
                 if (hasAny) {
                     const gpaCapsule = document.createElement('div');
                     gpaCapsule.className = 'subject-score-capsule';
@@ -231,7 +222,6 @@ export function renderSessionSigns() {
                         }
                     }
 
-                    // Создание всплывающей подсказки при ховере/клике
                     const tooltip = document.createElement('div');
                     tooltip.className = 'score-tooltip';
                     tooltip.innerHTML = `<span style="color: ${markColor}; font-size: 1.4rem;">${currentMark}</span><span style="color: var(--color-text-secondary); margin: 0 6px;">•</span>${tooltipText}`;
@@ -309,7 +299,6 @@ export function renderSessionSigns() {
             table.remove();
         });
 
-        // Шаг 2. Расчет среднего балла и создание Flex-заголовков
         const sessionTables = pageCtx.span9.querySelectorAll('.session-table-v6');
         sessionTables.forEach(table => {
             const wrapper = table.closest('.wide-table-wrapper');
@@ -357,7 +346,6 @@ export function renderSessionSigns() {
             const capsule = document.createElement('div');
             capsule.className = 'subject-score-capsule';
 
-            // Отображение капсулы
             if (!hasAny) {
                 capsule.textContent = 'Нет оценок';
                 capsule.style.background = 'var(--color-highlight)';
@@ -387,7 +375,6 @@ export function renderSessionSigns() {
             wrapper.classList.add('session-term-table-group');
         });
 
-        // Проверяем, есть ли хотя бы один семестр со средним баллом > 0
         const hasAnalyticData = Array.from(pageCtx.span9.querySelectorAll('.session-term-table-group')).some(w => {
             const avg = parseFloat(w.getAttribute('data-term-avg'));
             return !isNaN(avg) && avg > 0;
@@ -406,8 +393,6 @@ export function renderSessionSigns() {
                 }
             }
         }
-
-        // --- ШАГ 3. СОЗДАНИЕ И ЛОГИКА ОКНА АНАЛИТИКИ ---
 
         const overlay = document.createElement('div');
         overlay.className = 'analytics-overlay';
@@ -477,6 +462,7 @@ export function renderSessionSigns() {
 
         document.body.appendChild(modal);
 
+        // Закрывает модальное окно аналитики успеваемости.
         const closeAnalytics = () => {
             overlay.classList.remove('active');
             modal.classList.remove('active');
@@ -489,6 +475,7 @@ export function renderSessionSigns() {
         if (analyticsBtnTrigger) analyticsBtnTrigger.addEventListener('click', function() {
             const btn = this;
 
+            // Возвращает доступный экземпляр Chart.js из глобальной области или unsafeWindow.
             const getChartLib = () => {
                 if (typeof Chart !== 'undefined') return Chart;
                 if (typeof window.Chart !== 'undefined') return window.Chart;
@@ -496,6 +483,7 @@ export function renderSessionSigns() {
                 return null;
             };
 
+            // Собирает оценки и строит график с карточками статистики.
             const renderAnalytics = () => {
                 try {
                     const ChartConstructor = getChartLib();
@@ -689,9 +677,6 @@ export function renderSessionSigns() {
                             }
                         });
 
-                        // ==========================================
-                        // ЭКСПОРТ СКРИНШОТА С КАНВАСОМ
-                        // ==========================================
                         const shareBtn = modal.querySelector('#share-analytics-bento-btn');
                         if (shareBtn) {
                             shareBtn.onclick = (e) => {
@@ -706,6 +691,7 @@ export function renderSessionSigns() {
 
                                 const targetEl = document.getElementById('analytics-bento-capture');
 
+                                // Рендерит бенто-карточку в PNG и скачивает или отправляет через Web Share.
                                 const executeShare = () => {
                                     let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
                                     if (!h2c) {
@@ -822,7 +808,6 @@ export function renderSessionSigns() {
             }
         });
 
-        // --- ШАГ 4. ЛОГИКА ФИЛЬТРАЦИИ ПОИСКА ПО ПРЕДМЕТАМ ---
         if (searchContainer) {
             const filterInput = searchContainer.querySelector('.signs-local-input');
             if (filterInput) {
@@ -853,7 +838,6 @@ export function renderSessionSigns() {
                                 highlightSearchTerm(row, val);
                                 visibleRowsCount++;
 
-                                // --- ПЕРЕСЧЕТ ОЦЕНОК НА ЛЕТУ ---
                                 const cells = row.querySelectorAll('td');
                                 if (cells.length >= 2) {
                                     const gradeText = cells[1].textContent.trim().toLowerCase();
@@ -882,7 +866,6 @@ export function renderSessionSigns() {
                             }
                         });
 
-                        // Скрытие пустых триместров или обновление их капсул
                         if (val !== "" && visibleRowsCount === 0) {
                             header.style.setProperty('display', 'none', 'important');
                             wrapper.style.setProperty('display', 'none', 'important');
@@ -941,7 +924,6 @@ export function renderSessionSigns() {
                             }
                         }
                     });
-                    // Определение общей видимости строк по всем таблицам сессии
                     let totalVisible = 0;
                     document.querySelectorAll('.session-term-table-group').forEach(w => {
                         if (w.style.display !== 'none') {
@@ -954,7 +936,6 @@ export function renderSessionSigns() {
             }
         }
 
-        // --- ОФОРМЛЕНИЕ ПАМЯТКИ ТОЛЬКО ДЛЯ СЕССИЙ ---
         const sessionFooterP = pageCtx.span9.querySelector('p');
         if (sessionFooterP && sessionFooterP.textContent.includes('Показанные здесь оценки являются официальными')) {
             const infoBox = document.createElement('div');

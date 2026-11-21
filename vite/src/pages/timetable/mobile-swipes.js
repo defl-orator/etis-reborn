@@ -1,4 +1,4 @@
-// --- МОБИЛЬНЫЕ СВАЙПЫ РАСПИСАНИЯ ---
+// Инициализирует свайпы по парам и карточкам дней на мобильных устройствах.
 export function initMobileSwipes() {
     let bubble = document.getElementById('swipe-action-bubble');
     if (!bubble) {
@@ -180,7 +180,6 @@ export function initMobileSwipes() {
 
             targetElements.forEach(el => el.style.setProperty('transform', `translateX(${moveX}px)`, 'important'));
 
-            // ВЫРАВНИВАНИЕ ПО ВЕРТИКАЛЬНОМУ ЦЕНТРУ:
             const rect = currentTarget.getBoundingClientRect();
             bubble.style.top = `${rect.top + (rect.height / 2) - 14}px`;
 
@@ -221,6 +220,7 @@ export function initMobileSwipes() {
         }
     }, { passive: false });
 
+    // Сбрасывает состояние свайпа и запускает действие при достижении порога.
     const resetSwipe = (e) => {
         if (!currentTarget || !isSwiping) {
             currentTarget = null;
@@ -259,7 +259,6 @@ export function initMobileSwipes() {
             setTimeout(() => window.removeEventListener('click', preventClickCapture, true), 200);
         }
 
-        // АКТИВАЦИЯ ДЕЙСТВИЯ ПРИ ДОСТИЖЕНИИ ПОРОГА
         if (Math.abs(finalDiff) >= THRESHOLD) {
             setTimeout(() => {
                 if (tType === 'day') {

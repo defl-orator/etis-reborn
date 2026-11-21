@@ -1,4 +1,4 @@
-// --- УМНЫЙ СКРОЛЛ ДЛЯ ПОДВКЛАДОК И НЕДЕЛЬ ---
+// Горизонтальный скролл и автоцентрирование активной вкладки или недели
 export function initSmartScroll() {
         const containers = document.querySelectorAll('.submenu, .weeks, .timetable-toolbar');
 

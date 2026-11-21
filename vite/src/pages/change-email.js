@@ -1,30 +1,27 @@
+// Оформляет форму смены электронной почты и справочный блок
 export function renderChangeEmailPage() {
     const emailSpan9 = document.querySelector('.span9');
     const emailForm = emailSpan9.querySelector('form.form');
     const emailH3 = emailSpan9.querySelector('h3');
 
     if (emailForm) {
-        // 1. Создаем чистый контейнер для инфо-текста
         const footerBox = document.createElement('div');
         footerBox.className = 'electr-description';
 
-        // 2. Собираем всё, что НЕ форма и НЕ заголовок
         const allDivs = Array.from(emailSpan9.querySelectorAll('div:not(.span3):not(.span9)'));
         const infoUl = emailSpan9.querySelector('ul');
 
         allDivs.forEach(div => {
-            // Если это информационный текст, переносим его
             if (div.textContent.includes('Адрес электронной почты') && !div.contains(emailForm)) {
                 footerBox.appendChild(div);
             }
         });
 
         if (infoUl) {
-            infoUl.removeAttribute('style'); // УДАЛЯЕМ инлайновые точки ЕТИСа
+            infoUl.removeAttribute('style');
             footerBox.appendChild(infoUl);
         }
 
-        // 3. Стилизуем карточку
         if (emailH3) {
             emailH3.style.textAlign = 'center';
             emailH3.style.marginBottom = '3rem';
@@ -44,7 +41,6 @@ export function renderChangeEmailPage() {
         emailForm.style.maxWidth = '400px';
         emailForm.style.margin = '40px auto';
 
-        // 4. Добавляем футер в самый конец и удаляем мусор
         emailSpan9.appendChild(footerBox);
         emailForm.querySelectorAll('br').forEach(br => br.remove());
     }

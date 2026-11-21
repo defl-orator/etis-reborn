@@ -1,5 +1,6 @@
 import { base64ToUint8, uint8ToBase64 } from '../utils/base64.js';
 
+// Базовый URL базы данных Firebase Realtime Database для облачной синхронизации
 export const FIREBASE_DB_URL = 'https://etisreborn-fab19-default-rtdb.europe-west1.firebasedatabase.app/';
 
 // Вспомогательный метод безопасного чтения JSON, предотвращающий падение импорта
@@ -14,9 +15,7 @@ export const safeParseJSON = <T>(val: unknown, fallback: T): T => {
     }
 };
 
-// ==========================================
-// СИСТЕМА ШИФРОВАНИЯ ДАННЫХ (AES-GCM, MASTER KEY + E2EE)
-// ==========================================
+// Модуль сквозного шифрования (AES-GCM, PBKDF2) и генерации мастер-ключа
 export const EtisCrypto = {
     // 1. Энтропия 125 бит (5 блоков по 5 символов: XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)
     generateMasterKey(): string {

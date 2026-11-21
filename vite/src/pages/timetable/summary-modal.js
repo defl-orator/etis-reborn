@@ -1,6 +1,6 @@
 import { pageCtx } from '../../app/context.js';
 
-// Функция открытия модального окна сводки
+// Открывает модальное окно сводки учебной нагрузки за текущую неделю.
 export const openSummaryModal = () => {
     let lek = 0, pract = 0, lab = 0, cons = 0, exam = 0;
     pageCtx.span9.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)').forEach(row => {
@@ -35,6 +35,7 @@ export const openSummaryModal = () => {
     let comparisonHtml = '';
     let avgHtml = '';
 
+    // Склоняет слово «пара» в зависимости от числа.
     const getPairsWord = (n) => {
         const absN = Math.abs(Math.round(n));
         if (absN % 10 === 1 && absN % 100 !== 11) return 'пару';
@@ -133,6 +134,7 @@ export const openSummaryModal = () => {
                             </div>
                         `;
 
+    // Закрывает модальное окно сводки.
     const closeAnalytics = () => {
         overlay.classList.remove('active');
         modal.classList.remove('active');

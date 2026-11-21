@@ -49,6 +49,7 @@ const loadMammothLib = () => {
     });
 };
 
+// Парсинг DOCX-файла с графиком консультаций и сохранение в состояние
 export function processDocxFile(file, callback, sourceUrl = null) {
     loadMammothLib().then((mammothInstance) => {
         if (!mammothInstance || typeof mammothInstance.convertToHtml !== 'function') {

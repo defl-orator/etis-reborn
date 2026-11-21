@@ -6,6 +6,7 @@ import { openSettingsModal } from './settings.js';
 import { openSyncModal } from './sync.js';
 import { saveSyncData } from '../sync/data.js';
 
+// Открывает модальное окно глобального поиска по разделам и данным
 export function openGlobalSearchModal() {
     let overlay = document.getElementById('etis-globalsearch-overlay');
     let modal = document.getElementById('etis-globalsearch-modal');
@@ -31,11 +32,11 @@ export function openGlobalSearchModal() {
     };
     overlay.onclick = closeAll;
 
-    // --- СБОР И ИНДЕКСАЦИЯ ВСЕХ ДАННЫХ ИЗ ПАМЯТИ ---
+    // Собирает и индексирует все доступные для поиска данные из памяти
     const buildSearchIndex = () => {
         const index = [];
 
-        // 1. Основные страницы и разделы ЕТИС
+        // Основные страницы и разделы ЕТИС
         const baseNavPages = [
             { title: 'Мое расписание', sub: 'Сетка пар и консультаций', cat: 'Раздел', icon: 'calendar_month', url: 'stu.timetable' },
             { title: 'Мои оценки', sub: 'Сессии, рейтинги, текущие баллы', cat: 'Раздел', icon: 'bar_chart_4_bars', url: 'stu.signs' },
@@ -264,11 +265,12 @@ export function openGlobalSearchModal() {
 
     const searchIndex = buildSearchIndex();
 
-    // Недавние открытые элементы
+    // Получает список недавно открытых элементов поиска
     const getRecentHistory = () => {
         return JSON.parse(localStorage.getItem('etis_recent_search_items_v1') || '[]');
     };
 
+    // Добавляет выбранный элемент в историю недавнего поиска
     const pushToRecentHistory = (item) => {
         let history = getRecentHistory();
         history = history.filter(h => h.id !== item.id);
@@ -310,9 +312,9 @@ export function openGlobalSearchModal() {
     const clearBtn = modal.querySelector('#global-search-clear');
     const resultsArea = modal.querySelector('#global-search-results-area');
 
-    let selectedSearchIndex = 0; // Храним индекс выбранного элемента
+    let selectedSearchIndex = 0;
 
-    // Функция визуального обновления выбора (для клавиатуры и мыши)
+    // Обновляет визуальное выделение выбранной строки для навигации с клавиатуры и мыши
     const updateSearchSelection = (rows) => {
         rows.forEach((row, idx) => {
             if (idx === selectedSearchIndex) {
@@ -324,9 +326,10 @@ export function openGlobalSearchModal() {
         });
     };
 
+    // Отрисовывает результаты поиска или историю недавних запросов
     const renderResults = (query = '') => {
         const cleanQuery = query.toLowerCase().trim();
-        selectedSearchIndex = 0; // Сбрасываем выбор при новом поиске
+        selectedSearchIndex = 0;
 
         clearBtn.classList.toggle('is-visible', Boolean(cleanQuery));
 
@@ -402,7 +405,6 @@ export function openGlobalSearchModal() {
 
         clearBtn.style.display = 'block';
 
-        // Фильтрация
         const filtered = searchIndex.filter(item => {
             const inTitle = item.title.toLowerCase().includes(cleanQuery);
             const inSub = (item.sub || '').toLowerCase().includes(cleanQuery);
@@ -410,7 +412,7 @@ export function openGlobalSearchModal() {
             return inTitle || inSub || inCat;
         });
 
-        // Сортировка (Скоринг: Заголовок > Категория > Описание)
+        // Сортировка по релевантности: заголовок > категория > описание
         filtered.sort((a, b) => {
             const getScore = (item) => {
                 const title = item.title.toLowerCase();
@@ -524,7 +526,7 @@ export function openGlobalSearchModal() {
         } else if (e.key === 'Enter') {
             e.preventDefault();
             const selectedRow = rows[selectedSearchIndex];
-            if (selectedRow) selectedRow.click(); // Симулируем клик мыши
+            if (selectedRow) selectedRow.click();
         }
     });
 
@@ -533,6 +535,6 @@ export function openGlobalSearchModal() {
     overlay.classList.add('active');
     modal.classList.add('active');
     document.body.classList.add('modal-open-body');
-    inputField.focus(); // Синхронный фокус
+    inputField.focus();
     setTimeout(() => inputField.focus(), 150);
 }

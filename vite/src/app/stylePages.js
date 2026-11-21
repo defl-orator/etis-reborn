@@ -17,7 +17,7 @@ import { initReviewContainer } from '../ui/review-container.js';
 import { initSidebar } from '../ui/sidebar.js';
 import { initSubmenus } from '../ui/submenus.js';
 
-// Модификация стилей страниц
+// Модификация и стилизация активной страницы ЕТИС
 export function stylePages() {
     const isDemoActive = sessionStorage.getItem('etis_demo_mode') === 'true';
     pageCtx.isDemoActive = isDemoActive;
@@ -50,7 +50,6 @@ export function stylePages() {
     let demoPage = sessionStorage.getItem('etis_demo_page') || 'timetable';
     pageCtx.demoPage = demoPage;
 
-    // 1. ОПРЕДЕЛЯЕМ ПЕРЕМЕННЫЕ
     const urlParams = new URLSearchParams(window.location.search);
     pageCtx.urlParams = urlParams;
     let pageMode = urlParams.get('p_mode');
@@ -76,9 +75,7 @@ export function stylePages() {
                 pageCtx.pageMode = pageMode;
     }
 
-    // =========================================================================
-    // 2. АВТОМАТИЧЕСКОЕ СОХРАНЕНИЕ ДАННЫХ ДЛЯ ОФФЛАЙН-РЕЖИМА (КОГДА ОНЛАЙН)
-    // =========================================================================
+    // Сохраняем HTML-кэш страниц для оффлайн-режима, пока пользователь онлайн
     if (!isDemoActive) {
         try {
             const navInfo = document.querySelector('.navbar-static-top .span12 > span');
@@ -108,9 +105,6 @@ export function stylePages() {
         }
     }
 
-    // =========================================================================
-    // 3. ЗАГРУЗКА ДАННЫХ В ОФФЛАЙН-РЕЖИМЕ (КЭШ ПОЛЬЗОВАТЕЛЯ ИЛИ ДЕМО-ФОЛЛБЭК)
-    // =========================================================================
     renderOfflineDemoPage();
 
     initMobileMenu();
@@ -121,7 +115,7 @@ export function stylePages() {
 
     exposeCustomPairModal();
 
-    // --- ПЕРЕХВАТ СТРАНИЦЫ РАСПИСАНИЯ ПРЕПОДАВАТЕЛЯ ---
+    // Страница расписания преподавателя (без боковой панели)
     const isPeoTT = document.querySelector('form#form1 input[name="P_PEO_ID"]') !== null;
     pageCtx.isPeoTT = isPeoTT;
     let span9 = document.querySelector('div.span9');
@@ -156,17 +150,13 @@ if (isPeoTT && !span9) {
         document.body.style.backgroundColor = '';
     }
 
-    // Style Login Page, Password Recovery & Password Change
     const login = document.querySelector('body > div.login');
     if (login) {
-        // Перезаписываем DOM, создавая контейнер-обёртку
         renderLoginPage();
     } else {
         initSubmenus();
-        // Style Sidebar
         initSidebar();
 
-        // Main page content
         const span9 = document.querySelector('div.span9');
     pageCtx.span9 = span9;
         if (!span9 && !document.querySelector('.login') && page !== 'stu.schedule_detail') return;
@@ -178,15 +168,12 @@ if (isPeoTT && !span9) {
 
         let el, btn, img;
 
-        // --- ОФОРМЛЕНИЕ РАСПИСАНИЯ ПРЕПОДАВАТЕЛЯ ---
         renderPeoTTPage();
 
         runPageHandler(page);
 
-        // --- ГЛОБАЛЬНЫЕ УЛУЧШЕНИЯ ДЛЯ АНКЕТИРОВАНИЯ ---
         initReviewContainer();
 
-        // === УМНАЯ АНИМАЦИЯ ПОЯВЛЕНИЯ ПРИ СКРОЛЛЕ ===
         initFadeAnimations();
 
     }
@@ -219,11 +206,7 @@ if (isPeoTT && !span9) {
         initEventLinks();
     }
 
-    // ==========================================
-    // ГЛОБАЛЬНЫЕ ГОРЯЧИЕ КЛАВИШИ
-    // ==========================================
     initKeyboardShortcuts();
 
-    // Переключение страниц и блокировка неподдерживаемых элементов в демо-режиме
     initOfflineNavigation();
 }

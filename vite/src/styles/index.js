@@ -27,6 +27,7 @@ import css24 from './css/24-info-o-studente-i-papka-akkaunta-na-pk.css?tpl';
 import css25 from './css/25-edinaya-kapsula-uchebnogo-plana-podvklad.css?tpl';
 import css26 from './css/26-phosphor.css?tpl';
 
+// Объединённый CSS-код всех модулей стилей с подставленным логотипом
 export const styles = [css1, css2, css3, css4, css5, css6, css7, css8, css9, css10, css11, css12, css13, css14, css15, css16, css17, css18, css19, css20, css21, css22, css23, css24, css25, css26]
     .join('')
     .replaceAll('__LOGO_DATA_URI__', LOGO_DATA_URI);

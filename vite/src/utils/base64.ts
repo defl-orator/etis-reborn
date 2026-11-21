@@ -9,6 +9,7 @@ export function uint8ToBase64(bytes: Uint8Array): string {
     return btoa(binary);
 }
 
+// Декодирует Base64-строку в массив байтов Uint8Array
 export function base64ToUint8(base64: string): Uint8Array {
     const binary = atob(base64);
     const len = binary.length;

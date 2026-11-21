@@ -1,6 +1,7 @@
 import { pageCtx } from '../app/context.js';
 import { escapeHTML } from '../utils/security.ts';
 
+// Оформляет страницу заказа и просмотра справок
 export function renderCertificatesPage() {
     const action = pageCtx.urlParams.get('p_action');
 
@@ -10,12 +11,11 @@ export function renderCertificatesPage() {
         greenText = greenSpan.textContent.trim();
     }
 
-    // --- Единая функция для генерации красивого подвала ---
+    // Формирует подвал со сроками изготовления, контактами ОКО и памяткой
     const appendCertFooter = (container) => {
         const footerContainer = document.createElement('div');
         footerContainer.style.marginTop = '4rem';
 
-        // 1. Сетка с карточками
         const footerGrid = document.createElement('div');
         footerGrid.className = 'cert-footer-grid';
         footerGrid.style.marginTop = '0';
@@ -47,7 +47,6 @@ export function renderCertificatesPage() {
         footerGrid.appendChild(contactCard);
         footerContainer.appendChild(footerGrid);
 
-        // 2. Объединенный зеленый блок правил и отслеживания
         const alert = document.createElement('div');
         alert.className = 'cert-alert-box';
         alert.style.margin = '2rem 0 0 0';
@@ -70,15 +69,12 @@ export function renderCertificatesPage() {
     };
 
     if (action === 'NEW' || action === 'VIEW') {
-        // --- СТРАНИЦА ЗАКАЗА ИЛИ ПРОСМОТРА КОНКРЕТНОЙ СПРАВКИ ---
         while (pageCtx.span9.firstChild && (pageCtx.span9.firstChild.tagName === 'BR' || (pageCtx.span9.firstChild.nodeType === Node.TEXT_NODE && !pageCtx.span9.firstChild.textContent.trim()))) {
             pageCtx.span9.firstChild.remove();
         }
 
-        // 1. Удаление заголовка
         pageCtx.span9.querySelectorAll('h2, h3').forEach(h => h.remove());
 
-        // 2. Стилизация "листа бумаги" (превью справки)
         const paper = pageCtx.span9.querySelector('.bgprj');
         if (paper) {
             paper.classList.add('info-block-anim');
@@ -95,7 +91,6 @@ export function renderCertificatesPage() {
             });
         }
 
-        // 3. Стилизация блока с формой
         const questionBlock = pageCtx.span9.querySelector('.question');
         if (questionBlock) {
             questionBlock.classList.add('info-block-anim');
@@ -121,7 +116,6 @@ export function renderCertificatesPage() {
             });
         }
 
-        // 4. Стилизация таблицы статуса (при просмотре)
         const tables = Array.from(pageCtx.span9.querySelectorAll('table')).filter(t => !paper?.contains(t) && !questionBlock?.contains(t));
         tables.forEach(table => {
             table.classList.add('info-block-anim');
@@ -143,7 +137,6 @@ export function renderCertificatesPage() {
             lastRowTds.forEach(td => td.style.borderBottom = 'none');
         });
 
-        // 5. Кнопка "Создать запрос"
         const btnWrap = pageCtx.span9.querySelector('.button_gray');
         if (btnWrap) {
             btnWrap.style.marginTop = '2.4rem';
@@ -158,7 +151,6 @@ export function renderCertificatesPage() {
             }
         }
 
-        // 6. Чистка
         const grayText = pageCtx.span9.querySelector('font[color="#808080"]');
         if (grayText) grayText.remove();
 
@@ -166,19 +158,14 @@ export function renderCertificatesPage() {
             if (!paper?.contains(br) && !questionBlock?.contains(br)) br.remove();
         });
 
-        // Вставляем красивый подвал
         appendCertFooter(pageCtx.span9);
 
     } else {
-        // --- ГЛАВНАЯ СТРАНИЦА "ЗАКАЗ СПРАВОК" ---
-
         const allHeaders = Array.from(pageCtx.span9.querySelectorAll('h3'));
         const allLists = Array.from(pageCtx.span9.querySelectorAll('ul.orders'));
 
-        // Чистим span9 перед перестройкой
         pageCtx.span9.innerHTML = '';
 
-        // 1. Заголовок и Новые справки
         const headNew = allHeaders.find(h => h.textContent.includes('Заказать'));
         if (headNew && allLists[0]) {
             const container = document.createElement('div');
@@ -194,7 +181,6 @@ export function renderCertificatesPage() {
             pageCtx.span9.appendChild(container);
         }
 
-        // 2. Мои справки (УМНЫЕ КАРТОЧКИ)
         const headHistory = allHeaders.find(h => h.textContent.includes('Мои справки'));
         const historyList = allLists.length > 1 ? allLists[1] : (allLists[0] && !headNew ? allLists[0] : null);
 
@@ -224,13 +210,11 @@ export function renderCertificatesPage() {
                 let statusColor = 'var(--color-text-secondary)';
                 let displayStatus = rawStatus;
 
-                // Логика замены текста и цветов
                 if (rawStatus.includes('готов')) {
                     statusBg = 'rgba(52, 199, 89, 0.15)';
                     statusColor = 'var(--color-green)';
                     displayStatus = 'ГОТОВО';
                 }
-                // Добавляем условие для "в обработке"
                 else if (rawStatus.includes('обработк') || rawStatus.includes('заявка')) {
                     statusBg = 'rgba(255, 149, 0, 0.15)';
                     statusColor = 'var(--color-warning)';
@@ -269,7 +253,6 @@ export function renderCertificatesPage() {
             pageCtx.span9.appendChild(container);
         }
 
-        // 3. Вставляем красивый подвал
         appendCertFooter(pageCtx.span9);
     }
     return;

@@ -1,3 +1,4 @@
+// Оформляет страницу анкетирования и таблицы вопросов
 export function initReviewContainer() {
     const reviewContainer = document.querySelector('.span9 > .review');
     if (reviewContainer) {

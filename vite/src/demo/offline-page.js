@@ -1,6 +1,7 @@
 import { pageCtx } from '../app/context.js';
 import { DEMO_ANNOUNCES_HTML, DEMO_NOTES_HTML, DEMO_SIGNS_CURRENT_HTML, DEMO_SIGNS_DIPLOM_HTML, DEMO_SIGNS_HTML, DEMO_SIGNS_RATING_HTML, DEMO_TEACH_PLAN_ADVANCED_HTML, DEMO_TEACH_PLAN_SHORT_HTML, DEMO_TIMETABLE_HTML } from './templates.js';
 
+// Отрисовка демо-страницы или кэшированного содержимого в оффлайн-режиме
 export function renderOfflineDemoPage() {
     if (pageCtx.isDemoActive) {
         // Вспомогательный генератор каркаса страницы ЕТИС для подстановки кэша

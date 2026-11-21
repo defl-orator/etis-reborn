@@ -3,11 +3,13 @@ import { ACCENT_COLORS, COLOR_ORDER } from '../core/accent-colors.ts';
 import { generalConfig, saveGeneralConfig } from '../core/config.js';
 import { applyCurrentTheme, detectTheme } from '../core/theme-engine.ts';
 import { initAutoUpdateCheck, updateState } from '../core/updater.js';
+import { updateLiveTimetable } from '../features/live-timetable.js';
 import { getUpdateHTML, loadVersionHistory } from '../features/update-ui.js';
 import { refreshModalUI } from './bug-report.js';
 import { saveSyncData } from '../sync/data.js';
 import { returnToDrawer } from '../ui/drawer.js';
 
+// Открывает модальное окно настроек расширения
 export function openSettingsModal(view = 'main') {
     let overlay = document.getElementById('etis-settings-overlay');
     let modal = document.getElementById('etis-settings-modal');
@@ -36,6 +38,7 @@ export function openSettingsModal(view = 'main') {
     };
     overlay.onclick = closeAll;
 
+    // Отрисовывает выбранную вкладку настроек и привязывает обработчики
     const renderView = (currentView) => {
         if (previousView === 'appearance' && currentView !== 'appearance') {
             detectTheme();
@@ -189,6 +192,20 @@ export function openSettingsModal(view = 'main') {
                                     <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Отображать обеденный перерыв (13:00 – 13:30) между 3 и 4 парой</span>
                                 </div>
                                 <input type="checkbox" id="setting-show-big-break" class="tumbler-checkbox" ${generalConfig.showBigBreak !== false ? 'checked' : ''}>
+                            </label>
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Таймер пар</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Показывать отсчёт до начала и окончания пары во время светофора</span>
+                                </div>
+                                <input type="checkbox" id="setting-live-timer" class="tumbler-checkbox" ${generalConfig.liveTimer !== false ? 'checked' : ''}>
+                            </label>
+                            <label>
+                                <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
+                                    <span style="font-size:1.4rem; font-weight:600; color:var(--color-text-primary); line-height: 1.3;">Уведомления об изменениях</span>
+                                    <span style="font-size:1.1rem; color:var(--color-text-secondary); line-height: 1.3;">Push-уведомление, если расписание на неделю изменилось</span>
+                                </div>
+                                <input type="checkbox" id="setting-timetable-notifications" class="tumbler-checkbox" ${generalConfig.timetableNotifications !== false ? 'checked' : ''}>
                             </label>
                             <label>
                                 <div style="display:flex; flex-direction:column; gap:4px; padding-right: 15px;">
@@ -384,7 +401,8 @@ export function openSettingsModal(view = 'main') {
                 document.documentElement.setAttribute('theme', window._activeEditingTheme === 'dark' ? actualDarkTheme : 'light');
             }
 
-            // Функция получения активного конфига (общего или конкретной темы)
+            // Возвращает конфиг акцента для текущей редактируемой темы
+            // Возвращает конфиг акцента для текущей редактируемой темы
             const getActiveSubConfig = () => {
                 if (!config.separateThemes) return config;
                 const subMode = window._activeEditingTheme || 'light';
@@ -726,6 +744,7 @@ export function openSettingsModal(view = 'main') {
             }
 
         } else if (currentView === 'quick_login_settings') {
+            // Читает сохранённые аккаунты быстрого входа из хранилища расширения
             const getAccounts = () => {
                 let accounts = [];
                 try {
@@ -741,6 +760,7 @@ export function openSettingsModal(view = 'main') {
                 return accounts;
             };
 
+            // Сохраняет список аккаунтов быстрого входа в хранилище расширения
             const saveAccounts = (accounts) => {
                 const str = JSON.stringify(accounts);
                 if (typeof GM_setValue !== 'undefined') {
@@ -755,6 +775,7 @@ export function openSettingsModal(view = 'main') {
                 }
             };
 
+            // Отрисовывает список сохранённых аккаунтов быстрого входа
             const renderQLAccountsInSettings = (listContainer) => {
                 const accounts = getAccounts();
                 const addFormWrapper = modal.querySelector('#ql-add-form-wrapper');
@@ -791,7 +812,6 @@ export function openSettingsModal(view = 'main') {
                     btnTextEl.textContent = `Добавить ${accounts.length + 1}-й аккаунт`;
                 }
 
-                // Навешиваем событие на кнопку раскрытия формы
                 const showAddFormBtn = modal.querySelector('#ql-show-add-form-btn');
                 if (showAddFormBtn) {
                     showAddFormBtn.onclick = (e) => {
@@ -893,6 +913,15 @@ export function openSettingsModal(view = 'main') {
                 saveGeneralConfig();
                 if (typeof window.recalculateTimetable === 'function') window.recalculateTimetable();
             };
+            modal.querySelector('#setting-live-timer').onchange = (e) => {
+                generalConfig.liveTimer = e.target.checked;
+                saveGeneralConfig();
+                updateLiveTimetable();
+            };
+            modal.querySelector('#setting-timetable-notifications').onchange = (e) => {
+                generalConfig.timetableNotifications = e.target.checked;
+                saveGeneralConfig();
+            };
             modal.querySelector('#setting-show-sunday').onchange = (e) => {
                 generalConfig.showSunday = e.target.checked;
                 saveGeneralConfig();
@@ -929,7 +958,6 @@ export function openSettingsModal(view = 'main') {
                 };
             });
         } else if (currentView === 'theme_settings') {
-            // Выбор Светлой или Тёмной темы
             modal.querySelectorAll('.theme-select-row').forEach(row => {
                 row.onclick = () => {
                     const val = row.getAttribute('data-theme-val');
@@ -945,7 +973,6 @@ export function openSettingsModal(view = 'main') {
                 };
             });
 
-            // Тумблер Ночной темы (OLED)
             const nightToggle = modal.querySelector('#theme-night-variant-toggle');
             if (nightToggle) {
                 nightToggle.onchange = (e) => {
@@ -964,7 +991,6 @@ export function openSettingsModal(view = 'main') {
                 };
             }
 
-            // Выбор режима автопереключения
             modal.querySelectorAll('.auto-mode-row').forEach(row => {
                 row.onclick = () => {
                     const modeVal = row.getAttribute('data-mode-val');
@@ -974,7 +1000,6 @@ export function openSettingsModal(view = 'main') {
                 };
             });
 
-            // Сохранение времени расписания
             const startInput = modal.querySelector('#schedule-start-input');
             const endInput = modal.querySelector('#schedule-end-input');
 
@@ -994,6 +1019,7 @@ export function openSettingsModal(view = 'main') {
             let config = JSON.parse(localStorage.getItem('etis_accent_config')) || { isGradient: true, isThreeColors: false, colors: ['blue', 'lightblue'] };
             if (window._etisTargetIndex === undefined) window._etisTargetIndex = 0;
 
+            // Возвращает конфиг акцента для текущей редактируемой темы
             const getActiveSubConfig = () => {
                 if (!config.separateThemes) return config;
                 const mode = window._activeEditingTheme || 'light';
@@ -1009,7 +1035,7 @@ export function openSettingsModal(view = 'main') {
 
             const grid = modal.querySelector('#color-grid');
 
-            // Функция обновления номеров на кружочках палитры (с поддержкой повторов 1,2 / 1,2,3)
+            // Обновляет индикаторы выбранных цветов в сетке палитры
             const updateColorGridSelection = (gridEl, currentConfig) => {
                 const activeSub = getActiveSubConfig();
                 const maxColors = !activeSub.isGradient ? 1 : (activeSub.isThreeColors ? 3 : 2);
@@ -1040,7 +1066,7 @@ export function openSettingsModal(view = 'main') {
                 });
             };
 
-            // Синхронизация тумблеров градиента с выбранной темой
+            // Синхронизирует тумблеры градиента с активной темой
             const syncTogglesWithActiveTheme = () => {
                 const activeSub = getActiveSubConfig();
                 const gradToggle = modal.querySelector('#grad-toggle');
@@ -1123,7 +1149,6 @@ export function openSettingsModal(view = 'main') {
                 };
             }
 
-            // Тумблер "Раздельные цвета для тем"
             const separateToggle = modal.querySelector('#separate-themes-toggle');
             if (separateToggle) {
                 separateToggle.onchange = (e) => {
@@ -1237,25 +1262,21 @@ export function openSettingsModal(view = 'main') {
                 'purple', 'deepviolet', 'violet', 'indigo', 'bluegrey'
             ];
 
-            // Кнопка рандомайзера с комплиментарным подбором
             modal.querySelector('#random-color-row').onclick = (e) => {
                 e.preventDefault();
                 const activeSub = getActiveSubConfig();
 
                 if (!activeSub.isGradient) {
-                    // Одиночный сочный цвет
                     let candidates = VIBRANT_SINGLE_COLORS.filter(c => !activeSub.colors.includes(c));
                     if (candidates.length === 0) candidates = VIBRANT_SINGLE_COLORS;
                     const chosen = candidates[Math.floor(Math.random() * candidates.length)];
                     activeSub.colors = [chosen];
                 } else if (!activeSub.isThreeColors) {
-                    // 2 комплиментарных цвета
                     let candidates = HARMONIOUS_2_COLOR_PALETTES.filter(p => p[0] !== activeSub.colors[0] || p[1] !== activeSub.colors[1]);
                     if (candidates.length === 0) candidates = HARMONIOUS_2_COLOR_PALETTES;
                     const chosen = candidates[Math.floor(Math.random() * candidates.length)];
                     activeSub.colors = [...chosen];
                 } else {
-                    // 3 комплиментарных цвета
                     let candidates = HARMONIOUS_3_COLOR_PALETTES.filter(p => p[0] !== activeSub.colors[0] || p[1] !== activeSub.colors[1]);
                     if (candidates.length === 0) candidates = HARMONIOUS_3_COLOR_PALETTES;
                     const chosen = candidates[Math.floor(Math.random() * candidates.length)];
@@ -1268,7 +1289,6 @@ export function openSettingsModal(view = 'main') {
                 updateColorGridSelection(grid, config);
             };
 
-            // Тумблер Градиента
             modal.querySelector('#grad-toggle').onchange = (e) => {
                 const activeSub = getActiveSubConfig();
                 activeSub.isGradient = e.target.checked;
@@ -1291,7 +1311,6 @@ export function openSettingsModal(view = 'main') {
                 updateColorGridSelection(grid, config);
             };
 
-            // Тумблер 3 цветов
             const threeColorsToggle = modal.querySelector('#three-colors-toggle');
             if (threeColorsToggle) {
                 threeColorsToggle.onchange = (e) => {
@@ -1312,7 +1331,6 @@ export function openSettingsModal(view = 'main') {
                 };
             }
 
-            // Тумблер эффекта стекла
             const glassToggle = modal.querySelector('#glass-toggle');
             if (glassToggle) {
                 glassToggle.onchange = (e) => {

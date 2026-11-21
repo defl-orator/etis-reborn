@@ -1,6 +1,7 @@
 import { EXT_CAL_COLORS, getRandomExtColor, migrateExternalCals } from '../features/external-cals.js';
 import { saveSyncData } from '../sync/data.js';
 
+// Открывает модальное окно экспорта и импорта календарей
 export function openSyncModal(view = 'export') {
     let overlay = document.getElementById('etis-sync-overlay');
     let modal = document.getElementById('etis-sync-modal');

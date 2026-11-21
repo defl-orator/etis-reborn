@@ -1,5 +1,6 @@
 import { applySri } from './security';
 
+// Динамически подгружает библиотеку QRCode.js с проверкой SRI
 function loadQRCodeLib(): Promise<any> {
     return new Promise((resolve, reject) => {
         if (typeof QRCode !== 'undefined') return resolve(QRCode);
@@ -15,6 +16,7 @@ function loadQRCodeLib(): Promise<any> {
     });
 }
 
+// Генерирует локальный QR-код в формате Data URL
 export async function getLocalQRCodeDataURL(text: string, size = 128): Promise<string> {
     try {
         const QR = await loadQRCodeLib();

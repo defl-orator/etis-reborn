@@ -1,6 +1,7 @@
 import { pageCtx } from '../app/context.js';
 import { generalConfig } from '../core/config.js';
 
+// Оформляет страницу подробного расписания, статистики и распределения дисциплин
 export function renderScheduleDetailPage() {
     if (!document.getElementById('etis-reborn-schedule-detail-css')) {
         const css = document.createElement('style');
@@ -113,7 +114,6 @@ export function renderScheduleDetailPage() {
         if (h1.textContent.includes('Распределение')) h1.remove();
     });
 
-    // СОХРАНЯЕМ ДАТУ ДО УДАЛЕНИЯ H2
     let startWeekDateGlobal = null;
     if (h2) {
         const dateMatchStr = h2.textContent.match(/(\d{2})\.(\d{2})\.(\d{4})\s*-\s*\d{2}\.\d{2}\.\d{4}/);
@@ -159,7 +159,6 @@ export function renderScheduleDetailPage() {
         h2.replaceWith(navCard);
     }
 
-    // --- ОФОРМЛЕНИЕ БЛОКОВ СТАТИСТИКИ ---
     const statsHeader = Array.from(container.querySelectorAll('b')).find(b => b.textContent.includes('На выбранной неделе'));
     if (statsHeader) {
         const wrapperTable = statsHeader.closest('table');
@@ -216,7 +215,6 @@ export function renderScheduleDetailPage() {
         }
     }
 
-    // Умное скрытие пустых графиков
     container.querySelectorAll('div[id^="chart_div"]').forEach(chart => {
         chart.style.cssText = 'width: 100% !important; min-width: 1000px !important; height: auto !important; min-height: 0 !important;';
 
@@ -237,7 +235,6 @@ export function renderScheduleDetailPage() {
         observer.observe(chart, { childList: true });
     });
 
-    // --- ПАРСИНГ ОСНОВНОЙ ТАБЛИЦЫ РАСПИСАНИЯ НА НЕДЕЛЮ ---
     const mainScheduleTable = container.querySelector('table.slimtab_nice:not(.distr)');
     if (mainScheduleTable) {
         const daysArr =["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота"];
@@ -256,7 +253,6 @@ export function renderScheduleDetailPage() {
             const timeRaw = cells[0].textContent.trim();
             const originalPairNum = parseInt(timeRaw, 10) || 1;
 
-            // Маппинг времени пар
             const timeMap = {1: '08:00', 2: '09:45', 3: '11:30', 4: '13:30', 5: '15:15', 6: '17:00', 7: '18:40', 8: '20:25'};
             const mappedTime = timeMap[originalPairNum] || "00:00";
 
@@ -269,7 +265,6 @@ export function renderScheduleDetailPage() {
 
                 let subjectText = bNode.textContent.trim();
 
-                // Обработка УМК
                 let umkNumber = '';
                 const umkMatch = subjectText.match(/УМК\s*№?(\d+)/i);
                 if (umkMatch) {
@@ -300,7 +295,6 @@ export function renderScheduleDetailPage() {
                     if (m) aud = `${m[1]}/${m[2]}`;
                 }
 
-                // Очистка часов и вычленение темы с контролем
                 let theme = '', extraNotesHtml = '', hoursInfo = '';
                 cell.querySelectorAll('div').forEach(div => {
                     const color = div.style.color || '';
@@ -320,7 +314,6 @@ export function renderScheduleDetailPage() {
                     }
                 });
 
-                // Формирование всплывающей подсказки (Тултип УМК + Часы)
                 let tooltipContent = '';
                 if (umkNumber) tooltipContent += `<div>УМК №${umkNumber}</div>`;
                 if (hoursInfo) {
@@ -460,7 +453,6 @@ export function renderScheduleDetailPage() {
         mainScheduleTable.replaceWith(scheduleContainer);
     }
 
-    // 3. Главная таблица (распределение дисциплин)
     const table = container.querySelector('table.distr');
     if (table) {
         table.classList.add('common');

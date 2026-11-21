@@ -1,12 +1,12 @@
 import { pageCtx } from '../app/context.js';
 import { updateEmptyState } from '../ui/empty-state.js';
 
+// Оформляет страницу анкетирования преподавателей в виде списка карточек
 export function renderTermTestPage() {
     const reviewContainer = pageCtx.span9.querySelector('.review');
     if (!reviewContainer) return;
 
     const listUl = reviewContainer.querySelector('ul.list');
-    // Проверяем, есть ли в списке дисциплин хотя бы один элемент li
     const hasData = listUl && listUl.querySelectorAll('li').length > 0;
 
     if (hasData) {
@@ -84,12 +84,10 @@ export function renderTermTestPage() {
 
         reviewContainer.querySelectorAll('h2, h3').forEach(h => h.remove());
     } else {
-        // Если оценивать нечего, полностью удаляем контейнер оценки и лишние BR
         reviewContainer.remove();
         pageCtx.span9.querySelectorAll('br').forEach(br => br.remove());
     }
 
-    // Вызываем проверку пустого состояния
     updateEmptyState(pageCtx.span9, hasData, '', 'term_test');
     return;
 }

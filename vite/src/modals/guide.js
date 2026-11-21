@@ -1,5 +1,6 @@
 import { returnToDrawer } from '../ui/drawer.js';
 
+// Открывает модальное окно обучения с подсказками по функциям
 function openGuideModal(view = window.innerWidth <= 960 ? 'menu' : 'timetable_guide') {
     let overlay = document.getElementById('etis-guide-overlay');
     let modal = document.getElementById('etis-guide-modal');

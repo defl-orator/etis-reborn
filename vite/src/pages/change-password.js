@@ -1,20 +1,18 @@
+// Оформляет форму смены пароля с плейсхолдерами вместо меток
 export function renderChangePasswordPage() {
     const passSpan9 = document.querySelector('.span9');
     const passForm = passSpan9.querySelector('form.form');
     const passH3 = passSpan9.querySelector('h3');
 
     if (passForm) {
-        // Чистим мусорные br
         passForm.querySelectorAll('br').forEach(br => br.remove());
 
-        // Заголовок внутрь формы
         if (passH3) {
             passH3.style.textAlign = 'center';
             passH3.style.marginBottom = '3rem';
             passForm.prepend(passH3);
         }
 
-        // Плейсхолдеры
         const labels = passForm.querySelectorAll('label');
         labels.forEach(label => {
             const input = document.getElementById(label.getAttribute('for'));

@@ -4,10 +4,10 @@ import { updateEmptyState } from '../../ui/empty-state.js';
 import { highlightSearchTerm } from '../../ui/search-highlight.js';
 import { getTermWord } from '../../utils/term-system.ts';
 
+// Оформляет страницу текущих оценок (контрольных точек), поиск, рейтинг предметов и пересчет баллов.
 export function renderCurrentSigns() {
     if (pageCtx.pageMode === 'current') {
 
-        // --- ОБЪЕДИНЕННАЯ КАПСУЛА: СЕМЕСТРЫ + ПОИСК/ТОП ---
         const submenus = pageCtx.span9.querySelectorAll('.submenu');
         const lastSubmenu = submenus[submenus.length - 1];
 
@@ -43,7 +43,6 @@ export function renderCurrentSigns() {
                                 </div>
                             `;
 
-        // Переносим элементы семестров внутрь новой капсулы и удаляем старое подменю
         if (lastSubmenu) {
             const track = searchContainer.querySelector('#term-semesters-track');
             while (lastSubmenu.firstChild) {
@@ -54,7 +53,6 @@ export function renderCurrentSigns() {
             pageCtx.span9.prepend(searchContainer);
         }
 
-        // Плавное открытие и закрытие поиска
         const searchOpenBtn = searchContainer.querySelector('#term-search-open-btn');
         const searchCloseBtn = searchContainer.querySelector('#term-search-close-btn');
         const termInput = searchContainer.querySelector('.term-local-input');
@@ -83,7 +81,6 @@ export function renderCurrentSigns() {
             if (e.key === 'Escape') searchCloseBtn.click();
         });
 
-        // --- ПАРСИНГ ТАБЛИЦ И ДОБАВЛЕНИЕ КАПСУЛ ---
         pageCtx.span9.querySelectorAll('table.common').forEach(table => {
             table.classList.add('term-table-v6');
             if (!table.parentNode.classList.contains('wide-table-wrapper')) {
@@ -114,11 +111,10 @@ export function renderCurrentSigns() {
             let isZachet = false;
 
             if (isEmptySubject) {
-                // 1. Удаляем все строки данных и строку "Всего"
                 table.querySelectorAll('tr:not(:has(th))').forEach(r => r.remove());
                 if (totalRow) totalRow.remove();
 
-                // 2. В шапке оставляем ТОЛЬКО "Тема" и "Оценка", скрывая остальные столбцы и вторую строку
+                // В шапке оставляем только "Тема" и "Оценка"
                 const headerRows = Array.from(table.querySelectorAll('tr:has(th)'));
                 headerRows.forEach((hRow, hIdx) => {
                     const ths = hRow.querySelectorAll('th');
@@ -144,7 +140,6 @@ export function renderCurrentSigns() {
 
                 const tbody = table.querySelector('tbody') || table;
 
-                // 3. Добавляем строку-заглушку ровно под 2 колонки
                 const emptyTr = document.createElement('tr');
                 emptyTr.innerHTML = `
                                         <td colspan="2" style="text-align: center !important; padding: 3.6rem 2rem !important; color: var(--color-text-secondary) !important; font-weight: 600 !important; font-size: 1.35rem !important; background: transparent !important; border: none !important;">
@@ -161,14 +156,12 @@ export function renderCurrentSigns() {
 
                     const cells = r.querySelectorAll('th, td');
 
-                    // Определение зачета
                     if (cells.length >= 7 && cells[2]) {
                         if (cells[2].textContent.toLowerCase().includes('зачет') || cells[2].textContent.toLowerCase().includes('зачёт')) {
                             isZachet = true;
                         }
                     }
 
-                    // Компактный режим
                     if (generalConfig.compactGrades) {
                         const cfg = generalConfig.compactGradesConfig;
 
@@ -214,7 +207,6 @@ export function renderCurrentSigns() {
 
                     if (r.querySelector('th')) return;
 
-                    // Вид работы
                     if (cells.length > 1) {
                         let typeText = cells[1].textContent.trim().toLowerCase();
                         if (typeText) {
@@ -228,7 +220,6 @@ export function renderCurrentSigns() {
                         }
                     }
 
-                    // Вид контроля
                     if (cells.length > 2) {
                         let ctrlText = cells[2].textContent.trim();
                         if (ctrlText) {
@@ -238,7 +229,6 @@ export function renderCurrentSigns() {
                         }
                     }
 
-                    // Расчет баллов
                     if (cells.length >= 7) {
                         const gradeStr = cells[3].textContent.trim();
                         const maxStr = cells[6].textContent.trim();
@@ -343,7 +333,6 @@ export function renderCurrentSigns() {
                 if (p < 41 || p >= 61) capsule.style.color = '#fff';
             }
 
-            // Калькулятор баллов
             if (!isEmptySubject && finalMax > 0 && hasAnyGrades) {
                 let tooltipText = '';
                 let currentMark = '';
@@ -382,7 +371,6 @@ export function renderCurrentSigns() {
             headerContainer.appendChild(capsule);
         });
 
-        // Проверяем, есть ли хотя бы один предмет с начисленными баллами
         const hasAnyRankableSubjects = Array.from(pageCtx.span9.querySelectorAll('.term-subject-group')).some(w => {
             const max = parseInt(w.getAttribute('data-score-max'), 10) || 0;
             return max > 0;
@@ -400,7 +388,6 @@ export function renderCurrentSigns() {
             }
         }
 
-        // --- ЛОГИКА ФИЛЬТРАЦИИ И ДИНАМИЧЕСКОГО ПЕРЕСЧЕТА ---
         const filterInput = searchContainer.querySelector('.term-local-input');
         filterInput.addEventListener('input', (e) => {
             const val = e.target.value.toLowerCase().trim();
@@ -439,7 +426,6 @@ export function renderCurrentSigns() {
                         return;
                     }
 
-                    // Обработка строки-заглушки "Данных пока нет"
                     if (row.querySelector('td[colspan]')) {
                         if (val === "" || isSubjectMatch) {
                             row.style.display = '';
@@ -571,7 +557,6 @@ export function renderCurrentSigns() {
             updateEmptyState(pageCtx.span9, totalVisible > 0, val, 'grades');
         });
 
-        // --- ОКНО РЕЙТИНГА ---
         let overlay = document.querySelector('.analytics-overlay');
         let modal = document.querySelector('.analytics-modal');
 
@@ -586,7 +571,6 @@ export function renderCurrentSigns() {
         }
 
         searchContainer.querySelector('.analytics-btn').addEventListener('click', () => {
-            // Структура модального окна без графика
             modal.innerHTML = `
                                     <div class="ui-widget-header" style="display:flex; justify-content:space-between; align-items:center;">
                                         <span class="ui-dialog-title">Топ предметов ${getTermWord('gen_sg')}</span>
@@ -602,12 +586,12 @@ export function renderCurrentSigns() {
                                     </div>
                                 `;
 
-            // Интерактивный ховер-эффект для крестика
             modal.querySelectorAll('.close-analytics').forEach(btn => {
                 btn.addEventListener('mouseenter', () => btn.style.color = 'var(--color-accent)');
                 btn.addEventListener('mouseleave', () => btn.style.color = 'var(--color-text-secondary)');
             });
 
+            // Закрывает модальное окно рейтинга предметов.
             const closeAnalytics = () => {
                 overlay.classList.remove('active');
                 modal.classList.remove('active');
@@ -616,7 +600,6 @@ export function renderCurrentSigns() {
             overlay.onclick = closeAnalytics;
             modal.querySelector('.close-analytics').onclick = closeAnalytics;
 
-            // Сбор данных
             const subjectsData =[];
             document.querySelectorAll('.term-subject-group').forEach(wrapper => {
                 const name = wrapper.getAttribute('data-subject-name');
@@ -631,7 +614,6 @@ export function renderCurrentSigns() {
                 }
             });
 
-            // Сортировка по убыванию процентов
             subjectsData.sort((a, b) => b.percent - a.percent);
 
             if (subjectsData.length === 0) {
@@ -641,11 +623,9 @@ export function renderCurrentSigns() {
                 document.getElementById('analytics-content').style.display = 'block';
                 document.getElementById('analytics-empty').style.display = 'none';
 
-                // Генерация HTML списка
                 let leaderboardHtml = '<div class="leaderboard-list">';
 
                 subjectsData.forEach((subj, index) => {
-                    // Определяем стили для мест
                     let rankClass = '';
                     let rankContent = index + 1;
 
@@ -653,7 +633,6 @@ export function renderCurrentSigns() {
                     else if (index === 1) { rankClass = 'rank-2'; }
                     else if (index === 2) { rankClass = 'rank-3'; }
 
-                    // Цвет капсулы с процентами
                     let colorBg = 'var(--color-green)';
                     if (subj.percent < 41) colorBg = 'var(--color-red)';
                     else if (subj.percent < 61) colorBg = 'var(--color-yellow)';
@@ -685,7 +664,6 @@ export function renderCurrentSigns() {
             document.body.classList.add('modal-open-body');
         });
 
-        // --- ОФОРМЛЕНИЕ ПАМЯТКИ "ПОРЯДОК УТОЧНЕНИЯ ОЦЕНОК" ---
         const currentFooterP = pageCtx.span9.querySelector('p');
         if (currentFooterP && currentFooterP.textContent.includes('Показанные здесь оценки являются официальными')) {
             const infoBox = document.createElement('div');
@@ -702,13 +680,11 @@ export function renderCurrentSigns() {
                                     line-height: 1.6;
                                 `;
 
-            // Очищаем текст от мусора и разбиваем на строки
             let rawHTML = currentFooterP.innerHTML.replace(/&nbsp;/g, '').trim();
             let lines = rawHTML.split(/<br\s*\/?>/i).map(l => l.trim()).filter(l => l.length > 0);
 
             let processedContent = '';
             lines.forEach(line => {
-                // Если строка начинается с цифры (пункты порядка)
                 if (line.match(/^\d\./)) {
                     processedContent += `
                                             <div style="margin-bottom: 12px; padding-left: 28px; position: relative; font-size: 1.35rem;">
@@ -716,11 +692,9 @@ export function renderCurrentSigns() {
                                                 ${line.substring(2)}
                                             </div>`;
                 }
-                // Заголовок "Порядок уточнения:"
                 else if (line.toLowerCase().includes('порядок уточнения')) {
                     processedContent += `<div style="font-weight: 800; margin: 20px 0 15px; font-size: 1.4rem; color: var(--color-text-primary); text-transform: uppercase; letter-spacing: 0.5px;">${line}</div>`;
                 }
-                // Обычные абзацы
                 else {
                     processedContent += `<p style="margin-bottom: 16px; opacity: 0.9; font-size: 1.35rem;">${line}</p>`;
                 }

@@ -1,9 +1,5 @@
-// ==========================================
-// 2. ВНЕДРЕНИЕ JS ЛОГИКИ
-// ==========================================
-
+// Подсвечивает совпадения поискового запроса внутри текстовых узлов контейнера
 export function highlightSearchTerm(container, term) {
-    // 1. Убираем старые подсветки
     const oldHighlights = container.querySelectorAll('.search-highlight');
     oldHighlights.forEach(el => {
         const parent = el.parentNode;
@@ -13,11 +9,9 @@ export function highlightSearchTerm(container, term) {
 
     if (!term || term.length < 2) return;
 
-    // 2. Регулярка для поиска (без учета регистра)
     const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const regex = new RegExp(`(${escapedTerm})`, 'gi');
 
-    // 3. Рекурсивный обход текстовых узлов
     const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, null, false);
     const nodes = [];
     while (walker.nextNode()) nodes.push(walker.currentNode);

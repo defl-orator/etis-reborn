@@ -1,6 +1,7 @@
 import { pageCtx } from '../app/context.js';
 import { updateEmptyState } from '../ui/empty-state.js';
 
+// Оформляет страницу библиотеки (рекомендации, электронный каталог и история выдачи)
 export function renderLibraryPage() {
     let pageMode = new URLSearchParams(window.location.search).get('p_mode');
     if (!pageMode) {
@@ -15,7 +16,6 @@ export function renderLibraryPage() {
 
     const submenu = pageCtx.span9.querySelector('.submenu');
 
-    // 1. Памятка научной библиотеки (переносим в конец)
     const libIntro = Array.from(pageCtx.span9.querySelectorAll('p')).find(p => p.textContent.includes('Для чтения полных текстов'));
     if (libIntro) {
         const infoBox = document.createElement('div');
@@ -48,7 +48,6 @@ export function renderLibraryPage() {
         setTimeout(() => pageCtx.span9.appendChild(infoBox), 0);
     }
 
-    // 2. Создаем единую капсулу подвкладок и поиска
     const controlsWrapper = document.createElement('div');
     controlsWrapper.className = 'plan-controls-wrapper';
     controlsWrapper.innerHTML = `
@@ -81,7 +80,6 @@ export function renderLibraryPage() {
         pageCtx.span9.prepend(controlsWrapper);
     }
 
-    // Удаляем старый поиск ЕТИСа, если он был
     const oldSearchWrap = pageCtx.span9.querySelector('.wrap');
     if (oldSearchWrap) oldSearchWrap.remove();
 
@@ -105,7 +103,6 @@ export function renderLibraryPage() {
         });
     }
 
-    // 3. Режим: Электронный каталог
     if (pageMode === 'catalog') {
         const recordList = document.getElementById('record_list');
         const loadGif = "/etis/dojo/dijit/themes/tundra/images/loading.gif";
@@ -131,7 +128,6 @@ export function renderLibraryPage() {
             if (e.key === 'Enter') performSearch();
         });
     }
-    // 4. Режим: Рекомендуемая литература
     else if (pageMode === 'recommend') {
         const headers = Array.from(pageCtx.span9.querySelectorAll('h3'));
         headers.forEach(h3 => {
@@ -240,7 +236,6 @@ export function renderLibraryPage() {
             updateEmptyState(pageCtx.span9, totalVisible > 0, val, 'library');
         });
     }
-    // 5. Режим: История выдачи
     else if (pageMode === 'history') {
         const historyTable = pageCtx.span9.querySelector('table.common');
         if (historyTable) {

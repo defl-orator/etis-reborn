@@ -3,9 +3,9 @@ import { generalConfig } from '../core/config.js';
 import { updateLiveTimetable } from '../features/live-timetable.js';
 import { applySri, escapeHTML } from '../utils/security.ts';
 
+// Оформляет страницу расписания преподавателя (вкладки семестров, недели, карточки дней, экспорт и свайпы)
 export function renderPeoTTPage() {
     if (pageCtx.isPeoTT) {
-        // 1. Очистка заголовка
         const h4 = pageCtx.span9.querySelector('h4');
         let dateRangeText = "";
         if (h4) {
@@ -13,7 +13,6 @@ export function renderPeoTTPage() {
             h2.textContent = h4.textContent;
             h2.style.marginBottom = '2.4rem';
 
-            // Извлекаем даты
             const rangeMatch = h4.textContent.match(/\(с\s+\d{2}\.\d{2}\.\d{4}\s+по\s+\d{2}\.\d{2}\.\d{4}\)/i);
             if (rangeMatch) {
                 dateRangeText = rangeMatch[0].replace(/[()]/g, '');
@@ -23,7 +22,6 @@ export function renderPeoTTPage() {
             h4.replaceWith(h2);
         }
 
-        // 2. Парсинг семестров и недель
         const spans = Array.from(pageCtx.span9.querySelectorAll('span.fl, span.active'));
         const terms =[];
         const weeks =[];
@@ -39,13 +37,11 @@ export function renderPeoTTPage() {
             }
         });
 
-        // Удаляем висячие <br> и &nbsp;
         Array.from(pageCtx.span9.childNodes).forEach(node => {
             if (node.nodeType === Node.TEXT_NODE && node.textContent.trim() === '') node.remove();
             if (node.tagName === 'BR') node.remove();
         });
 
-        // 3. Создание Submenu (Семестры)
         if (terms.length > 0) {
             const submenu = document.createElement('div');
             submenu.className = 'submenu';
@@ -69,7 +65,6 @@ export function renderPeoTTPage() {
             pageCtx.span9.insertBefore(submenu, pageCtx.span9.querySelector('table.slimtab_nice') || pageCtx.span9.firstChild);
         }
 
-        // 4. Создание Weeks (Недели)
         if (weeks.length > 0) {
             const wrapper = document.createElement('div');
             wrapper.className = 'week-select-wrapper';
@@ -135,7 +130,6 @@ export function renderPeoTTPage() {
             }, 200);
         }
 
-        // 5. Оформление таблицы (Парсинг сетки в карточки дней)
         const table = pageCtx.span9.querySelector('table.slimtab_nice');
         if (table) {
             if (!document.getElementById('peo-tt-hover-styles')) {
@@ -219,7 +213,6 @@ export function renderPeoTTPage() {
             const daysData = daysArr.map(name => ({ name, pairs:[] }));
             let teacherInfoHtml = "";
 
-            // Попытка вытащить дату начала недели (понедельника) из заголовка
             const h2Title = pageCtx.span9.querySelector('h2');
             let startWeekDate = null;
             if (h2Title) {
@@ -428,7 +421,7 @@ export function renderPeoTTPage() {
                 }
             });
 
-            // --- СКРИНШОТ ГЕНЕРАТОР ---
+            // Генерирует PNG-скриншот расписания преподавателя или отдельного дня
             const handleScreenshot = async (targetEl, fileName, btnEl) => {
                 let h2c = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
                 if (!h2c) {
@@ -561,6 +554,7 @@ export function renderPeoTTPage() {
                 }
             };
 
+            // Загружает html2canvas при необходимости и запускает создание скриншота
             const loadH2cAndShoot = (targetEl, fileName, btnEl) => {
                 let h2cObj = typeof html2canvas !== 'undefined' ? html2canvas : (window.html2canvas || (typeof unsafeWindow !== 'undefined' ? unsafeWindow.html2canvas : null));
                 if (!h2cObj) {
@@ -689,7 +683,6 @@ export function renderPeoTTPage() {
 
             table.replaceWith(daysContainer);
 
-            // Обработчик для модальных окон со списком групп
             daysContainer.querySelectorAll('.modal-groups-trigger').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
@@ -734,7 +727,7 @@ export function renderPeoTTPage() {
                 });
             });
 
-            // Инициализация свайпов для преподавателя (Мобильные)
+            // Инициализирует свайп влево для отправки дня на мобильных устройствах
             function initTeacherMobileSwipes() {
                 if (window.innerWidth > 960) return;
                 let bubble = document.getElementById('swipe-action-bubble');
@@ -827,11 +820,10 @@ export function renderPeoTTPage() {
             }
             initTeacherMobileSwipes();
 
-            // Затемнение прошедших пар
+            // Затемняет прошедшие пары в расписании преподавателя
             function dimTeacherPastPairs() {
                 if (!generalConfig.dimPastPairs) return;
 
-                // Вычисляем, какую неделю мы сейчас смотрим
                 const viewedWeekEl = document.querySelector('.weeks .week.current');
                 const viewedWeek = viewedWeekEl ? parseInt(viewedWeekEl.textContent.replace(/\D/g, ''), 10) : -1;
                 const actualWeek = parseInt(localStorage.getItem('etis_actual_week') || '-1', 10);
@@ -867,13 +859,12 @@ export function renderPeoTTPage() {
                         let isPassed = false;
 
                         if (isPastWeek) {
-                            isPassed = true; // Если неделя прошлая — всё темно
+                            isPassed = true;
                         } else if (isFutureWeek) {
-                            isPassed = false; // Если будущая — всё ярко
+                            isPassed = false;
                         } else if (isPastDay) {
-                            isPassed = true; // На этой неделе: прошлые дни
+                            isPassed = true;
                         } else if (isToday) {
-                            // На этой неделе: сегодняшний день
                             let startMins = -1;
                             let endMins = -1;
                             const timeEl = row.querySelector('.eval');
@@ -907,7 +898,6 @@ export function renderPeoTTPage() {
             dimTeacherPastPairs();
             setInterval(dimTeacherPastPairs, 60000);
 
-            // Лайв-индикаторы
             if (typeof updateLiveTimetable === 'function') {
                 updateLiveTimetable();
             }

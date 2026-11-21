@@ -1,6 +1,6 @@
 import { generalConfig } from '../../core/config.js';
 
-// Функция объединения дат (например: "7 сентября" и "9 сентября" -> "7–9 сентября")
+// Объединяет две даты в компактный диапазон (например: "7–9 сентября").
 function formatMergedDateRange(startDateStr, endDateStr) {
     if (!startDateStr || !endDateStr) return startDateStr || endDateStr || '';
     if (startDateStr === endDateStr) return startDateStr;
@@ -39,7 +39,7 @@ function formatMergedDateRange(startDateStr, endDateStr) {
     return `${s1}–${s2}`;
 }
 
-// Сброс объединения в исходное состояние
+// Сбрасывает объединение выходных дней в исходное состояние.
 export function unmergeDaysOff() {
     const days = document.querySelectorAll('.span9 .day');
     days.forEach(day => {
@@ -68,7 +68,7 @@ export function unmergeDaysOff() {
     });
 }
 
-// Объединение идущих подряд выходных
+// Объединяет идущие подряд выходные дни в одну карточку.
 export function mergeConsecutiveDaysOff() {
     unmergeDaysOff();
 
@@ -122,7 +122,6 @@ export function mergeConsecutiveDaysOff() {
         const dateEl = headDay.querySelector('.day-date');
         if (dateEl) dateEl.textContent = mergedDate;
 
-        // Меняем капсулу на "Выходные"
         const capsule = headDay.querySelector('.custom-no-pairs .pair_info div');
         if (capsule) {
             capsule.innerHTML = `
@@ -131,7 +130,6 @@ export function mergeConsecutiveDaysOff() {
                                 `;
         }
 
-        // Скрываем остальные дни группы
         for (let i = 1; i < group.length; i++) {
             group[i].classList.add('merged-day-off-hidden');
             group[i].style.setProperty('display', 'none', 'important');

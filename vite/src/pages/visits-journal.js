@@ -1,6 +1,7 @@
 import { pageCtx } from '../app/context.js';
 import { updateEmptyState } from '../ui/empty-state.js';
 
+// Оформляет список дисциплин в журнале посещений
 export function renderVisitsJournalPage() {
     const groupH3 = pageCtx.span9.querySelector('h3');
     const listItems = pageCtx.span9.querySelectorAll('li > a[href*="stu_jour.tt_pair"]');
@@ -14,7 +15,6 @@ export function renderVisitsJournalPage() {
         pageCtx.span9.appendChild(pageTitle);
     }
 
-    // Если записей в журнале нет
     if (!listItems.length) {
         updateEmptyState(pageCtx.span9, false, '', 'journal');
         return;

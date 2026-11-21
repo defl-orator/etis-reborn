@@ -5,6 +5,7 @@ import { openCustomPairModal, showChooseDayModal } from '../../features/custom-p
 import { openExportPreviewModal } from '../../features/export.js';
 import { migrateExternalCals } from '../../features/external-cals.js';
 import { updateLiveTimetable } from '../../features/live-timetable.js';
+import { showPush } from '../../features/push.js';
 import { openConsultationsModal } from '../../modals/consultations.js';
 import { openSyncModal } from '../../modals/sync.js';
 import { mergeConsecutiveDaysOff, unmergeDaysOff } from './days-off.js';
@@ -21,6 +22,7 @@ import { parseDayDateStrToISO } from '../../utils/dates.ts';
 import { isMacSafari } from '../../utils/platform.ts';
 import { escapeHTML, sanitizeUrl } from '../../utils/security.ts';
 
+// Точка входа страницы расписания: оформляет дни, объединяет недели, внедряет пары и настраивает оффлайн-кэш.
 export function renderTimetablePage() {
     if (generalConfig.showSunday) {
         const days = Array.from(pageCtx.span9.querySelectorAll('div.day'));
@@ -69,7 +71,6 @@ export function renderTimetablePage() {
         }
     }
 
-    // --- ОФОРМЛЕНИЕ ВЫХОДНЫХ ДНЕЙ (0 ПАР) ---
     pageCtx.span9.querySelectorAll('.no_pairs').forEach(el => {
         const table = document.createElement('table');
         table.className = 'timetable-grid';
@@ -98,7 +99,6 @@ export function renderTimetablePage() {
     });
     pageCtx.span9.querySelectorAll('.day table').forEach(t => t.classList.add('timetable-grid'));
     
-    // --- 1. СБОР ССЫЛОК И СИСТЕМНЫХ ДАННЫХ ИЗ СТРАНИЦЫ ---
     pageCtx.span9.querySelectorAll('.timetable-grid tr').forEach(row => {
         const dis = row.querySelector('.dis');
         if (dis && dis.textContent.toLowerCase().includes('консультация')) {
@@ -146,7 +146,7 @@ export function renderTimetablePage() {
         if (oldParent && oldParent.textContent.trim() === '') oldParent.remove();
     }
 
-    // Сохранение недель в историю для сводки
+    // Сохраняет количество пар на текущей неделе в историю для сводки нагрузки.
     const saveWeekToHistory = () => {
         const currentWeekEl = pageCtx.span9.querySelector('.week.current');
         const weekNum = currentWeekEl ? currentWeekEl.textContent.replace(/\D/g, '').trim() : null;
@@ -172,7 +172,7 @@ export function renderTimetablePage() {
     };
     setTimeout(saveWeekToHistory, 500);
 
-    // Сохранение расписания посещённых недель для поиска будущих пар
+    // Кэширует расписание текущей недели для поиска будущих занятий при переносе заметок.
     function cacheCurrentWeekSchedule() {
         const currentWeekEl = document.querySelector('.weeks .week.current');
         if (!currentWeekEl) return;
@@ -180,6 +180,14 @@ export function renderTimetablePage() {
         if (isNaN(weekNum)) return;
 
         const weekSchedule = [];
+        const subjectTeachersMap = {};
+        try {
+            const savedTeachers = JSON.parse(localStorage.getItem('etis_subject_teachers_v1') || '{}');
+            if (savedTeachers && typeof savedTeachers === 'object') {
+                Object.assign(subjectTeachersMap, savedTeachers);
+            }
+        } catch (e) {}
+
         document.querySelectorAll('.span9 .day').forEach(day => {
             const dayName = day.getAttribute('data-orig-day-name') || day.querySelector('.day-name')?.textContent.trim() || '';
             const dayDateStr = day.getAttribute('data-orig-date') || day.querySelector('.day-date')?.textContent.trim() || '';
@@ -191,6 +199,55 @@ export function renderTimetablePage() {
                 cleanSubj.querySelectorAll('.material-icons, .note-btn-wrapper, .delete-custom-pair-btn').forEach(el => el.remove());
                 const subjText = cleanSubj.textContent.trim();
                 if (!subjText || subjText.toLowerCase().includes('выходной')) return;
+
+                if (!row.classList.contains('docx-consultation-row') && !row.classList.contains('consultation-row') && !row.classList.contains('external-event-row')) {
+                    const cleanTeacherStr = (s) => (s || '')
+                        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                        .replace(/оценить|занятие/gi, '')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    let teacherName = extractCleanTeacher(row);
+                    if (!teacherName) {
+                        const teacherEl = row.querySelector('.teacher a:not(.eval), .pair_teacher a:not(.eval), .teacher');
+                        if (teacherEl) {
+                            const clone = teacherEl.cloneNode(true);
+                            clone.querySelectorAll('.eval, .material-icons').forEach(el => el.remove());
+                            teacherName = clone.textContent;
+                        }
+                    }
+                    teacherName = cleanTeacherStr(teacherName);
+                    if (teacherName) {
+                        const typeMatch = subjText.match(/\(([^)]+)\)\s*$/);
+                        const badgeType = row.querySelector('.pair-type-badge')?.textContent.trim().toLowerCase() || '';
+                        let pairType = (typeMatch ? typeMatch[1] : badgeType).trim().toLowerCase();
+                        if (pairType === 'прак') pairType = 'практ';
+                        if (pairType === 'экз') pairType = 'экзамен';
+                        if (pairType === 'зач') pairType = 'зачет';
+
+                        const subjKey = subjText
+                            .replace(/\s*\((?:лек|практ|прак|лаб|сем|конс|экз|зач|диф\.?\s*зач|к\/р)[^)]*\)\s*$/i, '')
+                            .replace(/\s+/g, ' ')
+                            .trim()
+                            .toLowerCase();
+
+                        const rawList = Array.isArray(subjectTeachersMap[subjKey]) ? subjectTeachersMap[subjKey] : [];
+                        const mergedMap = new Map();
+                        rawList.forEach(item => {
+                            const rawName = typeof item === 'string' ? item : item?.name;
+                            const name = cleanTeacherStr(rawName);
+                            if (!name) return;
+                            const types = Array.isArray(item?.types) ? item.types : [];
+                            if (!mergedMap.has(name)) mergedMap.set(name, new Set());
+                            types.forEach(t => { if (t) mergedMap.get(name).add(t); });
+                        });
+                        if (!mergedMap.has(teacherName)) mergedMap.set(teacherName, new Set());
+                        if (pairType) mergedMap.get(teacherName).add(pairType);
+                        subjectTeachersMap[subjKey] = Array.from(mergedMap.entries()).map(([name, typesSet]) => ({
+                            name,
+                            types: Array.from(typesSet)
+                        }));
+                    }
+                }
 
                 const timeStr = row.querySelector('.eval')?.textContent.match(/\d{1,2}:\d{2}/)?.[0] || '08:00';
                 const numTd = row.querySelector('.pair_num');
@@ -211,12 +268,104 @@ export function renderTimetablePage() {
                 let allCached = JSON.parse(localStorage.getItem('etis_cached_weeks_schedule_v1') || '{}');
                 allCached[weekNum] = weekSchedule;
                 localStorage.setItem('etis_cached_weeks_schedule_v1', JSON.stringify(allCached));
+                localStorage.setItem('etis_subject_teachers_v1', JSON.stringify(subjectTeachersMap));
             } catch (e) {}
         }
+
+        checkTimetableChanges(weekNum);
+    }
+
+    // Сравнивает текущее расписание недели с сохранённым снимком и отправляет уведомление при изменениях
+    function checkTimetableChanges(weekNum) {
+        if (pageCtx.isDemoActive || !weekNum) return;
+
+        const currPairs = [];
+        document.querySelectorAll('.span9 .day').forEach(day => {
+            const h3Text = day.querySelector('h3')?.textContent.trim() || '';
+            const dayName = day.getAttribute('data-orig-day-name') || h3Text.split(',')[0]?.trim() || '';
+            const dayDate = day.getAttribute('data-orig-date') || h3Text.split(',')[1]?.trim() || '';
+
+            day.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs):not(.custom-pair-row):not(.docx-consultation-row):not(.external-event-row)').forEach(row => {
+                const dis = row.querySelector('.pair_info .dis');
+                if (!dis) return;
+                const cleanSubj = (dis.querySelector('a') || dis).cloneNode(true);
+                cleanSubj.querySelectorAll('.material-icons, .note-btn-wrapper, .delete-custom-pair-btn').forEach(el => el.remove());
+                const subject = cleanSubj.textContent.replace(/\s+/g, ' ').trim();
+                if (!subject || subject.toLowerCase().includes('выходной') || subject.toLowerCase().includes('0 пар')) return;
+
+                const startTime = row.querySelector('.eval')?.textContent.match(/\d{1,2}:\d{2}/)?.[0] || '';
+                const aud = row.querySelector('.pair_info .aud')?.textContent.replace(/\s+/g, ' ').trim() || '';
+                const teacherEl = row.querySelector('.teacher a:not(.eval), .pair_teacher a:not(.eval), .teacher');
+                let teacher = '';
+                if (teacherEl) {
+                    const tClone = teacherEl.cloneNode(true);
+                    tClone.querySelectorAll('.eval, .material-icons').forEach(el => el.remove());
+                    teacher = tClone.textContent.replace(/оценить|занятие/gi, '').replace(/\s+/g, ' ').trim();
+                }
+
+                currPairs.push({
+                    key: `${dayDate || dayName}|${startTime}|${subject}`,
+                    dayName,
+                    startTime,
+                    subject,
+                    aud,
+                    teacher
+                });
+            });
+        });
+
+        try {
+            const snapKey = 'etis_timetable_snapshot_v1';
+            const allSnaps = JSON.parse(localStorage.getItem(snapKey) || '{}');
+            const prevPairs = allSnaps[weekNum];
+
+            if (Array.isArray(prevPairs)) {
+                const prevMap = new Map(prevPairs.map(p => [p.key, p]));
+                const currMap = new Map(currPairs.map(p => [p.key, p]));
+                const changes = [];
+
+                for (const [key, curr] of currMap.entries()) {
+                    const prev = prevMap.get(key);
+                    if (!prev) {
+                        changes.push({ kind: 'added', ...curr });
+                    } else if (prev.aud !== curr.aud || prev.teacher !== curr.teacher) {
+                        const details = prev.aud !== curr.aud
+                            ? `Аудитория: ${prev.aud || '—'} ➔ ${curr.aud || '—'}`
+                            : `Преподаватель: ${prev.teacher || '—'} ➔ ${curr.teacher || '—'}`;
+                        changes.push({ kind: 'updated', details, ...curr });
+                    }
+                }
+                for (const [key, prev] of prevMap.entries()) {
+                    if (!currMap.has(key)) {
+                        changes.push({ kind: 'removed', ...prev });
+                    }
+                }
+
+                if (changes.length > 0 && generalConfig.timetableNotifications !== false) {
+                    const targetUrl = `stu.timetable?p_week=${weekNum}`;
+                    if (changes.length === 1) {
+                        const c = changes[0];
+                        if (c.kind === 'added') {
+                            showPush('Расписание изменилось', escapeHTML(c.subject), escapeHTML(`Добавлена пара: ${c.dayName}${c.startTime ? ', ' + c.startTime : ''}`), 'info', 'event_available', null, targetUrl, true);
+                        } else if (c.kind === 'removed') {
+                            showPush('Расписание изменилось', escapeHTML(c.subject), escapeHTML(`Отменена пара: ${c.dayName}${c.startTime ? ', ' + c.startTime : ''}`), 'warning', 'event_busy', null, targetUrl, true);
+                        } else {
+                            showPush('Расписание изменилось', escapeHTML(c.subject), escapeHTML(`${c.dayName}: ${c.details}`), 'info', 'update', null, targetUrl, true);
+                        }
+                    } else {
+                        const subjList = [...new Set(changes.map(c => c.subject))];
+                        const preview = subjList.slice(0, 3).join(', ') + (subjList.length > 3 ? ` и ещё ${subjList.length - 3}` : '');
+                        showPush(`Расписание изменилось (${changes.length})`, `Неделя ${weekNum}`, escapeHTML(`Обновлены занятия: ${preview}`), 'info', 'calendar_month', null, targetUrl, true);
+                    }
+                }
+            }
+
+            allSnaps[weekNum] = currPairs;
+            localStorage.setItem(snapKey, JSON.stringify(allSnaps));
+        } catch (e) {}
     }
     cacheCurrentWeekSchedule();
 
-    // 6. Перенос преподавателя в строку с аудиторией
     const pairs = pageCtx.span9.querySelectorAll("div.day > table > tbody > tr");
     pairs.forEach(pair => {
         const teacher = pair.querySelector('span.teacher');
@@ -250,7 +399,16 @@ export function renderTimetablePage() {
         }
     });
 
-    // 7. ОБЪЕДИНЕННЫЙ БЛОК: НЕДЕЛИ СЛЕВА + ДАТА + КНОПКА "..." СПРАВА
+    // Сохраняет фамилию преподавателя для автозаполнения поиска при переходе во вкладку «Преподаватели»
+    pageCtx.span9.addEventListener('click', (e) => {
+        const link = e.target.closest('.pair-teacher-wrap a[href*="stu.teachers"]');
+        if (!link) return;
+        const surname = link.textContent.trim().split(/\s+/)[0];
+        if (surname) {
+            try { sessionStorage.setItem('etis_teachers_prefill_search', surname); } catch (err) {}
+        }
+    });
+
     const weekSelect = pageCtx.span9.querySelector('.week-select');
     if (weekSelect) {
         const dateDiv = weekSelect.querySelector('div[style*="text-align:center"]');
@@ -297,7 +455,6 @@ export function renderTimetablePage() {
                 wrapper.appendChild(dateCapsule);
             }
 
-            // 3. Обертка кнопки "..." и меню
             const moreWrap = document.createElement('div');
             moreWrap.className = 'timetable-more-wrap';
 
@@ -397,12 +554,12 @@ export function renderTimetablePage() {
         }
     }
 
-    // 8. Центрирование активной недели при загрузке (Мобильные)
     if (window.innerWidth <= 960) {
         const weeksContainer = pageCtx.span9.querySelector('.weeks');
         const activeWeek = pageCtx.span9.querySelector('.week.current');
 
         if (activeWeek && weeksContainer) {
+            // Прокручивает ленту недель так, чтобы активная неделя оказалась по центру.
             const performScroll = (behavior = 'smooth') => {
                 const containerWidth = weeksContainer.offsetWidth;
                 const weekWidth = activeWeek.offsetWidth;
@@ -430,7 +587,6 @@ export function renderTimetablePage() {
         }
     }
 
-    // --- ПОДСВЕТКА АКТУАЛЬНОЙ НЕДЕЛИ ---
     const urlParamsTT = new URLSearchParams(window.location.search);
     const weeksList = pageCtx.span9.querySelectorAll('.weeks .week');
 
@@ -452,11 +608,10 @@ export function renderTimetablePage() {
         });
     }
 
-    // --- ЛОГИКА КАСТОМНЫХ ПАР ---
     const CUSTOM_PAIRS_KEY = 'etis_custom_pairs_v1';
     let customPairsRaw = JSON.parse(localStorage.getItem(CUSTOM_PAIRS_KEY) || '[]');
 
-    // Умная функция дедупликации (помогает при слиянии данных с разных устройств)
+    // Удаляет дубликаты кастомных пар при слиянии данных с разных устройств.
     const deduplicatePairs = (pairs) => {
         const seenIds = new Set();
         const seenSignatures = new Set();
@@ -485,6 +640,7 @@ export function renderTimetablePage() {
         localStorage.setItem(CUSTOM_PAIRS_KEY, JSON.stringify(customPairs));
     }
 
+    // Сохраняет или обновляет кастомную пару в синхронизируемом хранилище.
     function saveCustomPair(pair) {
         const existingIndex = customPairs.findIndex(p => p.id === pair.id);
         if (existingIndex > -1) customPairs[existingIndex] = pair;
@@ -492,12 +648,13 @@ export function renderTimetablePage() {
         saveSyncData(CUSTOM_PAIRS_KEY, JSON.stringify(customPairs));
     }
 
+    // Удаляет кастомную пару по идентификатору и сохраняет изменения.
     function removeCustomPair(id) {
         customPairs = customPairs.filter(p => p.id !== id);
         saveSyncData(CUSTOM_PAIRS_KEY, JSON.stringify(customPairs));
     }
 
-    // Вставка кастомных пар в DOM
+    // Внедряет кастомные пары в DOM расписания текущей недели.
     window.injectCustomPairs = function() {
         // Принудительно читаем самые свежие данные перед рендером
         customPairs = safeParseJSON(localStorage.getItem('etis_custom_pairs_v1'), []);
@@ -603,6 +760,7 @@ export function renderTimetablePage() {
         });
     }
 
+    // Внедряет консультации преподавателей из загруженных DOCX-файлов в расписание.
     window.injectConsultationPairs = function() {
         if (typeof unmergeDaysOff === 'function') unmergeDaysOff();
         // Принудительно читаем самые свежие данные перед рендером
@@ -724,7 +882,6 @@ export function renderTimetablePage() {
     // Вызываем сразу после объявления
     window.injectConsultationPairs();
 
-    // --- ОФОРМЛЕНИЕ ЗАГОЛОВКОВ ДНЕЙ (ДАТЫ), КНОПКИ "+" И ШЕРИНГА ---
     const dayHeaders = pageCtx.span9.querySelectorAll('.day h3');
     dayHeaders.forEach(header => {
         const text = header.textContent.trim();
@@ -805,7 +962,7 @@ export function renderTimetablePage() {
     // Вставляем кастомные пары до пересчета расписания
     if (window.injectCustomPairs) window.injectCustomPairs();
 
-    // --- ЛОГИКА ОПРЕДЕЛЕНИЯ ДЛИННЫХ СТРОК (ДЛЯ СДВИГА ПРЕПОДАВАТЕЛЯ) ---
+    // Помечает строки с длинной аудиторией или онлайн-ссылкой для адаптивного переноса.
     function markLongRows() {
         const isMobile = window.innerWidth <= 960;
         pageCtx.span9.querySelectorAll('.timetable-grid tr').forEach(row => {
@@ -825,7 +982,6 @@ export function renderTimetablePage() {
     }
     markLongRows();
 
-    // --- УМНЫЕ НАЗВАНИЯ НЕДЕЛЬ ---
     const weeksItems = pageCtx.span9.querySelectorAll('.weeks .week');
     weeksItems.forEach(w => {
         const link = w.querySelector('a');
@@ -847,14 +1003,11 @@ export function renderTimetablePage() {
         }
     });
 
-   // --- ПАРСИНГ АУДИТОРИЙ И ОБЪЕДИНЕНИЕ С ПРЕПОДАВАТЕЛЕМ ---
     pageCtx.span9.querySelectorAll('.pair_info .aud').forEach(aud => {
-        // 1. Сначала извлекаем и временно удаляем блок преподавателя
         const teacherWrap = aud.querySelector('.pair-teacher-wrap');
         let teacherWrapHtml = teacherWrap ? teacherWrap.outerHTML : '';
         if (teacherWrap) teacherWrap.remove();
 
-        // 2. Читаем чистый текст только самой аудитории
         let text = aud.innerHTML;
         const linkEl = aud.querySelector('a[href*="zoom"], a[href*="telemost"], a.btn-generic-online, a[href*="http"]');
 
@@ -904,11 +1057,9 @@ export function renderTimetablePage() {
             }
         }
 
-        // 3. Собираем обратно в одну строку
         aud.innerHTML = locHtml + teacherWrapHtml;
     });
 
-    // --- ПАРСИНГ ТИПА ПАРЫ (ЛЕК, ПРАКТ, ЛАБ, КОНС) ---
     pageCtx.span9.querySelectorAll('.timetable-grid tr').forEach(row => {
         // Пропускаем уже отформатированные DOCX консультации, кастомные и внешние события
         if (row.classList.contains('docx-consultation-row') || row.classList.contains('custom-pair-row') || row.classList.contains('external-event-row')) return;
@@ -970,7 +1121,7 @@ export function renderTimetablePage() {
     // Вызываем инъекцию DOCX перед основным пересчетом, чтобы они появились при первой загрузке!
     if (window.injectConsultationPairs) window.injectConsultationPairs();
 
-    // --- ЛОГИКА СКРЫТИЯ ПУСТЫХ ПАР И ОБРАБОТКИ ОКОН ---
+    // Пересчитывает видимые пары, окна, большие перемены и нумерацию в каждом дне.
     window.recalculateTimetable = function() {
         if (typeof unmergeDaysOff === 'function') unmergeDaysOff();
         const days = pageCtx.span9.querySelectorAll("div.day");
@@ -1216,7 +1367,7 @@ export function renderTimetablePage() {
         if (typeof updateLiveTimetable === 'function') updateLiveTimetable();
     }
 
-    // Экспортируем функцию скрытия дней наружу
+    // Скрывает или отображает выходные дни в зависимости от настройки пользователя.
     window.applyHideDaysOff = function() {
         if (typeof mergeConsecutiveDaysOff === 'function') {
             mergeConsecutiveDaysOff();
@@ -1245,9 +1396,11 @@ export function renderTimetablePage() {
         }
     };
 
-    // --- ЗАМЕТКИ И РЕДАКТОР ПАР ---
+    // Отрисовывает заметки, переопределения пар, отметки важности и кнопки редактирования.
     window.renderNotes = function() {
         let notesData = JSON.parse(localStorage.getItem('etis_subject_notes_v2') || '{"specific":{},"next_unbound":{}}');
+        let diaryTasksList = [];
+        try { diaryTasksList = JSON.parse(localStorage.getItem('etis_diary_tasks_v1') || '[]'); } catch (e) {}
         const seenSubjects = new Set();
         const allRowsArray = Array.from(document.querySelectorAll('.timetable-grid tr:not(.timetable-gap-row):not(.custom-no-pairs)'));
 
@@ -1447,7 +1600,11 @@ export function renderTimetablePage() {
             }
             seenSubjects.add(cleanSubjectName);
 
-            const currentNote = notesData.specific[pairId] || '';
+            let currentNote = notesData.specific[pairId] || '';
+            if (currentNote && Array.isArray(diaryTasksList)) {
+                const isCompletedTask = diaryTasksList.some(t => t && t.completed && t.pairId === pairId && t.title === currentNote);
+                if (isCompletedTask) currentNote = '';
+            }
 
             let isPassed = false;
             if (dayDateStr !== 'UnknownDate') {
@@ -1613,6 +1770,7 @@ export function renderTimetablePage() {
         });
     }
 
+    // Внедряет события из разобранного внешнего ICS-календаря в сетку расписания.
     function injectExternalEvents(parsedEvents, calColor) {
         let injectedAnything = false;
         const days = pageCtx.span9.querySelectorAll("div.day");
@@ -1824,7 +1982,6 @@ export function renderTimetablePage() {
         }
     }
 
-    // Запуск логики
     if (window.loadExternalCalendar) window.loadExternalCalendar();
 
     updateLiveTimetable();

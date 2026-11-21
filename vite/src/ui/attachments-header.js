@@ -25,6 +25,7 @@ export const updateAttachmentsScrollMask = (el) => {
     el.style.setProperty('mask-image', mask, 'important');
 };
 
+// Инициализирует обработчики прокрутки для затухания списка вложений
 export const initAttachmentsScrollFade = (el) => {
     if (!el) return;
     el.addEventListener('scroll', () => updateAttachmentsScrollMask(el), { passive: true });
@@ -59,9 +60,7 @@ export const adjustHeaderLayout = (header) => {
     const dateWidth = dateWrapper ? dateWrapper.scrollWidth : dateText.scrollWidth;
     const headerGap = 16;
 
-    // Если не влезает в одну строку
     if (totalSenderWidth + dateWidth + headerGap > availableWidth) {
-        // Шаг 1: сокращаем дату
         dateText.textContent = shortDate;
 
         // Если всё ещё не влезает и имя длиннее 25 символов — обрезаем имя

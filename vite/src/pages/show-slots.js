@@ -1,5 +1,6 @@
 import { pageCtx } from '../app/context.js';
 
+// Оформляет таблицу учебного периода, правила и форму выбора слотов
 export function renderShowSlotsPage() {
     const h2 = pageCtx.span9.querySelector('h2');
     if (h2 && h2.textContent.includes('Прикладная')) {
@@ -7,10 +8,8 @@ export function renderShowSlotsPage() {
         h2.style.marginBottom = '2.4rem';
     }
 
-    // 2. Ремонтируем и стилизуем таблицу
     const table = pageCtx.span9.querySelector('table.common');
     if (table) {
-        // Удаляем первый <th> и <td> в каждой строке
         table.querySelectorAll('tr').forEach(row => {
             if (row.children.length > 0) {
                 row.children[0].remove();
@@ -25,7 +24,6 @@ export function renderShowSlotsPage() {
         table.parentNode.insertBefore(wrapper, table);
         wrapper.appendChild(table);
 
-        // Убираем дефолтные рамки
         table.style.boxShadow = 'none';
         table.style.border = 'none';
         table.style.minWidth = '600px';
@@ -48,7 +46,6 @@ export function renderShowSlotsPage() {
             }
         });
 
-        // Умная раскраска капсул по прогрессу посещений
         table.querySelectorAll('td[onclick]').forEach(td => {
             const text = td.textContent.trim();
             if (text && text !== '-') {
@@ -64,10 +61,10 @@ export function renderShowSlotsPage() {
                         bg = 'var(--color-highlight)';
                         color = 'var(--color-text-primary)';
                     } else if (current >= total) {
-                        bg = 'rgba(52, 199, 89, 0.15)'; // Зеленый - выполнено
+                        bg = 'rgba(52, 199, 89, 0.15)';
                         color = 'var(--color-green)';
                     } else {
-                        bg = 'rgba(0, 122, 255, 0.15)'; // Синий - в процессе
+                        bg = 'rgba(0, 122, 255, 0.15)';
                         color = 'var(--color-blue)';
                     }
                 }
@@ -86,7 +83,6 @@ export function renderShowSlotsPage() {
         });
     }
 
-    // 3. Стилизуем подзаголовок перед правилами
     const h4 = pageCtx.span9.querySelector('h4');
     if (h4) {
         const newH3 = document.createElement('h3');
@@ -98,10 +94,8 @@ export function renderShowSlotsPage() {
         h4.replaceWith(newH3);
     }
 
-    // Ищем блоки текста
     const textDivs = Array.from(pageCtx.span9.querySelectorAll('div[style*="padding:10px 20px"]'));
 
-    // 4. Оформляем блок инструкций
     if (textDivs.length > 0) {
         const rulesDiv = textDivs[0];
         rulesDiv.classList.add('info-block-anim');
@@ -144,7 +138,6 @@ export function renderShowSlotsPage() {
         }
     }
 
-    // 5. Оформляем форму (нижняя карточка)
     const formDiv = textDivs[1] || pageCtx.span9.querySelector('form')?.parentElement;
     if (formDiv && formDiv.querySelector('form')) {
         formDiv.removeAttribute('style');
@@ -216,7 +209,6 @@ export function renderShowSlotsPage() {
         }
     }
 
-    // Чистим мусорные <br>, чтобы не было лишних пустых пространств
     Array.from(pageCtx.span9.childNodes).forEach(node => {
         if (node.tagName === 'BR') node.remove();
     });

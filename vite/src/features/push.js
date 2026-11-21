@@ -1,8 +1,9 @@
 import { addNotificationToHistory } from './notifications.js';
 
-// --- ГЛОБАЛЬНАЯ СИСТЕМА УВЕДОМЛЕНИЙ ---
+// Корневой контейнер для всплывающих push-уведомлений
 let pushContainer = document.getElementById('etis-push-container');
 
+// Инициализация контейнера для push-уведомлений в DOM
 export function setupPushContainer() {
     if (!pushContainer) {
         pushContainer = document.createElement('div');
@@ -12,6 +13,7 @@ export function setupPushContainer() {
     }
 }
 
+// Отображение всплывающего push-уведомления с опциональным сохранением в историю
 export const showPush = (title, subject, body, type = 'info', icon = 'notifications', onClick = null, targetUrl = null, saveToHistory = true) => {
     if (saveToHistory && title !== 'Напоминание создано' && icon !== 'alarm_on') {
         try {
@@ -60,6 +62,7 @@ export const showPush = (title, subject, body, type = 'info', icon = 'notificati
     }, 8000);
 };
 
+// Экспорт функции показа push-уведомлений в глобальную область
 export function exposePush() {
     window.showEtisPush = showPush;
 }

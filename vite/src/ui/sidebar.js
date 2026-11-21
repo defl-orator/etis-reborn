@@ -11,6 +11,7 @@ import { getIconForHref } from './mobile-menu.js';
 import { getDirectionIcon } from '../utils/direction-icons.ts';
 import { getSearchShortcutText } from '../utils/platform.ts';
 
+// Инициализирует переработанное боковое меню, папки, пасхалку и мобильную навигацию
 export function initSidebar() {
     const sidebar = document.querySelector("div.span3");
     if (sidebar) {
@@ -97,7 +98,6 @@ export function initSidebar() {
             updateBellCounter();
         }
 
-        // --- ЛОГИКА ПАСХАЛКИ ЛОГОТИПА ---
         const logoContainer = sidebar.querySelector('.sidebar-logo');
         const logoImg = sidebar.querySelector('.sidebar-logo img');
         const logoBrand = sidebar.querySelector('.sidebar-logo-brand') || logoImg;
@@ -183,7 +183,6 @@ export function initSidebar() {
 
                 if (e.target.closest('#sidebar-notifications-btn')) return;
 
-                // 1. Анимация поворота
                 clearTimeout(rotateTimer);
                 const angle = isRotateLeft ? -30 : 30;
                 logoImg.style.setProperty('transform', `rotate(${angle}deg) scale(1.15)`, 'important');
@@ -194,7 +193,6 @@ export function initSidebar() {
 
                 isRotateLeft = !isRotateLeft;
 
-                // 2. Счётчик тапов
                 clickCounter++;
 
                 clearTimeout(resetTimer);
@@ -203,7 +201,6 @@ export function initSidebar() {
                     heyLabel.classList.remove('active');
                 }, 3500);
 
-                // 3. Срабатывание каждые 10 тапов
                 if (clickCounter % 10 === 0 && clickCounter > 0) {
                     localStorage.setItem('etis_easter_egg_found', 'true');
                     if (navigator.vibrate) navigator.vibrate(20);
@@ -260,7 +257,7 @@ export function initSidebar() {
             };
         }
 
-        // --- АНТИ-БЛОКИРОВКА ЕТИСА: ВОССТАНОВЛЕНИЕ ССЫЛОК МЕНЮ ---
+        // Восстановление ссылок меню при блокировках ЕТИС
         const textToHrefMap = {
             'мой учебный план': 'stu.teach_plan',
             'элективы': 'ebl_stu.ebl_choice',
@@ -303,7 +300,6 @@ export function initSidebar() {
             }
         });
 
-        // 4. ПОДГОТОВКА ВСЕХ ЭЛЕМЕНТОВ
         const allNavs = sidebar.querySelectorAll('ul.nav.nav-tabs.nav-stacked');
         const mainNav = allNavs[0];
         let allListItems = [];
@@ -519,7 +515,6 @@ export function initSidebar() {
             chevronSpan.textContent = 'chevron_right';
             a.appendChild(chevronSpan);
 
-            // --- БЕЗОПАСНОЕ ОБНОВЛЕНИЕ БЕЗ ПАРАМЕТРОВ ---
             if (allowedDotHrefs.some(target => href.includes(target))) {
                 a.onclick = function(e) {
                     if (window.location.href.includes(href)) {
@@ -535,7 +530,6 @@ export function initSidebar() {
             if (mobileBtn) mobileBtn.classList.add('has-updates');
         }
 
-        // 5. ГРУППИРОВКА И СОРТИРОВКА С МИНИМАЛИСТИЧНЫМИ ПАПКАМИ
         mainNav.innerHTML = '';
 
         const STANDALONE_ITEMS = ['teach_plan', 'timetable', 'signs'];
@@ -773,12 +767,14 @@ export function initSidebar() {
             mainNav.appendChild(rebornGroup);
         }
 
+        // Определяет, отображается ли сейчас мобильная версия интерфейса
         const checkIsMobileScreen = () => {
             return (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) ||
                    (window.matchMedia && window.matchMedia('(max-width: 960px)').matches) ||
                    (window.innerWidth <= 960);
         };
 
+        // Обновляет заголовок, иконку и активный статус папки меню
         const updateFolderHeaderState = (folder) => {
             const header = folder.querySelector('.sidebar-folder-header');
             if (!header) return;
@@ -821,7 +817,7 @@ export function initSidebar() {
             }
         };
 
-        // Обработчики кликов по папкам (на мобилке — открытие отдельной вкладки, на ПК — плавное раскрытие)
+        // Открывает содержимое выбранной папки на отдельном экране мобильной шторки
         const openMobileSubView = (folderId) => {
             const groupDef = COLLAPSIBLE_GROUPS.find(g => g.id === folderId);
             if (!groupDef) return;
@@ -924,7 +920,7 @@ export function initSidebar() {
             });
         });
 
-        // Функция синхронизации точек на заголовках папок
+        // Синхронизирует точки непрочитанных уведомлений на заголовках папок
         window.updateFolderBadges = function() {
             document.querySelectorAll('.sidebar-folder').forEach(folder => {
                 const header = folder.querySelector('.sidebar-folder-header');

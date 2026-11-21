@@ -1,6 +1,65 @@
 import { pageCtx } from '../app/context.js';
 import { escapeHTML } from '../utils/security.ts';
 
+// Возвращает сохранённых из расписания преподавателей и типы занятий для указанной дисциплины
+function getCachedTeachersForSubject(subjectName) {
+    if (!subjectName) return [];
+    const normalized = subjectName.replace(/«|»/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
+    if (!normalized) return [];
+    try {
+        const map = JSON.parse(localStorage.getItem('etis_subject_teachers_v1') || '{}');
+        if (!map || typeof map !== 'object') return [];
+        const direct = map[normalized];
+        if (!Array.isArray(direct)) return [];
+        const merged = new Map();
+        direct.forEach(item => {
+            const rawName = typeof item === 'string' ? item : item?.name;
+            const name = (rawName || '')
+                .replace(/[\u200B-\u200D\uFEFF]/g, '')
+                .replace(/оценить|занятие/gi, '')
+                .replace(/\s+/g, ' ')
+                .trim();
+            if (!name) return;
+            const dedupeKey = name.replace(/\.\s*/g, '.').toLowerCase();
+            const types = Array.isArray(item?.types) ? item.types : [];
+            if (!merged.has(dedupeKey)) {
+                merged.set(dedupeKey, { name, types: new Set() });
+            }
+            const entry = merged.get(dedupeKey);
+            types.forEach(t => { if (t) entry.types.add(t); });
+        });
+        return Array.from(merged.values()).map(({ name, types }) => ({
+            name,
+            types: Array.from(types)
+        }));
+    } catch (e) {
+        return [];
+    }
+}
+
+// Формирует HTML бейджей типов занятий (как во вкладке преподавателей)
+function renderTypeBadges(types) {
+    if (!Array.isArray(types) || types.length === 0) return '';
+    const orderedTypes = ['экзамен', 'зачет', 'зачёт', 'лек', 'практ', 'лаб'];
+    const sorted = [...new Set(types.map(t => String(t).trim().toLowerCase()).filter(Boolean))].sort((a, b) => {
+        const ia = orderedTypes.indexOf(a);
+        const ib = orderedTypes.indexOf(b);
+        return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    });
+
+    return sorted.map(t => {
+        let bg = 'var(--color-highlight)';
+        let color = 'var(--color-text-secondary)';
+        if (t === 'лек') { bg = 'rgba(0, 122, 255, 0.12)'; color = 'var(--color-blue)'; }
+        else if (t === 'практ') { bg = 'rgba(52, 199, 89, 0.12)'; color = 'var(--color-green)'; }
+        else if (t === 'лаб') { bg = 'rgba(255, 149, 0, 0.12)'; color = 'var(--color-warning)'; }
+        else if (t === 'зачет' || t === 'зачёт') { bg = 'rgba(85, 197, 209, 0.15)'; color = '#008B8B'; }
+        else if (t === 'экзамен') { bg = 'rgba(175, 82, 222, 0.15)'; color = '#AF52DE'; }
+        return `<span style="background: ${bg}; color: ${color}; padding: 0 1rem; border-radius: 50px; font-size: 1.05rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; height: 2.2rem; line-height: 1;">${escapeHTML(t)}</span>`;
+    }).join('');
+}
+
+// Оформляет страницу темы или УМК дисциплины с карточками разделов и критериев оценивания
 export function renderThemePage() {
     const topBar = document.createElement('div');
     topBar.style.cssText = 'display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2.4rem; flex-wrap: wrap; width: 100%; box-sizing: border-box;';
@@ -25,7 +84,6 @@ export function renderThemePage() {
     }
     pageCtx.span9.prepend(topBar);
 
-    // 1. Оформляем заголовок дисциплины / темы
     const h2 = pageCtx.span9.querySelector('h2');
     if (h2) {
         const heroCard = document.createElement('div');
@@ -33,7 +91,13 @@ export function renderThemePage() {
         heroCard.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2.4rem 2.4rem 2rem 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);';
 
         const parts = h2.innerHTML.split(/<br\s*\/?>/i);
+        let isUmkPage = false;
+        let subjectTitle = '';
+
         if (parts.length > 1) {
+            const labelText = parts[0].replace(/<[^>]+>/g, '').replace(/«/g, '').replace(/»/g, '').trim();
+            subjectTitle = parts[1].replace(/<[^>]+>/g, '').replace(/«/g, '').replace(/»/g, '').trim();
+            isUmkPage = labelText.toLowerCase().includes('учебно-методический комплекс');
             heroCard.innerHTML = `
                                     <div style="font-size: 1.2rem; color: var(--color-accent); font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.8rem;">
                                         ${parts[0].replace(/«/g, '').replace(/»/g, '').trim()}
@@ -48,22 +112,58 @@ export function renderThemePage() {
             if (text.toLowerCase().startsWith('тема')) {
                 badgeLabel = 'Тема';
                 text = text.replace(/^Тема\s*/i, '');
+            } else {
+                isUmkPage = true;
+                text = text.replace(/^Учебно-методический\s+комплекс\s+по\s+дисциплине\s*/i, '');
             }
+            subjectTitle = text.replace(/«/g, '').replace(/»/g, '').trim();
             heroCard.innerHTML = `
                                     <div style="font-size: 1.2rem; color: var(--color-accent); font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 0.8rem;">
                                         ${badgeLabel}
                                     </div>
                                     <div style="font-size: 2.2rem; font-weight: 800; line-height: 1.3; color: var(--color-text-primary);">
-                                        ${text.replace(/«/g, '').replace(/»/g, '').trim()}
+                                        ${subjectTitle}
                                     </div>
                                 `;
         }
+
         h2.replaceWith(heroCard);
+
+        const teachers = isUmkPage ? getCachedTeachersForSubject(subjectTitle) : [];
+        if (teachers.length > 0) {
+            const teachersCard = document.createElement('div');
+            teachersCard.className = 'tpr-card';
+            teachersCard.style.cssText = 'background: var(--color-card); border-radius: var(--radius-large); padding: 2rem 2.4rem; box-shadow: var(--shadow-main); margin-bottom: 2.4rem; border: 1px solid var(--color-table-border);';
+            const titleText = teachers.length > 1 ? 'Преподаватели' : 'Преподаватель';
+            const rowsHtml = teachers.map((t, idx) => {
+                const badgesHtml = renderTypeBadges(t.types);
+                const borderStyle = idx > 0 ? 'border-top: 1px solid var(--color-table-border); padding-top: 1.2rem; margin-top: 1.2rem;' : '';
+                return `
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; ${borderStyle}">
+                        <div style="display: inline-flex; align-items: center; gap: 10px; font-size: 1.45rem; font-weight: 700; color: var(--color-text-primary);">
+                            <span class="material-icons" style="font-size: 2rem; color: var(--color-accent);">person</span>
+                            <span>${escapeHTML(t.name)}</span>
+                        </div>
+                        ${badgesHtml ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">${badgesHtml}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            teachersCard.innerHTML = `
+                <div class="tpr-card-header" style="margin-bottom: 1.4rem;">
+                    <div class="tpr-card-title">
+                        <span class="material-icons">groups</span>
+                        <span>${titleText}</span>
+                    </div>
+                </div>
+                <div>${rowsHtml}</div>
+            `;
+            heroCard.insertAdjacentElement('afterend', teachersCard);
+        }
     }
 
     pageCtx.span9.querySelectorAll(':scope > br').forEach(br => br.remove());
 
-    // 2. Оформление списка тем (.themes)
     const themesContainer = pageCtx.span9.querySelector('.themes');
     if (themesContainer) {
         const themesCard = document.createElement('div');
@@ -144,7 +244,7 @@ export function renderThemePage() {
         themesContainer.replaceWith(themesCard);
     }
 
-    // --- ТРАНСФОРМЕР ТАБЛИЦ ОЦЕНИВАНИЯ ---
+    // Преобразует таблицу критериев оценивания в список карточек с цветовыми бейджами
     const transformIndicatorsTable = (table) => {
         const listContainer = document.createElement('div');
         listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 0.8rem; margin-top: 0.8rem; margin-bottom: 0 !important; width: 100%; box-sizing: border-box;';
@@ -176,7 +276,6 @@ export function renderThemePage() {
             let bg = 'var(--color-highlight)';
             let color = 'var(--color-text-primary)';
 
-            // 1. Числовые баллы
             if (!isNaN(numVal) && maxScoreVal !== null && minScoreVal !== null && maxScoreVal !== minScoreVal) {
                 display = String(numVal);
                 if (numVal === maxScoreVal) {
@@ -190,7 +289,7 @@ export function renderThemePage() {
                     color = 'var(--color-blue)';
                 }
             }
-            // 2. Словесные оценки (неуд проверяется первым)
+            // Словесные оценки (неуд проверяется первым)
             else if (s.includes('неуд') || s.includes('незач') || s === '2' || s === '0') {
                 display = s.includes('незач') ? 'Незачет' : '2';
                 bg = 'rgba(255, 59, 48, 0.15)';
@@ -230,7 +329,6 @@ export function renderThemePage() {
         return listContainer;
     };
 
-    // 3. Упаковка H3 секций
     const h3List = Array.from(pageCtx.span9.querySelectorAll('h3'));
 
     h3List.forEach(h3 => {
@@ -249,8 +347,6 @@ export function renderThemePage() {
             return;
         }
 
-        // === СПЕЦИАЛЬНАЯ ОБРАБОТКА "ПЛАНИРУЕМЫЙ РЕЗУЛЬТАТ ОБУЧЕНИЯ" ===
-        // Заменяем единый блок на отдельные карточки под каждый результат
         if (titleLower.includes('результат') || titleLower.includes('планируем')) {
             const el = sectionElements.find(e => e.classList?.contains('tpr_part') || e.querySelector?.('table'));
             if (el) {
@@ -268,7 +364,6 @@ export function renderThemePage() {
                         const table = outcomeDiv.querySelector('table');
                         const transformedCards = table ? transformIndicatorsTable(table) : null;
 
-                        // Создаём отдельную полноценную карточку под результат
                         const outcomeCard = document.createElement('div');
                         outcomeCard.className = 'tpr-card';
                         outcomeCard.style.cssText = 'padding: 2.4rem 2.4rem 2rem 2.4rem;';
@@ -284,7 +379,6 @@ export function renderThemePage() {
                         const cardBody = document.createElement('div');
                         cardBody.style.cssText = 'display: flex; flex-direction: column; width: 100%; box-sizing: border-box; font-size: 1.35rem; line-height: 1.6; color: var(--color-text-primary); margin: 0; padding: 0;';
 
-                        // Описание результата чистым текстом прямо под шапкой (без рамок)
                         if (lines.length > 0) {
                             const descEl = document.createElement('div');
                             descEl.style.cssText = 'font-size: 1.35rem; line-height: 1.6; color: var(--color-text-primary); text-align: left; margin-bottom: 1.2rem;';
@@ -292,7 +386,6 @@ export function renderThemePage() {
                             cardBody.appendChild(descEl);
                         }
 
-                        // Подзаголовок критериев оценивания
                         const criteriaHeader = document.createElement('div');
                         criteriaHeader.style.cssText = 'display: flex; align-items: center; gap: 8px; font-size: 1.35rem; font-weight: 800; color: var(--color-text-primary); margin-top: 0.4rem; margin-bottom: 0.8rem; text-align: left;';
                         criteriaHeader.innerHTML = `
@@ -301,7 +394,6 @@ export function renderThemePage() {
                                             `;
                         cardBody.appendChild(criteriaHeader);
 
-                        // Карточки с баллами
                         if (transformedCards) {
                             cardBody.appendChild(transformedCards);
                         }
@@ -321,7 +413,6 @@ export function renderThemePage() {
             }
         }
 
-        // Для всех остальных секций (Трудоемкость, Аннотация, Контроль и т.д.)
         let iconName = 'category';
         if (titleLower.includes('показател') || titleLower.includes('шкал')) iconName = 'fact_check';
         else if (titleLower.includes('контрол') || titleLower.includes('оцен')) iconName = 'fact_check';
@@ -358,7 +449,6 @@ export function renderThemePage() {
                 }
             });
 
-            // Стилизация блока "Контроль"
             if (titleLower.includes('контрол')) {
                 const ctlHoursEl = el.querySelector('.ctl_hours');
                 let hoursText = ctlHoursEl ? ctlHoursEl.textContent.trim() : '';
@@ -445,7 +535,6 @@ export function renderThemePage() {
                 });
             }
 
-            // Преобразование таблиц с критериями
             const tables = Array.from(el.querySelectorAll('table'));
             if (el.tagName === 'TABLE') tables.push(el);
 
@@ -456,7 +545,6 @@ export function renderThemePage() {
                 }
             });
 
-            // Обычные таблицы оборачиваем в скролл
             el.querySelectorAll?.('table').forEach(table => {
                 table.removeAttribute('style');
                 table.removeAttribute('width');
@@ -486,7 +574,6 @@ export function renderThemePage() {
                 return;
             }
 
-            // Блок "Трудоемкость"
             if (titleLower.includes('трудоемкост')) {
                 el.querySelectorAll('div').forEach(child => {
                     const text = child.textContent.trim();
@@ -515,7 +602,6 @@ export function renderThemePage() {
                 });
             }
 
-            // Плашки баллов
             if (titleLower.includes('контрол') || titleLower.includes('оцен')) {
                 let passScore = '', maxScore = '', ratingScore = '';
                 let passEl = null, maxEl = null, ratingEl = null;
@@ -561,7 +647,6 @@ export function renderThemePage() {
             cardBody.appendChild(el);
         });
 
-        // Выравнивание нижнего отступа у карточки
         while (cardBody.lastChild && (cardBody.lastChild.tagName === 'BR' || (cardBody.lastChild.nodeType === Node.TEXT_NODE && !cardBody.lastChild.textContent.trim()))) {
             cardBody.lastChild.remove();
         }

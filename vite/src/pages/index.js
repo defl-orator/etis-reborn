@@ -28,6 +28,7 @@ import { renderTimetablePage } from './timetable/index.js';
 import { renderVisitsJournalPage } from './visits-journal.js';
 import { renderVisitsPairPage } from './visits-pair.js';
 
+// Карта соответствия идентификаторов страниц ЕТИСа их обработчикам
 const handlers = new Map([
     ['stu.teach_plan', renderTeachPlanPage],
     ['stu.fcl_choice', renderTeachPlanPage],
@@ -69,6 +70,7 @@ const handlers = new Map([
     ['stu.absence', renderAbsencePage],
 ]);
 
+// Запускает обработчик оформления для текущей страницы
 export function runPageHandler(page) {
     const handler = handlers.get(page);
     if (handler) handler();

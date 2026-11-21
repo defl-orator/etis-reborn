@@ -89,10 +89,9 @@
         display: flex !important;
         flex-direction: column !important;
         flex: 1 1 auto !important;
-        min-height: 100% !important;
     }
     .span3 .sidebar-footer {
-        margin-top: auto !important;
+        margin-top: 1.2rem !important;
         padding: 1.6rem 2.6rem !important;
     }
 }

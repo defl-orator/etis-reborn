@@ -2,6 +2,7 @@ import { addNotificationToHistory } from './notifications.js';
 import { openDiaryModal } from '../modals/diary.js';
 import { saveSyncData } from '../sync/data.js';
 
+// Проверка наступления напоминаний по активным дедлайнам дневника
 export function checkDiaryReminders() {
     const tasks = JSON.parse(localStorage.getItem('etis_diary_tasks_v1') || '[]');
     if (tasks.length === 0) return;

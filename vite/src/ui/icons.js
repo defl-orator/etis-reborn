@@ -1,8 +1,10 @@
 import { ICON_MAP } from './icon-map.js';
 
+// Селектор целевых элементов и кэш предупреждений о неизвестных иконках
 const SEL = '.material-icons, .material-symbols-rounded';
 const warned = new Set();
 
+// Преобразует имя Material Icons в имя иконки Phosphor
 const toPh = (name) => {
     if (ICON_MAP[name]) return ICON_MAP[name];
     if (!warned.has(name)) {
@@ -12,6 +14,7 @@ const toPh = (name) => {
     return name.replace(/_/g, '-');
 };
 
+// Заменяет текстовое имя иконки внутри элемента на тег <i class="ph">
 function upgrade(el) {
     if (!el || el.nodeType !== 1) return;
     const textNode = Array.from(el.childNodes).find(n => n.nodeType === 3 && n.nodeValue.trim());
@@ -37,12 +40,14 @@ function upgrade(el) {
     el.classList.add('ph-ready');
 }
 
+// Сканирует DOM-узел и преобразует все найденные иконки
 function scan(node) {
     if (!node || node.nodeType !== 1) return;
     if (node.matches(SEL)) upgrade(node);
     node.querySelectorAll(SEL).forEach(upgrade);
 }
 
+// Запускает замену иконок и отслеживает динамические изменения DOM
 export function iconsBoot() {
     const mo = new MutationObserver(muts => {
         for (const m of muts) {

@@ -1,3 +1,4 @@
+// Названия месяцев в родительном падеже и в сокращённом виде
 const monthsGenitive = [
     'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
     'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
@@ -8,6 +9,7 @@ const monthsShort = [
     'июля', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'
 ];
 
+// Форматирует дату ЕТИС в читаемый вид (год добавляется только если не текущий)
 export function formatEtisDate(rawStr: string | null | undefined): string {
     if (!rawStr) return '';
     const match = rawStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})(?:\s+(\d{1,2}:\d{2}(?::\d{2})?))?/);
@@ -28,6 +30,7 @@ export function formatEtisDate(rawStr: string | null | undefined): string {
     return time ? `${day} ${monthStr} ${year}, ${time}` : `${day} ${monthStr} ${year}`;
 }
 
+// Форматирует дату ЕТИС в короткий вид с сокращённым месяцем
 export function formatEtisDateShort(rawStr: string | null | undefined): string {
     if (!rawStr) return '';
     const match = rawStr.match(/(\d{1,2})\.(\d{1,2})\.(\d{2,4})(?:\s+(\d{1,2}:\d{2}(?::\d{2})?))?/);

@@ -1,5 +1,6 @@
 import { safeAppend } from '../styles/inject.js';
 
+// Создаёт SVG-треугольник для всплывающей подсказки оценки
 function createTooltipTriangle() {
     const xmlns = 'http://www.w3.org/2000/svg'
 
@@ -18,6 +19,7 @@ function createTooltipTriangle() {
     return svg
 }
 
+// Добавляет или обновляет мета-тег viewport для адаптивной вёрстки
 export function addViewport() {
     let meta = document.querySelector('meta[name="viewport"]');
     if (!meta) {

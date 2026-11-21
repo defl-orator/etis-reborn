@@ -1,5 +1,6 @@
 import { pageCtx } from '../../app/context.js';
 
+// Оформляет страницу итогового рейтинга студентов и преобразует позиции в цветные капсулы.
 export function renderRatingSigns() {
     if (pageCtx.pageMode === 'rating') {
         // Скрываем капсулу выбора периода, если доступен только 1 семестр/триместр
@@ -15,13 +16,11 @@ export function renderRatingSigns() {
         const allTables = pageCtx.span9.querySelectorAll('table.common');
         let ratingTable = null;
 
-        // Ищем таблицу рейтинга по заголовку
         allTables.forEach(t => {
             if (t.textContent.includes('Совокупность студентов')) ratingTable = t;
         });
 
         if (ratingTable) {
-            // Оборачиваем для скролла
             if (!ratingTable.parentNode.classList.contains('wide-table-wrapper')) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'wide-table-wrapper';
@@ -36,7 +35,6 @@ export function renderRatingSigns() {
 
             const dataRows = Array.from(ratingTable.querySelectorAll('tbody tr:not(:has(th)), tr:has(td)'));
 
-            // Если в таблице рейтинга нет строк
             if (dataRows.length === 0) {
                 const tbody = ratingTable.querySelector('tbody') || ratingTable;
                 const emptyTr = document.createElement('tr');
@@ -50,7 +48,6 @@ export function renderRatingSigns() {
                                     `;
                 tbody.appendChild(emptyTr);
             } else {
-                // --- ОФОРМЛЕНИЕ ЧИСЕЛ В КАПСУЛЫ (ИЛИ "НЕИЗВЕСТНО") ---
                 ratingTable.querySelectorAll('tr').forEach(row => {
                     const cells = row.querySelectorAll('td');
                     if (cells.length >= 2) {
@@ -58,7 +55,6 @@ export function renderRatingSigns() {
                         const text = ratingCell.textContent.trim();
                         const match = text.match(/(\d+)\s+из\s+(\d+)/);
 
-                        // Если место в рейтинге сформировано и корректно
                         if (match && parseInt(match[1], 10) > 0 && parseInt(match[2], 10) > 0) {
                             const current = parseInt(match[1], 10);
                             const total = parseInt(match[2], 10);
@@ -75,7 +71,6 @@ export function renderRatingSigns() {
 
                             ratingCell.innerHTML = `<span style="background: ${bg}; color: ${color}; padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.3rem; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; pointer-events: none;">${text}</span>`;
                         } else {
-                            // Если рейтинга нет, прочерк, 0 из 0 или не сформирован
                             ratingCell.innerHTML = `<span style="background: rgba(142, 142, 147, 0.15); color: var(--color-text-secondary); padding: 0.5rem 1.2rem; border-radius: 50px; font-weight: 800; font-size: 1.2rem; display: inline-flex; align-items: center; justify-content: center; white-space: nowrap; pointer-events: none;">Неизвестно</span>`;
                         }
                         ratingCell.style.textAlign = 'right';
@@ -84,7 +79,6 @@ export function renderRatingSigns() {
                 });
             }
 
-            // --- ОФОРМЛЕНИЕ ТЕКСТА СНИЗУ ---
             const footerP = pageCtx.span9.querySelector('p');
             if (footerP && footerP.textContent.includes('Показанные здесь оценки')) {
                 const infoBox = document.createElement('div');

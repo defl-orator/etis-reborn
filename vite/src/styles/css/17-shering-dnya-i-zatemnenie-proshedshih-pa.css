@@ -15,12 +15,14 @@
     overflow: hidden;
     transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-.timetable-grid tr.pair-passed td {
+.timetable-grid tr.pair-passed td.pair_num,
+.timetable-grid tr.pair-passed td:not(.pair_num) > * {
     opacity: 0.45;
     transition: opacity 0.3s ease;
 }
 @media (hover: hover) and (pointer: fine) {
-    .timetable-grid tr.pair-passed:hover td {
+    .timetable-grid tr.pair-passed:hover td.pair_num,
+    .timetable-grid tr.pair-passed:hover td:not(.pair_num) > * {
         opacity: 0.9 !important;
     }
     .span9 .day h3:hover .share-day-btn {

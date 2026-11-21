@@ -1,5 +1,6 @@
 import { pageCtx } from '../app/context.js';
 
+// Оформляет страницу «О системе»
 export function renderAboutPage() {
     pageCtx.span9.querySelectorAll('h3').forEach(h => h.remove());
     const aboutContainer = pageCtx.span9.querySelector('.text');

@@ -8,15 +8,18 @@ export const EXT_CAL_COLORS =[
     { hex: '#FF5722', bg: 'rgba(255, 87, 34, 0.15)' }    // Оранжевый
 ];
 
+// Выбор случайного цвета из палитры внешних календарей
 export function getRandomExtColor() {
     return EXT_CAL_COLORS[Math.floor(Math.random() * EXT_CAL_COLORS.length)].hex;
 }
 
+// Получение полупрозрачного фона по HEX-цвету внешнего календаря
 function getExtColorBg(hex) {
     const colorObj = EXT_CAL_COLORS.find(c => c.hex === hex);
     return colorObj ? colorObj.bg : 'rgba(175, 82, 222, 0.15)';
 }
 
+// Миграция старых строковых URL календарей в объекты с цветом
 export function migrateExternalCals() {
     let cals = JSON.parse(localStorage.getItem('etis_external_cals_v2') || '[]');
     if (cals.length > 0 && typeof cals[0] === 'string') {

@@ -1,7 +1,4 @@
-// ==========================================
-// БАЗОВЫЕ УТИЛИТЫ БЕЗОПАСНОСТИ И ПАМЯТИ
-// ==========================================
-
+// Эталонные SRI-хэши внешних библиотек для защиты от подмены
 const SRI_HASHES: Record<string, string> = {
     'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js': 
         'sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU',
@@ -16,6 +13,7 @@ const SRI_HASHES: Record<string, string> = {
         'sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG'
 };
 
+// Применяет SRI-хэш и CORS-атрибут к тегу <script> при наличии в белом списке
 export function applySri(scriptEl: HTMLScriptElement): void {
     const h = SRI_HASHES[scriptEl.src];
     if (h) {
@@ -24,6 +22,7 @@ export function applySri(scriptEl: HTMLScriptElement): void {
     }
 }
 
+// Экранирует HTML-спецсимволы для защиты от XSS
 export function escapeHTML(str: string | number | null | undefined): string {
     if (str === null || str === undefined) return '';
     return String(str)

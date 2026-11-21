@@ -1,3 +1,4 @@
+// HTML-шаблоны страниц для оффлайн- и демо-режима
 import timetable from './html/timetable.html?tpl';
 export const DEMO_TIMETABLE_HTML = timetable;
 

@@ -8,6 +8,7 @@ import { renderSessionSigns } from './session.js';
 import { saveSyncData } from '../../sync/data.js';
 import { getTermWord } from '../../utils/term-system.ts';
 
+// Точка входа страницы оценок: очищает таблицы, запускает рендер разделов и отслеживает новые оценки.
 export function renderSignsPage() {
     if (!document.getElementById('etis-reborn-grades-tooltip-css')) {
         const css = document.createElement('style');
@@ -54,9 +55,7 @@ export function renderSignsPage() {
         document.head.appendChild(css);
     }
 
-    // УНИФИКАЦИЯ ПОДМЕНЮ
     pageCtx.span9.querySelectorAll('.submenu').forEach(menu => {
-        // Определяем тип периода (семестр или триместр) на основе текста вкладок
         let termType = getTermWord('nom_sg');
 
         Array.from(menu.children).forEach(child => {
@@ -76,7 +75,6 @@ export function renderSignsPage() {
         });
     });
 
-    // ГЛОБАЛЬНАЯ ОЧИСТКА ТАБЛИЦ
     pageCtx.span9.querySelectorAll('table.common').forEach(table => {
         table.removeAttribute('width');
         table.style.width = "100%";
@@ -91,19 +89,11 @@ export function renderSignsPage() {
         });
     });
 
-    // ОБРАБОТКА "ОЦЕНКИ ЗА СЕССИИ"
     renderSessionSigns();
-
-    // ОБРАБОТКА "ОЦЕНКИ В ТРИМЕСТРЕ"
     renderCurrentSigns();
-
-    // ОБРАБОТКА "ОЦЕНКИ В ДИПЛОМ"
     renderDiplomSigns();
-
-    // ОБРАБОТКА "ИТОГОВЫЙ РЕЙТИНГ"
     renderRatingSigns();
 
-    // --- ЛОГИКА УВЕДОМЛЕНИЙ ОБ ИЗМЕНЕНИИ ОЦЕНОК (СЕССИИ + СЕМЕСТРЫ) ---
     setTimeout(() => {
         // Защита от срабатываний при активном локальном поиске
         const termSearch = document.querySelector('.term-local-input');
@@ -112,6 +102,7 @@ export function renderSignsPage() {
             return;
         }
 
+        // Очищает строку периода и возвращает его числовой номер.
         const cleanTermName = (raw) => {
             if (!raw) return '1';
             const m = raw.match(/(\d+)/);
@@ -120,7 +111,6 @@ export function renderSignsPage() {
 
         const currentSnapshot = {};
 
-        // 1. Сбор баллов в семестре (Контрольные точки)
         if (pageCtx.pageMode === 'current') {
             const activeSubmenu = document.querySelector('.submenu b');
             const termNum = activeSubmenu ? cleanTermName(activeSubmenu.textContent) : 'current';
@@ -150,7 +140,6 @@ export function renderSignsPage() {
             });
         }
 
-        // 2. Сбор итоговых оценок за сессии
         if (pageCtx.pageMode === 'session') {
             document.querySelectorAll('.session-term-table-group').forEach(wrapper => {
                 let rawTermName = wrapper.getAttribute('data-term-name') || '';
@@ -179,7 +168,6 @@ export function renderSignsPage() {
             });
         }
 
-        // 3. Загрузка базы снимков
         const storageKey = 'etis_reborn_grades_snapshot_v3';
         let storedData = JSON.parse(localStorage.getItem(storageKey) || '{"grades":{}, "isInitialized":false, "lastUpdated":null}');
         let previousGrades = storedData.grades || {};
@@ -188,7 +176,6 @@ export function renderSignsPage() {
         const scoreUpdates = [];
         const markUpdates = [];
 
-        // 4. Сравнение изменений
         for (const [key, currData] of Object.entries(currentSnapshot)) {
             const prevData = previousGrades[key];
 
@@ -202,7 +189,6 @@ export function renderSignsPage() {
             }
 
             if (!isFirstRun) {
-                // Баллы в семестре
                 if (currData.type === 'term') {
                     const prevScore = parseFloat(prevData.score) || 0;
                     const currScore = parseFloat(currData.score) || 0;
@@ -213,7 +199,6 @@ export function renderSignsPage() {
                     }
                 }
 
-                // Оценки в сессии
                 if (currData.type === 'session') {
                     if (prevData.mark && prevData.mark !== currData.mark) {
                         markUpdates.push({ subj: currData.subject, term: currData.term, oldMark: prevData.mark, newMark: currData.mark, targetUrl: currData.targetUrl });
@@ -227,7 +212,7 @@ export function renderSignsPage() {
         storedData.grades = previousGrades;
         storedData.isInitialized = true;
 
-        // 5. Всплывающее Push-уведомление (без добавления в колокольчик)
+        // Всплывающее Push-уведомление (без добавления в колокольчик)
         const totalUpdates = scoreUpdates.length + markUpdates.length;
 
         if (totalUpdates > 0 && !isFirstRun) {

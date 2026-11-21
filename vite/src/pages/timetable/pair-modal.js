@@ -5,6 +5,7 @@ import { saveSyncData } from '../../sync/data.js';
 import { parseDayDateStrToISO } from '../../utils/dates.ts';
 import { isIOS, isMacSafari } from '../../utils/platform.ts';
 
+// Извлекает название аудитории или локации из строки пары без лишних элементов.
 export const extractCleanLocation = (r) => {
     const audEl = r.querySelector('.pair_info .aud');
     if (!audEl) return '';
@@ -13,6 +14,7 @@ export const extractCleanLocation = (r) => {
     return clone.textContent.trim();
 };
 
+// Извлекает имя преподавателя из строки пары.
 export const extractCleanTeacher = (r) => {
     const tWrap = r.querySelector('.pair-teacher-wrap');
     if (tWrap) {
@@ -25,9 +27,8 @@ export const extractCleanTeacher = (r) => {
     return '';
 };
 
-// Модальное окно для всех типов пар
+// Открывает модальное окно пары (заметки, напоминание в календарь и редактирование).
 export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr, rawPairNum, currentIndex, allRowsArray, currentNote, isExternal, isPureCustom) {
-    // Безопасная инициализация названия предмета
     const cleanSubjectName = (dispSubject || origSubject || 'Занятие').replace(/edit$/i, '').trim();
 
     let overlay = document.querySelector('.analytics-overlay.notes-overlay');
@@ -43,6 +44,7 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
         document.body.appendChild(modal);
     }
 
+    // Форматирует название дня недели для подсказки регулярного повторения.
     const formatEveryDayPhrase = (dName) => {
         if (!dName) return 'Каждую неделю';
         const clean = dName.trim().toLowerCase();
@@ -327,6 +329,7 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
                             </div>
                         `;
 
+    // Закрывает модальное окно пары.
     const closeModal = () => {
         overlay.classList.remove('active');
         modal.classList.remove('active');
@@ -368,10 +371,8 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
         const currentWeekEl = document.querySelector('.week.current');
         const currentWeek = currentWeekEl ? parseInt(currentWeekEl.textContent.trim(), 10) : 1;
 
-        // 1. Очищаем старые ключи текущей пары
         delete notesData.specific[pairId];
 
-        // 2. Поиск следующего занятия
         let nextInfo = { found: false };
 
         if (val && isNext) {
@@ -565,7 +566,6 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
         if (typeof window.renderNotes === 'function') window.renderNotes();
     };
 
-    // Обработчик кнопки «Удалить»
     const clearNoteBtn = modal.querySelector('.clear-note-btn');
     if (clearNoteBtn) {
         clearNoteBtn.onclick = () => {
@@ -579,7 +579,6 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
         };
     }
 
-    // Обработчик кнопки «Добавить» во вкладке «Напоминание»
     const reminderBtn = modal.querySelector('.submit-reminder-btn');
     if (reminderBtn) {
         reminderBtn.onclick = () => {
@@ -588,11 +587,9 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
             const alarmMinutes = offsetVal !== undefined ? parseInt(offsetVal, 10) : 60;
             const includeNotes = modal.querySelector('#ics-include-notes')?.checked || false;
 
-            // Расчет времени и формирование описания
             const { startDate, endDate } = getPairDateTime(dayDateStr, startVal);
             const description = (includeNotes && currentNote) ? currentNote : '';
 
-            // Маршрутизация по выбранной платформе
             if (platform === 'google') {
                 openGoogleCalendarWeb({
                     title: cleanSubjectName,
@@ -610,7 +607,6 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
                     endDate
                 });
             } else {
-                // Apple Календарь / Прямой файл .ics
                 const icsContent = generatePairICS({
                     title: cleanSubjectName,
                     location: currentLoc,
@@ -645,7 +641,6 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
         };
     }
 
-    // Удаление кастомной пары
     const deleteCpBtn = modal.querySelector('.delete-cp-btn-modal');
     if (deleteCpBtn) {
         deleteCpBtn.onclick = () => {
@@ -667,7 +662,6 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
         };
     }
 
-    // Сохранение настроек и времени
     const saveEditBtn = modal.querySelector('.save-edit-btn');
     if (saveEditBtn) {
         saveEditBtn.onclick = () => {
@@ -783,7 +777,6 @@ export function openPairModal(row, dispSubject, origSubject, pairId, dayDateStr,
         };
     }
 
-    // Сброс настроек
     const resetEditBtn = modal.querySelector('.reset-edit-btn');
     if (resetEditBtn) {
         resetEditBtn.onclick = () => {

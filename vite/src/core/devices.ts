@@ -1,6 +1,7 @@
 import { targetWindow } from './console-api';
 import { ActiveTheme } from '../types/index.js';
 
+// Метаданные зарегистрированного устройства для облачной синхронизации
 export interface DeviceMeta {
     name: string;
     os: string;
@@ -8,12 +9,14 @@ export interface DeviceMeta {
     lastActive: number;
 }
 
+// Структура метаданных синхронизации со списком устройств и удалений
 export interface SyncMeta {
     devices?: Record<string, DeviceMeta>;
     removed?: Record<string, number>;
     [key: string]: any;
 }
 
+// Объединяет локальные и облачные метаданные устройств с учётом удалений
 export const mergeSyncMeta = (localMeta: SyncMeta, cloudMeta: SyncMeta): SyncMeta => {
     const localDevices = localMeta?.devices || {};
     const cloudDevices = cloudMeta?.devices || {};
@@ -62,6 +65,7 @@ export const mergeSyncMeta = (localMeta: SyncMeta, cloudMeta: SyncMeta): SyncMet
     };
 };
 
+// Регистрирует текущее устройство и обновляет время его последней активности
 export const registerCurrentDevice = (): SyncMeta => {
     let deviceId = localStorage.getItem('etis_device_id');
     if (!deviceId) {
@@ -96,6 +100,7 @@ export const registerCurrentDevice = (): SyncMeta => {
     return meta;
 };
 
+// Регистрирует команды управления демо- и тестовым режимом в меню Tampermonkey
 export function devicesBoot(): void {
     if (typeof GM_registerMenuCommand === 'function') {
         GM_registerMenuCommand('ЕТИС Reborn: демо-режим (вкл)', () => (targetWindow as any).etisDemo(true));

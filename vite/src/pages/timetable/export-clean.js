@@ -1,19 +1,16 @@
 import { generalConfig } from '../../core/config.js';
 import { getLocalQRCodeDataURL } from '../../utils/qr.js';
 
-// --- УНИВЕРСАЛЬНАЯ ОЧИСТКА РАСПИСАНИЯ ДЛЯ html2canvas ---
+// Очищает клон расписания от UI-элементов и подготавливает стили и QR-коды для экспорта в изображение.
 export const cleanTimetableForExport = async (clone) => {
-    // 1. Удаляем UI-мусор, скрипты и ленивую загрузку
-    clone.querySelectorAll('.share-day-btn, .add-custom-pair-btn, .live-dot, .day-status-icon, .pair_teacher .eval, .pair-important-btn, .subject-note-btn, .delete-custom-pair-btn, .hidden-by-filter, script').forEach(el => el.remove());
+    clone.querySelectorAll('.share-day-btn, .add-custom-pair-btn, .live-dot, .live-timer-badge, .day-status-icon, .pair_teacher .eval, .pair-important-btn, .subject-note-btn, .delete-custom-pair-btn, .hidden-by-filter, script').forEach(el => el.remove());
     clone.querySelectorAll('[loading="lazy"]').forEach(el => el.removeAttribute('loading'));
 
-    // 2. Убираем эффект "прошедших пар"
     clone.querySelectorAll('.pair-passed, td').forEach(el => {
         el.classList.remove('pair-passed');
         el.style.setProperty('opacity', '1', 'important');
     });
 
-    // 3. ДОБАВЛЯЕМ QR-КОДЫ ДЛЯ ОНЛАЙН ПАР
     const qrPromises = [];
 
     if (generalConfig.generateQR) {
@@ -53,7 +50,6 @@ export const cleanTimetableForExport = async (clone) => {
         await Promise.all(qrPromises);
     }
 
-    // 4. Вшиваем стили рендера
     const isDark = document.documentElement.getAttribute('theme') === 'dark';
     const shadowCSS = isDark ? '0 4px 12px rgba(0, 0, 0, 0.2)' : '0 4px 12px rgba(0, 0, 0, 0.05)';
     const borderColorCSS = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)';

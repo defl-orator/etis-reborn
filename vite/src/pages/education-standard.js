@@ -1,5 +1,6 @@
 import { pageCtx } from '../app/context.js';
 
+// Оформляет страницу образовательного стандарта с блоками компетенций
 export function renderEducationStandardPage() {
     const allElements = Array.from(pageCtx.span9.childNodes);
 

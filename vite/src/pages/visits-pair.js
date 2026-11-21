@@ -1,6 +1,7 @@
 import { pageCtx } from '../app/context.js';
 import { escapeHTML } from '../utils/security.ts';
 
+// Оформляет таблицу посещаемости по конкретной дисциплине
 export function renderVisitsPairPage() {
     const backBtn = document.createElement('a');
     backBtn.href = 'stu_jour.group_tt';

@@ -6,16 +6,14 @@ import { isMacSafari } from '../utils/platform.ts';
 import { getLocalQRCodeDataURL } from '../utils/qr.js';
 import { applySri } from '../utils/security.ts';
 
-// ==========================================
-// УНИВЕРСАЛЬНАЯ ОЧИСТКА ЭЛЕМЕНТОВ ПЕРЕД ЭКСПОРТОМ
-// ==========================================
+// Универсальная очистка клона элемента расписания или сообщения перед экспортом
 async function cleanElementForExport(clone, isMsg = false) {
     // 1. Удаление интерактивных элементов, кнопок, скриптов и индикаторов статуса
     clone.querySelectorAll(`
                 .share-day-btn, .share-all-btn, .share-week-btn, .share-msg-wrap, .actions-msg-wrap,
                 .add-custom-pair-btn, .delete-custom-pair-btn, .subject-note-btn, .pair-important-btn,
                 .pair-eval-btn, .pair_teacher .eval, .hidden-by-filter, script, iframe,
-                .live-dot, .day-status-icon, .msg-unread-dot, .answer-wrapper, .send-reply-btn, div[id^="frm_"]
+                .live-dot, .live-timer-badge, .day-status-icon, .msg-unread-dot, .answer-wrapper, .send-reply-btn, div[id^="frm_"]
             `).forEach(el => el.remove());
 
     clone.querySelectorAll('[loading="lazy"]').forEach(el => el.removeAttribute('loading'));
@@ -86,7 +84,7 @@ async function cleanElementForExport(clone, isMsg = false) {
     const exportStyles = document.createElement('style');
     exportStyles.innerHTML = `
                 * { transition: none !important; animation: none !important; }
-                .live-dot, .day-status-icon { display: none !important; }
+                .live-dot, .live-timer-badge, .day-status-icon { display: none !important; }
                 .day { box-shadow: none !important; border: 1px solid var(--color-table-border) !important; border-radius: 24px !important; overflow: hidden !important; }
                 .day h3 { border-top-left-radius: 23px !important; border-top-right-radius: 23px !important; }
                 .timetable-grid { table-layout: fixed !important; width: 100% !important; border-spacing: 0 !important; border-collapse: collapse !important; }
@@ -106,6 +104,7 @@ async function cleanElementForExport(clone, isMsg = false) {
     clone.appendChild(exportStyles);
 }
 
+// Открытие модального окна предпросмотра и генерация PNG-скриншота
 export function openExportPreviewModal(targetElement, defaultFileName, isWholeWeek = false) {
     let overlay = document.getElementById('etis-export-overlay');
     let modal = document.getElementById('etis-export-modal');
@@ -204,7 +203,6 @@ export function openExportPreviewModal(targetElement, defaultFileName, isWholeWe
             clone = targetElement.cloneNode(true);
         }
 
-        // Вызываем универсальную очистку перед созданием скриншота
         await cleanElementForExport(clone, isMsg);
 
         span9Wrapper.appendChild(clone);

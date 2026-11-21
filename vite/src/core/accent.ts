@@ -1,7 +1,7 @@
-// src/core/accent.ts
 import { ACCENT_COLORS } from './accent-colors';
 import { AccentConfig } from '../types';
 
+// Итоговые вычисленные параметры акцентного оформления
 export interface EffectiveAccent {
     isGradient: boolean;
     isThreeColors: boolean;
@@ -10,6 +10,7 @@ export interface EffectiveAccent {
     isColoredGlass?: boolean;
 }
 
+// Преобразует HEX-цвет в RGB-компоненты
 function hexToRgb(hex: string): { r: number; g: number; b: number } {
     let c = hex.replace('#', '');
     if (c.length === 3) {
@@ -23,11 +24,13 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
     };
 }
 
+// Преобразует HEX-цвет в строку RGBA с заданной прозрачностью
 function hexToRgba(hex: string, alpha: number): string {
     const { r, g, b } = hexToRgb(hex);
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+// Возвращает HEX-код цвета по ключу из палитры или готовому HEX-значению
 function resolveHex(colorOrKey: string): string {
     if (!colorOrKey) return '#007AFF';
     const key = colorOrKey.toLowerCase();
@@ -36,6 +39,7 @@ function resolveHex(colorOrKey: string): string {
     return '#007AFF';
 }
 
+// Возвращает итоговые настройки акцента с учётом текущей темы
 export function getEffectiveAccent(config?: AccentConfig): EffectiveAccent {
     let raw: AccentConfig;
     try {
@@ -77,11 +81,13 @@ export function getEffectiveAccent(config?: AccentConfig): EffectiveAccent {
     };
 }
 
+// Формирует строковую сигнатуру текущего акцента для отслеживания изменений
 export function accentSignature(config?: AccentConfig): string {
     const eff = getEffectiveAccent(config);
     return `${eff.isGradient ? 1 : 0}_${eff.isThreeColors ? 1 : 0}_${eff.colors.join('-')}_${eff.isGlass ? 1 : 0}`;
 }
 
+// Применяет акцентные цвета, градиент и эффект стекла к странице
 export function applyAccentColor(): void {
     const eff = getEffectiveAccent();
     const hex1 = resolveHex(eff.colors[0]);
@@ -108,7 +114,6 @@ export function applyAccentColor(): void {
 
     const activeRgba = hexToRgba(hex1, 0.15);
 
-    // Установка CSS переменных
     const root = document.documentElement;
     root.style.setProperty('--color-accent', hex1);
     root.style.setProperty('--color-text-link', hex1);
@@ -116,7 +121,6 @@ export function applyAccentColor(): void {
     root.style.setProperty('--color-accent-active', activeRgba);
     root.style.setProperty('--bg-accent', bgAccent);
 
-    // Динамический инжект стилей
     let styleEl = document.getElementById('etis-dynamic-accent') as HTMLStyleElement | null;
     if (!styleEl) {
         styleEl = document.createElement('style');
@@ -141,10 +145,15 @@ export function applyAccentColor(): void {
         .plan-submenu-track b,
         .span3 > .nav.nav-tabs.nav-stacked > li.active > a,
         .span3 .sidebar-nav-group > li.active > a,
+        .span3 .sidebar-folder.is-open .sidebar-folder-content li.active > a,
         .sidebar-folder.is-open .sidebar-folder-content li.active > a,
+        .span3 .sidebar-folder-header.active-header,
         .sidebar-folder-header.active-header,
+        .span3 .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header,
         .sidebar-folder:not(.is-open) .sidebar-folder-header.active-header,
         .sidebar-collapsible-sections .sidebar-folder-header.active-header,
+        .analytics-modal .settings-sidebar-btn.active,
+        #etis-settings-modal .settings-sidebar-btn.active,
         .settings-sidebar-btn.active,
         .mobile-dock-item.active,
         button.mobile-dock-item.active,
@@ -205,7 +214,6 @@ export function applyAccentColor(): void {
         }
     `;
 
-    // Обновляем превью в настройках
     const previewBox = document.getElementById('accent-preview-box');
     if (previewBox) {
         previewBox.querySelectorAll('.etis-preview-active-element').forEach((el: any) => {
@@ -218,6 +226,7 @@ export function applyAccentColor(): void {
     }
 }
 
+// Инициализирует акцентное оформление при старте
 export function accentBoot(): void {
     applyAccentColor();
 }

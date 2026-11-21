@@ -1,11 +1,11 @@
 import { pageCtx } from '../app/context.js';
 
+// Оформляет страницу портфолио, сворачиваемые разделы и диалоги загрузки файлов
 export function renderPortfolioPage() {
     while (pageCtx.span9.firstChild && (pageCtx.span9.firstChild.tagName === 'BR' || (pageCtx.span9.firstChild.nodeType === Node.TEXT_NODE && !pageCtx.span9.firstChild.textContent.trim()))) {
         pageCtx.span9.firstChild.remove();
     }
 
-    // Обнуляем отступ у главного заголовка "Результаты..."
     const mainH3 = pageCtx.span9.querySelector('h3');
     if (mainH3 && !mainH3.querySelector('a.dashed')) {
         mainH3.style.setProperty('margin-top', '0', 'important');
@@ -53,21 +53,16 @@ export function renderPortfolioPage() {
         h3.remove();
     });
 
-    // --- СКРОЛЛ ТАБЛИЦ ---
-    // Находим все блоки контента (публикации, проекты и т.д.)
     const contentDivs = pageCtx.span9.querySelectorAll('div[id="pub"], div[id="pis"], div[id="agr"], div[id="ooo"], div[id="saw"], div[id="vkr"]');
 
     contentDivs.forEach(div => {
         const table = div.querySelector('table');
         if (table) {
-            // Создаем обертку для скролла
             const wrapper = document.createElement('div');
             wrapper.className = 'wide-table-wrapper';
 
-            // Вставляем обертку перед таблицей
             table.parentNode.insertBefore(wrapper, table);
 
-            // Перемещаем таблицу внутрь
             wrapper.appendChild(table);
 
             // Сбрасываем ширину, чтобы таблица растягивалась
@@ -75,7 +70,6 @@ export function renderPortfolioPage() {
         }
     });
 
-    // Иконки загрузки файлов
     const loadImgs = pageCtx.span9.querySelectorAll('img[name="load_doc"]');
     loadImgs.forEach(img => {
         const icon = document.createElement('span');

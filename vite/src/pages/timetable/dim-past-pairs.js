@@ -1,6 +1,6 @@
 import { generalConfig } from '../../core/config.js';
 
-// --- ФУНКЦИЯ ЗАТЕМНЕНИЯ ПРОШЕДШИХ ПАР ---
+// Затемняет прошедшие пары и окна на текущей и прошлых датах.
 export function dimPastPairs() {
     const days = document.querySelectorAll('.span9 .day');
     const now = new Date();

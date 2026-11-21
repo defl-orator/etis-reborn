@@ -1,12 +1,12 @@
 import { pageCtx } from '../app/context.js';
 
+// Оформляет страницу специальных опросов и обеспечивает корректную отправку анкет
 export function renderSpecialSurveysPage() {
     pageCtx.span9.querySelectorAll('h3, h2').forEach(h => h.remove());
     while (pageCtx.span9.firstChild && (pageCtx.span9.firstChild.tagName === 'BR' || (pageCtx.span9.firstChild.nodeType === Node.TEXT_NODE && !pageCtx.span9.firstChild.textContent.trim()))) {
         pageCtx.span9.firstChild.remove();
     }
 
-    // 2. Оформление верхнего предупреждения (плашки)
     const warnings = document.querySelectorAll('.warning');
     if (warnings.length > 0) {
         const warningText = warnings[0].textContent.trim();
@@ -24,7 +24,6 @@ export function renderSpecialSurveysPage() {
         }
     }
 
-    // 3. Сбор вводного текста анкеты
     let introTitleText = '';
     let introBodyText = '';
     const nodesToDelete = [];
@@ -64,7 +63,6 @@ export function renderSpecialSurveysPage() {
         }
     }
 
-    // 4. Оформление карточек опросов
     const surveyBlocks = pageCtx.span9.querySelectorAll('.nav.answ, .nav.msg, ul.survey-card');
 
     surveyBlocks.forEach(survey => {
@@ -110,7 +108,6 @@ export function renderSpecialSurveysPage() {
 
             const activeForm = contentLi.querySelector('form[name^="estimate_"]');
 
-            // --- АКТИВНЫЙ ОПРОС С РАДИО-КНОПКАМИ ---
             if (activeForm) {
                 const reviewDiv = contentLi.querySelector('.review');
                 if (reviewDiv) {
@@ -148,9 +145,6 @@ export function renderSpecialSurveysPage() {
                     actionButtonsWrap.appendChild(counterBadge);
                     reviewDiv.appendChild(actionButtonsWrap);
 
-                    // ==========================================
-                    // ТОЧНЫЙ СБОР ДАННЫХ В ФОРМАТЕ ЕТИСА (.serialize)
-                    // ==========================================
                     const questions = activeForm.querySelectorAll('.question');
                     const totalQuestions = questions.length;
 
@@ -176,7 +170,6 @@ export function renderSpecialSurveysPage() {
                             }
                         });
 
-                        // Записываем сериализованную строку в p_que_str
                         const serializedData = serializeFormAnswers();
                         const queInput = activeForm.querySelector('input[name="p_que_str"], #p_que_str');
                         if (queInput) queInput.value = serializedData;
@@ -211,7 +204,6 @@ export function renderSpecialSurveysPage() {
                         radio.addEventListener('change', validateAndCollect);
                     });
 
-                    // Отправка формы в строгом соответствии со скриптом ЕТИСа
                     if (sendBtn) {
                         sendBtn.onclick = (e) => {
                             e.preventDefault();
@@ -226,7 +218,6 @@ export function renderSpecialSurveysPage() {
                                 return;
                             }
 
-                            // Ищем или создаем форму отправки send_form_estimate_...
                             let sendForm = document.getElementById(`send_form_${activeForm.name}`) || document.querySelector(`form[name="send_form_${activeForm.name}"]`) || document.querySelector('form[name^="send_form_estimate_"]');
                             if (!sendForm) {
                                 sendForm = document.createElement('form');
@@ -259,7 +250,6 @@ export function renderSpecialSurveysPage() {
                             sendBtn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite;">sync</span> Отправка...';
                             sendBtn.disabled = true;
 
-                            // Отправка запроса в базу
                             HTMLFormElement.prototype.submit.call(sendForm);
                         };
                     }
@@ -291,7 +281,6 @@ export function renderSpecialSurveysPage() {
 
             const rawHTML = contentLi.innerHTML;
 
-            // --- ОПРОСЫ С ПОЛЕМ ТЕКСТОВОГО ВВОДА ---
             if (rawHTML.includes('<form') || rawHTML.includes('<textarea')) {
                 const shortBtn = contentLi.querySelector('div[id$="_short"]');
                 if (shortBtn) {
@@ -334,7 +323,6 @@ export function renderSpecialSurveysPage() {
                 return;
             }
 
-            // --- РАНЕЕ ПРОЙДЕННЫЕ ОПРОСЫ ---
             const cleanContent = document.createElement('div');
 
             const dateMatch = rawHTML.match(/\d{2}\.\d{2}\.\d{4}\s\d{2}:\d{2}:\d{2}/);

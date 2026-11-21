@@ -1,6 +1,6 @@
 import { openExportPreviewModal } from './export.js';
 
-// --- МЯГКАЯ ИКОНКА ПОДЕЛИТЬСЯ (SVG) ---
+// SVG-иконка кнопки «Поделиться»
 export const softShareSVG = `
                     <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="share-msg-btn" title="Поделиться">
                         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
@@ -9,13 +9,13 @@ export const softShareSVG = `
                     </svg>
                 `;
 
-// --- Перенаправление на универсальную функцию экспорта ---
+// Открытие предпросмотра экспорта для карточки сообщения
 export const shareMessageCard = (cardElement, defaultFileName, onComplete = null) => {
     openExportPreviewModal(cardElement, defaultFileName, false);
     if (typeof onComplete === 'function') onComplete(true);
 };
 
-// --- ЕДИНЫЙ МЕХАНИЗМ СВАЙПОВ ДЛЯ СООБЩЕНИЙ И ОБЪЯВЛЕНИЙ ---
+// Инициализация свайпов по карточкам сообщений и объявлений на мобильных устройствах
 export const initMessageSwipes = (container, defaultFileName) => {
     let bubble = document.getElementById('swipe-action-bubble');
     if (!bubble) {

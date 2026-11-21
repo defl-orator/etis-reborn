@@ -1,5 +1,6 @@
 import { pageCtx } from '../app/context.js';
 
+// Оформляет анкету оценки занятия и добавляет кнопку возврата
 export function renderEstimateFormsPage() {
     if (!pageCtx.span9.querySelector('.estimate-top-bar')) {
         const topBar = document.createElement('div');
@@ -16,7 +17,6 @@ export function renderEstimateFormsPage() {
         pageCtx.span9.prepend(topBar);
     }
 
-    // 2. Бесшовный выбор дня недели
     pageCtx.span9.querySelectorAll('.question label select').forEach(sel => {
         const activateRadio = () => {
             const radio = sel.closest('label')?.querySelector('input[type="radio"]');
@@ -33,7 +33,6 @@ export function renderEstimateFormsPage() {
         sel.addEventListener('click', activateRadio);
     });
 
-    // 3. Отправка через нативный скрипт ЕТИСа с уведомлением
     const form = pageCtx.span9.querySelector('form[name="estimate"], form.que_form');
     if (form) {
         const sendBtn = form.querySelector('#send_btn');

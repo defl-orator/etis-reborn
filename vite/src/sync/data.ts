@@ -1,6 +1,7 @@
 import { markLocalKeyDirty, triggerSilentCloudUpload } from './cloud';
 import { ConsultationFile } from '../types';
 
+// Сохраняет значение в localStorage, помечает ключ изменённым и запускает облачную выгрузку
 export function saveSyncData(key: string, value: string): void {
     localStorage.setItem(key, value);
     markLocalKeyDirty(key);
@@ -9,6 +10,7 @@ export function saveSyncData(key: string, value: string): void {
     }
 }
 
+// Возвращает карту пользовательских переключателей синхронизации по категориям
 export function getSyncToggles(): Record<string, boolean> {
     try {
         const raw = localStorage.getItem('etis_sync_toggles');
@@ -18,6 +20,7 @@ export function getSyncToggles(): Record<string, boolean> {
     }
 }
 
+// Удаляет дубликаты файлов консультаций по идентификатору
 export function deduplicateConsultations(files: ConsultationFile[]): ConsultationFile[] {
     if (!Array.isArray(files)) return [];
     const seen = new Set<string>();

@@ -1,6 +1,4 @@
-// ==========================================
-// МАППИНГ ИКОНОК НАПРАВЛЕНИЙ ПОДГОТОВКИ
-// ==========================================
+// Подбирает имя иконки Material Icons по названию направления подготовки
 export function getDirectionIcon(directionName: string | null | undefined): string {
     if (!directionName) return 'school';
     const t = directionName.toLowerCase();

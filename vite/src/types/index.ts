@@ -39,12 +39,14 @@ export interface GeneralConfig {
     absoluteScores: boolean;
     compactGrades: boolean;
     gradeNotifications: boolean;
+    timetableNotifications: boolean;
     watermark: boolean;
     datesLeft: boolean;
     generateQR: boolean;
     showGaps: boolean;
     showGapsCustom: boolean;
     showBigBreak: boolean;
+    liveTimer: boolean;
     smartSidebar: boolean;
     quickLoginEnabled: boolean;
     betaFeaturesEnabled: boolean;

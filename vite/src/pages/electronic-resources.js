@@ -1,5 +1,6 @@
 import { pageCtx } from '../app/context.js';
 
+// Оформляет страницу электронных ресурсов и добавляет копирование логинов и паролей
 export function renderElectronicResourcesPage() {
     while (pageCtx.span9.firstChild && (pageCtx.span9.firstChild.tagName === 'BR' || (pageCtx.span9.firstChild.nodeType === Node.TEXT_NODE && !pageCtx.span9.firstChild.textContent.trim()))) {
         pageCtx.span9.firstChild.remove();
@@ -7,7 +8,6 @@ export function renderElectronicResourcesPage() {
 
     const resTable = document.getElementById('resources');
 
-    // 1. Убираем лишние заголовки
     pageCtx.span9.querySelectorAll('h3').forEach(h => {
         const text = h.textContent.toLowerCase();
         if (text.includes('электронные ресурсы пгниу') || text.includes('ресурсы, доступ к которым')) {
@@ -15,7 +15,6 @@ export function renderElectronicResourcesPage() {
         }
     });
 
-    // 2. Оформляем инфо-блок (памятка от научной библиотеки) и переносим в конец страницы
     const introText = pageCtx.span9.querySelector('p[style*="font-size:11pt"]');
     if (introText) {
         const infoBox = document.createElement('div');
@@ -48,7 +47,6 @@ export function renderElectronicResourcesPage() {
         pageCtx.span9.appendChild(infoBox);
     }
 
-    // 3. Парсинг таблицы и исправление скролла/разделителей
     const rows = Array.from(resTable.querySelectorAll('tr'));
     let currentTbody = null;
 
@@ -92,7 +90,6 @@ export function renderElectronicResourcesPage() {
             title.textContent = titleText;
             block.appendChild(title);
 
-            // Оборачиваем в контейнер для скролла
             const wrapper = document.createElement('div');
             wrapper.className = 'wide-table-wrapper';
 
@@ -107,7 +104,6 @@ export function renderElectronicResourcesPage() {
             wrapper.appendChild(table);
             block.appendChild(wrapper);
 
-            // Вставляем блок перед старой таблицей
             resTable.parentNode.insertBefore(block, resTable);
             row.remove();
         } else if (currentTbody) {
