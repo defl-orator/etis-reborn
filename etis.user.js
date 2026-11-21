@@ -16195,6 +16195,9 @@ mark.search-highlight,
                 el.removeAttribute('data-orig-time');
                 el.style.color = '';
                 el.style.fontWeight = '';
+                el.style.lineHeight = '';
+                el.style.flexDirection = '';
+                el.style.gap = '';
             });
 
             const mergedDaysAttr = dayBlock.getAttribute('data-merged-days');
@@ -16304,14 +16307,20 @@ mark.search-highlight,
                                     const timerColor = type === 'soon'
                                         ? 'var(--color-warning)'
                                         : (type === 'ending' ? 'var(--color-red)' : 'var(--color-green)');
-                                    const timerText = type === 'soon'
-                                        ? `через ${formatTimerDuration(startMins - currentTime)}`
-                                        : `ещё ${formatTimerDuration(endMins - currentTime)}`;
-                                    timeElInner.textContent = timerText;
+                                    const prefix = type === 'soon' ? 'через' : 'ещё';
+                                    const durationStr = type === 'soon'
+                                        ? formatTimerDuration(startMins - currentTime)
+                                        : formatTimerDuration(endMins - currentTime);
+                                    timeElInner.innerHTML = `<span style="line-height: 1.15;">${prefix}</span><span class="live-timer-row" style="display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; line-height: 1.15;"><span>${durationStr}</span></span>`;
+                                    timeElInner.style.flexDirection = 'column';
+                                    timeElInner.style.gap = '2px';
+                                    timeElInner.style.lineHeight = '1.15';
                                     timeElInner.style.color = timerColor;
                                     timeElInner.style.fontWeight = '700';
+                                    timeElInner.querySelector('.live-timer-row')?.appendChild(dot);
+                                } else {
+                                    timeElInner.appendChild(dot);
                                 }
-                                timeElInner.appendChild(dot);
                             } else {
                                 row.querySelector('.pair_num')?.appendChild(dot);
                             }
